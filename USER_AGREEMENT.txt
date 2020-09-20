@@ -1,0 +1,21 @@
+Aurora User Agreement (2020.06.16) 
+
+By cloning, downloading or otherwise using aurora sources, the recipient
+agrees:
+
+1. To compile/use the Software source code AS IS for publication
+   purposes; users however are welcome to request changes, to make
+   code modifications for testing purposes, or issue pull requests.
+
+2. If the authorized user’s copy of Software is made available to third
+   parties, to ensure that the user agreement is followed by the third
+   parties.
+
+3. To email a draft of any article/letter/note based on the Software
+   use to sciortino@psfc.mit.edu.
+
+4. To include in published results or presentations the code name
+   and appropriate references for both aurora [1] and STRAHL [2].
+
+[1] Sciortino et al 2020 Nucl. Fusion https://doi.org/10.1088/1741-4326/abae85
+[2] R. Dux, IPP Report, 2004, https://pure.mpg.de/rest/items/item_2136655/component/file_2136654/content 
