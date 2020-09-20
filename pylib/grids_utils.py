@@ -123,26 +123,29 @@ def create_aurora_radial_grid(namelist,plot=False):
 
     if plot:
 
-        r_lim  = r_lcfs + namelist['lim_sep']
-        r_wall = r_lcfs + namelist['bound_sep']
-        dr = gradient(radius_grid)
-        f,ax = plt.subplots(num='STRAHL radial step')
-        ax.cla()
-        ax.plot(radius_grid/r_lcfs, dr,'-')
+        r_lim  = namelist['rvol_lcfs'] + namelist['lim_sep']
+        r_wall = namelist['rvol_lcfs'] + namelist['bound_sep']
+        dr = np.gradient(radius_grid)
+
+        if plt.fignum_exists('aurora radial step'):
+            plt.figure(num='aurora radial step').clf()
+        f,ax = plt.subplots(num='aurora radial step')
+        
+        ax.plot(radius_grid/namelist['rvol_lcfs'], dr,'-')
         ax.axvline(1,ls='--',c='k')
         ax.text(1+0.01,namelist['dr_0']*0.9 ,'LCFS',rotation='vertical')
 
-        ax.axvline(r_lim/r_lcfs,ls='--',c='k')
-        ax.text(r_lim/r_lcfs+0.01,inputs['dr_0']*0.9 ,'limiter',rotation='vertical')
+        ax.axvline(r_lim/namelist['rvol_lcfs'],ls='--',c='k')
+        ax.text(r_lim/namelist['rvol_lcfs']+0.01,inputs['dr_0']*0.9 ,'limiter',rotation='vertical')
 
         if 'saw_model' in namelist and namelist['saw_model']['saw_flag']:
-            ax.axvline( namelist['saw_model']['rmix']/r_lcfs,ls='--',c='k')
-            ax.text(namelist['saw_model']['rmix']/r_lcfs+0.01,dr_0*0.5 ,'Sawtooth mixing radius',rotation='vertical')
+            ax.axvline( namelist['saw_model']['rmix']/namelist['rvol_lcfs'],ls='--',c='k')
+            ax.text(namelist['saw_model']['rmix']/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.5 ,'Sawtooth mixing radius',rotation='vertical')
 
         ax.set_xlabel(r'$r/r_{lcfs}$');
         ax.set_ylabel(r'$\Delta$ r [cm]');
         ax.set_ylim(0,None)
-        ax.set_xlim(0,r_wall/r_lcfs)
+        ax.set_xlim(0,r_wall/namelist['rvol_lcfs'])
         ax.set_title('# radial grid points: %d'%len(radius_grid))
 
     else:
