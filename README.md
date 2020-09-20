@@ -1,7 +1,9 @@
-# aurora
+# `aurora`
 F.Sciortino, 2019-
 
 Contributors: T.Odstrcil, A.Cavallaro
+
+![Aurora Borealis - K.Pikner](https://en.wikipedia.org/wiki/Aurora#/media/File:Virmalised_18.03.15_(4).jpg)
 
 `aurora` is a modern version of the historical STRAHL code written by R.Dux (MPI-IPP). 
 `aurora` is written in f90 (rather than f77) and easily interfaces with Python3+. The package also includes Python functionality to create inputs and read outputs. OMFIT users may access this functionality via the OMFIT STRAHL module.
