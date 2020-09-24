@@ -104,7 +104,7 @@ aurora_dict = pylib.utils.aurora_setup(namelist, geqdsk=geqdsk)
 
 # choose transport coefficients
 D_eff = 1e4 #cm^2/s
-v_eff = -1e4 #-2e2 #cm/s
+v_eff = 0.0 #-1e4 #-2e2 #cm/s
 
 # # set transport coefficients to the right format
 D_z = np.ones((len(aurora_dict['radius_grid']),1)) * D_eff
@@ -227,7 +227,12 @@ a_legend = plt.subplot2grid((10,10),(0,8),rowspan = 10, colspan = 2, fig=fig)
 for ii,cc in zip(np.arange(nz.shape[1]),colors):
     a_plot.plot(aurora_dict['rhop_grid'], nz[-1,ii,:].T, c=cc, ls='-')
     a_plot.plot(aurora_dict['rhop_grid'], nz_2[-1,ii,:].T, c=cc, ls='--')
-    a_plot.plot(aurora_dict['rhop_grid'], nz_3[-1,ii,:].T, c=cc, ls=':')
+
+    #########
+    factor = np.max(nz_2)/np.max(nz_3)   # why do we need this factor?
+    #########
+    
+    a_plot.plot(aurora_dict['rhop_grid'], factor* nz_3[-1,ii,:].T, c=cc, ls=':')
     a_legend.plot([],[],c=cc,label=labels[ii],ls='-')
 a_legend.plot([],[], c='k', ls='-',lw=2, label='Original')
 a_legend.plot([],[], c='k', ls='--',lw=2, label='Linder w/o n')
