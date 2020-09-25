@@ -304,9 +304,9 @@ def run_aurora(aurora_dict, times_DV, D_z, V_z, nz_init=None, method='old',evoln
     method : str, optional
         If method='linder', use the Linder algorithm for increased stability and accuracy.
     evolneut : bool, optional
-        If True, evolve neutral impurities based on their D,V coefficients. Default is False, in 
+        If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
         which case neutrals are only taken as a source and those that are not ionized immediately after
-        injection are neglected. 
+        injection are neglected.
 
     OUTPUTS:
     -------------
@@ -327,7 +327,7 @@ def run_aurora(aurora_dict, times_DV, D_z, V_z, nz_init=None, method='old',evoln
         V_z = np.tile(np.atleast_3d(V_z),(1,1,aurora_dict['Z_imp']+1))  # include elements for neutrals
         # unless specified, V_z for neutrals should be 0
         V_z[:,:,0] = 0.0
-        
+
     # number of times at which simulation outputs results
     nt_out = len(aurora_dict['time_out'])
 
@@ -369,3 +369,75 @@ def run_aurora(aurora_dict, times_DV, D_z, V_z, nz_init=None, method='old',evoln
 
 
 
+def run_julia(pystrahl_dict, times_DV, D_z, V_z, nz_init=None):
+    ''' Run a single simulation using the Julia version.
+
+    INPUTS
+    -------------
+    pystrahl_dict : dict
+        Dictionary containing saved initialization arrays, obtained via `pySTRAHL_setup`.
+    times_DV : 1D array
+        Array of times at which D_z and V_z profiles are given. (Note that it is assumed that
+        D and V profiles are already on the pystrahl_dict['radius_grid'] radial grid).
+    D_z, V_z: arrays, shape of (space, nZ, time)
+        Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
+        This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
+        the number of charge states. If inputs are found to be have only 2 dimensions, it is
+        assumed that all charge states should be set to have the same transport coefficients.
+    nz_init: array, shape of (space, nZ)
+        Impurity charge states at the initial time of the simulation. If left to None, this is
+        internally set to an array of 0's.
+
+    OUTPUTS:
+    -------------
+    out : list
+        List containing each particle reservoir of a simulation, i.e.
+        nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
+    '''
+
+    from julia.api import Julia
+    jl = Julia(compiled_modules=False)
+    from julia import aurora as aurora_jl
+
+    if nz_init is None:
+        # default: start in a state with no impurity ions
+        nz_init = np.zeros((len(pystrahl_dict['radius_grid']),int(pystrahl_dict['Z_imp'])+1))
+
+    if D_z.ndim==2:
+            # set all charge states to have the same transport
+            D_z = np.tile(np.atleast_3d(D_z),(1,1,pystrahl_dict['Z_imp']+1))  # include elements for neutrals
+    if V_z.ndim==2:
+            V_z = np.tile(np.atleast_3d(V_z),(1,1,pystrahl_dict['Z_imp']+1))  # include elements for neutrals
+
+    # number of times at which simulation outputs results
+    nt_out = len(pystrahl_dict['time_out'])
+
+    #NOTE: use only f_contiguous arrays for speed!
+    return aurora_jl.run(nt_out,
+    times_DV,
+    D_z,
+    V_z, # cm/s
+    pystrahl_dict['parallel_loss_rate'],  # time dependent
+    pystrahl_dict['sint'],# source profile
+    pystrahl_dict['s_t'], # ioniz_rate,
+    pystrahl_dict['al_t'], # recomb_rate,
+    pystrahl_dict['radius_grid'],
+    pystrahl_dict['pro'],
+    pystrahl_dict['qpr'],
+    pystrahl_dict['mixing_radius'],
+    pystrahl_dict['decay_length_boundary'],
+    pystrahl_dict['time'],
+    pystrahl_dict['saw_on'],
+    pystrahl_dict['source_function'],
+    pystrahl_dict['save_time'],
+    pystrahl_dict['sawtooth_erfc_width'], # dsaw width  [cm, circ geometry]
+    pystrahl_dict['wall_recycling'], # rcl   [fraction]
+    pystrahl_dict['divbls'], # divbls   [fraction of source into divertor]
+    pystrahl_dict['tau_div_SOL'] * 1e-3, # taudiv   [s]
+    pystrahl_dict['tau_pump'] *1e-3, # taupump  [s]
+    pystrahl_dict['tau_rcl_ret'] *1e-3,   # tauwret  [s]
+    pystrahl_dict['rvol_lcfs'],       # rx = rvol_lcfs + dbound
+    pystrahl_dict['bound_sep'],
+    pystrahl_dict['lim_sep'],
+    pystrahl_dict['prox'],
+    nz_init)
