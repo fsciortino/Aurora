@@ -214,7 +214,7 @@ def aurora_setup(namelist, geqdsk=None):
     ne,Te,Ti,n0 = get_aurora_kin_profs(namelist, comp_time,
                                          aurora_dict['rhop_grid'],radius_grid)
 
-    # cache kinetic profiles for radiation postprocessing
+    # cache kinetic profiles on input time base
     aurora_dict['ne'] = ne
     aurora_dict['Te'] = Te
     aurora_dict['Ti'] = Ti

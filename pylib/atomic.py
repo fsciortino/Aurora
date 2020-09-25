@@ -135,15 +135,21 @@ class adas_file():
 
 def get_all_atom_data(imp, files = None):
     ''' Collect atomic data for a given impurity from all types of ADAS files available.
+
+    imp: str
+        Atomic symbol of impurity ion.
+    files : list or array-like
+        ADAS file names to be fetched. 
     '''
     atomdat_dir = get_atomdat_info()
 
     atom_data = {}
 
     if files is None:
+        # fetch all file types
         files = get_file_types().keys()
         
-    # get dictionary containing curated list of ADAS atomic files
+    # get dictionary containing default list of ADAS atomic files
     files_dict =  adas_files_dict()
 
     for key in files:
@@ -722,23 +728,19 @@ def main_ion_brems(Zi, ni, ne, Te):
 
 
 
-def get_adas_ion_rad(ion_name, n_ion, logne_prof, logTe_prof, filt=0):
-    ''' Get ADAS estimate of fully ionised
-    The "filt" variable can be set to one of the following dictionary keys:
-    {'125 um be':'14', '12 um be':'15', '140um be':'14', 'none':'0'}
+def get_adas_ion_rad(ion_name, n_ion, logne_prof, logTe_prof, sxr=False):
+    ''' Get ADAS estimate for total radiation in [M/m^3] for the given ion
+    with the given (log) density and temperature profiles. 
 
-    The choice of "filt" will determine which spectral band should be considered. Setting filt=None
-    corresponds to setting it to 'none'.
-
-    The output is the total radiation in [W/m^3] units.
-    '''
-    #BUG it is not possible to choose filter, it will use the one set in atomdat GUI!!
-
+    If sxr=True, 'prs' files are used instead of 'prb' ones, thus giving SXR-filtered
+    radiation for the SXR filter indicated by the atomic data dictionary.
+    '''        
     # get all atomic data for chosen ion
-    atom_data = get_all_atom_data(ion_name,['pls','prs'])
+    atom_data = get_all_atom_data(ion_name,['prs' if sxr else 'prb'])
 
     # load filtered data in the SXR range
-    x,y,tab = atom_data['prs']
+    x,y,tab = atom_data['prs' if sxr else 'prb']
+    
     #recombination and bremstrahlung of fully striped ion
     prs = interp_atom_prof((x,y,tab[[-1]]),logne_prof,logTe_prof,x_multiply=False)
 
@@ -896,8 +898,11 @@ def balance(logTe_val, cs, n0_by_ne, logTe_, S,R,cx):
 
 
 def adas_files_dict():
-    ''' Selections for ADAS files for Aurora runs. 
+    ''' Selections for ADAS files for Aurora runs and radiation calculations.
+    This function can be called to fetch a set of default files, which can then be modified (e.g. to 
+    use a new file for a specific SXR filter) before running a calculation. 
     '''
+            
     files={}
     files["H"] = {}
     files["H"]['acd'] = "acd96_h.dat"
