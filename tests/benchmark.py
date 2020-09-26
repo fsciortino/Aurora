@@ -112,17 +112,23 @@ D_z = np.ones((len(aurora_dict['radius_grid']),1)) * D_eff
 V_z = np.ones((len(aurora_dict['radius_grid']),1)) * v_eff
 times_DV = [1.0]  # dummy
 
-# set initial charge state distributions to ionization equilibrium (no transport)
+num=10
+
 start = time.time()
-pyout = utils.run_aurora(aurora_dict, times_DV, D_z, V_z) #, nz_init=nz_init.T)
-print("Fortan: ", time.time() - start, " seconds")
+for i in range(num):
+    pyout = utils.run_aurora(aurora_dict, times_DV, D_z, V_z) #, nz_init=nz_init.T)
+print("Fortran: ", (time.time() - start)/num, " seconds on average")
 
 # First call includes precompilation, not a good timing example. Time second run
-juout = utils.run_julia(aurora_dict, times_DV, D_z, V_z)
-
 start = time.time()
 juout = utils.run_julia(aurora_dict, times_DV, D_z, V_z)
-print("Julia: ", time.time() - start, " seconds")
+print("Julia time for first call (compiling): ", time.time() - start, " second")
+
+start = time.time()
+for i in range(num):
+    juout = utils.run_julia(aurora_dict, times_DV, D_z, V_z)
+print("Julia: ", (time.time() - start)/num, " seconds on average")
+
 
 all_good = True
 for i in range(len(juout)):

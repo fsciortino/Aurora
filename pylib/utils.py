@@ -396,7 +396,9 @@ def run_julia(pystrahl_dict, times_DV, D_z, V_z, nz_init=None):
     '''
 
     from julia.api import Julia
-    jl = Julia(compiled_modules=False)
+    import os
+
+    jl = Julia(compiled_modules=False, sysimage=os.path.dirname(os.path.realpath(__file__)) + "/../jlib/aurora.so")
     from julia import aurora as aurora_jl
 
     if nz_init is None:
