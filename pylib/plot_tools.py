@@ -8,10 +8,12 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
                 x_line=None, y_line=None, **kwargs):
     """Make a plot to explore multidimensional data.
 
+    INPUTS
+    ----------
     x : array of float, (`M`,)
-        The abscissa.
+        The abscissa. (in aurora, often this may be rhop)
     y : array of float, (`N`,)
-        The variable to slide over.
+        The variable to slide over. (in aurora, often this may be time)
     z : array of float, (`P`, `M`, `N`)
         The variables to plot.
     xlabel : str, optional
@@ -24,9 +26,6 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
         The labels for each curve in `z`.
     plot_sum : bool, optional
         If True, will also plot the sum over all `P` cases. Default is False.
-    fig_list : matplotlib Figure object
-        If provided, unwrap figure objects by fig,a_plot,a_legend,a_slider = fig_list
-        These are assumed to be from previous instances of this function. 
     x_line : float, optional
         x coordinate at which a vertical line will be drawn. 
     y_line : float, optional
@@ -51,13 +50,7 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
     if x_line is not None: a_plot.axvline(x_line, c='r',ls=':',lw=0.5)
     if y_line is not None: a_plot.axhline(y_line, c='r',ls=':',lw=0.5)
 
-    color_vals = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
-    style_vals = ['-', '--', '-.', ':']
-    ls_vals = []
-    for s in style_vals:
-        for c in color_vals:
-            ls_vals.append(c + s)
-    ls_cycle = itertools.cycle(ls_vals)
+    ls_cycle = get_ls_cycle()
 
     l = []
 
@@ -123,3 +116,15 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
         'key_press_event',
         lambda evt: arrow_respond(slider, evt)
     )
+
+
+
+
+def get_ls_cycle():
+    color_vals = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+    style_vals = ['-', '--', '-.', ':']
+    ls_vals = []
+    for s in style_vals:
+        for c in color_vals:
+            ls_vals.append(c + s)
+    return itertools.cycle(ls_vals)

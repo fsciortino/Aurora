@@ -174,3 +174,4 @@ _ = pylib.particle_conserv.plot_1d(ds = ds)
 
 
 
+pylib.animate.animate_aurora(res['rhop'], res['time'], nz.transpose(1,2,0), xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, save_filename='test')
