@@ -7,3 +7,4 @@ from .particle_conserv import *
 from .plot_tools import *
 from .coords import *
 from .radiation import *
+from .animate import *

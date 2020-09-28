@@ -170,7 +170,6 @@ module aurora
 
     it = 1
     kt = 1
-
     # Output if indicated
     @inbounds if it_out[it] == 1
         rn_out[:,:,kt] = rn
