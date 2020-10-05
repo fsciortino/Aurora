@@ -6,10 +6,10 @@
 
 .PHONY: all aurora clean
 
-#flags=
-#fcompiler=gnu95
-flags="-fast"
-fcompiler=intelem
+flags=
+fcompiler=gnu95
+#flags="-fast"
+#fcompiler=intelem
 
 
 ############
@@ -22,11 +22,13 @@ aurora :
 	f2py3 -c --fcompiler=${fcompiler} -m _aurora flib/main.f90 flib/impden.f90 flib/math.f90 flib/grids.f90 --opt=${flags}
 	mv _aurora.cpython*.so flib/
 
-jlib : 
-	julia -e 'import Pkg; Pkg.develop(path="jlib/"); Pkg.add("PackageCompiler")'
-	python -m julia.sysimage jlib/aurora.so 
+jlib :
+	julia -e 'import Pkg; Pkg.develop(path="jlib/"); Pkg.add("PackageCompiler"); Pkg.add("PyCall"); Pkg.build("PyCall")'
+	python3 -m pip install --user julia
+	python3 -c "import julia; julia.install()"
+	python3 -m julia.sysimage jlib/aurora.so
 
 
-clean : 
+clean :
 	@echo "Eliminating aurora shared-object library"
 	rm flib/_aurora*.so
