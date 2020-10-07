@@ -101,25 +101,32 @@ namelist['imp_a'] = 39.948 #183.84 #40.078 #39.948  # 40.078
 # Now get aurora setup dictionary
 aurora_dict = pylib.utils.aurora_setup(namelist, geqdsk=geqdsk)
 
+# Choose radial resolution
+namelist['dr_0']=0.3
+namelist['dr_1']=0.05
+pylib.grids_utils.
+
+create_aurora_time_grid(namelist=None, plot=True)
+create_aurora_radial_grid(namelist,plot=True)
 
 # choose transport coefficients
 D_eff = 1e4 #cm^2/s
-v_eff = 0.0 #-1e4 #-2e2 #cm/s
+v_eff = -1e4 #-1e2 #-2e2 #cm/s
 
 # # set transport coefficients to the right format
 D_z = np.ones((len(aurora_dict['radius_grid']),1)) * D_eff
 #V_z = np.ones((len(aurora_dict['radius_grid']),1)) * v_eff
-V_z = aurora_dict['rhop_grid'][:,None]**4 * v_eff  # increasing towards edge
+V_z = aurora_dict['rhop_grid'][:,None]**10 * v_eff  # increasing towards edge
 times_DV = [1.0]  # dummy
 
 # plot transport coefficients
-# fig,ax = plt.subplots(2,1, sharex=True, figsize=(8,8))
-# ax[0].plot( aurora_dict['rhop_grid'], D_z[:,0]/1e4)
-# ax[1].plot( aurora_dict['rhop_grid'], V_z[:,0]/1e2)
-# ax[1].set_xlabel(r'$\rho_p$')
-# ax[0].set_ylabel(r'$D$ [$m^2/s$]')
-# ax[1].set_ylabel(r'$v$ [$m/s$]')
-# plt.subplots_adjust(wspace=0, hspace=0)
+fig,ax = plt.subplots(2,1, sharex=True, figsize=(8,8))
+ax[0].plot( aurora_dict['rhop_grid'], D_z[:,0]/1e4)
+ax[1].plot( aurora_dict['rhop_grid'], V_z[:,0]/1e2)
+ax[1].set_xlabel(r'$\rho_p$')
+ax[0].set_ylabel(r'$D$ [$m^2/s$]')
+ax[1].set_ylabel(r'$v$ [$m/s$]')
+plt.subplots_adjust(wspace=0, hspace=0)
 
 
 ####### Original method #########
@@ -229,14 +236,13 @@ for ii,cc in zip(np.arange(nz.shape[1]),colors):
     a_plot.plot(aurora_dict['rhop_grid'], nz_2[-1,ii,:].T, c=cc, ls='--')
 
     #########
-    factor = np.max(nz_2)/np.max(nz_3)   # why do we need this factor?
-    #########
-    
-    a_plot.plot(aurora_dict['rhop_grid'], factor* nz_3[-1,ii,:].T, c=cc, ls=':')
+    #factor = np.max(nz_2)/np.max(nz_3)   # why do we need this factor?
+    #a_plot.plot(aurora_dict['rhop_grid'], factor* nz_3[-1,ii,:].T, c=cc, ls=':')
+    ########
     a_legend.plot([],[],c=cc,label=labels[ii],ls='-')
 a_legend.plot([],[], c='k', ls='-',lw=2, label='Original')
 a_legend.plot([],[], c='k', ls='--',lw=2, label='Linder w/o n')
-a_legend.plot([],[], c='k', ls=':',lw=2, label='Linder w/ n')
+#a_legend.plot([],[], c='k', ls=':',lw=2, label='Linder w/ n')
 
 a_legend.legend(loc='best').set_draggable(True)
 a_plot.set_xlabel(r'$\rho_p$')

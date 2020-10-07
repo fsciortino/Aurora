@@ -153,7 +153,7 @@ def create_aurora_radial_grid(namelist,plot=False):
 
 
 
-def create_aurora_time_grid(timing=None,namelist=None, plot=False):
+def create_aurora_time_grid(timing=None, plot=False):
     ''' Create time grid for simulations.
     '''
 
