@@ -102,12 +102,17 @@ namelist['imp_a'] = 39.948 #183.84 #40.078 #39.948  # 40.078
 aurora_dict = pylib.utils.aurora_setup(namelist, geqdsk=geqdsk)
 
 # Choose radial resolution
-namelist['dr_0']=0.3
-namelist['dr_1']=0.05
-pylib.grids_utils.
+namelist['dr_0']=0.1 #0.3
+namelist['dr_1']=0.01   # 0.05
+pylib.grids_utils.create_aurora_radial_grid(namelist,plot=True)
 
-create_aurora_time_grid(namelist=None, plot=True)
-create_aurora_radial_grid(namelist,plot=True)
+# Choose time resolution
+namelist['timing']['dt_increase'] = np.array([1., 1.])
+namelist['timing']['dt_start'] = np.array([0.0001, 0.001])
+namelist['timing']['steps_per_cycle'] = np.array([1,1])
+namelist['timing']['times'] = np.array([1.,2.])
+pylib.grids_utils.create_aurora_time_grid(namelist['timing'], plot=True)
+
 
 # choose transport coefficients
 D_eff = 1e4 #cm^2/s

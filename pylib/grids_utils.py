@@ -168,7 +168,7 @@ def create_aurora_time_grid(timing=None, plot=False):
     if plot:
         #show timebase
         if plt.fignum_exists('STRAHL time step'):
-            figure('STRAHL time step').clf()
+            plt.figure('STRAHL time step').clf()
         f,ax = plt.subplots(num='STRAHL time step')
         ax.set_title('# time steps: %d    # saved steps %d'%(len(time), sum(save)))
         ax.semilogy(time[1:],np.diff(time),'.-',label='step')
