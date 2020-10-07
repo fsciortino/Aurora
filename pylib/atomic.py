@@ -31,7 +31,8 @@ def get_atomdat_info():
         os.environ['STRAHL_DIR'] = os.environ['HOME'] + '/strahl'
 
     # Define hierarchy of directories that should be searched in order
-    paths = [os.environ['HOME'] + '/atomAI/atomdat_master/newdat/',
+    paths = [os.environ['HOME'] + '/atomlib/atomdat_master/newdat/',
+             os.environ['HOME'] + '/atomAI/atomdat_master/newdat/',
              '/fusion/projects/codes/strahl/{}/intel-18/strahl20/atomdat/newdat/'.format(os.environ['USER']),
              '/fusion/projects/codes/strahl/{}/strahl/atomdat/newdat/'.format(os.environ['USER']),
              '/fusion/projects/codes/strahl/public20/atomdat/newdat/',
