@@ -2,6 +2,7 @@
 Script to test functionality from namelist creation to run and postprocessing.
 
 It is recommended to run this in IPython.
+Note that you might need to run %matplotlib qt in IPython in order to enable the animation to run. 
 '''
 
 import numpy as np

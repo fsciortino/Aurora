@@ -974,16 +974,6 @@ def adas_files_dict():
     files["Fe"]['fis'] = "sxrfil14.dat"
     files["Fe"]['brs'] = "brs05360.dat"
     files["Fe"]['ccd'] = "ccd89_f.dat"
-    files["W"] = {}
-    files["W"]['acd'] = "acd89_w.dat"
-    files["W"]['scd'] = "scd89_w.dat"
-    files["W"]['prb'] = "prb89_w.dat"
-    files["W"]['plt'] = "plt89_w.dat"
-    files["W"]['fis'] = "sxrfil14.dat"
-    files["W"]['brs'] = "brs05360.dat"
-    files["W"]['pls'] = "pls_W_14.dat"
-    files["W"]['prs'] = "prs_W_14.dat"
-    files["W"]['ccd'] = "ccd89_w.dat"
     files["Ne"] = {}
     files["Ne"]['acd'] = "acd96_ne.dat"
     files["Ne"]['scd'] = "scd96_ne.dat"
@@ -1043,5 +1033,15 @@ def adas_files_dict():
     files["Mo"]['plt'] = "plt89_mo.dat"
     files["Mo"]['prb'] = "prb89_mo.dat"
     files["Mo"]['prc'] = "prc89_mo.dat"
-    
+    files["W"] = {}
+    files["W"]['acd'] = "acd89_w.dat"
+    files["W"]['scd'] = "scd89_w.dat"
+    files["W"]['prb'] = "prb89_w.dat"
+    files["W"]['plt'] = "plt89_w.dat"
+    files["W"]['fis'] = "sxrfil14.dat"
+    files["W"]['brs'] = "brs05360.dat"
+    files["W"]['pls'] = "pls_W_14.dat"
+    files["W"]['prs'] = "prs_W_14.dat"
+    files["W"]['ccd'] = "ccd89_w.dat"
+
     return files

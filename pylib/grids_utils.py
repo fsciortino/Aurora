@@ -136,7 +136,7 @@ def create_aurora_radial_grid(namelist,plot=False):
         ax.text(1+0.01,namelist['dr_0']*0.9 ,'LCFS',rotation='vertical')
 
         ax.axvline(r_lim/namelist['rvol_lcfs'],ls='--',c='k')
-        ax.text(r_lim/namelist['rvol_lcfs']+0.01,inputs['dr_0']*0.9 ,'limiter',rotation='vertical')
+        ax.text(r_lim/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.9 ,'limiter',rotation='vertical')
 
         if 'saw_model' in namelist and namelist['saw_model']['saw_flag']:
             ax.axvline( namelist['saw_model']['rmix']/namelist['rvol_lcfs'],ls='--',c='k')
