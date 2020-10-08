@@ -332,8 +332,6 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
      rn(i,1) =flxtot*sint(i) ! index of 1 stands for neutral stage
   end do
 
-  ! to print in fortran
-  ! write(*,*) something
   
   ! ----- First half time step: direction up --------------------|
   ! Externally provided neutrals
@@ -352,8 +350,6 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   ! Ions and recombined neutrals
   do nz=ns,nion             
      ! Construct transport matrix
-     !     call impden_constTranspMatrix(ra(1,nz), diff(1,nz),&
-     !          conv(1,nz), ii, ir, dt, fall_outsol, dv, rr, a, b, c, d)
      call impden_constTranspMatrix(ra(:,nz), diff(:,nz),&
           conv(:,nz), ii, ir, dt, fall_outsol, dv, rr, a, b, c, d)
      
@@ -369,7 +365,6 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
      enddo
      
      ! Solve tridiagonal system of equations
-     !call TDMA(a, b, c, d, ir, rn(1,nz))
      call TDMA(a, b, c, d, ir, rn(:,nz))
   enddo
   
@@ -377,8 +372,6 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   ! Ions and recombined neutrals
   do nz=nion,ns,-1
      ! Construct transport matrix
-     !     call impden_constTranspMatrix(rn(1,nz), diff(1,nz),&
-     !    conv(1,nz), ii, ir, dt, fall_outsol, dv, rr, a, b, c, d)
      call impden_constTranspMatrix(rn(:,nz), diff(:,nz),&
           conv(:,nz), ii, ir, dt, fall_outsol, dv, rr, a, b, c, d)
      
@@ -396,21 +389,17 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
      enddo
      
      ! Solve tridiagonal equation system
-     !call TDMA(a, b, c, d, ir, rn(1,nz))
      call TDMA(a, b, c, d, ir, rn(:,nz))
   enddo
   
   ! Externally provided neutrals
   if (ns.eq.1) then
-     !     call impden_constTranspMatrix(nt, nd(1), nv(1), ii, ir,&
-     !          dt, fall_outsol, dv, rr, a, b, c, d)
      call impden_constTranspMatrix(nt, diff(:,1), conv(:,1), ii, ir,&
           dt, fall_outsol, dv, rr, a, b, c, d)
           
      do i=1,ir
         d(i)    = d(i) - dt*nt(i)*s(i,1) + dt*(flxtot*sint(i) + sext(i))
      enddo
-     !call TDMA(a, b, c, d, ir, nn(1))
      call TDMA(a, b, c, d, ir, rn(:,1))
      
   endif
