@@ -71,9 +71,15 @@ class aurora_sim:
         self.time_grid, self.save_time = grids_utils.create_aurora_time_grid(timing=self.namelist['timing'], plot=False)
         self.time_out = self.time_grid[self.save_time]
 
-        # get kinetic profiles on the radial and temporal grids
-        self.ne,self.Te,self.Ti,self.n0 = self.get_aurora_kin_profs()
+        # get kinetic profiles on the radial and (internal) temporal grids
+        self._ne,self._Te,self._Ti,self._n0 = self.get_aurora_kin_profs()
 
+        # store also kinetic profiles on output time grid
+        self.ne = self._ne[self.save_time,:]
+        self.Te = self._Te[self.save_time,:]
+        self.Ti = self._Ti[self.save_time,:]
+        self.n0 = self._n0  # at present, n0 is assumed to be time-indpt
+        
         # Get time-dependent parallel loss rate
         self.par_loss_rate = self.get_par_loss_rate()
 
@@ -83,7 +89,7 @@ class aurora_sim:
         # get radial profile of source function
         self.source_rad_prof = source_utils.get_radial_source(self.namelist, self.rvol_grid,
                                                               self.S_rates[:,0],  # take only 1 time slice of S_rates
-                                                              self.pro, self.Ti)
+                                                              self.pro, self._Ti)
         
         # create array of 0's of length equal to self.time_grid, with 1's where sawteeth must be triggered
         self.saw_on = np.zeros_like(self.time_grid)
@@ -164,7 +170,7 @@ class aurora_sim:
         Ti[Ti < min_T] = min_T
         ne[ne < min_ne] = min_ne
 
-        # make sure that Te,ne have the same shape at this stage
+        # make sure that Te,ne have the same shape at this stage (allow n0 to be time-indpt)
         ne,Te,Ti = np.broadcast_arrays(ne,Te,Ti)
 
         return ne,Te,Ti,n0
@@ -175,8 +181,8 @@ class aurora_sim:
         If kinetic profiles are given as time-independent, atomic rates for each time slice
         will be set to be the same.
         '''
-        lne = np.log10(self.ne)
-        lTe = np.log10(self.Te)
+        lne = np.log10(self._ne)
+        lTe = np.log10(self._Te)
 
         # get TIME-DEPENDENT atomic rates
         atom_data = atomic.get_all_atom_data(self.imp,['acd','scd'])
@@ -195,7 +201,7 @@ class aurora_sim:
             alpha_CX_rates = atomic.interp_atom_prof(atom_data['ccd'], lne, lTi, x_multiply=False)
 
             # change rates from units of [1/s/cm^3] to [1/s] ---> this is the result of STRAHL's `sas' subroutine
-            R_rates += self.n0[:,None] * alpha_CX_rates[:,:alpha_rates.shape[1],:]   # select only relevant CCD ion stages (useful for Foster scaling)
+            R_rates += self._n0[:,None] * alpha_CX_rates[:,:alpha_rates.shape[1],:]   # select only relevant CCD ion stages (useful for Foster scaling)
 
         if self.namelist['nbi_cxr_flag']:
             # include charge exchange between NBI neutrals and impurities
@@ -237,19 +243,19 @@ class aurora_sim:
         idl = self.rvol_grid.searchsorted(self.namelist['rvol_lcfs']+self.namelist['lim_sep'],side='left')
 
         # Calculate parallel loss frequency using different connection lengths in the SOL and in the limiter shadow
-        dv = np.zeros_like(self.Te.T) # space x time
+        dv = np.zeros_like(self._Te.T) # space x time
 
         if not trust_SOL_Ti:
             # Ti may not be reliable in SOL, replace it by Te
-            Ti = self.Te
+            Ti = self._Te
         else:
-            Ti = self.Ti
+            Ti = self._Ti
 
         # open SOL
-        dv[ids:idl] = vpf*np.sqrt(3.*Ti.T[ids:idl] + self.Te.T[ids:idl])/self.namelist['clen_divertor']
+        dv[ids:idl] = vpf*np.sqrt(3.*Ti.T[ids:idl] + self._Te.T[ids:idl])/self.namelist['clen_divertor']
 
         # limiter shadow
-        dv[idl:] = vpf*np.sqrt(3.*Ti.T[idl:] + self.Te.T[idl:])/self.namelist['clen_limiter']
+        dv[idl:] = vpf*np.sqrt(3.*Ti.T[idl:] + self._Te.T[idl:])/self.namelist['clen_limiter']
 
         dv,_ = np.broadcast_arrays(dv,self.time_grid[None])
 
