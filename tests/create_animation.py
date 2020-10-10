@@ -1,9 +1,12 @@
 '''
-Script to benchmark basic Julia version against Fortran one. 
+Script to demonstrate the creation of an animation of an Aurora run, purely for visualization purposes. 
+
+It is recommended to run this in IPython.
+Note that you might need to run %matplotlib qt in IPython in order to enable the animation to run. 
 '''
 
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt; plt.ion()
 import omfit_eqdsk
 import pickle as pkl
 import scipy,sys,os
@@ -15,11 +18,15 @@ sys.path.append('../')
 import aurora
 
 namelist = aurora.default_nml.load_default_namelist()
+
+# test for C-Mod:
 namelist['device'] = 'CMOD'
 namelist['shot'] = 1101014030
 namelist['time'] = 1250 # ms
 
+
 gfile_name=f'g{namelist["shot"]}.{str(namelist["time"]).zfill(5)}'
+
 
 if os.path.exists(gfile_name):
     # fetch local g-file if available
@@ -54,45 +61,33 @@ kin_profs['Te']['decay'] = np.ones(len(Te_profs['Te']))*1.0
 # set no sources of impurities
 namelist['source_type'] = 'const'
 namelist['Phi0'] = 1e24 #1.0
+
+# Set up for 1 ion:
 imp = namelist['imp'] = 'Ca' #'Ar' #'Ca'
 namelist['Z_imp'] = 20 #18. #20.
 namelist['imp_a'] = 40.078 #39.948  # 40.078
 
 # Now get aurora setup dictionary
-aurora_dict = aurora.aurora_setup(namelist, geqdsk=geqdsk)
+aurora_dict = aurora.utils.aurora_setup(namelist, geqdsk=geqdsk)
 
 # choose transport coefficients
 D_eff = 1e4 #cm^2/s
-v_eff = 0.0
+v_eff = -2e2 #cm/s
 
 # # set transport coefficients to the right format
 D_z = np.ones((len(aurora_dict['radius_grid']),1)) * D_eff
 V_z = np.ones((len(aurora_dict['radius_grid']),1)) * v_eff
 times_DV = [1.0]  # dummy
 
-num=10
+# set initial charge state distributions to ionization equilibrium (no transport)
+out = aurora.utils.run_aurora(aurora_dict, times_DV, D_z, V_z) #, nz_init=nz_init.T)
+nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
+nz = nz.transpose(2,1,0)
 
-start = time.time()
-for i in range(num):
-    pyout = aurora.run_aurora(aurora_dict, times_DV, D_z, V_z) #, nz_init=nz_init.T)
-print("Fortran: ", (time.time() - start)/num, " seconds on average")
-
-# First call includes precompilation, not a good timing example. Time second run
-start = time.time()
-juout = aurora.run_julia(aurora_dict, times_DV, D_z, V_z)
-print("Julia time for first call (compiling): ", time.time() - start, " second")
-
-start = time.time()
-for i in range(num):
-    juout = aurora.run_julia(aurora_dict, times_DV, D_z, V_z)
-print("Julia: ", (time.time() - start)/num, " seconds on average")
+# convenient dictionary
+res = {'nz': nz, 'time': aurora_dict['time_out'], 'rV': aurora_dict['radius_grid'], 
+       'rhop': aurora_dict['rhop_grid'], 'ne':aurora_dict['ne'], 'Te':aurora_dict['Te']}
 
 
-all_good = True
-for i in range(len(juout)):
-    if not np.allclose(pyout[i], juout[i]):
-        print("Result incongruency")
-        all_good = False
-        break
-if all_good:
-    print("Results equivalent")
+# now create animation
+aurora.animate.animate_aurora(res['rhop'], res['time'], nz.transpose(1,2,0), xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, save_filename='aurora_anim')

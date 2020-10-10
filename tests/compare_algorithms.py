@@ -13,10 +13,12 @@ import time
 import xarray
 from copy import deepcopy
 
-# Allow test script to see package home (better ways?)
-sys.path.insert(1, os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ))
-import pylib
+# Make sure that package home is added to sys.path
+import sys
+sys.path.append('../')
+import aurora
 
+# number of repetitions to accurately time runs
 num=1
 
 def check_conservation(pdict, out, axs=None):
@@ -44,11 +46,11 @@ def check_conservation(pdict, out, axs=None):
                             'charge_states': np.arange(nz.shape[1])
                             })
 
-    ds, res, (ax1,ax2) = pylib.particle_conserv.plot_1d(ds = ds, axs=axs)
+    ds, res, (ax1,ax2) = aurora.particle_conserv.plot_1d(ds = ds, axs=axs)
     return (ax1,ax2)
 
 ###########
-namelist = pylib.default_nml.load_default_namelist()
+namelist = aurora.default_nml.load_default_namelist()
 
 # test for C-Mod:
 namelist['device'] = 'CMOD'
@@ -99,19 +101,19 @@ namelist['Z_imp'] = 18 #74 #20 #18. #20.
 namelist['imp_a'] = 39.948 #183.84 #40.078 #39.948  # 40.078
 
 # Now get aurora setup dictionary
-aurora_dict = pylib.utils.aurora_setup(namelist, geqdsk=geqdsk)
+aurora_dict = aurora.utils.aurora_setup(namelist, geqdsk=geqdsk)
 
 # Choose radial resolution
 namelist['dr_0']=0.1 #0.3
 namelist['dr_1']=0.01   # 0.05
-pylib.grids_utils.create_aurora_radial_grid(namelist,plot=True)
+aurora.grids_utils.create_aurora_radial_grid(namelist,plot=True)
 
 # Choose time resolution
 namelist['timing']['dt_increase'] = np.array([1., 1.])
 namelist['timing']['dt_start'] = np.array([0.0001, 0.001])
 namelist['timing']['steps_per_cycle'] = np.array([1,1])
 namelist['timing']['times'] = np.array([1.,2.])
-pylib.grids_utils.create_aurora_time_grid(namelist['timing'], plot=True)
+aurora.grids_utils.create_aurora_time_grid(namelist['timing'], plot=True)
 
 
 # choose transport coefficients
@@ -141,7 +143,7 @@ V_z = aurora_dict['rhop_grid'][:,None]**4 * v_eff  # increasing towards edge
 
 start = time.time()
 for n in np.arange(num):
-    out = pylib.utils.run_aurora(aurora_dict, times_DV, D_z, V_z)
+    out = aurora.utils.run_aurora(aurora_dict, times_DV, D_z, V_z)
 print('Average time per run: ', (time.time() - start)/num)
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 nz = nz.transpose(2,1,0)   # time,nZ,space
@@ -153,7 +155,7 @@ res = {'nz': deepcopy(nz), 'time': aurora_dict['time_out'], 'rV': aurora_dict['r
 
 # ----------------------
 # plot charge state distributions over radius and time
-pylib.plot_tools.slider_plot(res['rV'], res['time'], res['nz'].transpose(1,2,0),
+aurora.plot_tools.slider_plot(res['rV'], res['time'], res['nz'].transpose(1,2,0),
                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]',
                              labels=[str(i) for i in np.arange(0,res['nz'].shape[1])],
                              plot_sum=True, x_line=aurora_dict['rvol_lcfs'])
@@ -167,7 +169,7 @@ pylib.plot_tools.slider_plot(res['rV'], res['time'], res['nz'].transpose(1,2,0),
 ####### Linder method #########
 start = time.time()
 for n in np.arange(num):
-    out_2 = pylib.utils.run_aurora(aurora_dict, times_DV, D_z, V_z,
+    out_2 = aurora.utils.run_aurora(aurora_dict, times_DV, D_z, V_z,
                                      method='linder', evolneut=False) 
 print('Average time per run: ', (time.time() - start)/num)
 nz_2, N_wall_2, N_div_2, N_pump_2, N_ret_2, N_tsu_2, N_dsu_2, N_dsul_2, rcld_rate_2, rclw_rate_2 = out_2
@@ -182,7 +184,7 @@ res_2 = {'nz': deepcopy(nz_2), 'time': aurora_dict['time_out'], 'rV': aurora_dic
 
 # ----------------------
 #plot charge state distributions over radius and time
-pylib.plot_tools.slider_plot(res_2['rV'], res_2['time'], res_2['nz'].transpose(1,2,0),
+aurora.plot_tools.slider_plot(res_2['rV'], res_2['time'], res_2['nz'].transpose(1,2,0),
                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]',
                              labels=[str(i) for i in np.arange(0,res_2['nz'].shape[1])],
                              plot_sum=True, x_line=aurora_dict['rvol_lcfs'])
@@ -193,7 +195,7 @@ pylib.plot_tools.slider_plot(res_2['rV'], res_2['time'], res_2['nz'].transpose(1
 
 ######################################
 #### Plot difference between the two algorithms with slider  #####
-pylib.plot_tools.slider_plot(res_2['rV'], res_2['time'],
+aurora.plot_tools.slider_plot(res_2['rV'], res_2['time'],
                              np.abs(res['nz'].transpose(1,2,0) - res_2['nz'].transpose(1,2,0)),
                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='$\Delta$ nz [A.U.]',
                              labels=[str(i) for i in np.arange(0,res_2['nz'].shape[1])],
@@ -205,7 +207,7 @@ pylib.plot_tools.slider_plot(res_2['rV'], res_2['time'],
 # ####### Linder method evoling neutrals #########
 start = time.time()
 for n in np.arange(num):
-    out_3 = pylib.utils.run_aurora(aurora_dict, times_DV,D_z, V_z,
+    out_3 = aurora.utils.run_aurora(aurora_dict, times_DV,D_z, V_z,
                                      method='linder', evolneut=True) 
 print('Average time per run: ', (time.time() - start)/num)
 nz_3, N_wall_3, N_div_3, N_pump_3, N_ret_3, N_tsu_3, N_dsu_3, N_dsul_3, rcld_rate_3, rclw_rate_3 = out_3
@@ -218,7 +220,7 @@ res_3 = {'nz': deepcopy(nz_3), 'time': aurora_dict['time_out'], 'rV': aurora_dic
 
 # ----------------------
 # plot charge state distributions over radius and time
-pylib.plot_tools.slider_plot(res_3['rV'], res_3['time'], res_3['nz'].transpose(1,2,0),
+aurora.plot_tools.slider_plot(res_3['rV'], res_3['time'], res_3['nz'].transpose(1,2,0),
                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]',
                              labels=[str(i) for i in np.arange(0,res_3['nz'].shape[1])],
                              plot_sum=True, x_line=aurora_dict['rvol_lcfs'])

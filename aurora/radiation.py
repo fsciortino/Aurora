@@ -16,7 +16,7 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
     
     zmax = imp_dens.shape[1]  # number of charge states (including neutrals)
     rad = res['impurity_radiation'][:,:zmax,:]   # no fully-stripped line radiation, so use zmax rather than zmax+1
-    aurora.pylib.slider_plot(rhop,time, rad.transpose(1,2,0)/1e6,
+    aurora.slider_plot(rhop,time, rad.transpose(1,2,0)/1e6,
                                xlabel=r'$\rho_p$', ylabel='time [s]', zlabel=r'$P_{rad}$ [$MW$]', plot_sum=True,
                                labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]-1)])
 

@@ -8,10 +8,10 @@ with open('VERSION') as version_file:
 
 
 wrapper = Extension(name='aurora', 
-                    sources=['flib/main.f90',
-                             'flib/grids.f90',
-                             'flib/impden.f90',
-                             'flib/math.f90'])
+                    sources=['aurora/main.f90',
+                             'aurora/grids.f90',
+                             'aurora/impden.f90',
+                             'aurora/math.f90'])
 
 setup(name='aurora',
       version=version,
@@ -20,27 +20,8 @@ setup(name='aurora',
       author='F. Sciortino',
       author_email='sciortino@psfc.mit.edu',
       license='MIT',
-      packages=['flib','pylib'],
-      #py_modules=['__init__',
-      #            'flib/__init__',
-      #            'pylib/__init__',
-      #            'pylib/coords',
-      #            'pylib/default_nml', 
-      #            'pylib/grids_utils',
-      #            'pylib/interp', 
-      #            'pylib/particle_conserv',
-      #            'pylib/plot_tools',
-      #            'pylib/source_utils',
-      #            'pylib/utils',
-      #            'pylib/radiation',
-      #            'tests/test',
-      #            ], 
-
+      packages=['aurora'],
+      install_requires=['numpy','scipy','matplotlib','omfit_eqdsk']
       ext_modules=[wrapper]
   )
-      #entry_points={
-      #   'console_scripts': [
-      #      'help = pythontools.help:main',
-      #  ],
-      #}
 

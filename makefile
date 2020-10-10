@@ -19,16 +19,16 @@ all: aurora jlib
 aurora :
 	@echo "Generating aurora shared-object library"
 	@echo "compiler " $(fcompiler) " flags: " ${flags}
-	f2py3 -c --fcompiler=${fcompiler} -m _aurora flib/main.f90 flib/impden.f90 flib/math.f90 flib/grids.f90 --opt=${flags}
-	mv _aurora.cpython*.so flib/
+	f2py3 -c --fcompiler=${fcompiler} -m _aurora aurora/main.f90 aurora/impden.f90 aurora/math.f90 aurora/grids.f90 --opt=${flags}
+	mv _aurora.cpython*.so aurora/
 
 jlib :
-	julia -e 'import Pkg; Pkg.develop(path="jlib/"); Pkg.add("PackageCompiler"); Pkg.add("PyCall"); Pkg.build("PyCall")'
+	julia -e 'import Pkg; Pkg.develop(path="aurora/jlib/"); Pkg.add("PackageCompiler"); Pkg.add("PyCall"); Pkg.build("PyCall")'
 	python3 -m pip install --user julia
 	python3 -c "import julia; julia.install()"
-	python3 -m julia.sysimage jlib/aurora.so
+	python3 -m julia.sysimage aurora/jlib/aurora.so
 
 
 clean :
 	@echo "Eliminating aurora shared-object library"
-	rm flib/_aurora*.so
+	rm aurora/_aurora*.so
