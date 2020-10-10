@@ -2,7 +2,6 @@
 Script to test functionality from namelist creation to run and postprocessing.
 
 It is recommended to run this in IPython.
-Note that you might need to run %matplotlib qt in IPython in order to enable the animation to run. 
 '''
 
 import numpy as np
@@ -12,12 +11,13 @@ import pickle as pkl
 import scipy,sys,os
 import time
 
-# Allow test script to see package home (better ways?)
-sys.path.insert(1, os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ))
-import pylib
+# Make sure that package home is added to sys.path
+import sys
+sys.path.append('../')
+import aurora
 
 
-namelist = pylib.default_nml.load_default_namelist()
+namelist = aurora.default_nml.load_default_namelist()
 
 # test for C-Mod:
 namelist['device'] = 'CMOD'
@@ -68,21 +68,21 @@ namelist['Z_imp'] = 20 #18. #20.
 namelist['imp_a'] = 40.078 #39.948  # 40.078
 
 # Now get aurora setup dictionary
-aurora_dict = pylib.utils.aurora_setup(namelist, geqdsk=geqdsk)
+aurora_dict = aurora.utils.aurora_setup(namelist, geqdsk=geqdsk)
 
 ########## Atomic-only prediction (no transport) ###########
 # get charge state distributions from ionization equilibrium
-atom_data = pylib.atomic.get_all_atom_data(imp,['acd','scd'])
+atom_data = aurora.atomic.get_all_atom_data(imp,['acd','scd'])
 ne_avg = np.mean(kin_profs['ne']['vals'],axis=0) # average over time
 Te_avg = np.mean(kin_profs['Te']['vals'],axis=0)  # must be on the same radial basis as ne_avg
 
 # get_frac_abundances takes inputs in m^-3 and eV
-logTe, fz = pylib.atomic.get_frac_abundances(atom_data, ne_avg*1e6, Te_avg, rho=rhop)
+logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_avg*1e6, Te_avg, rho=rhop)
 ############################################################
 
 
 # transform these fractional abundances to the r_V grid used by Aurora
-_rV = pylib.coords.rad_coord_transform(rhop, 'rhop','r_V', geqdsk)*1e2 # m --> cm
+_rV = aurora.coords.rad_coord_transform(rhop, 'rhop','r_V', geqdsk)*1e2 # m --> cm
 cs = np.arange(aurora_dict['Z_imp']+1)
 nz_init = scipy.interpolate.interp2d(_rV,cs, fz.T)(aurora_dict['radius_grid'], cs)
 
@@ -93,9 +93,9 @@ nominal_volavg = 1e12 # cm^-3
 
 nz_tot = np.sum(nz_init,axis=0)
 indLCFS = np.argmin(np.abs(aurora_dict['rhop_grid'] - 1.0))
-nz_tot_volavg = pylib.coords.vol_average(nz_tot[:indLCFS],aurora_dict['rhop_grid'][:indLCFS],
+nz_tot_volavg = aurora.coords.vol_average(nz_tot[:indLCFS],aurora_dict['rhop_grid'][:indLCFS],
                                          geqdsk=geqdsk)[-1]
-Psi_n = pylib.coords.rad_coord_transform(rhop, 'rhop','psin', geqdsk)
+Psi_n = aurora.coords.rad_coord_transform(rhop, 'rhop','psin', geqdsk)
 ind_psin02 = np.argmin(np.abs(Psi_n - 0.2))
 peaking = nz_tot[ind_psin02]/nz_tot_volavg
 
@@ -113,7 +113,7 @@ times_DV = [1.0]  # dummy
 num=10
 start = time.time()
 for n in np.arange(num):
-    out = pylib.utils.run_aurora(aurora_dict, times_DV, D_z, V_z) #, nz_init=nz_init.T)
+    out = aurora.utils.run_aurora(aurora_dict, times_DV, D_z, V_z) #, nz_init=nz_init.T)
 print('Average time per run: ', (time.time() - start)/num)
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 nz = nz.transpose(2,1,0)
@@ -123,7 +123,7 @@ res = {'nz': nz, 'time': aurora_dict['time_out'], 'rV': aurora_dict['radius_grid
        'rhop': aurora_dict['rhop_grid'], 'ne':aurora_dict['ne'], 'Te':aurora_dict['Te']}
 
 # radiation
-res['rad'] = pylib.radiation.compute_rad(imp, res['rhop'], res['time'], res['nz'], 
+res['rad'] = aurora.radiation.compute_rad(imp, res['rhop'], res['time'], res['nz'], 
                                             res['ne'],res['Te'], prad_flag=True, thermal_cx_rad_flag=False, 
                                             spectral_brem_flag=False, sxr_flag=False, 
                                             main_ion_brem_flag=False)
@@ -137,14 +137,14 @@ delta_Zeff/= res['ne'][:,None,:]
 
 # ----------------------
 # plot charge state distributions over radius and time
-pylib.plot_tools.slider_plot(res['rV'], res['time'], nz.transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=aurora_dict['rvol_lcfs'])
+aurora.plot_tools.slider_plot(res['rV'], res['time'], nz.transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=aurora_dict['rvol_lcfs'])
 
 
 # plot radiation profiles over radius and time
-pylib.plot_tools.slider_plot(res['rV'], res['time'], res['rad']['impurity_radiation'].transpose(1,2,0)[:nz.shape[1],:,:], xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=aurora_dict['rvol_lcfs'])
+aurora.plot_tools.slider_plot(res['rV'], res['time'], res['rad']['impurity_radiation'].transpose(1,2,0)[:nz.shape[1],:,:], xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=aurora_dict['rvol_lcfs'])
 
 # plot Delta-Zeff profiles over radius and time
-pylib.plot_tools.slider_plot(res['rV'], res['time'], delta_Zeff.transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$\Delta$ $Z_{eff}$', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True,x_line=aurora_dict['rvol_lcfs'])
+aurora.plot_tools.slider_plot(res['rV'], res['time'], delta_Zeff.transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$\Delta$ $Z_{eff}$', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True,x_line=aurora_dict['rvol_lcfs'])
 
 
 ##############################
@@ -171,8 +171,5 @@ ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','radius_grid
                             'charge_states': np.arange(nz.shape[1])
                             })
 
-_ = pylib.particle_conserv.plot_1d(ds = ds)
+_ = aurora.particle_conserv.plot_1d(ds = ds)
 
-
-
-pylib.animate.animate_aurora(res['rhop'], res['time'], nz.transpose(1,2,0), xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, save_filename='test')

@@ -6,7 +6,7 @@ sciortino, 2020
 import matplotlib.pyplot as plt
 import numpy as np, sys, os
 from scipy.interpolate import interp1d
-from flib import _aurora
+from . import _aurora
 
 
 

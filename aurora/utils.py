@@ -5,8 +5,7 @@ import scipy.io
 import copy,os,sys
 import numpy as np
 from scipy.interpolate import interp1d
-from IPython import embed
-from flib import _aurora
+from . import _aurora
 from . import interp
 from . import atomic
 from . import grids_utils
@@ -283,7 +282,7 @@ def run_aurora(aurora_dict, times_DV, D_z, V_z, nz_init=None, method='old',evoln
 
     Results can be conveniently visualized with time-slider using
 
-    >> aurora.pylib.slider_plot(rhop,time, nz.transpose(1,2,0),   # charge states in first dimension
+    >> aurora.slider_plot(rhop,time, nz.transpose(1,2,0),   # charge states in first dimension
                                xlabel=r'$\rho_p$', ylabel='time [s]', zlabel=r'$n_z$ [cm$^{-3}$]', plot_sum=True,
                                labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]])
     INPUTS

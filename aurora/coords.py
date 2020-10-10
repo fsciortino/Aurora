@@ -1,7 +1,6 @@
 import numpy as np,sys,os
 from scipy.interpolate import interp1d
-
-import pylib
+from . import grids_utils
 
 def vol_average(quant, rhop, method='omfit', geqdsk=None, device=None, shot=None, time=None, return_geqdsk=False):
     ''' Calculate the volume average of the given radially-dependent quantity on a rhop grid. 
@@ -59,7 +58,7 @@ def vol_average(quant, rhop, method='omfit', geqdsk=None, device=None, shot=None
 
     if method=='fs':
         # obtain mapping between rhop and r_V coordinates
-        rho_pol, r_V_ = pylib.grids_utils.get_rhopol_rV_mapping(geqdsk)
+        rho_pol, r_V_ = grids_utils.get_rhopol_rV_mapping(geqdsk)
         
         # find r_V corresponding to input rhop (NB: extrapolation in the far SOL should be used carefully)
         r_V = interp1d(rho_pol, r_V_, bounds_error=False)(rhop)
@@ -94,7 +93,7 @@ def rV_vol_average(quant,r_V):
     \langle Q \rangle = \Sigma_i Q(r_i) 2 \pi \ \Delta r_V
     where $\Delta r_V$ is the spacing between radial points in r_V.
     
-    Note that if the input r_V coordinate is extended outside the LCFS, as in (py)STRAHL,
+    Note that if the input r_V coordinate is extended outside the LCFS,
     this function will return the effective volume average also in the SOL, since it is 
     agnostic to the presence of the LCFS. 
 
