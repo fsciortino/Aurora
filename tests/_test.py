@@ -68,49 +68,83 @@ namelist['Z_imp'] = 20 #18. #20.
 namelist['imp_a'] = 40.078 #39.948  # 40.078
 
 # Now get aurora setup dictionary
-asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
+aurora_dict = aurora.utils.aurora_setup(namelist, geqdsk=geqdsk)
+
+########## Atomic-only prediction (no transport) ###########
+# get charge state distributions from ionization equilibrium
+atom_data = aurora.atomic.get_all_atom_data(imp,['acd','scd'])
+ne_avg = np.mean(kin_profs['ne']['vals'],axis=0) # average over time
+Te_avg = np.mean(kin_profs['Te']['vals'],axis=0)  # must be on the same radial basis as ne_avg
+
+# get_frac_abundances takes inputs in m^-3 and eV
+logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_avg*1e6, Te_avg, rho=rhop)
+############################################################
+
+
+# transform these fractional abundances to the r_V grid used by Aurora
+_rV = aurora.coords.rad_coord_transform(rhop, 'rhop','r_V', geqdsk)*1e2 # m --> cm
+cs = np.arange(aurora_dict['Z_imp']+1)
+nz_init = scipy.interpolate.interp2d(_rV,cs, fz.T)(aurora_dict['radius_grid'], cs)
+
+
+# Take definition of peaking as q(psi_n=0.2)/<q>, where <> is a volume average
+nominal_peaking=1.3
+nominal_volavg = 1e12 # cm^-3
+
+nz_tot = np.sum(nz_init,axis=0)
+indLCFS = np.argmin(np.abs(aurora_dict['rhop_grid'] - 1.0))
+nz_tot_volavg = aurora.coords.vol_average(nz_tot[:indLCFS],aurora_dict['rhop_grid'][:indLCFS],
+                                         geqdsk=geqdsk)[-1]
+Psi_n = aurora.coords.rad_coord_transform(rhop, 'rhop','psin', geqdsk)
+ind_psin02 = np.argmin(np.abs(Psi_n - 0.2))
+peaking = nz_tot[ind_psin02]/nz_tot_volavg
+
 
 # choose transport coefficients
 D_eff = 1e4 #cm^2/s
 v_eff = -2e2 #cm/s
 
 # # set transport coefficients to the right format
-D_z = np.ones((len(asim.rvol_grid),1)) * D_eff
-V_z = np.ones((len(asim.rvol_grid),1)) * v_eff
+D_z = np.ones((len(aurora_dict['radius_grid']),1)) * D_eff
+V_z = np.ones((len(aurora_dict['radius_grid']),1)) * v_eff
 times_DV = [1.0]  # dummy
 
 # set initial charge state distributions to ionization equilibrium (no transport)
 num=10
 start = time.time()
 for n in np.arange(num):
-    out = asim.run_aurora(times_DV, D_z, V_z) #, nz_init=nz_init.T)
+    out = aurora.utils.run_aurora(aurora_dict, times_DV, D_z, V_z) #, nz_init=nz_init.T)
 print('Average time per run: ', (time.time() - start)/num)
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 nz = nz.transpose(2,1,0)
 
-# add radiation
-asim.rad = aurora.radiation.compute_rad(imp, asim.rhop_grid, asim.time_out, nz, 
-                                            asim.ne, asim.Te, prad_flag=True, thermal_cx_rad_flag=False, 
+# convenient dictionary
+res = {'nz': nz, 'time': aurora_dict['time_out'], 'rV': aurora_dict['radius_grid'], 
+       'rhop': aurora_dict['rhop_grid'], 'ne':aurora_dict['ne'], 'Te':aurora_dict['Te']}
+
+# radiation
+res['rad'] = aurora.radiation.compute_rad(imp, res['rhop'], res['time'], res['nz'], 
+                                            res['ne'],res['Te'], prad_flag=True, thermal_cx_rad_flag=False, 
                                             spectral_brem_flag=False, sxr_flag=False, 
                                             main_ion_brem_flag=False)
 
 # Calculate Delta-Z_eff
 Zmax = nz.shape[1]-1
 Z = np.arange(Zmax+1)
-delta_Zeff = nz*(Z*(Z-1))[None,:,None]   # for each charge state
-delta_Zeff/= asim.ne[:,None,:]
+delta_Zeff = res['nz']*(Z*(Z-1))[None,:,None]   # for each charge state
+delta_Zeff/= res['ne'][:,None,:]
 
 
 # ----------------------
 # plot charge state distributions over radius and time
-aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=asim.rvol_lcfs)
+aurora.plot_tools.slider_plot(res['rV'], res['time'], nz.transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=aurora_dict['rvol_lcfs'])
 
 
 # plot radiation profiles over radius and time
-aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['impurity_radiation'].transpose(1,2,0)[:nz.shape[1],:,:], xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=asim.rvol_lcfs)
+aurora.plot_tools.slider_plot(res['rV'], res['time'], res['rad']['impurity_radiation'].transpose(1,2,0)[:nz.shape[1],:,:], xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=aurora_dict['rvol_lcfs'])
 
 # plot Delta-Zeff profiles over radius and time
-aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, delta_Zeff.transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$\Delta$ $Z_{eff}$', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True,x_line=asim.rvol_lcfs)
+aurora.plot_tools.slider_plot(res['rV'], res['time'], delta_Zeff.transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$\Delta$ $Z_{eff}$', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True,x_line=aurora_dict['rvol_lcfs'])
 
 
 ##############################
@@ -118,8 +152,8 @@ aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, delta_Zeff.transpos
 ##############################
 import xarray
 ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','radius_grid'], nz),
-                     'impurity_radiation':  ([ 'time', 'charge_states','radius_grid'], asim.rad['impurity_radiation'][:,:Zmax+1,:]),
-                     'source_function': (['time'], asim.source_time_prof ),
+                     'impurity_radiation':  ([ 'time', 'charge_states','radius_grid'], res['rad']['impurity_radiation'][:,:Zmax+1,:]),
+                     'source_function': (['time'], aurora_dict['source_function'] ),
                      'particles_in_divertor': (['time'], N_div), 
                      'particles_in_pump': (['time'], N_pump), 
                      'parallel_loss': (['time'], N_dsu), 
@@ -129,11 +163,11 @@ ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','radius_grid
                      'particles_retained_at_wall': (['time'], N_ret), 
                      'recycling_from_wall':  (['time'], rclw_rate), 
                      'recycling_from_divertor':  (['time'], rcld_rate), 
-                     'pro': (['radius_grid'], asim.pro), 
-                     'rhop_grid': (['radius_grid'], asim.rhop_grid)
+                     'pro': (['radius_grid'], aurora_dict['pro']), 
+                     'rhop_grid': (['radius_grid'], res['rhop'])
                      },
-                    coords={'time': asim.time_out, 
-                            'radius_grid': asim.rvol_grid,
+                    coords={'time': aurora_dict['time_out'], 
+                            'radius_grid': res['rV'],
                             'charge_states': np.arange(nz.shape[1])
                             })
 
