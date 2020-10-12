@@ -67,7 +67,7 @@ imp = namelist['imp'] = 'Ca' #'Ar' #'Ca'
 namelist['Z_imp'] = 20 #18. #20.
 namelist['imp_a'] = 40.078 #39.948  # 40.078
 
-# Now get aurora setup dictionary
+# Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
 # choose transport coefficients

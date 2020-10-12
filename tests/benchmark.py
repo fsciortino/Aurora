@@ -58,33 +58,33 @@ imp = namelist['imp'] = 'Ca' #'Ar' #'Ca'
 namelist['Z_imp'] = 20 #18. #20.
 namelist['imp_a'] = 40.078 #39.948  # 40.078
 
-# Now get aurora setup dictionary
-aurora_dict = aurora.aurora_setup(namelist, geqdsk=geqdsk)
+# Now get aurora setup
+asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
 # choose transport coefficients
 D_eff = 1e4 #cm^2/s
 v_eff = 0.0
 
 # # set transport coefficients to the right format
-D_z = np.ones((len(aurora_dict['radius_grid']),1)) * D_eff
-V_z = np.ones((len(aurora_dict['radius_grid']),1)) * v_eff
+D_z = np.ones((len(asim.rvol_grid),1)) * D_eff
+V_z = np.ones((len(asim.rvol_grid),1)) * v_eff
 times_DV = [1.0]  # dummy
 
 num=10
 
 start = time.time()
 for i in range(num):
-    pyout = aurora.run_aurora(aurora_dict, times_DV, D_z, V_z) #, nz_init=nz_init.T)
+    pyout = asim.run_aurora(times_DV, D_z, V_z)
 print("Fortran: ", (time.time() - start)/num, " seconds on average")
 
 # First call includes precompilation, not a good timing example. Time second run
 start = time.time()
-juout = aurora.run_julia(aurora_dict, times_DV, D_z, V_z)
+juout = asim.run_julia(times_DV, D_z, V_z)
 print("Julia time for first call (compiling): ", time.time() - start, " second")
 
 start = time.time()
 for i in range(num):
-    juout = aurora.run_julia(aurora_dict, times_DV, D_z, V_z)
+    juout = asim.run_julia(times_DV, D_z, V_z)
 print("Julia: ", (time.time() - start)/num, " seconds on average")
 
 
