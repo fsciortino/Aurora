@@ -10,6 +10,339 @@ from . import _aurora
 
 
 
+
+def create_radial_grid(namelist,plot=False):
+    ''' 
+    Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. 
+    The lim_sep parameters is additionally used if plotting is requested. 
+
+    Radial mesh points are set to be equidistant in the coordinate $\rho$, with
+    
+    $\rho = \frac{r}{\Delta r_{centre}} + \frac{r_{edge}}{k+1} \left(\frac{1}{\Delta r_{edge}} +
+            - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}} \right)^{k+1}
+
+    The corresponding radial step size is 
+    $\Delta r = \left[\frac{1}{\Delta r_{centre}} + \left(\frac{1}{\Delta r_{edge}} +
+              - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}}\right)^k \right]^{-1}
+
+    See the STRAHL manual for details. 
+
+    INPUTS:
+    -------
+    namelist : dict
+         Dictionary containing aurora namelist. This function uses the K, dr_0, dr_1, rvol_lcfs 
+         and bound_sep parameters. Additionally, lim_sep is used if plotting is requested. 
+    plot : bool, optional
+         If True, plot the radial grid spacing vs. radial location. 
+
+    OUTPUTS:
+    --------
+    rvol_grid : array
+        Volume-normalized grid used for aurora simulations.
+    pro : array
+        Normalized first derivatives of the radial grid, defined as 
+        pro = (drho/dr)/(2 d_rho) = rho'/(2 d_rho)
+    qpr : array
+        Normalized second derivatives of the radial grid, defined as 
+        qpr = (d^2 rho/dr^2)/(2 d_rho) = rho''/(2 d_rho)
+    prox_param : float
+        Grid parameter used for perpendicular loss rate at the last radial grid point. 
+    '''
+    
+    K = namelist['K']
+    dr_0 = namelist['dr_0']
+    dr_1 = namelist['dr_1']
+    rvol_lcfs = namelist['rvol_lcfs']
+    dbound = namelist['bound_sep']
+
+    # radial location of wall boundary:
+    r_edge = namelist['rvol_lcfs'] + namelist['bound_sep']
+    
+    try:
+        assert dr_0>0.0
+        assert dr_1>0.0
+    except:
+        raise ValueError('Both dr_0 and dr_1 must be positive!')
+    
+    a0=1./dr_0
+
+    # number of radial points:
+    ir=int(1.5+r_edge*(a0*K+ (1./dr_1))/(K+1.))
+
+    rr = np.zeros(ir)
+    pro = np.zeros(ir)
+    qpr = np.zeros(ir)
+    ro = np.zeros(ir)
+
+    # prox_param is used in calculation of ion perpendicular loss at the last grid point
+    prox_param=(K+1.)*(float(ir)-1.5)/r_edge-a0*K
+
+    # form the radial grid iteratively
+    rr[0] = 0.
+    for i in np.arange(1,ir):
+        temp1 = 0.
+        temp2 = r_edge*1.05
+        ro[i] = (i-1)
+        
+        for j in np.arange(50):
+            rr[i] = (temp1+temp2)/2.
+            temp3 = a0*rr[i]+(prox_param-a0)*r_edge/(K+1.)*(rr[i]/r_edge)**(K+1.)
+            if temp3 > ro[i]:
+                temp2 = rr[i]
+            else:
+                temp1 = rr[i]
+
+    # terms related with derivatives of rho
+    temp1 = .5
+    pro[0] = 2./(dr_0**2)
+    for i in np.arange(1,ir):
+        pro[i] = (a0+(prox_param-a0)*(rr[i]/r_edge)**K)*temp1
+        qpr[i] = pro[i]/rr[i]+temp1*(prox_param-a0)*K/r_edge*(rr[i]/r_edge)**(K-1.)
+
+    # keep only nonzero terms
+    idxs = np.nonzero(rr)
+    rvol_grid = rr[idxs]
+    pro_grid = pro[idxs]
+    qpr_grid = qpr[idxs]
+
+    if plot:
+
+        r_lim  = namelist['rvol_lcfs'] + namelist['lim_sep']
+        dr = np.gradient(rvol_grid)
+
+        if plt.fignum_exists('aurora radial step'):
+            plt.figure(num='aurora radial step').clf()
+        f,ax = plt.subplots(num='aurora radial step')
+        
+        ax.plot(rvol_grid/namelist['rvol_lcfs'], dr,'-')
+        ax.axvline(1,ls='--',c='k')
+        ax.text(1+0.01,namelist['dr_0']*0.9 ,'LCFS',rotation='vertical')
+
+        ax.axvline(r_lim/namelist['rvol_lcfs'],ls='--',c='k')
+        ax.text(r_lim/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.9 ,'limiter',rotation='vertical')
+
+        if 'saw_model' in namelist and namelist['saw_model']['saw_flag']:
+            ax.axvline( namelist['saw_model']['rmix']/namelist['rvol_lcfs'],ls='--',c='k')
+            ax.text(namelist['saw_model']['rmix']/namelist['rvol_lcfs']+0.01,
+                    namelist['dr_0']*0.5 ,'Sawtooth mixing radius',rotation='vertical')
+
+        ax.set_xlabel(r'$r/r_{lcfs}$');
+        ax.set_ylabel(r'$\Delta$ r [cm]');
+        ax.set_ylim(0,None)
+        ax.set_xlim(0,r_edge/namelist['rvol_lcfs'])
+        ax.set_title('# radial grid points: %d'%len(rvol_grid))
+
+    return rvol_grid, pro_grid, qpr_grid, prox_param
+
+
+
+
+
+def create_time_grid(timing=None, plot=False):
+    ''' Create time grid for simulations using the Fortran implementation
+    of the time grid generator. 
+
+    INPUTS:
+    -------
+    timing : dict
+        Dictionary containing timing elements: 'times', 'dt_start','steps_per_cycle','dt_increase'
+        As in STRAHL, the last element in each of these arrays refers to sawtooth events. 
+    plot : bool
+        If True, plot time grid. 
+    '''
+
+    _time, _save = _aurora.time_steps(
+        timing['times'],timing['dt_start'],timing['steps_per_cycle'],timing['dt_increase'])
+
+    # eliminate trailing 0's:
+    idxs = np.nonzero(_time)
+    time = _time[idxs]
+    save = _save[idxs] > 0
+    
+    if plot:
+        #show timebase
+        if plt.fignum_exists('Aurora time step'):
+            plt.figure('Aurora time step').clf()
+        f,ax = plt.subplots(num='Aurora time step')
+        ax.set_title('# time steps: %d    # saved steps %d'%(len(time), sum(save)))
+        ax.semilogy(time[1:],np.diff(time),'.-',label='step')
+        ax.semilogy(time[1:][save[1:]],np.diff(time)[save[1:]],'o',label='step')
+        [ax.axvline(t,c='k',ls='--') for t in timing['times']]
+        ax.set_xlim(time[0],time[-1])
+
+    return time, save
+
+
+
+    
+def create_time_grid_new(timing, verbose=False, plot=False):
+    '''
+    Define time base for Aurora based on user inputs
+    This function reproduces the functionality of STRAHL's time_steps.f
+    Refer to the STRAHL manual for definitions of the time grid
+    
+    INPUTS:
+    ------
+    n : int
+        Number of elements in time definition arrays
+    t : array
+        Time vector of the time base changes
+    dtstart : array
+        dt value at the start of a cycle
+    itz : array
+        cycle length, i.e. number of time steps before increasing dt
+    tinc :
+        factor by which time steps should be increasing within a cycle
+    verbose : bool
+        If Trueprint to terminal a few extra info
+    
+    OUTPUTS:
+    --------
+    t_vals : array
+        Times in the time base [s]
+    i_save : array
+        Array of 0,1 values indicating at which times internal arrays should be stored/returned. 
+    '''
+    t = np.array(timing['times'])
+    dtstart = np.array(timing['dt_start'])
+    itz = np.array(timing['steps_per_cycle'])
+    tinc = np.array(timing['dt_increase'])
+    
+    t_vals = np.zeros(30000)
+    i_save = np.zeros(30000)
+
+    dt = np.zeros(250)
+    ncyctot = np.zeros(250)    
+    ncyc = np.zeros(250)
+    
+    # zeross without double time points
+    t_s = np.zeros(250)
+    dtstart_s = np.zeros(250)
+    tinc_s = np.zeros(250)
+    itz_s = np.zeros(250)
+    
+    # sort t-change and related verctors
+    idxs = np.argsort(t)
+    dtstart = dtstart[idxs]
+    tinc = tinc[idxs]
+    itz = itz[idxs]
+    
+    if verbose:
+        print('Inputs after sorting:')
+        print('t:',t)
+        print('dtstart: ', dtstart)
+        print('tinc: ', tinc)
+        print('itz: ', itz)
+        
+    # cancel double time points
+    nevent = 1
+    t_s[0] = t[0]
+    dtstart_s[0] = dtstart[0]
+    tinc_s[0] = tinc[0]
+    itz_s[0] = itz[0]
+    for i in np.arange(1,len(t)):
+        if abs(t[i]-t[nevent]) > 1e-8:
+            nevent = nevent + 1
+            t_s[nevent] = t[i]
+            dtstart_s[nevent] = dtstart[i]
+            tinc_s[nevent] = tinc[i]
+            itz_s[nevent] = itz[i]
+
+    # define # of cycles for every interval with a start time step: dtstart[i]
+    for i in np.arange(nevent-1):
+        f = (t_s[i+1] - t_s[i])/dtstart_s[i]
+        if i==0: f = f + 1.
+        if tinc_s[i]>1.:
+            ncyc[i] = max(2,int(np.log(f/itz_s[i]*(tinc_s[i]-1.)+1.)/np.log(tinc_s[i])))
+            
+        if (tinc_s[i]==1.):
+            ncyc[i] = max(2,int(f/itz_s[i]))
+
+        if i==0: ncyctot[i] = ncyc[i]
+        if i>0: ncyctot[i] = ncyctot[i-1] + ncyc[i]
+
+    # sum of all timesteps
+    nsteps = 0
+    for i in np.arange(nevent-1):
+        nsteps = nsteps + ncyc[i] * itz_s[i]
+        
+    nsteps = nsteps - 1
+
+    # define real start timestep dt[i] to fit the time intervals
+    for i in np.arange(nevent-1):
+        if tinc_s[i]>1.:
+            f = itz_s[i]* (tinc_s[i]**ncyc[i]-1.)/(tinc_s[i]-1.)
+
+        if tinc_s[i]==1.: f = 1. * itz_s[i] * ncyc[i]
+        if i==1: f = f - 1.
+        dt[i] = (t_s[i+1] - t_s[i])/f
+
+    # Now, define t list
+    nn = 1
+    n_itz = 1
+    m = 1
+    tnew = t_s[0]
+    nevent=1
+    det = dt[0]
+
+    if verbose:
+        print('time_steps:')
+        print('nsteps:',nsteps)
+        for i in np.arange(nevent-1):
+            print('Interval:',i,' start step: ',dt[i])
+    
+    t_vals[0] = tnew
+    i_save[0] = 1
+
+    tmp2 = True
+    while tmp2:
+        tmp = True
+        while tmp:
+            tnew = tnew + det
+            t_vals[nn+1] = tnew
+
+            if np.mod(n_itz+1,itz_s[nevent])!= 0:
+                nn = nn+1
+                n_itz = n_itz + 1
+            else:
+                tmp=False
+
+        n_itz = 0
+        det = tinc[nevent] * det
+        if (m == ncyctot[nevent]) & (nn != nsteps):
+            nevent = nevent + 1
+            det = dt[nevent]
+
+        m=m+1
+        i_save[nn+1] = 1
+
+        if nn<nsteps:
+            nn = nn + 1
+        else:
+            tmp2=False
+
+
+    # -------------
+    # eliminate trailing 0's:
+    idxs = np.nonzero(t_vals)
+    time = t_vals[idxs]
+    save = i_save[idxs] > 0
+
+    if plot:
+        #show timebase
+        if plt.fignum_exists('Aurora time step'):
+            plt.figure('Aurora time step').clf()
+        f,ax = plt.subplots(num='Aurora time step')
+        ax.set_title('# time steps: %d    # saved steps %d'%(len(time), sum(save)))
+        ax.semilogy(time[1:],np.diff(time),'.-',label='step')
+        ax.semilogy(time[1:][save[1:]],np.diff(time)[save[1:]],'o',label='step')
+        [ax.axvline(t,c='k',ls='--') for t in timing['times']]
+        ax.set_xlim(time[0],time[-1])
+
+    return time, save
+
+
+
 def get_HFS_LFS(geqdsk, rho_pol_arb=None):
 
     if rho_pol_arb is None:
@@ -105,51 +438,51 @@ def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
 
 
 
-def create_aurora_radial_grid(namelist,plot=False):
-    ''' This interfaces the package subroutine to create the radial grid.
-    This exactly reproduces STRAHL functionality to produce radial grids, both for dr_0<0 and dr_1>0.
-    Refer to the STRAHL manual for details.
+# def create_aurora_radial_grid(namelist,plot=False):
+#     ''' This interfaces the package subroutine to create the radial grid.
+#     This exactly reproduces STRAHL functionality to produce radial grids, both for dr_0<0 and dr_1>0.
+#     Refer to the STRAHL manual for details.
 
-    If plot==True, then show the radial grid, else return r,pro and qpr arrays required for simulation runs.
-    '''
-    # NB: there is currently a hard-coded maximum number of grid points (1000)
-    _r, _pro, prox, _qpr = _aurora.get_radial_grid(
-        namelist['ng'],namelist['bound_sep'],namelist['K'],namelist['dr_0'],namelist['dr_1'], namelist['rvol_lcfs'])
+#     If plot==True, then show the radial grid, else return r,pro and qpr arrays required for simulation runs.
+#     '''
+#     # NB: there is currently a hard-coded maximum number of grid points (1000)
+#     _r, _pro, prox, _qpr = _aurora.get_radial_grid(
+#         namelist['ng'],namelist['bound_sep'],namelist['K'],namelist['dr_0'],namelist['dr_1'], namelist['rvol_lcfs'])
 
-    # eliminate trailing zeros:
-    idxs = _r > 0
-    idxs[0] = True
-    radius_grid, pro, qpr = _r[idxs], _pro[idxs], _qpr[idxs]
+#     # eliminate trailing zeros:
+#     idxs = _r > 0
+#     idxs[0] = True
+#     radius_grid, pro, qpr = _r[idxs], _pro[idxs], _qpr[idxs]
 
-    if plot:
+#     if plot:
 
-        r_lim  = namelist['rvol_lcfs'] + namelist['lim_sep']
-        r_wall = namelist['rvol_lcfs'] + namelist['bound_sep']
-        dr = np.gradient(radius_grid)
+#         r_lim  = namelist['rvol_lcfs'] + namelist['lim_sep']
+#         r_wall = namelist['rvol_lcfs'] + namelist['bound_sep']
+#         dr = np.gradient(radius_grid)
 
-        if plt.fignum_exists('aurora radial step'):
-            plt.figure(num='aurora radial step').clf()
-        f,ax = plt.subplots(num='aurora radial step')
+#         if plt.fignum_exists('aurora radial step'):
+#             plt.figure(num='aurora radial step').clf()
+#         f,ax = plt.subplots(num='aurora radial step')
         
-        ax.plot(radius_grid/namelist['rvol_lcfs'], dr,'-')
-        ax.axvline(1,ls='--',c='k')
-        ax.text(1+0.01,namelist['dr_0']*0.9 ,'LCFS',rotation='vertical')
+#         ax.plot(radius_grid/namelist['rvol_lcfs'], dr,'-')
+#         ax.axvline(1,ls='--',c='k')
+#         ax.text(1+0.01,namelist['dr_0']*0.9 ,'LCFS',rotation='vertical')
 
-        ax.axvline(r_lim/namelist['rvol_lcfs'],ls='--',c='k')
-        ax.text(r_lim/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.9 ,'limiter',rotation='vertical')
+#         ax.axvline(r_lim/namelist['rvol_lcfs'],ls='--',c='k')
+#         ax.text(r_lim/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.9 ,'limiter',rotation='vertical')
 
-        if 'saw_model' in namelist and namelist['saw_model']['saw_flag']:
-            ax.axvline( namelist['saw_model']['rmix']/namelist['rvol_lcfs'],ls='--',c='k')
-            ax.text(namelist['saw_model']['rmix']/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.5 ,'Sawtooth mixing radius',rotation='vertical')
+#         if 'saw_model' in namelist and namelist['saw_model']['saw_flag']:
+#             ax.axvline( namelist['saw_model']['rmix']/namelist['rvol_lcfs'],ls='--',c='k')
+#             ax.text(namelist['saw_model']['rmix']/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.5 ,'Sawtooth mixing radius',rotation='vertical')
 
-        ax.set_xlabel(r'$r/r_{lcfs}$');
-        ax.set_ylabel(r'$\Delta$ r [cm]');
-        ax.set_ylim(0,None)
-        ax.set_xlim(0,r_wall/namelist['rvol_lcfs'])
-        ax.set_title('# radial grid points: %d'%len(radius_grid))
+#         ax.set_xlabel(r'$r/r_{lcfs}$');
+#         ax.set_ylabel(r'$\Delta$ r [cm]');
+#         ax.set_ylim(0,None)
+#         ax.set_xlim(0,r_wall/namelist['rvol_lcfs'])
+#         ax.set_title('# radial grid points: %d'%len(radius_grid))
 
-    else:
-        return radius_grid, pro, prox, qpr
+#     else:
+#         return radius_grid, pro, prox, qpr
 
 
 

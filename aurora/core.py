@@ -59,7 +59,8 @@ class aurora_sim:
         self.rvol_lcfs = self.namelist['rvol_lcfs'] = np.round(rvol_lcfs,3)  # set limit on accuracy
 
         # create radial grid
-        self.rvol_grid, self.pro, self.prox, self.qpr = grids_utils.create_aurora_radial_grid(self.namelist, plot=False)
+        grid_params = grids_utils.create_radial_grid(self.namelist, plot=False)
+        self.rvol_grid,self.pro_grid,self.qpr_grid,self.prox_param = grid_params
 
         # get rho_poloidal grid corresponding to aurora internal (rvol) grid
         self.rhop_grid = interp1d(_rvol,rho_pol)(self.rvol_grid)
@@ -68,7 +69,7 @@ class aurora_sim:
         self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(geqdsk, rho_pol_arb=self.rhop_grid)
 
         # define time grid ('timing' must be in namelist)
-        self.time_grid, self.save_time = grids_utils.create_aurora_time_grid(timing=self.namelist['timing'], plot=False)
+        self.time_grid, self.save_time = grids_utils.create_time_grid(timing=self.namelist['timing'], plot=False)
         self.time_out = self.time_grid[self.save_time]
 
         # get kinetic profiles on the radial and (internal) temporal grids
@@ -89,7 +90,7 @@ class aurora_sim:
         # get radial profile of source function
         self.source_rad_prof = source_utils.get_radial_source(self.namelist, self.rvol_grid,
                                                               self.S_rates[:,0],  # take only 1 time slice of S_rates
-                                                              self.pro, self._Ti)
+                                                              self.pro_grid, self._Ti)
         
         # create array of 0's of length equal to self.time_grid, with 1's where sawteeth must be triggered
         self.saw_on = np.zeros_like(self.time_grid)
@@ -327,8 +328,8 @@ class aurora_sim:
             self.S_rates, # ioniz_rate,
             self.R_rates, # recomb_rate,
             self.rvol_grid,
-            self.pro,
-            self.qpr,
+            self.pro_grid,
+            self.qpr_grid,
             self.mixing_radius,
             self.decay_length_boundary,
             self.time_grid,
@@ -344,7 +345,7 @@ class aurora_sim:
             self.rvol_lcfs,       # rx = rvol_lcfs + dbound
             self.bound_sep,
             self.lim_sep,
-            self.prox,
+            self.prox_param,
             rn_t0 = nz_init,  # if omitted, internally set to 0's
             linder=True if method=='linder' else False,
             evolneut=evolneut
@@ -405,8 +406,8 @@ class aurora_sim:
                              self.S_rates, # ioniz_rate,
                              self.R_rates, # recomb_rate,
                              self.rvol_grid,
-                             self.pro,
-                             self.qpr,
+                             self.pro_grid,
+                             self.qpr_grid,
                              self.mixing_radius,
                              self.decay_length_boundary,
                              self.time_grid,
@@ -422,5 +423,5 @@ class aurora_sim:
                              self.rvol_lcfs,       # rx = rvol_lcfs + dbound
                              self.bound_sep,
                              self.lim_sep,
-                             self.prox,
+                             self.prox_param,
                              nz_init)
