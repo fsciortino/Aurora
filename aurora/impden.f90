@@ -474,8 +474,7 @@ subroutine impden_constTranspMatrix(rnt, dimp, vimp, ir, dt, &
   ! ----- Advection contribution --------------------------------|
   vp    = .5*(vimp(1)+vimp(2))
   kap   = 0.
-  if (abs(vp).gt.2.*Dp/drp) 
-  >  kap = sign(max(0.d0, 1.-2.*Dp/(drp*abs(vp))), vp)
+  if (abs(vp).gt.2.*Dp/drp) kap = sign(max(0.d0, 1.-2.*Dp/(drp*abs(vp))), vp)
   
   coefp = .25*dt*gi*rp*vp
   
