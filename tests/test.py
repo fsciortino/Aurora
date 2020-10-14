@@ -129,7 +129,7 @@ ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','radius_grid
                      'particles_retained_at_wall': (['time'], N_ret), 
                      'recycling_from_wall':  (['time'], rclw_rate), 
                      'recycling_from_divertor':  (['time'], rcld_rate), 
-                     'pro': (['radius_grid'], asim.pro), 
+                     'pro': (['radius_grid'], asim.pro_grid), 
                      'rhop_grid': (['radius_grid'], asim.rhop_grid)
                      },
                     coords={'time': asim.time_out, 
