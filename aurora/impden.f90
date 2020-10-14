@@ -88,6 +88,7 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
         rclw = 0.d0
   endif
 
+  ! NB: we apply the sint radial source profile also to recycling neutrals... seems a bad (STRAHL) idea?
   do i=1,ir
      rn(i,1) =flxtot*sint(i) ! index of 1 stands for neutral stage
   end do
@@ -240,7 +241,7 @@ end subroutine impden0
 subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
      rr, flx, fall_outsol, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
      rcl,tsuold, dsulold, divold, divbls, taudiv,tauwret, &
-     sext, evolveneut, &   ! extras!!
+     evolveneut, &   ! extras!!
      Nret, rcld,rclw)
      !ioniz_loss & ! extra
   
@@ -277,7 +278,6 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   REAL*8, INTENT(IN)        :: tauwret
 
   ! Extras
-  REAL*8, INTENT(IN)        :: sext(ir)
   LOGICAL, INTENT(IN)       :: evolveneut
   
   REAL*8, INTENT(INOUT)     :: Nret
@@ -285,8 +285,8 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   REAL*8, INTENT(OUT)       :: rclw
   !REAL*8, INTENT(OUT)       :: ioniz_loss(ir,nion)
 
-  REAL*8 :: flxtot
-  INTEGER :: i,ii, nz, ns
+  REAL*8 :: flxtot, flx_rcl
+  INTEGER :: i, nz, ns
 
   REAL*8 :: dt
 
@@ -301,10 +301,9 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   !     ** LACKNER METHOD IN Z                          **
   !     ** time step is split in two half time steps    **
   !     **************************************************
-  flxtot = flx
-  dt    = det/2.    
-  ii = ir -1   !for convenience, strahl.f L316
-
+  flxtot = flx*(1-divbls) 
+  dt = det/2.    
+  
   ! Recycling 
   if (rcl.ge.0) then    ! activated divertor return (R>=0) + recycling mode (if R>0)
      rcld = divold/taudiv
@@ -315,45 +314,45 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
         Nret = Nret * (1-det/tauwret) + rclw*det     ! number of particles temporarily retained at wall
         rclw = Nret/tauwret    ! component that goes back to be a source
      endif
-        
-     flxtot = flx*(1-divbls) + rclw + rcld
      
+     flx_rcl = rclw + rcld
   else   ! no divertor return at all
      rcld = 0.d0
      rclw = 0.d0
+     flx_rcl = 0.d0
   endif
-
+  
   ! select whether neutrals should be evolved
   ns = 2
   if (evolveneut) ns = 1
-
-  ! radial profile of neutrals (given as input)
-  do i=1,ir
-     rn(i,1) =flxtot*sint(i) ! index of 1 stands for neutral stage
-  end do
 
   
   ! ----- First half time step: direction up --------------------|
   ! Externally provided neutrals
   if (ns.eq.1) then
      call impden_constTranspMatrix(ra(:,1), diff(:,1), conv(:,1),&    !na(1), nd(1), nv(1),&
-          ii, ir, dt, fall_outsol, dv, rr, a, b, c, d)
-     
+          ir, dt, fall_outsol, dv, rr, a, b, c, d)
 
      do i=1,ir
         b(i)    = b(i) + dt*s(i,1)
-        d(i)    = d(i) + dt*(flxtot*sint(i) + sext(i))
+        d(i)    = d(i) + dt*(flxtot*sint(i) + flx_rcl* sint(i)) !srcl(i)) 
      enddo
      call TDMA(a, b, c, d, ir, nt)
+  else
+     nt = 0.d0
+     ! radial profile of neutrals (given as input)
+     do i=1,ir
+        rn(i,1) = flxtot*sint(i) + flx_rcl* sint(i) !srcl(i)
+     end do
   endif
   
   ! Ions and recombined neutrals
   do nz=ns,nion             
      ! Construct transport matrix
      call impden_constTranspMatrix(ra(:,nz), diff(:,nz),&
-          conv(:,nz), ii, ir, dt, fall_outsol, dv, rr, a, b, c, d)
+          conv(:,nz), ir, dt, fall_outsol, dv, rr, a, b, c, d)
      
-     ! Add ionisation and recombination
+     ! Add ionization and recombination
      do i=1,ir
         b(i)    = b(i) + dt*s(i,nz)
         if (nz.gt.1)&
@@ -373,9 +372,9 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   do nz=nion,ns,-1
      ! Construct transport matrix
      call impden_constTranspMatrix(rn(:,nz), diff(:,nz),&
-          conv(:,nz), ii, ir, dt, fall_outsol, dv, rr, a, b, c, d)
+          conv(:,nz), ir, dt, fall_outsol, dv, rr, a, b, c, d)
      
-     ! Add ionisation and recombination
+     ! Add ionization and recombination
      do i=1,ir
         d(i)    = d(i) - dt*rn(i,nz)*s(i,nz)
         if (nz.gt.1) then
@@ -394,11 +393,11 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   
   ! Externally provided neutrals
   if (ns.eq.1) then
-     call impden_constTranspMatrix(nt, diff(:,1), conv(:,1), ii, ir,&
+     call impden_constTranspMatrix(nt, diff(:,1), conv(:,1), ir,&
           dt, fall_outsol, dv, rr, a, b, c, d)
           
      do i=1,ir
-        d(i)    = d(i) - dt*nt(i)*s(i,1) + dt*(flxtot*sint(i) + sext(i))
+        d(i)    = d(i) - dt*nt(i)*s(i,1) + dt*(flxtot*sint(i) + flx_rcl* sint(i)) !srcl(i)
      enddo
      call TDMA(a, b, c, d, ir, rn(:,1))
      
@@ -425,7 +424,7 @@ end subroutine impden1
 
 
 !======================================================================|
-subroutine impden_constTranspMatrix(rnt, dimp, vimp, ii, ir, dt, &
+subroutine impden_constTranspMatrix(rnt, dimp, vimp, ir, dt, &
      fall_outsol, dv, rr, a, b, c, d)
   ! ----------------------------------------------------------------------|
   !     Construct transport matrix for charge state IZ of impurity 
@@ -434,7 +433,7 @@ subroutine impden_constTranspMatrix(rnt, dimp, vimp, ii, ir, dt, &
   implicit none
   
   ! ----- Global variables --------------------------------------|
-  integer, intent(in) ::  ii, ir
+  integer, intent(in) ::  ir
   
   real*8, intent(in) :: rnt(ir), dt, fall_outsol, dimp(ir), vimp(ir),&
        dv(ir), rr(ir)
@@ -455,16 +454,40 @@ subroutine impden_constTranspMatrix(rnt, dimp, vimp, ii, ir, dt, &
   d(:) = rnt(:)
   
   ! ----------------------------------------------------------------------|
-  !     Central point (r = 0)
-  !     Set start conditions for interior points
+  !   Central point (r = 0)
+  !   Enforces dn/dr|_r=0 = 0 and v(r=0) = 0
   ! ----------------------------------------------------------------------|
-  drp     = 1.;           rp  = 0.
-  Dp      = 0.;           vp  = 0.
+  ! ----- Geometric factors -------------------------------------|
+  drp   = rr(2)-rr(1)
+  rp    = .5*(rr(1)+rr(2))
+  gi    = 2./(rp**2)
+  
+  ! ----- Diffusion contribution --------------------------------|
+  Dp    = .5*(dimp(1)+dimp(2))
+  coefp = .5*dt*gi*rp*Dp/drp
+  
+  a(1)  = a(1)
+  b(1)  = b(1) + coefp
+  c(1)  = c(1) - coefp
+  d(1)  = d(1) + coefp*(rnt(2) - rnt(1))
+  
+  ! ----- Advection contribution --------------------------------|
+  vp    = .5*(vimp(1)+vimp(2))
+  kap   = 0.
+  if (abs(vp).gt.2.*Dp/drp) 
+  >  kap = sign(max(0.d0, 1.-2.*Dp/(drp*abs(vp))), vp)
+  
+  coefp = .25*dt*gi*rp*vp
+  
+  a(1)  = a(1)
+  b(1)  = b(1) + coefp*(1+kap)
+  c(1)  = c(1) + coefp*(1-kap)
+  d(1)  = d(1) - coefp*((1+kap)*rnt(1) + (1-kap)*rnt(2))
   
   ! ----------------------------------------------------------------------|
   !     Interior points
   ! ----------------------------------------------------------------------|
-  do i=1,ii
+  do i=2,ir-1
      ! ----- Geometric factors -------------------------------------|
      drm     = drp
      drp     = rr(i+1)-rr(i)
@@ -557,7 +580,7 @@ subroutine impden_constTranspMatrix(rnt, dimp, vimp, ii, ir, dt, &
   ! SOL Losses
   !----------------------------------------------------------------------|
   ! ----- Interior points ---------------------------------------|
-  do i=2,ii
+  do i=2,ir-1
      coefm   = .5*dt*dv(i)
      
      b(i)    = b(i) +  coefm
