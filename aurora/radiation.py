@@ -5,7 +5,7 @@ from omfit_commonclasses.utils_math import atomic_element
 from . import atomic
 
 def compute_rad(imp, rhop, time, imp_dens, ne, Te,
-                n0 = None, nD = None, nBckg=None, main_ion_AZ=(1,1), bckg_imp_AZ=(12,6),
+                n0 = None, nD = None, nBckg=None, main_ion_AZ=(2,1), bckg_imp_AZ=(12,6),
                 sxr_pls_file=None, sxr_prs_file=None, 
                 prad_flag=False,thermal_cx_rad_flag=False, spectral_brem_flag=False,
                 sxr_flag=False, main_ion_brem_flag=False):
@@ -104,6 +104,9 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
         index n+1: bremsstrahlung due to electron scattering at main ion
         index n+2: total bremsstrahlung of impurity (and main ion, if set in Xx.atomdat)
 
+
+    All radiation outputs are given in W * cm^-3, consistently with units of cm^-3 given for inputs.
+
     '''
     res = {}
 
@@ -138,7 +141,8 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
         # line radiation for each charge state (NB: fully stripped has no line radiation)
         rad[:,:Z_imp,:] = np.maximum(imp_dens[:,:-1] * plt, 1e-60)
 
-        # rad[:,Z_imp,:] (bremsstrahlung due to electron scattering at main ion) is filled below only if main_ion_brem_flag=True
+        # rad[:,Z_imp,:] (bremsstrahlung due to electron scattering at main ion) is filled below
+        # only if main_ion_brem_flag=True
 
         rad[:,no,:] = rad.sum(1) # total line radiation
 
@@ -212,7 +216,9 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
         # get main ion name so that we can fetch appropriate ADAS file:
         main_ion_name = list(atomic_element(A=main_ion_AZ[0],
                                             Z_ion=main_ion_AZ[1]).values())[0]['symbol']
-        if len(main_ion_name)==1: main_ion_name+='_' # to match ADAS file nomenclature
+
+        if main_ion_name in ['D','T']:
+            main_ion_name='H' # same atomic data
 
         # get expected background densities of main ions and carbon/lumped impurity
         Z_nimp = (np.arange(Z_imp+1)[None,:,None]*imp_dens).sum(1)
@@ -233,8 +239,8 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
 
                 bckg_D_rad += bckg_imp_rad
                 
-            rad[:,nion] = bckg_D_rad/1e6   #W/cm^3
-            rad[:,no,:] += rad[:,nion] #add to total
+            rad[:,Z_imp] = bckg_D_rad/1e6   #W/cm^3
+            rad[:,no,:] += rad[:,Z_imp] #add to total
 
             # less accurate:
             #rad[:,Z_imp,:] = atomic.main_ion_brems(main_ion_AZ[1], nD, ne, Te)
@@ -247,7 +253,6 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
         if sxr_flag:
             # Bremsstrahlung in the SXR range
             # STRAHL uses brs files. Here we use prs files for background species
-            if main_ion_name in ['D_','T_']: bckg_ion_name='H_' # same atomic data
             bckg_D = atomic.get_adas_ion_rad(bckg_ion_name, nD, logne, logTe, sxr=True)  # W/m^3
 
             # add radiation from background impurity (e.g. C in DIII-D, Mo in C-Mod, etc.)

@@ -149,6 +149,7 @@ def create_time_grid(timing=None, plot=False):
         As in STRAHL, the last element in each of these arrays refers to sawtooth events. 
     plot : bool
         If True, plot time grid. 
+
     '''
 
     _time, _save = _aurora.time_steps(
@@ -202,6 +203,8 @@ def create_time_grid_new(timing, verbose=False, plot=False):
         Times in the time base [s]
     i_save : array
         Array of 0,1 values indicating at which times internal arrays should be stored/returned. 
+
+    THIS ISN'T FUNCTIONAL YET!
     '''
     t = np.array(timing['times'])
     dtstart = np.array(timing['dt_start'])
@@ -366,8 +369,8 @@ def get_HFS_LFS(geqdsk, rho_pol_arb=None):
     Rhfs = np.interp(rho_pol_arb, -rho_mid[::-1],R[::-1])
     Rlfs = np.interp(rho_pol_arb, rho_mid,R)
 
-
     return Rhfs, Rlfs
+
 
 
 def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
