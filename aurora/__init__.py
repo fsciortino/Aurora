@@ -15,7 +15,8 @@ import pickle as pkl
 
 from ._aurora import run,get_radial_grid,time_steps
 from .atomic import *
-from .utils import *
+#from .utils import *
+from .core import *
 from .source_utils import *
 from .default_nml import *
 from .grids_utils import *

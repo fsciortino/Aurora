@@ -485,7 +485,10 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
 
         rate_coeff*=ne
         out.append(rate_coeff)
-        
+
+    from IPython import embed
+    embed()
+    
     if plot:
         # plot fractional abundances
         if ax is None:

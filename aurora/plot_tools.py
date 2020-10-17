@@ -3,6 +3,7 @@ import numpy as np, copy
 import matplotlib.gridspec as mplgs
 import matplotlib.widgets as mplw
 import itertools
+from scipy.constants import m_p, e as q_electron
 
 def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=False,
                 x_line=None, y_line=None, **kwargs):
@@ -128,3 +129,84 @@ def get_ls_cycle():
         for c in color_vals:
             ls_vals.append(c + s)
     return itertools.cycle(ls_vals)
+
+
+
+
+def plot_norm_ion_freq(S_z, q_prof, R_prof, m_imp, Ti_prof,
+                       nz_profs=None, rhop=None, plot=True, eps_prof=None):
+    '''
+    Compare effective ionization rate for each charge state with the 
+    characteristic transit time that a non-trapped and trapped impurity ion takes
+    to travel a parallel distance L = q R. 
+
+    If the normalized ionization rate is less than 1, then flux surface averaging of
+    background asymmetries (e.g. from edge or beam neutrals) can be considered in a 
+    "flux-surface-averaged" sense; otherwise, local effects (i.e. not flux-surface-averaged)
+    may be too important to ignore. 
+
+    This function is inspired by Dux et al. NF 2020. Note that in this paper the ionization 
+    rate averaged over all charge state densities is considered. This function avoids the 
+    averaging over charge states, unless these are provided as an input. 
+
+    INPUTS:
+    -------
+    S_z : array (r,cs) [s^-1]
+         Effective ionization rates for each charge state as a function of radius. 
+         Note that, for convenience within aurora, cs includes the neutral stage.
+    q_prof : array (r,)
+         Radial profile of safety factor
+    R_prof : array (r,) or float [m]
+         Radial profile of major radius, either given as an average of HFS and LFS, or also
+         simply as a scalar (major radius on axis)
+    m_imp : float [amu]
+         Mass of impurity of interest in amu units (e.g. 2 for D)
+    Ti_prof : array (r,)
+         Radial profile of ion temperature [eV]
+    nz_profs : array (r,cs), optional
+         Radial profile for each charge state. If provided, calculate average normalized 
+         ionization rate over all charge states.
+    rhop : array (r,), optional
+         Sqrt of poloidal flux radial grid. This is used only for (optional) plotting. 
+    plot : bool, optional
+         If True, plot results.
+    eps_prof : array (r,), optional
+         Radial profile of inverse aspect ratio, i.e. r/R, only used if plotting is requested.  
+
+
+    OUTPUTS:
+    --------
+    nu_ioniz_star : array (r,cs) or (r,)
+         Normalized ionization rate. If nz_profs is given as an input, this is an average over
+         all charge state; otherwise, it is given for each charge state.
+    '''
+
+    nu = np.zeros_like(S_z)
+    for cs in np.arange(S_z.shape[1]): # exclude neutral states
+        nu[:,cs] = S_z[:,cs] * q_prof * R_prof * np.sqrt((m_imp * m_p)/(2*Ti_prof))
+
+    if nz_profs is not None:
+        # calculate average nu_ioniz_star 
+        nu_ioniz_star = np.sum(nz_profs[:,1:]*nu[:,1:],axis=1)/np.sum(nz_profs[:,1:],axis=1)
+    else:
+        # return normalized ionization rate for each charge state
+        nu_ioniz_star = nu[:,1:]
+
+    if plot:
+        if rhop is None:
+            rhop = np.arange(nu.shape[0])
+            
+        fig,ax = plt.subplots()
+        if nu_ioniz_star.ndim==1:
+            ax.semilogy(rhop,nu_ioniz_star, label=r'$\nu_{ion}^*$')
+        else:
+            for cs in np.arange(S_z.shape[1]-1):
+                ax.semilogy(rhop, nu_ioniz_star[:,cs], label=f'q={cs+1}')
+            ax.set_ylabel(r'$\nu_{ion}^*$')
+
+        ax.set_xlabel(r'$\rho_p$')
+
+        if eps_prof is not None:
+            ax.semilogy(rhop, np.sqrt(eps_prof), label=r'$\sqrt{\epsilon}$')
+
+        ax.legend().set_draggable(True)

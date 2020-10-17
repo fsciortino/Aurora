@@ -63,7 +63,7 @@ namelist['Phi0'] = 1e24 #1.0
 imp = namelist['imp'] = 'Ca' 
 namelist['Z_imp'] = 20 
 namelist['imp_a'] = 40.078 
-aurora_dict_Ca = aurora.utils.aurora_setup(namelist, geqdsk=geqdsk)
+asim_Ca = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
 # get charge state distributions from ionization equilibrium
 atom_data = aurora.atomic.get_all_atom_data(imp,['acd','scd'])
@@ -76,7 +76,7 @@ logTe, fz_Ca = aurora.atomic.get_frac_abundances(atom_data, ne_avg*1e6, Te_avg, 
 imp = namelist['imp'] = 'Ar' 
 namelist['Z_imp'] = 18. 
 namelist['imp_a'] = 39.948 
-aurora_dict_Ar = aurora.utils.aurora_setup(namelist, geqdsk=geqdsk)
+asim_Ar = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
 # get charge state distributions from ionization equilibrium
 atom_data = aurora.atomic.get_all_atom_data(imp,['acd','scd'])
@@ -92,65 +92,63 @@ logTe, fz_Ar = aurora.atomic.get_frac_abundances(atom_data, ne_avg*1e6, Te_avg, 
 
 # transform these fractional abundances to the r_V grid used by aurora
 _rV = aurora.coords.rad_coord_transform(rhop, 'rhop','r_V', geqdsk)*1e2 # m --> cm (on kin profs grid)
-cs = np.arange(aurora_dict_Ca['Z_imp']+1)
-nz_init = scipy.interpolate.interp2d(_rV,cs, fz_Ca.T)(aurora_dict_Ca['radius_grid'], cs)
+cs_Ca = np.arange(asim_Ca.Z_imp+1)
+cs_Ar = np.arange(asim_Ar.Z_imp+1)
+nz_init_Ca = scipy.interpolate.interp2d(_rV,cs_Ca, fz_Ca.T)(asim_Ca.rvol_grid, cs_Ca)
+nz_init_Ar = scipy.interpolate.interp2d(_rV,cs_Ar, fz_Ar.T)(asim_Ar.rvol_grid, cs_Ar)
+
 
 # Take definition of peaking as q(psi_n=0.2)/<q>, where <> is a volume average
 nominal_peaking=1.3
 nominal_volavg = 1e12 # cm^-3
 
-nz_tot = np.sum(nz_init,axis=0)
-indLCFS = np.argmin(np.abs(aurora_dict_Ca['rhop_grid'] - 1.0))
-nz_tot_volavg = aurora.coords.vol_average(nz_tot[:indLCFS], aurora_dict_Ca['rhop_grid'][:indLCFS], geqdsk=geqdsk)[-1]
+nz_tot_Ca = np.sum(nz_init_Ca,axis=0)
+indLCFS = np.argmin(np.abs(asim_Ca.rhop_grid - 1.0))
+nz_tot_volavg_Ca = aurora.coords.vol_average(nz_tot_Ca[:indLCFS], asim_Ca.rhop_grid[:indLCFS], geqdsk=geqdsk)[-1]
 Psi_n = aurora.coords.rad_coord_transform(rhop, 'rhop','psin', geqdsk)
 ind_psin02 = np.argmin(np.abs(Psi_n - 0.2))
-peaking = nz_tot[ind_psin02]/nz_tot_volavg
+peaking = nz_tot_Ca[ind_psin02]/nz_tot_volavg_Ca
 
+
+########
+# TODO: Apply peaking factor to nz_init_* and rescale to match approx source amplitude
+########
 
 # choose transport coefficients
 D_eff = 1e4 #cm^2/s
 v_eff = -2e2 #cm/s
 
 # # set transport coefficients to the right format
-D_z = np.ones((len(aurora_dict_Ca['radius_grid']),1)) * D_eff
-V_z = np.ones((len(aurora_dict_Ca['radius_grid']),1)) * v_eff
+D_z = np.ones((len(asim_Ca.rvol_grid),1)) * D_eff
+V_z = np.ones((len(asim_Ca.rvol_grid),1)) * v_eff
 times_DV = [1.0]  # dummy
 
 # set initial charge state distributions to ionization equilibrium (no transport)
-out = aurora.utils.run_aurora(aurora_dict_Ca, times_DV, D_z, V_z) #, nz_init=nz_init.T)
-nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
-res_Ca = {'nz': nz, 'time': aurora_dict_Ca['time_out'], 'rV': aurora_dict_Ca['radius_grid'], 
-       'rhop': aurora_dict_Ca['rhop_grid'], 'ne':aurora_dict_Ca['ne'], 'Te':aurora_dict_Ca['Te']}
-res_Ca['rad'] = aurora.radiation.compute_rad('Ca', res_Ca['rhop'], res_Ca['time'], res_Ca['nz'], 
-                                            res_Ca['ne'],res_Ca['Te'], prad_flag=True, thermal_cx_rad_flag=False, 
-                                            spectral_brem_flag=False, sxr_flag=False, 
-                                            main_ion_brem_flag=False)
+out = asim_Ca.run_aurora(times_DV, D_z, V_z) #, nz_init=nz_init.T)
+nz_Ca, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
+nz_Ca = nz_Ca.transpose(2,1,0)
 
-out = aurora.utils.run_aurora(aurora_dict_Ar, times_DV, D_z, V_z) #, nz_init=nz_init.T)
-nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
-res_Ar = {'nz': nz, 'time': aurora_dict_Ar['time_out'], 'rV': aurora_dict_Ar['radius_grid'], 
-       'rhop': aurora_dict_Ar['rhop_grid'], 'ne':aurora_dict_Ar['ne'], 'Te':aurora_dict_Ar['Te']}
-res_Ar['rad'] = aurora.radiation.compute_rad('Ar', res_Ar['rhop'], res_Ar['time'], res_Ar['nz'], 
-                                            res_Ar['ne'],res_Ar['Te'], prad_flag=True, thermal_cx_rad_flag=False, 
+asim_Ca.rad = aurora.radiation.compute_rad('Ca', asim_Ca.rhop_grid, asim_Ca.time_out, nz_Ca, 
+                                             asim_Ca.ne, asim_Ca.Te, prad_flag=True, thermal_cx_rad_flag=False, 
+                                             spectral_brem_flag=False, sxr_flag=False, 
+                                             main_ion_brem_flag=False)
+
+out = asim_Ar.run_aurora(times_DV, D_z, V_z) #, nz_init=nz_init.T)
+nz_Ar, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
+nz_Ar = nz_Ar.transpose(2,1,0)
+
+asim_Ar.rad = aurora.radiation.compute_rad('Ar', asim_Ar.rhop_grid, asim_Ar.time_out, nz_Ar, 
+                                            asim_Ar.ne, asim_Ar.Te, prad_flag=True, thermal_cx_rad_flag=False, 
                                             spectral_brem_flag=False, sxr_flag=False, 
                                             main_ion_brem_flag=False)
 
 
 # ----------------------
 # plot charge state distributions over radius and time
-aurora.plot_tools.slider_plot(res_Ar['rV'], res_Ar['time'], res_Ar['nz'].transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]', labels=[fr'Ar$^{{{i}}}$$^+$' for i in np.arange(0,res_Ar['nz'].shape[1])], plot_sum=True, x_line=aurora_dict_Ca['rvol_lcfs'])
+aurora.plot_tools.slider_plot(asim_Ar.rvol_grid, asim_Ar.time_out, nz_Ar.transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]', labels=[fr'Ar$^{{{i}}}$$^+$' for i in np.arange(0,nz_Ar.shape[1])], plot_sum=True, x_line=asim_Ca.rvol_lcfs)
 
-aurora.plot_tools.slider_plot(res_Ca['rV'], res_Ca['time'], res_Ca['nz'].transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]', labels=[fr'Ca$^{{{i}}}$$^+$' for i in np.arange(0,res_Ca['nz'].shape[1])], plot_sum=True)
+aurora.plot_tools.slider_plot(asim_Ca.rvol_grid, asim_Ca.time_out, nz_Ca.transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]', labels=[fr'Ca$^{{{i}}}$$^+$' for i in np.arange(0,nz_Ca.shape[1])], plot_sum=True)
 
 
 # plot radiation profiles over radius and time
-aurora.plot_tools.slider_plot(res_Ca['rV'], res_Ca['time'], res_Ca['rad']['impurity_radiation'].transpose(1,2,0)[:nz.shape[1],:,:], xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]', labels=['Ca'+str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=aurora_dict_Ca['rvol_lcfs'])
-
-
-# Peaking factor
-nz_Ca_tot = np.sum(res_Ca['nz'][-1],axis=0)
-indLCFS = np.argmin(np.abs(aurora_dict_Ca['rhop_grid'] - 1.0))
-nz_Ca_tot_volavg = aurora.coords.vol_average(nz_Ca_tot[:indLCFS], aurora_dict_Ca['rhop_grid'][:indLCFS], geqdsk=geqdsk)[-1]
-Psi_n = aurora.coords.rad_coord_transform(rhop, 'rhop','psin', geqdsk)
-ind_psin02 = np.argmin(np.abs(Psi_n - 0.2))
-peaking = nz_Ca_tot[ind_psin02]/nz_Ca_tot_volavg
+aurora.plot_tools.slider_plot(asim_Ca.rvol_grid, asim_Ca.time_out, asim_Ca.rad['impurity_radiation'].transpose(1,2,0)[:nz_Ca.shape[1],:,:], xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]', labels=['Ca'+str(i) for i in np.arange(0,nz_Ca.shape[1])], plot_sum=True, x_line=asim_Ca.rvol_lcfs)

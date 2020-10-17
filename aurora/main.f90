@@ -16,7 +16,7 @@ subroutine run(  &
         taupump, tauwret, &
         rvol_lcfs, dbound, dlim, prox, &
         rn_t0, &
-        linder, evolneut, &        
+        linder, evolneut, &
         rn_out, &  ! OUT
         N_wall, N_div, N_pump, N_ret, &  ! OUT
         N_tsu, N_dsu, N_dsul,&   !OUT
@@ -239,13 +239,9 @@ subroutine run(  &
   ! Only used in impden (define here to avoid re-allocating memory at each impden call)
   REAL*8 :: a(ir,nion), b(ir,nion), c(ir,nion), d1(ir), bet(ir), gam(ir)
 
-  REAL*8 :: sext(ir)
   LOGICAL :: evolveneut
   !REAL*8 :: ioniz_loss_tmp(ir,nion)
-  
-  ! sext allows use of an external impurity neutral density. Not currently used
-  sext = 0.0d0
-  
+    
   ! rn_time0 is an optional argument. if user does not provide it, set all array elements to 0
   if(present(rn_t0))then
      rn_t0_in=rn_t0
@@ -308,9 +304,7 @@ subroutine run(  &
      do nz=1,nion
         ! updated transport coefficients for each charge state
         call linip_arr(nt_trans, ir, t_trans, D(:,:,nz), time(it), diff(:, nz))
-        !diff(:, nz) = dk
         call linip_arr(nt_trans, ir, t_trans, V(:,:,nz), time(it), conv(:,nz))
-        !conv(:,nz) = vd
      end do
      divold = divnew ! strahl.f, L756
 
@@ -323,16 +317,16 @@ subroutine run(  &
      dv = dv_t(:,it)
      sint = sint_t(:,it)
 
-     if(algorithm) then
+     if (algorithm) then
         call impden1(nion, ir, ra, rn,&
              diff, conv, dv, sint, s, al,  &
              rr, flx(it-1), dlen, &
              dt,  &    ! renaming dt-->det. In this subroutine, dt is half-step
              rcl, tsu, dsul, divold, &
              divbls, taudiv,tauwret, &
-             sext, evolveneut, &   ! extras!!
+             evolveneut, &  
              Nret, rcld,rclw)
-             !ioniz_loss_tmp & ! extra
+             !ioniz_loss_tmp & ! extra not computed by default to speed up things
         
      else
     

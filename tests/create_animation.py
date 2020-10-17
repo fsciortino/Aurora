@@ -1,7 +1,7 @@
 '''
 Script to demonstrate the creation of an animation of an Aurora run, purely for visualization purposes. 
 
-It is recommended to run this in IPython.
+It is recommended to run this in basic Python3 (not IPython or notebooks).
 Note that you might need to run %matplotlib qt in IPython in order to enable the animation to run. 
 '''
 
@@ -67,27 +67,25 @@ imp = namelist['imp'] = 'Ca' #'Ar' #'Ca'
 namelist['Z_imp'] = 20 #18. #20.
 namelist['imp_a'] = 40.078 #39.948  # 40.078
 
-# Now get aurora setup dictionary
-aurora_dict = aurora.utils.aurora_setup(namelist, geqdsk=geqdsk)
+# Now get aurora setup
+asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
 # choose transport coefficients
 D_eff = 1e4 #cm^2/s
 v_eff = -2e2 #cm/s
 
 # # set transport coefficients to the right format
-D_z = np.ones((len(aurora_dict['radius_grid']),1)) * D_eff
-V_z = np.ones((len(aurora_dict['radius_grid']),1)) * v_eff
+D_z = np.ones((len(asim.rvol_grid),1)) * D_eff
+V_z = np.ones((len(asim.rvol_grid),1)) * v_eff
 times_DV = [1.0]  # dummy
 
 # set initial charge state distributions to ionization equilibrium (no transport)
-out = aurora.utils.run_aurora(aurora_dict, times_DV, D_z, V_z) #, nz_init=nz_init.T)
+out = asim.run_aurora(times_DV, D_z, V_z) #, nz_init=nz_init.T)
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 nz = nz.transpose(2,1,0)
 
-# convenient dictionary
-res = {'nz': nz, 'time': aurora_dict['time_out'], 'rV': aurora_dict['radius_grid'], 
-       'rhop': aurora_dict['rhop_grid'], 'ne':aurora_dict['ne'], 'Te':aurora_dict['Te']}
-
-
 # now create animation
-aurora.animate.animate_aurora(res['rhop'], res['time'], nz.transpose(1,2,0), xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, save_filename='aurora_anim')
+aurora.animate.animate_aurora(asim.rhop_grid, asim.time_out, nz.transpose(1,2,0), xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, save_filename='aurora_anim')
+
+
+#plt.show(block=True)

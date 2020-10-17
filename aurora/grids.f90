@@ -5,6 +5,9 @@
    !  Subroutine to produce radial grid as in STRAHL (see plad.f)
    !  NB: output grid arrays will be padded with zeros at the end.
    !
+   ! NOTE: this function isn't needed anymore, since create_radial_grid in grids_utils.py
+   ! now does the same thing in Python. This subroutine will be deleted soon!
+   !
 
    IMPLICIT NONE
 
@@ -62,7 +65,7 @@
       ! radius
       rr(1)=0.
       do i=2,ir
-         temp1=0.
+         temp1=0.d0
          temp2=rx*1.05
          ro(i) = (i-1)*dro
          do j=1,50
@@ -229,7 +232,7 @@ subroutine time_steps(n, t, dtstart, itz, tinc, verbose, t_vals, i_save)
 100 tnew = tnew + det
   t_vals(nn+1) = tnew
 
-if (mod(n_itz+1,itz_s(nevent)) .ne. 0) then
+  if (mod(n_itz+1,itz_s(nevent)) .ne. 0) then
      nn = nn+1
      n_itz = n_itz + 1
      goto 100

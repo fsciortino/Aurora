@@ -100,20 +100,20 @@ imp = namelist['imp'] = 'Ar' # 'W' #'Ca' #'Ar' #'Ca'
 namelist['Z_imp'] = 18 #74 #20 #18. #20.
 namelist['imp_a'] = 39.948 #183.84 #40.078 #39.948  # 40.078
 
-# Now get aurora setup dictionary
-aurora_dict = aurora.utils.aurora_setup(namelist, geqdsk=geqdsk)
+# Now get aurora setup
+asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
 # Choose radial resolution
 namelist['dr_0']=0.1 #0.3
 namelist['dr_1']=0.01   # 0.05
-aurora.grids_utils.create_aurora_radial_grid(namelist,plot=True)
+aurora.grids_utils.create_radial_grid(namelist,plot=True)
 
 # Choose time resolution
 namelist['timing']['dt_increase'] = np.array([1., 1.])
 namelist['timing']['dt_start'] = np.array([0.0001, 0.001])
 namelist['timing']['steps_per_cycle'] = np.array([1,1])
 namelist['timing']['times'] = np.array([1.,2.])
-aurora.grids_utils.create_aurora_time_grid(namelist['timing'], plot=True)
+aurora.grids_utils.create_time_grid(namelist['timing'], plot=True)
 
 
 # choose transport coefficients
@@ -121,15 +121,15 @@ D_eff = 1e4 #cm^2/s
 v_eff = -1e4 #-1e2 #-2e2 #cm/s
 
 # # set transport coefficients to the right format
-D_z = np.ones((len(aurora_dict['radius_grid']),1)) * D_eff
-#V_z = np.ones((len(aurora_dict['radius_grid']),1)) * v_eff
-V_z = aurora_dict['rhop_grid'][:,None]**10 * v_eff  # increasing towards edge
+D_z = np.ones((len(asim.rvol_grid),1)) * D_eff
+#V_z = np.ones((len(asim.rvol_grid),1)) * v_eff
+V_z = asim.rhop_grid[:,None]**10 * v_eff  # increasing towards edge
 times_DV = [1.0]  # dummy
 
 # plot transport coefficients
 fig,ax = plt.subplots(2,1, sharex=True, figsize=(8,8))
-ax[0].plot( aurora_dict['rhop_grid'], D_z[:,0]/1e4)
-ax[1].plot( aurora_dict['rhop_grid'], V_z[:,0]/1e2)
+ax[0].plot( asim.rhop_grid, D_z[:,0]/1e4)
+ax[1].plot( asim.rhop_grid, V_z[:,0]/1e2)
 ax[1].set_xlabel(r'$\rho_p$')
 ax[0].set_ylabel(r'$D$ [$m^2/s$]')
 ax[1].set_ylabel(r'$v$ [$m/s$]')
@@ -138,27 +138,24 @@ plt.subplots_adjust(wspace=0, hspace=0)
 
 ####### Original method #########
 # # set transport coefficients to the right format
-D_z = np.ones((len(aurora_dict['radius_grid']),1)) * D_eff
-V_z = aurora_dict['rhop_grid'][:,None]**4 * v_eff  # increasing towards edge
+D_z = np.ones((len(asim.rvol_grid),1)) * D_eff
+V_z = asim.rhop_grid[:,None]**4 * v_eff  # increasing towards edge
 
 start = time.time()
 for n in np.arange(num):
-    out = aurora.utils.run_aurora(aurora_dict, times_DV, D_z, V_z)
+    out = asim.run_aurora(times_DV, D_z, V_z)
 print('Average time per run: ', (time.time() - start)/num)
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 nz = nz.transpose(2,1,0)   # time,nZ,space
 print('np.mean(nz): ' ,np.mean(nz))
 
-# convenient dictionary
-res = {'nz': deepcopy(nz), 'time': aurora_dict['time_out'], 'rV': aurora_dict['radius_grid'], 
-       'rhop': aurora_dict['rhop_grid'], 'ne':aurora_dict['ne'], 'Te':aurora_dict['Te']}
 
 # ----------------------
 # plot charge state distributions over radius and time
-aurora.plot_tools.slider_plot(res['rV'], res['time'], res['nz'].transpose(1,2,0),
+aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,2,0),
                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]',
-                             labels=[str(i) for i in np.arange(0,res['nz'].shape[1])],
-                             plot_sum=True, x_line=aurora_dict['rvol_lcfs'])
+                             labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                             plot_sum=True, x_line=asim.rvol_lcfs)
 
 # # Check particle conservation
 #axs = check_conservation(aurora_dict, out)
@@ -169,25 +166,19 @@ aurora.plot_tools.slider_plot(res['rV'], res['time'], res['nz'].transpose(1,2,0)
 ####### Linder method #########
 start = time.time()
 for n in np.arange(num):
-    out_2 = aurora.utils.run_aurora(aurora_dict, times_DV, D_z, V_z,
-                                     method='linder', evolneut=False) 
+    out_2 = asim.run_aurora(times_DV, D_z, V_z, method='linder', evolneut=False) 
 print('Average time per run: ', (time.time() - start)/num)
 nz_2, N_wall_2, N_div_2, N_pump_2, N_ret_2, N_tsu_2, N_dsu_2, N_dsul_2, rcld_rate_2, rclw_rate_2 = out_2
 nz_2 = nz_2.transpose(2,1,0)   # time,nZ,space
 print('np.mean(nz_2): ' ,np.mean(nz_2))
 
-# convenient dictionary
-res_2 = {'nz': deepcopy(nz_2), 'time': aurora_dict['time_out'], 'rV': aurora_dict['radius_grid'], 
-       'rhop': aurora_dict['rhop_grid'], 'ne':aurora_dict['ne'], 'Te':aurora_dict['Te']}
-
-
 
 # ----------------------
 #plot charge state distributions over radius and time
-aurora.plot_tools.slider_plot(res_2['rV'], res_2['time'], res_2['nz'].transpose(1,2,0),
+aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz_2.transpose(1,2,0),
                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]',
-                             labels=[str(i) for i in np.arange(0,res_2['nz'].shape[1])],
-                             plot_sum=True, x_line=aurora_dict['rvol_lcfs'])
+                             labels=[str(i) for i in np.arange(0,nz_2.shape[1])],
+                             plot_sum=True, x_line=asim.rvol_lcfs)
 
 # Check particle conservation
 #axs = check_conservation(aurora_dict, out_2, axs=axs)
@@ -195,11 +186,11 @@ aurora.plot_tools.slider_plot(res_2['rV'], res_2['time'], res_2['nz'].transpose(
 
 ######################################
 #### Plot difference between the two algorithms with slider  #####
-aurora.plot_tools.slider_plot(res_2['rV'], res_2['time'],
-                             np.abs(res['nz'].transpose(1,2,0) - res_2['nz'].transpose(1,2,0)),
+aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out,
+                             np.abs(nz.transpose(1,2,0) - nz_2.transpose(1,2,0)),
                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='$\Delta$ nz [A.U.]',
-                             labels=[str(i) for i in np.arange(0,res_2['nz'].shape[1])],
-                             plot_sum=True, x_line=aurora_dict['rvol_lcfs'])
+                             labels=[str(i) for i in np.arange(0,nz_2.shape[1])],
+                             plot_sum=True, x_line=asim.rvol_lcfs)
 
 
 
@@ -207,23 +198,19 @@ aurora.plot_tools.slider_plot(res_2['rV'], res_2['time'],
 # ####### Linder method evoling neutrals #########
 start = time.time()
 for n in np.arange(num):
-    out_3 = aurora.utils.run_aurora(aurora_dict, times_DV,D_z, V_z,
-                                     method='linder', evolneut=True) 
+    out_3 = asim.run_aurora(times_DV,D_z, V_z, method='linder', evolneut=True) 
 print('Average time per run: ', (time.time() - start)/num)
 nz_3, N_wall_3, N_div_3, N_pump_3, N_ret_3, N_tsu_3, N_dsu_3, N_dsul_3, rcld_rate_3, rclw_rate_3 = out_3
 nz_3 = nz_3.transpose(2,1,0)   # time,nZ,space
 print('np.mean(nz_3): ' ,np.mean(nz_3))
 
-# convenient dictionary
-res_3 = {'nz': deepcopy(nz_3), 'time': aurora_dict['time_out'], 'rV': aurora_dict['radius_grid'], 
-       'rhop': aurora_dict['rhop_grid'], 'ne':aurora_dict['ne'], 'Te':aurora_dict['Te']}
 
 # ----------------------
 # plot charge state distributions over radius and time
-aurora.plot_tools.slider_plot(res_3['rV'], res_3['time'], res_3['nz'].transpose(1,2,0),
+aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz_3.transpose(1,2,0),
                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]',
-                             labels=[str(i) for i in np.arange(0,res_3['nz'].shape[1])],
-                             plot_sum=True, x_line=aurora_dict['rvol_lcfs'])
+                             labels=[str(i) for i in np.arange(0,nz_3.shape[1])],
+                             plot_sum=True, x_line=asim.rvol_lcfs)
 
 # # Check particle conservation
 #axs = check_conservation(aurora_dict, out_3, axs=axs)
@@ -232,19 +219,19 @@ aurora.plot_tools.slider_plot(res_3['rV'], res_3['time'], res_3['nz'].transpose(
 ##############################################
 
 ### Compare all algorithmic choices at last time slice:
-labels = [fr'{imp}$^{{{str(i)}}}$' for i in np.arange(0,res_3['nz'].shape[1])]
+labels = [fr'{imp}$^{{{str(i)}}}$' for i in np.arange(0,nz_3.shape[1])]
 colors = plt.cm.rainbow(np.linspace(0,1,nz.shape[1]))
 fig = plt.figure()
 fig.set_size_inches(10,7, forward=True)
 a_plot = plt.subplot2grid((10,10),(0,0),rowspan = 10, colspan = 8, fig=fig) 
 a_legend = plt.subplot2grid((10,10),(0,8),rowspan = 10, colspan = 2, fig=fig)
 for ii,cc in zip(np.arange(nz.shape[1]),colors):
-    a_plot.plot(aurora_dict['rhop_grid'], nz[-1,ii,:].T, c=cc, ls='-')
-    a_plot.plot(aurora_dict['rhop_grid'], nz_2[-1,ii,:].T, c=cc, ls='--')
+    a_plot.plot(asim.rhop_grid, nz[-1,ii,:].T, c=cc, ls='-')
+    a_plot.plot(asim.rhop_grid, nz_2[-1,ii,:].T, c=cc, ls='--')
 
     #########
     #factor = np.max(nz_2)/np.max(nz_3)   # why do we need this factor?
-    #a_plot.plot(aurora_dict['rhop_grid'], factor* nz_3[-1,ii,:].T, c=cc, ls=':')
+    #a_plot.plot(asim.rhop_grid, factor* nz_3[-1,ii,:].T, c=cc, ls=':')
     ########
     a_legend.plot([],[],c=cc,label=labels[ii],ls='-')
 a_legend.plot([],[], c='k', ls='-',lw=2, label='Original')
@@ -263,8 +250,8 @@ fig.suptitle('Algorithm comparison')
 f = plt.figure()
 a = f.add_subplot(1, 1, 1)
 cmap = 'plasma'
-pcm = a.pcolormesh(res['rhop'], res['time'], res['nz'].sum(axis=1), cmap=cmap, 
-                   vmax=res['nz'].sum(axis=1)[:, 0].max())
+pcm = a.pcolormesh(asim.rhop_grid, asim.time_out, nz.sum(axis=1), cmap=cmap, 
+                   vmax=nz.sum(axis=1)[:, 0].max())
 pcm.cmap.set_over('white')
 f.colorbar(pcm, extend='max')
 a.set_xlabel(r"$\rho_p$")
@@ -275,8 +262,8 @@ a.set_xlim([0.0,1.0])
 f = plt.figure()
 a = f.add_subplot(1, 1, 1)
 cmap = 'plasma'
-pcm = a.pcolormesh(res['rhop'], res['time'], res_2['nz'].sum(axis=1), cmap=cmap, 
-                   vmax=res_2['nz'].sum(axis=1)[:, 0].max())
+pcm = a.pcolormesh(asim.rhop_grid, asim.time_out, nz_2.sum(axis=1), cmap=cmap, 
+                   vmax=nz_2.sum(axis=1)[:, 0].max())
 pcm.cmap.set_over('white')
 f.colorbar(pcm, extend='max')
 a.set_xlabel(r"$\rho_p$")
