@@ -25,7 +25,8 @@ fig, ax = plt.subplots()
 
 res = {}
 for ii,cs in enumerate(files.keys()):
-    res[cs] = colradpy(filepath+files[cs],[0],Te_grid,ne_grid,use_recombination=False,use_recombination_three_body=False)
+    res[cs] = colradpy(filepath+files[cs],[0],Te_grid,ne_grid,use_recombination=False,
+                       use_recombination_three_body=False)  #, temp_dens_pair=True)
     
     res[cs].make_ioniz_from_reduced_ionizrates()
     res[cs].suppliment_with_ecip()
@@ -43,22 +44,19 @@ ax.set_xlabel('Wavelength (nm)')
 ax.set_ylabel('PEC (ph cm$^3$ s$^{-1}$)')
 ax.legend().set_draggable(True)
 
+############
+## Plot only lines with sufficiently high PEC (most likely to be measured)
 
-###############
-# Te_grid2 = np.geomspace(10,1e3,100)
-# ne_grid2 = np.array([1.e13])
+pec_threshold=1e-20  #1e-31
 
-# figs, axs = plt.subplots()
-# res2 = {}
-# for ii,cs in enumerate(files.keys()):
-#     res2[cs] = colradpy(filepath+files[cs],[0],Te_grid2,ne_grid2,use_recombination=False,use_recombination_three_body=False)
-    
-#     res2[cs].make_ioniz_from_reduced_ionizrates()
-#     res2[cs].suppliment_with_ecip()
-#     res2[cs].make_electron_excitation_rates()
-#     res2[cs].populate_cr_matrix()
-#     res2[cs].solve_quasi_static()
+fig, ax = plt.subplots()
+for ii,cs in enumerate(files.keys()):
+    idxs = np.where(res[cs].data['processed']['pecs'][:,0,0,0]>pec_threshold)[0]
 
-#     # plot lines
-#     ax.plot(Te_grid,res2[cs].data['processed']['pecs'][:,0,0,:].T, label=cs, color=colors[ii])
-    
+    ax.vlines(res[cs].data['processed']['wave_vac'][idxs],np.zeros_like(res[cs].data['processed']['wave_vac'][idxs]),
+              res[cs].data['processed']['pecs'][idxs,0,0,0],label=cs, color=colors[ii])
+
+ax.set_xlim(0,200)
+ax.set_xlabel('Wavelength (nm)')
+ax.set_ylabel('PEC (ph cm$^3$ s$^{-1}$)')
+ax.legend().set_draggable(True)

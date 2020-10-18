@@ -11,7 +11,7 @@ plt.ion()
 from scipy.interpolate import RectBivariateSpline
 import copy
 
-from janev_smith_rates import js_sigma
+from .janev_smith_rates import js_sigma
 
 
 def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
