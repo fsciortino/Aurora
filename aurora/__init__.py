@@ -3,10 +3,10 @@ name='aurora'
 """:py:mod:`aurora` 
 """
 
-with open('../VERSION') as vfile:
-    version = vfile.read().strip()
+#with open('./VERSION') as vfile:
+#    version = vfile.read().strip()
 
-__version__ = version
+__version__ = '1.3.1'
 
 from ._aurora import run,time_steps
 
