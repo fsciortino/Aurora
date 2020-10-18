@@ -7,6 +7,7 @@ from matplotlib import cm
 import os
 import scipy.ndimage
 from scipy.linalg import svd
+from IPython import embed
 
 def get_file_types():
     ''' Returns main types of ADAS atomic data of interest '''
@@ -149,7 +150,7 @@ def get_all_atom_data(imp, files = None):
     if files is None:
         # fetch all file types
         files = get_file_types().keys()
-        
+
     # get dictionary containing default list of ADAS atomic files
     files_dict =  adas_files_dict()
 
@@ -213,6 +214,7 @@ def read_adf15(path, order=1, Te_max = None, ne_max = None,
         the log-10 of ne and Te.
 
     MWE:
+    path='/home/sciortino/atomlib/atomdat_master/adf15/h/pju#h0.dat'
     pec = read_adf15(path, recomb=False)
     pec = read_adf15(path, plot_lines=[list(pec.keys())[0]], recomb=False)
 
@@ -285,22 +287,52 @@ def read_adf15(path, order=1, Te_max = None, ne_max = None,
                 PEC[-1] += [float(v) for v in lines.pop(0).split()]
         PEC = scipy.asarray(PEC)
 
-        # only for testing:
-        interpolate_log=True
-
         if lam is not None:
             if lam not in pec_dict:
                 pec_dict[lam] = []
 
             pec_dict[lam].append(
                 scipy.interpolate.RectBivariateSpline(
-                    np.log10(dens) if interpolate_log else dens,
-                    np.log10(temp) if interpolate_log else temp,
+                    np.log10(dens),
+                    np.log10(temp),
                     PEC,
                     kx=order,
                     ky=order
                 )
             )
+
+            '''
+            ########## timing tests  #######
+            test1 = scipy.interpolate.RectBivariateSpline(
+                    np.log10(dens),
+                    np.log10(temp),
+                    np.log10(PEC),
+                    kx=order,
+                    ky=order
+                )
+            
+            # 
+            test2 = lambda logne_prof,logTe_prof: interp_atom_prof(
+                (np.log10(dens),np.log10(temp),np.log10(PEC).T[None,:,:]),
+                logne_prof,logTe_prof,x_multiply=False
+            )
+
+            logne_prof = np.log10(np.linspace(1e13,3e14,2))
+            logTe_prof = np.log10(np.linspace(1e2,5e3,2))
+            
+            import time as time_
+            t0 = time_.time()
+            for ijk in np.arange(1000):
+                aa = 10**test1.ev(logne_prof,logTe_prof)
+            print(f'Time for test1: {(time_.time()-t0)/1000}')
+            t0 = time_.time()
+            for ijk in np.arange(1000):
+                bb = test2(logne_prof,logTe_prof)
+            print(f'Time for test2: {(time_.time()-t0)/1000}')
+
+            print(f'Results: aa={aa}, bb={bb}')
+            embed()
+            '''
 
             # {'dens': dens, 'temp': temp, 'PEC': PEC}
             if lam in plot_lines:
@@ -320,11 +352,7 @@ def read_adf15(path, order=1, Te_max = None, ne_max = None,
                     Te_eval = scipy.linspace(temp.min(), temp.max(), 100)
 
                 NE, TE = scipy.meshgrid(ne_eval, Te_eval)
-                if interpolate_log:
-                    PEC_eval = pec_dict[lam][-1].ev(np.log10(NE), np.log10(TE))
-                else:
-                    PEC_eval = pec_dict[lam][-1].ev(NE,TE)
-
+                PEC_eval = pec_dict[lam][-1].ev(np.log10(NE), np.log10(TE))
 
                 if ax is None:
                     f1 = plt.figure()
@@ -414,7 +442,8 @@ def null_space(A):
 
 
 def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
-                          plot=True, ax = None, rho = None, rho_lbl=None, compute_rates=False):
+                        plot=True, ax = None, rho = None, rho_lbl=None,ls='-',
+                        compute_rates=False):
     '''
     Calculate fractional abundances from ionization and recombination equilibrium.
     If include_cx=True, radiative recombination and thermal charge exchange are summed.
@@ -425,22 +454,24 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
         necessary only if include_cx=True
     ne : float or array
         Electron density in units of m^-3
-    Te : float or array
-        Electron temperature in units of eV. If left to None, the Te grid
-        given in the atomic data is used.
-    n0_by_ne: float or array
+    Te : float or array, optional
+        Electron temperature in units of eV. If left to None, the Te grid given in the 
+        atomic data is used.
+    n0_by_ne: float or array, optional
         Ratio of background neutral hydrogen to electron density, used if include_cx=True. 
     include_cx : bool
         If True, charge exchange with background thermal neutrals is included. 
-    plot : bool
+    plot : bool, optional
         Show fractional abundances as a function of ne,Te profiles parameterization.
     ax : matplotlib.pyplot Axes instance
         Axes on which to plot if plot=True. If False, it creates new axes
-    rho : list or array
+    rho : list or array, optional
         Vector of radial coordinates on which ne,Te (and possibly n0_by_ne) are given. 
         This is only used for plotting, if given. 
-    rho_lbl: str
+    rho_lbl: str, optional
         Label to be used for rho. If left to None, defaults to a general "rho".
+    ls : str, optional
+        Line style for plots. Continuous lines are used by default. 
     compute_rates : bool
         If True, compute rate coefficients for ionization/recombination equilibrium on top
         of fractional abundances (which should be the same regardless of the method used). 
@@ -460,8 +491,8 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
     logTe_, logS,logR,logcx = get_cs_balance_terms(atom_data, ne,Te, maxTe=10e3, include_cx=include_cx)
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
-        logR = np.logaddexp(logR,np.log(n0_by_ne) +logcx)
-
+        logR= np.logaddexp(logR,np.log(n0_by_ne)[:,None] +logcx)
+        
     # analytical formula for fractional abundance
     rate_ratio = np.hstack((np.zeros_like(logTe_)[:,None], logS-logR))
     rate_ratio[rate_ratio<-10.]=-10.  # to avoid underflow in exponential
@@ -476,7 +507,7 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
         fz  = np.zeros((logTe_.size,nion+1))
         rate_coeff = np.zeros(logTe_.size)
         for it,t in enumerate(logTe_):
-            
+
             A = -np.diag(np.r_[np.exp(logS[it]),0])+np.diag(np.exp(logS[it]),-1)+\
                 np.diag(np.exp(logR[it]),1)- np.diag(np.r_[0,np.exp(logR[it])])
             
@@ -485,37 +516,40 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
 
         rate_coeff*=ne
         out.append(rate_coeff)
-
-    from IPython import embed
-    embed()
     
     if plot:
         # plot fractional abundances
         if ax is None:
-            fig,ax = plt.subplots()
+            fig,axx = plt.subplots()
+        else:
+            axx = ax
 
         if rho is None:
             x = 10**logTe_
-            ax.set_xlabel('T$_e$ [eV]')
-            ax.set_xscale('log')
+            axx.set_xlabel('T$_e$ [eV]')
+            axx.set_xscale('log')
         else:
             if rho_lbl is None: rho_lbl=r'$\rho$'
             x = rho
-            ax.set_xlabel(rho_lbl)
+            axx.set_xlabel(rho_lbl)
 
-        ax.set_prop_cycle('color',cm.plasma(np.linspace(0,1,fz.shape[1])))
-        ax.plot(x,fz)
+        axx.set_prop_cycle('color',cm.plasma(np.linspace(0,1,fz.shape[1])))
+        axx.plot(x,fz,ls=ls)
         for i in range(len(fz.T)):
             imax = np.argmax(fz[:,i])
-            ax.text(np.max([0.05,x[imax]]), fz[imax,i], i, horizontalalignment='center', clip_on=True)
-        ax.grid('on')
-        ax.set_ylim(0,1.05)
-        ax.set_xlim(x[0],x[-1])
-        ax.set_title(r'Fractional abundances')
+            axx.text(np.max([0.05,x[imax]]), fz[imax,i], i, horizontalalignment='center', clip_on=True)
+        axx.grid('on')
+        axx.set_ylim(0,1.05)
+        axx.set_xlim(x[0],x[-1])
+        axx.set_title(r'Fractional abundances')
         if ax is None:
-            ax.legend()
+            axx.legend()
+    else:
+        axx = None    
 
-    return out
+    out.append(axx)
+    
+    return out 
 
 
 
@@ -545,7 +579,6 @@ def get_cs_balance_terms(atom_data, ne=5e19,Te = None, maxTe=10e3, include_cx=Tr
         recombination (+ charge exchange, if requested). After exponentiation, all terms
         will be in units of s^-1. 
     '''
-
     if Te is None:
         #find smallest Te grid from all files
         logne1, logTe1,_ = atom_data['scd']  # ionization
@@ -571,7 +604,7 @@ def get_cs_balance_terms(atom_data, ne=5e19,Te = None, maxTe=10e3, include_cx=Tr
     logS = interp_atom_prof(atom_data['scd'],logne, logTe,log_val=True, x_multiply=False)
     logR = interp_atom_prof(atom_data['acd'],logne, logTe,log_val=True, x_multiply=False)
     if include_cx:
-        logcx = interp_atom_prof(atom_data['scd'],logne, logTe,log_val=True, x_multiply=False)
+        logcx = interp_atom_prof(atom_data['ccd'],logne, logTe,log_val=True, x_multiply=False)
     else:
         logcx = None
 
@@ -900,7 +933,6 @@ def balance(logTe_val, cs, n0_by_ne, logTe_, S,R,cx):
 
 
 
-
 def adas_files_dict():
     ''' Selections for ADAS files for Aurora runs and radiation calculations.
     This function can be called to fetch a set of default files, which can then be modified (e.g. to 
@@ -908,18 +940,18 @@ def adas_files_dict():
     '''
             
     files={}
-    files["H"] = {}
+    files["H"] = {}   #1
     files["H"]['acd'] = "acd96_h.dat"
     files["H"]['scd'] = "scd96_h.dat"
     files["H"]['prb'] = "prb96_h.dat"
     files["H"]['plt'] = "plt96_h.dat"
     files["H"]['ccd'] = "ccd96_h.dat"
-    files["H"]['prc'] = "prc96_h.dat"  # available?
+    files["H"]['prc'] = "prc96_h.dat"
     files["H"]['pls'] = "pls_H_14.dat"
     files["H"]['prs'] = "prs_H_14.dat"
     files["H"]['fis'] = "sxrfil14.dat"
     files["H"]['brs'] = "brs05360.dat"
-    files["He"] = {}
+    files["He"] = {}   #2
     files["He"]['acd'] = "acd96_he.dat"
     files["He"]['scd'] = "scd96_he.dat"
     files["He"]['prb'] = "prb96_he.dat"
@@ -930,7 +962,33 @@ def adas_files_dict():
     files["He"]['prs'] = "prs_He_14.dat"
     files["He"]['fis'] = "sxrfil14.dat"
     files["He"]['brs'] = "brs05360.dat"
-    files["C"] = {}
+    files["Li"] = {}   #3
+    files["Li"]['acd'] = "acd96_li.dat"
+    files["Li"]['scd'] = "scd96_li.dat"
+    files["Li"]['ccd'] = "ccd89_li.dat"
+    files["Li"]['prb'] = "prb96_li.dat"
+    files["Li"]['plt'] = "plt96_li.dat"
+    files["Li"]['prc'] = "prc89_li.dat"
+    files["Li"]['pls'] = "pls89_li.dat"
+    files["Be"] = {}   #4
+    files["Be"]['acd'] = "acd96_be.dat"
+    files["Be"]['scd'] = "scd96_be.dat"
+    files["Be"]['prb'] = "prb96_be.dat"
+    files["Be"]['plt'] = "plt96_be.dat"
+    files["Be"]['ccd'] = "ccd89_be.dat"
+    files["Be"]['prc'] = "prc89_be.dat"
+    files["Be"]['pls'] = "plsx5_be.dat"
+    files["Be"]['prs'] = "prsx5_be.dat"
+    files["B"] = {}   #5
+    files["B"]['acd'] = "acd89_b.dat"
+    files["B"]['scd'] = "scd89_b.dat"
+    files["B"]['ccd'] = "ccd89_b.dat"
+    files["B"]['prb'] = "prb89_b.dat"
+    files["B"]['plt'] = "plt89_b.dat"
+    files["B"]['prc'] = "prc89_b.dat"
+    files["B"]['pls'] = "plsx5_b.dat"
+    files["B"]['prs'] = "prsx5_b.dat"
+    files["C"] = {}    #6
     files["C"]['acd'] = "acd96_c.dat"
     files["C"]['scd'] = "scd96_c.dat"
     files["C"]['prb'] = "prb96_c.dat"
@@ -941,9 +999,10 @@ def adas_files_dict():
     files["C"]['prs'] = "prs_C_14.dat"
     files["C"]['fis'] = "sxrfil14.dat"
     files["C"]['brs'] = "brs05360.dat"
-    files["N"] = {}
+    files["N"] = {}    #7
     files["N"]['acd'] = "acd96_n.dat"
     files["N"]['scd'] = "scd96_n.dat"
+    files["N"]['ccd'] = "ccd89_n.dat"
     files["N"]['prb'] = "prb96_n.dat"
     files["N"]['plt'] = "plt96_n.dat"
     files["N"]['pls'] = "plsx8_n.dat"
@@ -951,39 +1010,26 @@ def adas_files_dict():
     files["N"]['fis'] = "sxrfilD1.dat"
     files["N"]['brs'] = "brs05360.dat"
     files["N"]['ccd'] = "ccd96_n.dat"
-    files["F"] = {}
-    files["F"]['acd'] = "acd00_f.dat"
-    files["F"]['scd'] = "scd00_f.dat"
-    files["F"]['prb'] = "prb00_f.dat"
-    files["F"]['plt'] = "plt00_f.dat"
+    files["O"] = {}    #8
+    files["O"]['acd'] = "acd96_o.dat"
+    files["O"]['scd'] = "scd96_o.dat"
+    files["O"]['ccd'] = "ccd89_o.dat"
+    files["O"]['prb'] = "prb96_o.dat"
+    files["O"]['plt'] = "plt96_o.dat"
+    files["O"]['pls'] = "plsx5_o.dat"
+    files["O"]['prs'] = "prsx5_o.dat"
+    files["F"] = {}    #9
+    files["F"]['acd'] = "acd89_f.dat"
+    files["F"]['scd'] = "scd89_f.dat"
+    files["F"]['ccd'] = "ccd89_f.dat"
+    files["F"]['prb'] = "prb89_f.dat"
+    files["F"]['plt'] = "plt89_f.dat"
     files["F"]['fis'] = "sxrfil14.dat"
     files["F"]['brs'] = "brs05360.dat"
     files["F"]['pls'] = "pls_F_14.dat"
     files["F"]['prs'] = "prs_F_14.dat"
-    files["F"]['ccd'] = "ccd89_f.dat"
     files["F"]['prc'] = "prc89_f.dat"
-    files["Ar"] = {}
-    files["Ar"]['acd'] = "acd00_ar.dat"
-    files["Ar"]['scd'] = "scd00_ar.dat"
-    files["Ar"]['prb'] = "prb00_ar.dat"
-    files["Ar"]['plt'] = "plt00_ar.dat"
-    files["Ar"]['ccd'] = "ccd89_ar.dat"
-    files["Ar"]['prc'] = "prc89_ar.dat"
-    files["Ar"]['pls'] = "pls_Ar_14.dat"
-    files["Ar"]['prs'] = "prs_Ar_14.dat"
-    files["Ar"]['fis'] = "sxrfil14.dat"
-    files["Ar"]['brs'] = "brs05360.dat"
-    files["Fe"] = {}
-    files["Fe"]['acd'] = "acd00_fe.dat"
-    files["Fe"]['scd'] = "scd00_fe.dat"
-    files["Fe"]['prb'] = "prb00_fe.dat"
-    files["Fe"]['plt'] = "plt00_fe.dat"
-    files["Fe"]['pls'] = "pls_Fe_14.dat"
-    files["Fe"]['prs'] = "prs_Fe_14.dat"
-    files["Fe"]['fis'] = "sxrfil14.dat"
-    files["Fe"]['brs'] = "brs05360.dat"
-    files["Fe"]['ccd'] = "ccd89_f.dat"
-    files["Ne"] = {}
+    files["Ne"] = {}   #10
     files["Ne"]['acd'] = "acd96_ne.dat"
     files["Ne"]['scd'] = "scd96_ne.dat"
     files["Ne"]['prb'] = "prb96_ne.dat"
@@ -994,17 +1040,7 @@ def adas_files_dict():
     files["Ne"]['prs'] = "prsx8_ne.dat"
     files["Ne"]['fis'] = "sxrfilD1.dat"
     files["Ne"]['brs'] = "brs05360.dat"
-    files["Si"] = {}
-    files["Si"]['acd'] = "acd00_si.dat"
-    files["Si"]['scd'] = "scd00_si.dat"
-    files["Si"]['prb'] = "prb00_si.dat"
-    files["Si"]['plt'] = "plt97_si.dat"
-    files["Si"]['pls'] = "pls_Si_14.dat"
-    files["Si"]['prs'] = "prs_Si_14.dat"
-    files["Si"]['fis'] = "sxrfil14.dat"
-    files["Si"]['brs'] = "brs05360.dat"
-    files["Si"]['ccd'] = "ccd89_si.dat"
-    files["Al"] = {}
+    files["Al"] = {}    #13
     files["Al"]['acd'] = "acd00_al.dat"
     files["Al"]['scd'] = "scd00_al.dat"
     files["Al"]['prb'] = "prb00_al.dat"
@@ -1015,7 +1051,28 @@ def adas_files_dict():
     files["Al"]['prs'] = "prs_Al_14.dat"
     files["Al"]['fis'] = "sxrfil14.dat"
     files["Al"]['brs'] = "brs05360.dat"
-    files["Ca"] = {}
+    files["Si"] = {}     #14
+    files["Si"]['acd'] = "acd00_si.dat"
+    files["Si"]['scd'] = "scd00_si.dat"
+    files["Si"]['prb'] = "prb00_si.dat"
+    files["Si"]['plt'] = "plt97_si.dat"
+    files["Si"]['pls'] = "pls_Si_14.dat"
+    files["Si"]['prs'] = "prs_Si_14.dat"
+    files["Si"]['fis'] = "sxrfil14.dat"
+    files["Si"]['brs'] = "brs05360.dat"
+    files["Si"]['ccd'] = "ccd89_si.dat"
+    files["Ar"] = {}     #18
+    files["Ar"]['acd'] = "acd00_ar.dat"
+    files["Ar"]['scd'] = "scd00_ar.dat"
+    files["Ar"]['prb'] = "prb00_ar.dat"
+    files["Ar"]['plt'] = "plt00_ar.dat"
+    files["Ar"]['ccd'] = "ccd89_ar.dat"
+    files["Ar"]['prc'] = "prc89_ar.dat"
+    files["Ar"]['pls'] = "pls_Ar_14.dat"
+    files["Ar"]['prs'] = "prs_Ar_14.dat"
+    files["Ar"]['fis'] = "sxrfil14.dat"
+    files["Ar"]['brs'] = "brs05360.dat"
+    files["Ca"] = {}     #20
     files["Ca"]['acd'] = "acd85_ca.dat"
     files["Ca"]['scd'] = "scd85_ca.dat"
     files["Ca"]['ccd'] = "ccd89_w.dat"  # file not available, use first 20 ion stages using Foster scaling
@@ -1025,7 +1082,17 @@ def adas_files_dict():
     files["Ca"]['prs'] = "prs_Ca_14.dat"
     files["Ca"]['fis'] = "sxrfil14.dat"
     files["Ca"]['brs'] = "brs05360.dat"
-    files["Ni"] = {}
+    files["Fe"] = {}     #26
+    files["Fe"]['acd'] = "acd89_fe.dat"
+    files["Fe"]['scd'] = "scd89_fe.dat"
+    files["Fe"]['prb'] = "prb89_fe.dat"
+    files["Fe"]['plt'] = "plt89_fe.dat"
+    files["Fe"]['pls'] = "pls_Fe_14.dat"
+    files["Fe"]['prs'] = "prs_Fe_14.dat"
+    files["Fe"]['fis'] = "sxrfil14.dat"
+    files["Fe"]['brs'] = "brs05360.dat"
+    files["Fe"]['ccd'] = "ccd89_fe.dat"
+    files["Ni"] = {}     #28
     files["Ni"]['acd'] = "acd00_ni.dat"
     files["Ni"]['scd'] = "scd00_ni.dat"
     files["Ni"]['prb'] = "prb00_ni.dat"
@@ -1035,14 +1102,31 @@ def adas_files_dict():
     files["Ni"]['fis'] = "sxrfil14.dat"
     files["Ni"]['brs'] = "brs05360.dat"
     files["Ni"]['ccd'] = "ccd89_ni.dat"
-    files["Mo"] = {}
+    files["Kr"] = {}     #36
+    files["Kr"]['acd'] = "acd89_kr.dat"
+    files["Kr"]['scd'] = "scd89_kr.dat"
+    files["Kr"]['ccd'] = "ccd89_kr.dat"
+    files["Kr"]['prb'] = "prb89_kr.dat"
+    files["Kr"]['plt'] = "plt89_kr.dat"
+    files["Kr"]['pls'] = "plsx5_kr.dat"
+    files["Kr"]['prs'] = "prsx5_kr.dat"
+    files["Mo"] = {}     #42
     files["Mo"]['acd'] = "acd89_mo.dat"
     files["Mo"]['scd'] = "scd89_mo.dat"
     files["Mo"]['ccd'] = "ccd89_mo.dat"
     files["Mo"]['plt'] = "plt89_mo.dat"
     files["Mo"]['prb'] = "prb89_mo.dat"
     files["Mo"]['prc'] = "prc89_mo.dat"
-    files["W"] = {}
+    files["Xe"] = {}     #56
+    files["Xe"]['acd'] = "acd89_xe.dat"
+    files["Xe"]['scd'] = "scd89_xe.dat"
+    files["Xe"]['ccd'] = "ccd89_xe.dat"
+    files["Xe"]['plt'] = "plt89_xe.dat"
+    files["Xe"]['prb'] = "prb89_xe.dat"
+    files["Xe"]['prs'] = "prsx1_xe.dat"
+    files["Xe"]['pls'] = "prsx1_xe.dat"
+    files["Xe"]['prc'] = "prc89_xe.dat"
+    files["W"] = {}     #74
     files["W"]['acd'] = "acd89_w.dat"
     files["W"]['scd'] = "scd89_w.dat"
     files["W"]['prb'] = "prb89_w.dat"

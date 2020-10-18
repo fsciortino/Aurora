@@ -3,6 +3,13 @@ import numpy as np
 from scipy.interpolate import interp1d
 from omfit_commonclasses.utils_math import atomic_element
 from . import atomic
+import omfit_eqdsk
+from scipy.integrate import cumtrapz
+import matplotlib.pyplot as plt
+from colradpy import colradpy
+plt.ion()
+from scipy import constants
+
 
 def compute_rad(imp, rhop, time, imp_dens, ne, Te,
                 n0 = None, nD = None, nBckg=None, main_ion_AZ=(2,1), bckg_imp_AZ=(12,6),
@@ -264,3 +271,283 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
             radsxr[:,no] += radsxr[:,Z_imp]
 
     return res
+
+
+
+
+
+def radiation_model(imp,rhop, ne_cm3, Te_eV, gfilepath,
+                         n0_cm3=None, nz_cm3=None, frac=None, plot=False):
+    '''
+    Model radiation from a fixed-impurity-fraction model or from detailed impurity density
+    profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), 
+    calculating radiation terms over the radius and integrated over the plasma cross section. 
+
+    INPUTS:
+    -------
+    imp : str (nr,)
+        Impurity ion symbol, e.g. 'W'
+    rhop : array (nr,)
+        Sqrt of normalized poloidal flux array from the axis outwards
+    ne_cm3 : array (nr,)
+        Electron density in cm^-3 units.
+    Te_eV : array (nr,)
+        Electron temperature in eV
+    gfilepath : str
+        name of gfile to be loaded for equilibrium.
+    n0_cm3 : array (nr,), optional
+        Background ion density (H,D or T). If provided, charge exchange (CX) 
+        recombination is included in the calculation of charge state fractional 
+        abundances. 
+    nz_cm3 : array (nr,nz), optional
+        Impurity charge state densities in cm^-3 units. Fractional abundancies can 
+        alternatively be specified via the `frac` parameter for a constant-fraction
+        impurity model across the radius. If provided, nz_cm3 is used. 
+    frac : float, optional
+        Fractional abundance, with respect to ne, of the chosen impurity. 
+        The same fraction is assumed across the radial profile. If left to None,
+        nz_cm3 must be given. 
+    plot : bool, optional
+        If True, plot a number of diagnostic figures. 
+
+    OUTPUTS:
+    -------
+    res : dict
+        Dictionary containing results of radiation model.     
+    '''
+    if nz_cm3 is None:
+        assert frac is not None
+    
+    # limit all considerations to inside LCFS
+    ne_cm3 = ne_cm3[rhop<1.]
+    Te_eV = Te_eV[rhop<1.]
+    
+    if n0_cm3 is not None: n0_cm3 = n0_cm3[rhop<1.]
+    rhop = rhop[rhop<1.]
+
+    # load ionization and recombination rates
+    filetypes = ['acd','scd']
+    if n0_cm3 is not None:
+        filetypes.append('ccd')
+    
+    if nz_cm3 is None:
+        # obtain fractional abundances via a constant-fraction model 
+        atom_data = atomic.get_all_atom_data(imp,filetypes)
+        
+        # get_frac_abundances takes inputs in m^-3 and eV
+        logTe, fz, ax = atomic.get_frac_abundances(atom_data, ne_cm3*1e6, Te_eV,rho=rhop, plot=plot)
+        if n0_cm3 is not None:
+            # compute result with CX and overplot
+            logTe, fz, ax = atomic.get_frac_abundances(atom_data, ne_cm3*1e6, Te_eV,rho=rhop, plot=plot,ls='--',
+                                                              include_cx=True, n0_by_ne=n0_cm3/ne_cm3,ax=ax)
+
+        # Impurity densities
+        nz_cm3 = frac * ne_cm3[None,:,None] * fz[None,:,:]  # (time,nZ,space)
+    else:
+        # set input nz_cm3 into the right shape for compute_rad: (time,space,nz)
+        nz_cm3 = nz_cm3[None,:,:]
+
+    Z_imp = nz_cm3.shape[-1] -1  # don't include neutral stage
+    
+    # D/T ion density
+    nD = ne_cm3[None,:]
+
+    # basic total radiated power
+    rad = compute_rad(imp, rhop, [1.0], nz_cm3.transpose(0,2,1), ne_cm3[None,:], Te_eV[None,:],
+                                         n0=n0_cm3, nD=nD, 
+                                         prad_flag=True, thermal_cx_rad_flag=False, 
+                                         spectral_brem_flag=False, sxr_flag=False, 
+                                         main_ion_brem_flag=True)
+
+    # create results dictionary
+    res = {}
+    res['rhop'] = rhop
+    
+    # radiation terms -- converted from W/cm^3 to W/m^3
+    res['line_rad_dens'] = rad['impurity_radiation'][0,:Z_imp-1,:]*1e6  # no line radiation from fully-stripped impurity
+    res['brems_dens'] = rad['impurity_radiation'][0,Z_imp,:]*1e6
+    res['cont_rad_dens'] = rad['impurity_radiation'][0,Z_imp+1,:]*1e6
+    #res['brems_imp_dens'] = rad['impurity_radiation'][0,Z_imp+2,:]*1e6
+    res['rad_tot_dens'] = rad['impurity_radiation'][0,Z_imp+3,:]*1e6
+    
+    # Load equilibrium
+    geqdsk = omfit_eqdsk.OMFITgeqdsk(gfilepath)
+
+    # get flux surface volumes and coordinates
+    grhop = np.sqrt(geqdsk['fluxSurfaces']['geo']['rhon'])
+    gvol = geqdsk['fluxSurfaces']['geo']['vol']
+    #gR = geqdsk['fluxSurfaces']['geo']['R'][::-1]
+    
+    # interpolate on our grid
+    vol = interp1d(grhop, gvol)(rhop)
+    dvol = np.concatenate(([0.],np.diff(vol)))
+    #Rgrid = interp1d(grhop, gR)(rhop)
+
+    #plt.figure()
+    #plt.plot(grhop, gvol)
+    #plt.xlabel(r'$\rho_p$')
+    #plt.ylabel('Volume [m]')
+    
+    # cumulative integral over all volume
+    res['line_rad'] = cumtrapz(res['line_rad_dens'], dvol, initial=0.)
+    res['line_rad_tot'] = cumtrapz(res['line_rad_dens'].sum(0), dvol, initial=0.)
+    res['brems'] = cumtrapz(res['brems_dens'], dvol, initial=0.)
+    res['cont_rad'] = cumtrapz(res['cont_rad_dens'], dvol, initial=0.)
+    #res['brems_imp'] = cumtrapz(res['brems_imp_dens'], dvol, initial=0.)
+    res['rad_tot'] = cumtrapz(res['rad_tot_dens'], dvol, initial=0.)
+
+    res['Prad'] = np.sum(res['rad_tot'])
+    print(f'Total {imp} radiated power: {res["Prad"]/1e6:.3f} MW')
+
+    # calculate average charge state Z across radius
+    res['Z_avg'] = np.sum(np.arange(fz.shape[1])[:,None] * fz.T, axis=0)
+    
+    if plot:
+        # plot power in MW/m^3
+        fig,ax = plt.subplots()
+        ax.plot(rhop, res['line_rad_dens'].sum(0)/1e6, label=r'$P_{rad,line}$')
+        ax.plot(rhop, res['brems_dens']/1e6, label=r'$P_{brems}$')
+        ax.plot(rhop, res['cont_rad_dens']/1e6, label=r'$P_{cont}$')
+        ax.plot(rhop, res['rad_tot_dens']/1e6, label=r'$P_{rad,tot}$')
+        ax.set_xlabel(r'$\rho_p$')
+        ax.set_ylabel(r'$P_{rad}$ [$MW/m^3$]')
+        ax.legend().set_draggable(True)
+        
+        # plot power in MW 
+        fig,ax = plt.subplots()
+        ax.plot(rhop, res['line_rad'].sum(0)/1e6, label=r'$P_{rad,line}$')
+        ax.plot(rhop, res['brems']/1e6, label=r'$P_{brems}$')
+        ax.plot(rhop, res['cont_rad']/1e6, label=r'$P_{cont}$')
+        ax.plot(rhop, res['rad_tot']/1e6, label=r'$P_{rad,tot}$')
+        
+        ax.set_xlabel(r'$\rho_p$')
+        ax.set_ylabel(r'$P_{rad}$ [MW]')
+        ax.legend().set_draggable(True)
+
+        # power per charge state
+        fig,ax = plt.subplots()
+        for cs in np.arange(res['line_rad_dens'].shape[0]):
+            ax.plot(rhop, res['line_rad_dens'][cs,:]/1e6, label=imp+fr'$^{{{cs+1}+}}$')
+        ax.set_xlabel(r'$\rho_p$')
+        ax.set_ylabel(r'$P_{rad}$ [MW]')
+        ax.legend().set_draggable(True)
+
+        # plot average Z over radius
+        fig,ax = plt.subplots()
+        ax.plot(rhop, res['Z_avg'])
+        ax.set_xlabel(r'$\rho_p$')
+        ax.set_ylabel(r'$\langle Z \rangle$')
+    
+    return res
+
+
+
+
+
+
+def adf04_files():
+    ''' Collection of trust-worthy ADAS ADF04 files. 
+    This function will be moved and expanded in ColRadPy in the near future. 
+    '''
+    files = {}
+    files['Ca'] = {}
+    files['Ca']['Ca8+'] = 'mglike_lfm14#ca8.dat'
+    files['Ca']['Ca9+'] = 'nalike_lgy09#ca9.dat'
+    files['Ca']['Ca10+'] = 'nelike_lgy09#ca10.dat'
+    files['Ca']['Ca11+'] = 'flike_mcw06#ca11.dat'
+    files['Ca']['Ca14+'] = 'clike_jm19#ca14.dat'
+    files['Ca']['Ca15+'] = 'blike_lgy12#ca15.dat'
+    files['Ca']['Ca16+'] = 'belike_lfm14#ca16.dat'
+    files['Ca']['Ca17+'] = 'lilike_lgy10#ca17.dat'
+    files['Ca']['Ca18+'] = 'helike_adw05#ca18.dat'
+
+    return files
+
+
+
+
+def get_pec_prof(ion, cs, rhop, ne_cm3, Te_eV, lam_nm=1.8705, lam_width_nm=0.002, meta_idxs=[0],
+                 adf04_repo = os.path.expanduser('~')+'/adf04_files/ca/ca_adf04_adas/',
+                 pec_threshold=1e-20, phot2energy=True, plot=True):
+    '''
+    Compute radial profile for Photon Emissivity Coefficients (PEC) for lines within the chosen
+    wavelength range using the ColRadPy package. This is an alternative to the option of using 
+    the :py:method:atomic.read_adf15() function to read PEC data from an ADAS ADF-15 file and 
+    interpolate results on ne,Te grids. 
+
+    INPUTS:
+    -------
+    ion : str
+        Ion atomic symbol
+    cs : str
+        Charge state, given in format like 'Ca18+'
+    rhop : array (nr,)
+        Srt of normalized poloidal flux radial array
+    ne_cm3 : array (nr,)
+        Electron density in cm^-3 units
+    Te_eV : array (nr,)
+        Electron temperature in eV units
+    lam_nm : float
+        Center of the wavelength region of interest [nm]
+    lam_width_nm : float
+        Width of the wavelength region of interest [nm]
+    meta_idxs : list of integers
+        List of levels in ADF04 file to be treated as metastable states. 
+    adf04_repo : str
+        Location where ADF04 file from :py:method:adf04_files() should be fetched.
+    prec_threshold : float
+        Minimum value of PECs to be considered, in photons.cm^3/s  
+    phot2energy : bool
+        If True, results are converted from photons.cm^3/s to W.cm^3
+    plot : bool
+        If True, plot lines profiles and total
+
+    OUTPUTS:
+    -------
+    pec_tot_prof : array (nr,)
+        Radial profile of PEC intensity, in units of photons.cm^3/s (if phot2energy=False) or 
+        W.cm^3 depending (if phot2energy=True). 
+    '''
+    files = adf04_files()
+
+    filepath = adf04_repo+files[ion][cs]
+    
+    crm = colradpy(filepath, meta_idxs, Te_eV, ne_cm3,temp_dens_pair=True,
+                   use_recombination=False,
+                   use_recombination_three_body=False)
+    
+    crm.make_ioniz_from_reduced_ionizrates()
+    crm.suppliment_with_ecip()
+    crm.make_electron_excitation_rates()
+    crm.populate_cr_matrix()   # time consuming step
+    crm.solve_quasi_static()
+
+    lams = crm.data['processed']['wave_vac']
+    lam_sel_idxs = np.where((lams>lam_nm-lam_width_nm/2.)&(lams<lam_nm+lam_width_nm/2.))[0]
+    _lam_sel_nm = lams[lam_sel_idxs]
+
+    pecs = crm.data['processed']['pecs'][lam_sel_idxs,0,:]  # 0 index is for excitation component
+    pecs_sel_idxs = np.where((np.max(pecs,axis=1)<pec_threshold))[0]
+    pecs_sel = pecs[pecs_sel_idxs,:]
+    lam_sel_nm = _lam_sel_nm[pecs_sel_idxs]
+    
+    # calculate total PEC profile
+    pec_tot_prof = np.sum(pecs_sel,axis=0)
+
+    if phot2energy:
+        # convert from photons.cm^3/s to W.cm^3
+        mults = constants.h * constants.c / (lam_sel_nm*1e-9)
+        pecs_sel *= mults[:,None]
+        pec_tot_prof *= mults[:,None]
+        
+    if plot:
+        fig,ax = plt.subplots()
+        for ll in np.arange(len(lam_sel_nm)):
+            ax.plot(rhop, pecs_sel[ll,:], label=fr'$\lambda={lam_sel_nm[ll]:.5f}$ nm')
+        ax.plot(rhop, pec_tot_prof, lw=3.0, c='k', label='Total')
+        fig.suptitle(fr'$\lambda={lam_nm} \pm {lam_width_nm/2.}$ nm')
+        ax.set_xlabel(r'$\rho_p$')
+        ax.set_ylabel('PEC [W cm$^3$]' if phot2energy else 'PEC [ph cm$^3$ s$^{-1}$]')
+        ax.legend(loc='best').set_draggable(True)
+
+    return pec_tot_prof
