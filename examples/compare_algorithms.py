@@ -230,13 +230,15 @@ for ii,cc in zip(np.arange(nz.shape[1]),colors):
     a_plot.plot(asim.rhop_grid, nz_2[-1,ii,:].T, c=cc, ls='--')
 
     #########
-    #factor = np.max(nz_2)/np.max(nz_3)   # why do we need this factor?
-    #a_plot.plot(asim.rhop_grid, factor* nz_3[-1,ii,:].T, c=cc, ls=':')
+    factor = np.max(nz_2)/np.max(nz_3)   # why do we need this factor?
+    print(f'Factor: {factor}')
+    a_plot.plot(asim.rhop_grid, factor* nz_3[-1,ii,:].T, c=cc, ls=':')
+    #a_plot.plot(asim.rhop_grid, nz_3[-1,ii,:].T, c=cc, ls=':')
     ########
     a_legend.plot([],[],c=cc,label=labels[ii],ls='-')
 a_legend.plot([],[], c='k', ls='-',lw=2, label='Original')
 a_legend.plot([],[], c='k', ls='--',lw=2, label='Linder w/o n')
-#a_legend.plot([],[], c='k', ls=':',lw=2, label='Linder w/ n')
+a_legend.plot([],[], c='k', ls=':',lw=2, label='Linder w/ n')
 
 a_legend.legend(loc='best').set_draggable(True)
 a_plot.set_xlabel(r'$\rho_p$')

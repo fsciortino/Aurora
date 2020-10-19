@@ -293,9 +293,12 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   ! nt is the solution of the TDMA
   real*8 ::  nt(ir), a(ir), b(ir), c(ir), d(ir)
 
+  ! radial profile of recycling edge source
+  REAL*8 :: srcl(ir)
+  
   !REAL*8   :: nd(ir)  ! neutral diffusion
   !REAL*8   :: nv(ir)  ! neutral convection
-  
+
   !     **************************************************
   !     ** Time CENTERED TREATMENT in radial coordinate **
   !     ** LACKNER METHOD IN Z                          **
@@ -321,12 +324,16 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
      rclw = 0.d0
      flx_rcl = 0.d0
   endif
+
+  ! Radial profile of recycling source should be close to the wall
+  ! Set it to be the same as the input (valve) source -- this may need revision:
+  srcl = sint
   
   ! select whether neutrals should be evolved
   ns = 2
   if (evolveneut) ns = 1
 
-  
+
   ! ----- First half time step: direction up --------------------|
   ! Externally provided neutrals
   if (ns.eq.1) then
@@ -335,14 +342,14 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
 
      do i=1,ir
         b(i)    = b(i) + dt*s(i,1)
-        d(i)    = d(i) + dt*(flxtot*sint(i) + flx_rcl* sint(i)) !srcl(i)) 
+        d(i)    = d(i) + dt*(flxtot*sint(i) + flx_rcl*srcl(i)) 
      enddo
      call TDMA(a, b, c, d, ir, nt)
   else
      nt = 0.d0
      ! radial profile of neutrals (given as input)
      do i=1,ir
-        rn(i,1) = flxtot*sint(i) + flx_rcl* sint(i) !srcl(i)
+        rn(i,1) = flxtot*sint(i) + flx_rcl* srcl(i)
      end do
   endif
   
@@ -397,10 +404,9 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
           dt, fall_outsol, dv, rr, a, b, c, d)
           
      do i=1,ir
-        d(i)    = d(i) - dt*nt(i)*s(i,1) + dt*(flxtot*sint(i) + flx_rcl* sint(i)) !srcl(i)
+        d(i)    = d(i) - dt*nt(i)*s(i,1) + dt*(flxtot*sint(i) + flx_rcl* srcl(i))
      enddo
      call TDMA(a, b, c, d, ir, rn(:,1))
-     
   endif
     
   ! ----- Calculate ionization rate -----------------------------|

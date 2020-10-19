@@ -1,4 +1,4 @@
-! aurora - a modern impurity transport forward model
+! aurora - a modern radial impurity transport forward model
 ! Copyright (c) 2020 Francesco Sciortino
 
 subroutine run(  &
