@@ -16,103 +16,107 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
                 sxr_pls_file=None, sxr_prs_file=None, 
                 prad_flag=False,thermal_cx_rad_flag=False, spectral_brem_flag=False,
                 sxr_flag=False, main_ion_brem_flag=False):
-    ''' Calculate radiation terms corresponding to a simulation result. 
+    '''Calculate radiation terms corresponding to a simulation result. 
     Results are in SI units (NB: inputs are not).
     
-    Result can be conveniently plotted with a time-slider using, for example, 
-    
-    zmax = imp_dens.shape[1]  # number of charge states (including neutrals)
-    rad = res['impurity_radiation'][:,:zmax,:]   # no fully-stripped line radiation, so use zmax rather than zmax+1
-    aurora.slider_plot(rhop,time, rad.transpose(1,2,0)/1e6,
-                               xlabel=r'$\rho_p$', ylabel='time [s]', zlabel=r'$P_{rad}$ [$MW$]', plot_sum=True,
-                               labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]-1)])
+    Result can be conveniently plotted with a time-slider using, for example
+
+    .. code-block:: python
+
+        zmax = imp_dens.shape[1]  # number of charge states (including neutrals)
+        rad = res['impurity_radiation'][:,:zmax,:]   # no fully-stripped line radiation
+        aurora.slider_plot(rhop,time, rad.transpose(1,2,0)/1e6,
+            xlabel=r'$\\rho_p$', ylabel='time [s]', 
+            zlabel=r'$P_{rad}$ [$MW$]',
+            plot_sum=True,
+            labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]-1)])
 
     Note that, when sxr_flag=True, SXR radiation will be computed using the default ADAS 'pls' and 'prs' files
     (line and continuum radiation) given by the atomic.adas_files_dict() unless the sxr_pls_file and sxr_prs_file
     parameters are provided. 
 
-    INPUTS
-    -----------
-    imp : str
-         Impurity symbol, e.g. Ca, F, W
-    rhop : array (space,)
-         Sqrt of poloidal flux radial grid of simulation output. 
-    time : array (time,)
-         Time array of simulation output.
-    imp_dens : array (time, nZ, space)
-        Dictionary with impurity density result, as given by run_aurora() method.
-    ne : array (time,space) [cm^-3]
-        Electron density on the output grids.
-    Te : array (time,space) [eV]
-        Electron temperature on the output grids.
-    ------- OPTIONAL
-    n0 : array(time,space), optional [cm^-3]
-         Background neutral density (assumed of hydrogen-isotopes). 
-         This is only used if 
-    nD : array (time,space), optional [cm^-3]
-         Main ion density. This is only used if main_ion_brem_flag=True.
-         Note that the impurity density of imp_dens times its Z value is internally 
-         automatically subtracted from this main ion density. 
-    nBckg : array (time,space), optional [cm^-3]
-         Background impurity density. This is only used if main_ion_brem_flag=True.
-         Note that this can be of any impurity for which atomic data is available. The atomic 
-         symbol of this ion is taken to be 'bckg_imp_name'. 
-    main_ion_AZ : 2-tuple, optional
-        Mass number (number of neutrons+protons in nucleus) and Z for the main ion 
-        (background) species. Default is (1,1), corresponding to hydrogen. 
-        This is only used if main_ion_brem_flag=sxr_flag=True.
-    bckg_imp_AZ : 2-tuple, optional
-        Mass number (number of neutrons+protons in nucleus) and Z for the background 
-        impurity species. Default is (12,6), corresponding to carbon.
-        This is only used if main_ion_brem_flag=sxr_flag=True.
-        Note that atomic data must be available for this calculation to be possible. 
-    sxr_pls_file : str
-        ADAS file used for SXR line radiation calculation if sxr_flag=True. If left to None, the 
-        default in atomic.adas_files_dict() is used. 
-    sxr_prs_file : str
-        ADAS file used for SXR continuum radiation calculation if sxr_flag=True. If left to None, 
-        the default in atomic.adas_files_dict() is used. 
-    ------ FLAGS
-    prad_flag : bool, optional
-        If True, total radiation is computed (for each charge state and their sum)
-    thermal_cx_rad_flag : bool, optional
-        If True, thermal charge exchange radiation is computed.
-    spectral_brem_flag : bool, optional
-        If True, spectral bremstrahlung is computed (based on available 'brs' ADAS file)
-    sxr_flag : bool, optional
-        If True, soft x-ray radiation is computed (for the given 'pls','prs' ADAS files)
-    main_ion_brem_flag : bool, optional
-        If True, main ion bremstrahlung (all contributions) is computed. 
-        This is currently incomplete and untested!!
+    *All radiation outputs are given in W * cm^-3, consistently with units of cm^-3 given for inputs.*
 
-    OUTPUTS
-    --------------
-    res : dict
-        Dictionary containing the radiation terms, depending on the activated flags. 
-        If all flags were on, the dictionary would include
-        {'impurity_radiation','spectral_bremsstrahlung','sxr_radiation'}
-        The structure of each of these arrays is the same as in STRAHL (here with Python indexing):
+    Args:
+        imp : str
+             Impurity symbol, e.g. Ca, F, W
+        rhop : array (space,)
+             Sqrt of poloidal flux radial grid of simulation output. 
+        time : array (time,)
+             Time array of simulation output.
+        imp_dens : array (time, nZ, space)
+            Dictionary with impurity density result, as given by :py:func:`~aurora.run_aurora` method.
+        ne : array (time,space) [cm^-3]
+            Electron density on the output grids.
+        Te : array (time,space) [eV]
+            Electron temperature on the output grids.
 
-        ** impurity_radiation and sxr_radiation **
-        index 0: total line radiation of neutral impurity
-        index 1: total line radiation of singly ionised impurity
-        ....
-        index n-1: total line radiation of hydrogen-like ion
-        index n: bremsstrahlung due to electron scattering at main ion (if requested)
-        index n+1: total continuum radiation of impurity (bremsstrahlung and recombination continua)
-        index n+2: bremsstrahlung due to electron scattering at impurity
-        index n+3: total radiation of impurity (and main ion, if set in Xx.atomdat)
+        Optional: 
+        n0 : array(time,space), optional [cm^-3]
+             Background neutral density (assumed of hydrogen-isotopes). 
+             This is only used if 
+        nD : array (time,space), optional [cm^-3]
+             Main ion density. This is only used if main_ion_brem_flag=True.
+             Note that the impurity density of imp_dens times its Z value is internally 
+             automatically subtracted from this main ion density. 
+        nBckg : array (time,space), optional [cm^-3]
+             Background impurity density. This is only used if main_ion_brem_flag=True.
+             Note that this can be of any impurity for which atomic data is available. The atomic 
+             symbol of this ion is taken to be 'bckg_imp_name'. 
+        main_ion_AZ : 2-tuple, optional
+            Mass number (number of neutrons+protons in nucleus) and Z for the main ion 
+            (background) species. Default is (1,1), corresponding to hydrogen. 
+            This is only used if main_ion_brem_flag=sxr_flag=True.
+        bckg_imp_AZ : 2-tuple, optional
+            Mass number (number of neutrons+protons in nucleus) and Z for the background 
+            impurity species. Default is (12,6), corresponding to carbon.
+            This is only used if main_ion_brem_flag=sxr_flag=True.
+            Note that atomic data must be available for this calculation to be possible. 
+        sxr_pls_file : str
+            ADAS file used for SXR line radiation calculation if sxr_flag=True. If left to None, the 
+            default in :py:func:`~aurora.atomic.adas_files_dict` is used. 
+        sxr_prs_file : str
+            ADAS file used for SXR continuum radiation calculation if sxr_flag=True. If left to None, 
+            the default in :py:func:`~aurora.atomic.adas_files_dict` is used. 
 
-        ** spectral_bremsstrahlung **
-        index 0: = 0
-        index 1: bremsstrahlung due to electron scattering at singly ionised impurity
-        ....
-        index n: bremsstrahlung due to electron scattering at fully ionised impurity
-        index n+1: bremsstrahlung due to electron scattering at main ion
-        index n+2: total bremsstrahlung of impurity (and main ion, if set in Xx.atomdat)
+        Flags:
+        prad_flag : bool, optional
+            If True, total radiation is computed (for each charge state and their sum)
+        thermal_cx_rad_flag : bool, optional
+            If True, thermal charge exchange radiation is computed.
+        spectral_brem_flag : bool, optional
+            If True, spectral bremstrahlung is computed (based on available 'brs' ADAS file)
+        sxr_flag : bool, optional
+            If True, soft x-ray radiation is computed (for the given 'pls','prs' ADAS files)
+        main_ion_brem_flag : bool, optional
+            If True, main ion bremstrahlung (all contributions) is computed. 
 
+    Returns:
+        res : dict
+            Dictionary containing the radiation terms, depending on the activated flags.
+            The structure of this output is intentionally left to be the same as in STRAHL
+            for convenience. 
+    
+            If all flags were on, the dictionary would include
+            {'impurity_radiation','spectral_bremsstrahlung','sxr_radiation'}
 
-    All radiation outputs are given in W * cm^-3, consistently with units of cm^-3 given for inputs.
+            Impurity_radiation and sxr_radiation:
+            index 0: total line radiation of neutral impurity
+            index 1: total line radiation of singly ionised impurity
+            ....
+            index n-1: total line radiation of hydrogen-like ion
+            index n: bremsstrahlung due to electron scattering at main ion (if requested)
+            index n+1: total continuum radiation of impurity (bremsstrahlung and recombination continua)
+            index n+2: bremsstrahlung due to electron scattering at impurity
+            index n+3: total radiation of impurity (and main ion, if set in Xx.atomdat)
+
+            Spectral_bremsstrahlung:
+            index 0: = 0
+            index 1: bremsstrahlung due to electron scattering at singly ionised impurity
+            ....
+            index n: bremsstrahlung due to electron scattering at fully ionised impurity
+            index n+1: bremsstrahlung due to electron scattering at main ion
+            index n+2: total bremsstrahlung of impurity (and main ion, if set in Xx.atomdat)
 
     '''
     res = {}
@@ -278,42 +282,39 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
 
 def radiation_model(imp,rhop, ne_cm3, Te_eV, gfilepath,
                          n0_cm3=None, nz_cm3=None, frac=None, plot=False):
-    '''
-    Model radiation from a fixed-impurity-fraction model or from detailed impurity density
+    '''Model radiation from a fixed-impurity-fraction model or from detailed impurity density
     profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), 
     calculating radiation terms over the radius and integrated over the plasma cross section. 
 
-    INPUTS:
-    -------
-    imp : str (nr,)
-        Impurity ion symbol, e.g. 'W'
-    rhop : array (nr,)
-        Sqrt of normalized poloidal flux array from the axis outwards
-    ne_cm3 : array (nr,)
-        Electron density in cm^-3 units.
-    Te_eV : array (nr,)
-        Electron temperature in eV
-    gfilepath : str
-        name of gfile to be loaded for equilibrium.
-    n0_cm3 : array (nr,), optional
-        Background ion density (H,D or T). If provided, charge exchange (CX) 
-        recombination is included in the calculation of charge state fractional 
-        abundances. 
-    nz_cm3 : array (nr,nz), optional
-        Impurity charge state densities in cm^-3 units. Fractional abundancies can 
-        alternatively be specified via the `frac` parameter for a constant-fraction
-        impurity model across the radius. If provided, nz_cm3 is used. 
-    frac : float, optional
-        Fractional abundance, with respect to ne, of the chosen impurity. 
-        The same fraction is assumed across the radial profile. If left to None,
-        nz_cm3 must be given. 
-    plot : bool, optional
-        If True, plot a number of diagnostic figures. 
+    Args:
+        imp : str (nr,)
+            Impurity ion symbol, e.g. W
+        rhop : array (nr,)
+            Sqrt of normalized poloidal flux array from the axis outwards
+        ne_cm3 : array (nr,)
+            Electron density in cm^-3 units.
+        Te_eV : array (nr,)
+            Electron temperature in eV
+        gfilepath : str
+            name of gfile to be loaded for equilibrium.
+        n0_cm3 : array (nr,), optional
+            Background ion density (H,D or T). If provided, charge exchange (CX) 
+            recombination is included in the calculation of charge state fractional 
+            abundances. 
+        nz_cm3 : array (nr,nz), optional
+            Impurity charge state densities in cm^-3 units. Fractional abundancies can 
+            alternatively be specified via the :param:frac parameter for a constant-fraction
+            impurity model across the radius. If provided, nz_cm3 is used. 
+        frac : float, optional
+            Fractional abundance, with respect to ne, of the chosen impurity. 
+            The same fraction is assumed across the radial profile. If left to None,
+            nz_cm3 must be given. 
+        plot : bool, optional
+            If True, plot a number of diagnostic figures. 
 
-    OUTPUTS:
-    -------
-    res : dict
-        Dictionary containing results of radiation model.     
+    Returns:
+        res : dict
+            Dictionary containing results of radiation model.     
     '''
     if nz_cm3 is None:
         assert frac is not None
@@ -446,7 +447,7 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, gfilepath,
 
 
 def adf04_files():
-    ''' Collection of trust-worthy ADAS ADF04 files. 
+    '''Collection of trust-worthy ADAS ADF04 files. 
     This function will be moved and expanded in ColRadPy in the near future. 
     '''
     files = {}
@@ -469,44 +470,41 @@ def adf04_files():
 def get_pec_prof(ion, cs, rhop, ne_cm3, Te_eV, lam_nm=1.8705, lam_width_nm=0.002, meta_idxs=[0],
                  adf04_repo = os.path.expanduser('~')+'/adf04_files/ca/ca_adf04_adas/',
                  pec_threshold=1e-20, phot2energy=True, plot=True):
-    '''
-    Compute radial profile for Photon Emissivity Coefficients (PEC) for lines within the chosen
+    '''Compute radial profile for Photon Emissivity Coefficients (PEC) for lines within the chosen
     wavelength range using the ColRadPy package. This is an alternative to the option of using 
     the :py:method:atomic.read_adf15() function to read PEC data from an ADAS ADF-15 file and 
     interpolate results on ne,Te grids. 
 
-    INPUTS:
-    -------
-    ion : str
-        Ion atomic symbol
-    cs : str
-        Charge state, given in format like 'Ca18+'
-    rhop : array (nr,)
-        Srt of normalized poloidal flux radial array
-    ne_cm3 : array (nr,)
-        Electron density in cm^-3 units
-    Te_eV : array (nr,)
-        Electron temperature in eV units
-    lam_nm : float
-        Center of the wavelength region of interest [nm]
-    lam_width_nm : float
-        Width of the wavelength region of interest [nm]
-    meta_idxs : list of integers
-        List of levels in ADF04 file to be treated as metastable states. 
-    adf04_repo : str
-        Location where ADF04 file from :py:method:adf04_files() should be fetched.
-    prec_threshold : float
-        Minimum value of PECs to be considered, in photons.cm^3/s  
-    phot2energy : bool
-        If True, results are converted from photons.cm^3/s to W.cm^3
-    plot : bool
-        If True, plot lines profiles and total
+    Args:
+        ion : str
+            Ion atomic symbol
+        cs : str
+            Charge state, given in format like 'Ca18+'
+        rhop : array (nr,)
+            Srt of normalized poloidal flux radial array
+        ne_cm3 : array (nr,)
+            Electron density in cm^-3 units
+        Te_eV : array (nr,)
+            Electron temperature in eV units
+        lam_nm : float
+            Center of the wavelength region of interest [nm]
+        lam_width_nm : float
+            Width of the wavelength region of interest [nm]
+        meta_idxs : list of integers
+            List of levels in ADF04 file to be treated as metastable states. 
+        adf04_repo : str
+            Location where ADF04 file from :py:method:adf04_files() should be fetched.
+        prec_threshold : float
+            Minimum value of PECs to be considered, in photons.cm^3/s  
+        phot2energy : bool
+            If True, results are converted from photons.cm^3/s to W.cm^3
+        plot : bool
+            If True, plot lines profiles and total
 
-    OUTPUTS:
-    -------
-    pec_tot_prof : array (nr,)
-        Radial profile of PEC intensity, in units of photons.cm^3/s (if phot2energy=False) or 
-        W.cm^3 depending (if phot2energy=True). 
+    Returns:
+        pec_tot_prof : array (nr,)
+            Radial profile of PEC intensity, in units of photons.cm^3/s (if phot2energy=False) or 
+            W.cm^3 depending (if phot2energy=True). 
     '''
     files = adf04_files()
 

@@ -308,10 +308,12 @@
 <span class="sd">        of space, time and potentially also ionization state. Users may give an initial state of each</span>
 <span class="sd">        ion charge state as an input.</span>
 
-<span class="sd">        Results can be conveniently visualized with time-slider using:</span>
+<span class="sd">        Results can be conveniently visualized with time-slider using</span>
 
-<span class="sd">            aurora.slider_plot(rhop,time, nz.transpose(1,2,0),   # charge states in first dimension</span>
-<span class="sd">                               xlabel=r&#39;$\rho_p$&#39;, ylabel=&#39;time [s]&#39;, </span>
+<span class="sd">        .. code-block:: python</span>
+
+<span class="sd">            aurora.slider_plot(rhop,time, nz.transpose(1,2,0),</span>
+<span class="sd">                               xlabel=r&#39;$\\rho_p$&#39;, ylabel=&#39;time [s]&#39;, </span>
 <span class="sd">                               zlabel=r&#39;$n_z$ [cm$^{-3}$]&#39;, plot_sum=True,</span>
 <span class="sd">                               labels=[f&#39;Ca$^{{{str(i)}}}$&#39; for i in np.arange(nz_w.shape[1]])</span>
 

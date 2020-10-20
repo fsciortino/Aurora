@@ -1,6 +1,4 @@
-'''Methods to create radial and time grids.
-
-sciortino, 2020
+'''Methods to create radial and time grids for aurora simulations.
 '''
 
 import matplotlib.pyplot as plt
@@ -9,44 +7,44 @@ from scipy.interpolate import interp1d
 from . import _aurora
 
 
-
-
 def create_radial_grid(namelist,plot=False):
-    ''' 
-    Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. 
+    '''Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. 
     The lim_sep parameters is additionally used if plotting is requested. 
 
     Radial mesh points are set to be equidistant in the coordinate $\rho$, with
+
+    .. math::
     
-    $\rho = \frac{r}{\Delta r_{centre}} + \frac{r_{edge}}{k+1} \left(\frac{1}{\Delta r_{edge}} +
-            - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}} \right)^{k+1}
+        \rho = \frac{r}{\Delta r_{centre}} + \frac{r_{edge}}{k+1} \left(\frac{1}{\Delta r_{edge}} \\
+               - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}} \right)^{k+1}
 
     The corresponding radial step size is 
-    $\Delta r = \left[\frac{1}{\Delta r_{centre}} + \left(\frac{1}{\Delta r_{edge}} +
-              - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}}\right)^k \right]^{-1}
+
+    .. math::
+
+        \Delta r &= \left[\frac{1}{\Delta r_{centre}} + \left(\frac{1}{\Delta r_{edge}} \\
+                  - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}}\right)^k \right]^{-1}
 
     See the STRAHL manual for details. 
 
-    INPUTS:
-    -------
-    namelist : dict
-         Dictionary containing aurora namelist. This function uses the K, dr_0, dr_1, rvol_lcfs 
-         and bound_sep parameters. Additionally, lim_sep is used if plotting is requested. 
-    plot : bool, optional
-         If True, plot the radial grid spacing vs. radial location. 
+    Args:
+        namelist : dict
+             Dictionary containing aurora namelist. This function uses the K, dr_0, dr_1, rvol_lcfs 
+             and bound_sep parameters. Additionally, lim_sep is used if plotting is requested. 
+        plot : bool, optional
+             If True, plot the radial grid spacing vs. radial location. 
 
-    OUTPUTS:
-    --------
-    rvol_grid : array
-        Volume-normalized grid used for aurora simulations.
-    pro : array
-        Normalized first derivatives of the radial grid, defined as 
-        pro = (drho/dr)/(2 d_rho) = rho'/(2 d_rho)
-    qpr : array
-        Normalized second derivatives of the radial grid, defined as 
-        qpr = (d^2 rho/dr^2)/(2 d_rho) = rho''/(2 d_rho)
-    prox_param : float
-        Grid parameter used for perpendicular loss rate at the last radial grid point. 
+    Returns:
+        rvol_grid : array
+            Volume-normalized grid used for aurora simulations.
+        pro : array
+            Normalized first derivatives of the radial grid, defined as 
+            pro = (drho/dr)/(2 d_rho) = rho'/(2 d_rho)
+        qpr : array
+            Normalized second derivatives of the radial grid, defined as 
+            qpr = (d^2 rho/dr^2)/(2 d_rho) = rho''/(2 d_rho)
+        prox_param : float
+            Grid parameter used for perpendicular loss rate at the last radial grid point. 
     '''
     
     K = namelist['K']
@@ -139,17 +137,22 @@ def create_radial_grid(namelist,plot=False):
 
 
 def create_time_grid(timing=None, plot=False):
-    ''' Create time grid for simulations using the Fortran implementation
+    '''Create time grid for simulations using the Fortran implementation
     of the time grid generator. 
 
-    INPUTS:
-    -------
-    timing : dict
-        Dictionary containing timing elements: 'times', 'dt_start','steps_per_cycle','dt_increase'
-        As in STRAHL, the last element in each of these arrays refers to sawtooth events. 
-    plot : bool
-        If True, plot time grid. 
+    Args:
+        timing : dict
+            Dictionary containing timing elements: 'times', 'dt_start', 'steps_per_cycle','dt_increase'
+            As in STRAHL, the last element in each of these arrays refers to sawtooth events. 
+        plot : bool
+            If True, plot time grid. 
 
+    Returns:
+        time : array
+            Computational time grid corresponding to :param:timing input.
+        save : array
+            Array of zeros and ones, where ones indicate that the time step will be stored in memory
+            in aurora simulations. Points corresponding to zeros will not be returned to spare memory. 
     '''
 
     _time, _save = _aurora.time_steps(
@@ -177,34 +180,34 @@ def create_time_grid(timing=None, plot=False):
 
     
 def create_time_grid_new(timing, verbose=False, plot=False):
-    '''
-    Define time base for Aurora based on user inputs
+    '''Define time base for Aurora based on user inputs
     This function reproduces the functionality of STRAHL's time_steps.f
     Refer to the STRAHL manual for definitions of the time grid
     
-    INPUTS:
-    ------
-    n : int
-        Number of elements in time definition arrays
-    t : array
-        Time vector of the time base changes
-    dtstart : array
-        dt value at the start of a cycle
-    itz : array
-        cycle length, i.e. number of time steps before increasing dt
-    tinc :
-        factor by which time steps should be increasing within a cycle
-    verbose : bool
-        If Trueprint to terminal a few extra info
+    Args:
+        n : int
+            Number of elements in time definition arrays
+        t : array
+            Time vector of the time base changes
+        dtstart : array
+            dt value at the start of a cycle
+        itz : array
+            cycle length, i.e. number of time steps before increasing dt
+        tinc :
+            factor by which time steps should be increasing within a cycle
+        verbose : bool
+            If Trueprint to terminal a few extra info
     
-    OUTPUTS:
-    --------
-    t_vals : array
-        Times in the time base [s]
-    i_save : array
-        Array of 0,1 values indicating at which times internal arrays should be stored/returned. 
+    Returns:
+        t_vals : array
+            Times in the time base [s]
+        i_save : array
+            Array of 0,1 values indicating at which times internal arrays should be stored/returned. 
 
-    THIS ISN'T FUNCTIONAL YET!
+    
+    ~~~~~~~~~~~ THIS ISN'T FUNCTIONAL YET! ~~~~~~~~~~~~
+
+
     '''
     t = np.array(timing['times'])
     dtstart = np.array(timing['dt_start'])
@@ -346,10 +349,29 @@ def create_time_grid_new(timing, verbose=False, plot=False):
 
 
 
-def get_HFS_LFS(geqdsk, rho_pol_arb=None):
+def get_HFS_LFS(geqdsk, rho_pol=None):
+    '''Get high-field-side (HFS) and low-field-side (LFS) major radii from the g-EQDSK data. 
+    This is useful to define the r_V grid outside of the LCFS. 
+    See the :py:func:`~aurora.get_rhopol_rV_mapping` for an application. 
 
-    if rho_pol_arb is None:
-        rho_pol_arb = np.linspace(0,1.2,70)
+    Args:
+        geqdsk : dict
+            Dictionary containing the g-EQDSK file as processed by the :py:mod:`omfit_eqdsk` 
+            package. 
+        rho_pol : array, optional
+            Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
+            corresponding r_V grid should be found. If left to None, an arbitrary grid will be 
+            created internally. 
+
+    Returns:
+        Rhfs : array
+            Major radius [m] on the HFS
+        Rlfs : array
+            Major radius [m] on the LFS
+
+    '''
+    if rho_pol is None:
+        rho_pol = np.linspace(0,1.2,70)
 
     R = geqdsk['AuxQuantities']['R']
     Z = geqdsk['AuxQuantities']['Z']
@@ -366,15 +388,15 @@ def get_HFS_LFS(geqdsk, rho_pol_arb=None):
     R = np.delete(R,[center-1,center])
     rho_mid = np.delete(rho_mid,[center-1,center])
 
-    Rhfs = np.interp(rho_pol_arb, -rho_mid[::-1],R[::-1])
-    Rlfs = np.interp(rho_pol_arb, rho_mid,R)
+    Rhfs = np.interp(rho_pol, -rho_mid[::-1],R[::-1])
+    Rlfs = np.interp(rho_pol, rho_mid,R)
 
     return Rhfs, Rlfs
 
 
 
 def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
-    ''' Compute arrays allowing 1-to-1 mapping of rho_pol and r_V, both inside and
+    '''Compute arrays allowing 1-to-1 mapping of rho_pol and r_V, both inside and
     outside the LCFS.
 
     r_V is defined as $\sqrt{V/(2 \pi^2 R_{axis}}$ inside the LCFS. Outside of it,
@@ -382,18 +404,30 @@ def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
     on the rho_pol grid (sqrt of normalized poloidal flux).
 
     Method:
-    #     r(rho,theta) = r0(rho) +  (r_lcfs(theta) - r0_lcfs) * scale
-    #     z(rho,theta) = z0      +  (z_lcfs(theta) - z0     ) * scale
-    #
-    #             r(rho,theta=0) - r(rho,theta=180)
-    #     scale = ----------------------------------
-    #             r_lcfs(theta=0)- r_lcfs(theta=180)
-    #
-    #     r0_lcfs = .5*(r_lcfs(theta=0)+ r_lcfs(theta=180))
-    #     r0(rho) = .5*(r(rho,theta=0) + r(rho,theta=180) )
+    
+    r(\rho,\theta) = r0(\rho) +  (r_lcfs(\theta) - r0_lcfs) * scale
+    z(\rho,\theta) = z0      +  (z_lcfs(\theta) - z0     ) * scale
+    scale = \frac{ r(\rho,\theta=0) - r(\rho,\theta=180)}{r_lcfs(\theta=0)- r_lcfs(\theta=180)}
+    r0_lcfs = .5*(r_lcfs(\theta=0)+ r_lcfs(\theta=180))
+    r0(\rho) = .5*(r(\rho,\theta=0) + r(\rho,\theta=180))
 
     The mapping between rho_pol and r_V allows one to interpolate inputs on a
     rho_pol grid onto the r_V grid (in cm) used internally by the code.
+
+    Args:
+        geqdsk : dict
+            Dictionary containing the g-EQDSK file as processed by the :py:module:`omfit_eqdsk` 
+            package. 
+        rho_pol : array, optional
+            Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
+            corresponding r_V grid should be found. If left to None, an arbitrary grid will be 
+            created internally. 
+
+    Returns:
+         rho_pol : array
+             Sqrt of normalized poloidal flux grid
+         r_V : array
+             Mapping of rho_pol to a radial grid defined in terms of normalized flux surface volume.
     '''
 
     if rho_pol is None:
@@ -489,8 +523,28 @@ def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
 
 
 
-def create_aurora_time_grid(timing=None, plot=False):
-    ''' Create time grid for simulations.
+def create_aurora_time_grid(timing, plot=False):
+    '''Create time grid for simulations using a Fortran routine for definitions. 
+    The same functionality is offered by :py:func:`~aurora.create_time_grid`, which however
+    is written in Python. This method is legacy code; it is recommended to use the other. 
+
+    Args:
+        timing : dict
+            Dictionary containing 
+            timing['times'],timing['dt_start'],timing['steps_per_cycle'],timing['dt_increase']
+            which define the start times to change dt values at, the dt values to start with,
+            the number of time steps before increasing the dt by dt_increase. 
+            The last value in each of these arrays is used for sawteeth, whenever these are
+            modelled, or else are ignored. This is the same time grid definition as used in STRAHL.
+        plot : bool, optional
+            If True, display the created time grid.
+
+    Returns:
+        time : array
+            Computational time grid corresponding to `timing` input.
+        save : array
+            Array of zeros and ones, where ones indicate that the time step will be stored in memory
+            in aurora simulations. Points corresponding to zeros will not be returned to spare memory.    
     '''
 
     _time, _save = _aurora.time_steps(
@@ -512,5 +566,4 @@ def create_aurora_time_grid(timing=None, plot=False):
         [ax.axvline(t,c='k',ls='--') for t in timing['times']]
         ax.set_xlim(time[0],time[-1])
 
-    else:
-        return time, save
+    return time, save

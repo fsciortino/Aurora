@@ -77,21 +77,16 @@ This function extrapolates in the SOL based on input options using the same meth
 <dl class="py method">
 <dt id="aurora.core.aurora_sim.run_aurora">
 <code class="sig-name descname">run_aurora</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">times_DV</span></em>, <em class="sig-param"><span class="n">D_z</span></em>, <em class="sig-param"><span class="n">V_z</span></em>, <em class="sig-param"><span class="n">nz_init</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">method</span><span class="o">=</span><span class="default_value">'old'</span></em>, <em class="sig-param"><span class="n">evolneut</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.run_aurora"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.run_aurora" title="Permalink to this definition">¶</a></dt>
-<dd><dl>
-<dt>Run a simulation using inputs in the given dictionary and D,v profiles as a function</dt><dd><p>of space, time and potentially also ionization state. Users may give an initial state of each
+<dd><p>Run a simulation using inputs in the given dictionary and D,v profiles as a function
+of space, time and potentially also ionization state. Users may give an initial state of each
 ion charge state as an input.</p>
-<p>Results can be conveniently visualized with time-slider using:</p>
-<blockquote>
-<div><dl class="simple">
-<dt>aurora.slider_plot(rhop,time, nz.transpose(1,2,0),   # charge states in first dimension</dt><dd><p>xlabel=r’$</p>
-</dd>
-</dl>
-</div></blockquote>
-</dd>
-<dt>ho_p$’, ylabel=’time [s]’, </dt><dd><blockquote>
-<div><p>zlabel=r’$n_z$ [cm$^{-3}$]’, plot_sum=True,
-labels=[f’Ca$^{{{str(i)}}}$’ for i in np.arange(nz_w.shape[1]])</p>
-</div></blockquote>
+<p>Results can be conveniently visualized with time-slider using</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">aurora</span><span class="o">.</span><span class="n">slider_plot</span><span class="p">(</span><span class="n">rhop</span><span class="p">,</span><span class="n">time</span><span class="p">,</span> <span class="n">nz</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+                   <span class="n">xlabel</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;$\rho_p$&#39;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;time [s]&#39;</span><span class="p">,</span> 
+                   <span class="n">zlabel</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;$n_z$ [cm$^{-3}$]&#39;</span><span class="p">,</span> <span class="n">plot_sum</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                   <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;Ca$^</span><span class="se">{{</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="se">}}</span><span class="s1">$&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nz_w</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+</pre></div>
+</div>
 <dl class="simple">
 <dt>Args:</dt><dd><dl class="simple">
 <dt>times_DV<span class="classifier">1D array</span></dt><dd><p>Array of times at which D_z and V_z profiles are given. (Note that it is assumed that
@@ -116,8 +111,6 @@ injection are neglected.</p>
 <dt>Returns:</dt><dd><dl class="simple">
 <dt>out<span class="classifier">list</span></dt><dd><p>List containing each particle reservoir of a simulation, i.e.
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out</p>
-</dd>
-</dl>
 </dd>
 </dl>
 </dd>
@@ -155,6 +148,1606 @@ nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = o
 </dd></dl>
 
 </div>
+<div class="section" id="module-aurora.atomic">
+<span id="aurora-atomic-module"></span><h2>aurora.atomic module<a class="headerlink" href="#module-aurora.atomic" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="aurora.atomic.CartesianGrid">
+<em class="property">class </em><code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">CartesianGrid</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">grids</span></em>, <em class="sig-param"><span class="n">values</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#CartesianGrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.CartesianGrid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Linear multivariate Cartesian grid interpolation in arbitrary dimensions
+This is a regular grid with equal spacing.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="aurora.atomic.adas_file">
+<em class="property">class </em><code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">adas_file</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filepath</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#adas_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.adas_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Read ADAS file in ADF11 format over the given ne, T.</p>
+<dl class="py method">
+<dt id="aurora.atomic.adas_file.load">
+<code class="sig-name descname">load</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#adas_file.load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.adas_file.load" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="aurora.atomic.adas_file.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fig</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">axes</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#adas_file.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.adas_file.plot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.adas_files_dict">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">adas_files_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#adas_files_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.adas_files_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Selections for ADAS files for Aurora runs and radiation calculations.
+This function can be called to fetch a set of default files, which can then be modified (e.g. to 
+use a new file for a specific SXR filter) before running a calculation.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.balance">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">balance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logTe_val</span></em>, <em class="sig-param"><span class="n">cs</span></em>, <em class="sig-param"><span class="n">n0_by_ne</span></em>, <em class="sig-param"><span class="n">logTe_</span></em>, <em class="sig-param"><span class="n">S</span></em>, <em class="sig-param"><span class="n">R</span></em>, <em class="sig-param"><span class="n">cx</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#balance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.balance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate balance of effective ionization, recombination and charge exchange at a given temperature.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.get_adas_ion_rad">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_adas_ion_rad</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ion_name</span></em>, <em class="sig-param"><span class="n">n_ion</span></em>, <em class="sig-param"><span class="n">logne_prof</span></em>, <em class="sig-param"><span class="n">logTe_prof</span></em>, <em class="sig-param"><span class="n">sxr</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_adas_ion_rad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_adas_ion_rad" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get ADAS estimate for total radiation in [M/m^3] for the given ion
+with the given (log) density and temperature profiles.</p>
+<p>If sxr=True, ‘prs’ files are used instead of ‘prb’ ones, thus giving SXR-filtered
+radiation for the SXR filter indicated by the atomic data dictionary.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.get_all_atom_data">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_all_atom_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">files</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_all_atom_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_all_atom_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Collect atomic data for a given impurity from all types of ADAS files available.</p>
+<dl class="simple">
+<dt>imp: str</dt><dd><p>Atomic symbol of impurity ion.</p>
+</dd>
+<dt>files<span class="classifier">list or array-like</span></dt><dd><p>ADAS file names to be fetched.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.get_atomdat_info">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_atomdat_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_atomdat_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_atomdat_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to identify location of ADAS atomic data in a generalized fashion
+and to obtain the list of file_types of interest.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.get_cooling_factors">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_cooling_factors</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">atom_data</span></em>, <em class="sig-param"><span class="n">logTe_</span></em>, <em class="sig-param"><span class="n">fz</span></em>, <em class="sig-param"><span class="n">ion_resolved</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_cooling_factors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_cooling_factors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate cooling coefficients from fz and prs,  pls (if these are available).
+Also plot the inverse of rate coefficients, which gives an estimate for relaxation times.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.get_cs_balance_terms">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_cs_balance_terms</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">atom_data</span></em>, <em class="sig-param"><span class="n">ne</span><span class="o">=</span><span class="default_value">5e+19</span></em>, <em class="sig-param"><span class="n">Te</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">maxTe</span><span class="o">=</span><span class="default_value">10000.0</span></em>, <em class="sig-param"><span class="n">include_cx</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_cs_balance_terms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_cs_balance_terms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get S, R and cx on the same logTe grid.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>atom_data<span class="classifier">dictionary of atomic ADAS files (only acd, scd are required; ccd is </span></dt><dd><p>necessary only if include_cx=True</p>
+</dd>
+<dt>ne<span class="classifier">float or array</span></dt><dd><p>Electron density in units of m^-3</p>
+</dd>
+<dt>Te<span class="classifier">float or array</span></dt><dd><p>Electron temperature in units of eV. If left to None, the Te grid
+given in the atomic data is used.</p>
+</dd>
+<dt>maxTe<span class="classifier">float</span></dt><dd><p>Maximum temperature of interest; only used if Te is left to None.</p>
+</dd>
+<dt>include_cx<span class="classifier">bool</span></dt><dd><p>If True, obtain charge exchange terms as well.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>logTe<span class="classifier">array (n_Te)</span></dt><dd><p>log10 Te grid on which atomic rates are given</p>
+</dd>
+<dt>logS, logR (,logcx): arrays (n_ne,n_Te)</dt><dd><p>atomic rates for effective ionization, radiative+dielectronic
+recombination (+ charge exchange, if requested). After exponentiation, all terms
+will be in units of s^-1.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.get_file_types">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_file_types</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_file_types"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_file_types" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns main types of ADAS atomic data of interest</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.get_frac_abundances">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_frac_abundances</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">atom_data</span></em>, <em class="sig-param"><span class="n">ne</span></em>, <em class="sig-param"><span class="n">Te</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">n0_by_ne</span><span class="o">=</span><span class="default_value">1e-05</span></em>, <em class="sig-param"><span class="n">include_cx</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rho</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rho_lbl</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ls</span><span class="o">=</span><span class="default_value">'-'</span></em>, <em class="sig-param"><span class="n">compute_rates</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_frac_abundances"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_frac_abundances" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate fractional abundances from ionization and recombination equilibrium.
+If include_cx=True, radiative recombination and thermal charge exchange are summed.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>atom_data<span class="classifier">dictionary of atomic ADAS files (only acd, scd are required; ccd is </span></dt><dd><p>necessary only if include_cx=True</p>
+</dd>
+<dt>ne<span class="classifier">float or array</span></dt><dd><p>Electron density in units of m^-3</p>
+</dd>
+<dt>Te<span class="classifier">float or array, optional</span></dt><dd><p>Electron temperature in units of eV. If left to None, the Te grid given in the 
+atomic data is used.</p>
+</dd>
+<dt>n0_by_ne: float or array, optional</dt><dd><p>Ratio of background neutral hydrogen to electron density, used if include_cx=True.</p>
+</dd>
+<dt>include_cx<span class="classifier">bool</span></dt><dd><p>If True, charge exchange with background thermal neutrals is included.</p>
+</dd>
+<dt>plot<span class="classifier">bool, optional</span></dt><dd><p>Show fractional abundances as a function of ne,Te profiles parameterization.</p>
+</dd>
+<dt>ax<span class="classifier">matplotlib.pyplot Axes instance</span></dt><dd><p>Axes on which to plot if plot=True. If False, it creates new axes</p>
+</dd>
+<dt>rho<span class="classifier">list or array, optional</span></dt><dd><p>Vector of radial coordinates on which ne,Te (and possibly n0_by_ne) are given. 
+This is only used for plotting, if given.</p>
+</dd>
+<dt>rho_lbl: str, optional</dt><dd><p>Label to be used for rho. If left to None, defaults to a general “rho”.</p>
+</dd>
+<dt>ls<span class="classifier">str, optional</span></dt><dd><p>Line style for plots. Continuous lines are used by default.</p>
+</dd>
+<dt>compute_rates<span class="classifier">bool</span></dt><dd><p>If True, compute rate coefficients for ionization/recombination equilibrium on top
+of fractional abundances (which should be the same regardless of the method used).</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>logTe<span class="classifier">array</span></dt><dd><p>log10 of electron temperatures as a function of which the fractional abundances and
+rate coefficients are given.</p>
+</dd>
+<dt>fz<span class="classifier">array, (space,nZ)</span></dt><dd><p>Fractional abundances across the same grid used by the input ne,Te values.</p>
+</dd>
+<dt>rate_coeff<span class="classifier">array, (space, nZ)</span></dt><dd><p>Rate coefficients in units of [s^-1].</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.gff_mean">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">gff_mean</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">Z</span></em>, <em class="sig-param"><span class="n">Te</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#gff_mean"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.gff_mean" title="Permalink to this definition">¶</a></dt>
+<dd><p>Total free-free gaunt factor yielding the total radiated bremsstrahlung power
+when multiplying with the result for gff=1.
+Data originally from Karzas &amp; Latter, extracted from STRAHL’s atomic_data.f.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.impurity_brems">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">impurity_brems</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">nz</span></em>, <em class="sig-param"><span class="n">ne</span></em>, <em class="sig-param"><span class="n">Te</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#impurity_brems"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.impurity_brems" title="Permalink to this definition">¶</a></dt>
+<dd><p>Impurity bremsstrahlung in units of mW/nm/sr/m^3.cm^3.</p>
+<p>This is only approximate and may not be very useful, since this contribution
+is already included in the continuum in x2.</p>
+<p>This estimate does not have the correct ne-dependence of the Gaunt factor… use with care!</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.interp_atom_prof">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">interp_atom_prof</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">atom_table</span></em>, <em class="sig-param"><span class="n">x_prof</span></em>, <em class="sig-param"><span class="n">y_prof</span></em>, <em class="sig-param"><span class="n">log_val</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">x_multiply</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#interp_atom_prof"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.interp_atom_prof" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fast interpolate atomic data in atom_table onto the x_prof and y_prof profiles.
+assume that x_prof, y_prof, x,y, table are all decadic logarithms
+and x_prof, y_prof are equally spaced(always for ADAS data)
+log_val bool: return natural logarithm of the data
+x_multiply bool: multiply output by 10**x_prof , it will not not multiplied if x_prof is None</p>
+<p>return data interpolated on shape(nt,nion,nr)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.main_ion_brems">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">main_ion_brems</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">Zi</span></em>, <em class="sig-param"><span class="n">ni</span></em>, <em class="sig-param"><span class="n">ne</span></em>, <em class="sig-param"><span class="n">Te</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#main_ion_brems"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.main_ion_brems" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main-ion bremsstrahlung in units of  mW/nm/sr/m^3.cm^3.</p>
+<p>It is likely better to calculate this from H/D/T plt files, which will have more accurate 
+Gaunt factors with the correct density dependence.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.null_space">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">null_space</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">A</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#null_space"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.null_space" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find null space of matrix A</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.plot_radiation_profs">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">plot_radiation_profs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">atom_data</span></em>, <em class="sig-param"><span class="n">nz_prof</span></em>, <em class="sig-param"><span class="n">logne_prof</span></em>, <em class="sig-param"><span class="n">logTe_prof</span></em>, <em class="sig-param"><span class="n">xvar</span></em>, <em class="sig-param"><span class="n">imp</span><span class="o">=</span><span class="default_value">'F'</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#plot_radiation_profs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.plot_radiation_profs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain profiles of predicted radiation.</p>
+<p>This function can be used to plot radial profiles (setting xvar to a radial grid)
+or profiles as a function of any variable on which the logne_prof and logTe_prof
+may depend.</p>
+<p>The variable :param:nz_prof may be a full description of impurity charge state densities
+(e.g. the output of Aurora), or profiles of fractional abundances from ionization
+equilibrium.</p>
+<p>Note that the variables :param:xvar (array) and :param:imp (str) are only needed if plotting is requested.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.plot_relax_time">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">plot_relax_time</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logTe</span></em>, <em class="sig-param"><span class="n">rate_coeff</span></em>, <em class="sig-param"><span class="n">ne_mean</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#plot_relax_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.plot_relax_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot relaxation time of the ionization equilibrium corresponding
+to the inverse of the given rate coefficients</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.read_adf15">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">read_adf15</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">order</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">Te_max</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ne_max</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot_log</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">plot_3d</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">recomb</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">pec_plot_min</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">pec_plot_max</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot_lines</span><span class="o">=</span><span class="default_value">[]</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#read_adf15"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.read_adf15" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read photon emissivity coefficients from an ADF15 file.</p>
+<p>Returns a dictionary whose keys are the wavelengths of the lines in
+angstroms. The value is an interp2d instance that will evaluate the PEC at
+a desired dens, temp.</p>
+<dl>
+<dt>Args:</dt><dd><dl class="simple">
+<dt>path<span class="classifier">str</span></dt><dd><p>Path to adf15 file to read.</p>
+</dd>
+<dt>order<span class="classifier">int, opt</span></dt><dd><p>Parameter to control the order of interpolation.</p>
+</dd>
+<dt>recomb<span class="classifier">bool, opt</span></dt><dd><p>If True, fetch recombination contributions to available lines. If False,
+fetch only ionization contributions.</p>
+</dd>
+</dl>
+<p>To plot PEC data:</p>
+<dl class="simple">
+<dt>plot_lines<span class="classifier">list</span></dt><dd><p>List of lines whose PEC data should be displayed. Lines should be identified
+by their wavelengths. The list of available wavelengths in a given file can be retrieved
+by first running this function ones, checking dictionary keys, and then requesting a
+plot of one (or more) of them.</p>
+</dd>
+<dt>plot_log<span class="classifier">bool</span></dt><dd><p>When plotting, set a log scale</p>
+</dd>
+<dt>plot_3d<span class="classifier">bool</span></dt><dd><p>Display PEC data as a 3D plot rather than a 2D one.</p>
+</dd>
+<dt>pec_plot_min<span class="classifier">float</span></dt><dd><p>Minimum value of PEC to visualize in a plot</p>
+</dd>
+<dt>pec_plot_max<span class="classifier">float</span></dt><dd><p>Maximum value of PEC to visualize in a plot</p>
+</dd>
+<dt>ax<span class="classifier">matplotlib axes instance</span></dt><dd><p>If not None, plot on this set of axes</p>
+</dd>
+<dt>Te_max<span class="classifier">float</span></dt><dd><p>Maximum Te value to plot when len(plot_lines)&gt;1</p>
+</dd>
+<dt>ne_max<span class="classifier">float</span></dt><dd><p>Maximum ne value to plot when len(plot_lines)&gt;1</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>pec_dict<span class="classifier">dict</span></dt><dd><p>Dictionary containing interpolation functions for each of the available lines of the
+indicated type (ionization or recombination). Each interpolation function takes as arguments
+the log-10 of ne and Te.</p>
+</dd>
+</dl>
+</dd>
+<dt>MWE:</dt><dd><p>path=’/home/sciortino/atomlib/atomdat_master/adf15/h/pju#h0.dat’
+pec = read_adf15(path, recomb=False)
+pec = read_adf15(path, plot_lines=[list(pec.keys())[0]], recomb=False)</p>
+</dd>
+</dl>
+<p>This function should work with PEC files produced via adas810 or adas218.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-aurora.radiation">
+<span id="aurora-radiation-module"></span><h2>aurora.radiation module<a class="headerlink" href="#module-aurora.radiation" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="aurora.radiation.adf04_files">
+<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">adf04_files</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#adf04_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.adf04_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Collection of trust-worthy ADAS ADF04 files. 
+This function will be moved and expanded in ColRadPy in the near future.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.radiation.compute_rad">
+<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">compute_rad</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">time</span></em>, <em class="sig-param"><span class="n">imp_dens</span></em>, <em class="sig-param"><span class="n">ne</span></em>, <em class="sig-param"><span class="n">Te</span></em>, <em class="sig-param"><span class="n">n0</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nD</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nBckg</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">main_ion_AZ</span><span class="o">=</span><span class="default_value">2, 1</span></em>, <em class="sig-param"><span class="n">bckg_imp_AZ</span><span class="o">=</span><span class="default_value">12, 6</span></em>, <em class="sig-param"><span class="n">sxr_pls_file</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">sxr_prs_file</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">prad_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">thermal_cx_rad_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">spectral_brem_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">sxr_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">main_ion_brem_flag</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#compute_rad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.compute_rad" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate radiation terms corresponding to a simulation result. 
+Results are in SI units (NB: inputs are not).</p>
+<p>Result can be conveniently plotted with a time-slider using, for example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">zmax</span> <span class="o">=</span> <span class="n">imp_dens</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># number of charge states (including neutrals)</span>
+<span class="n">rad</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;impurity_radiation&#39;</span><span class="p">][:,:</span><span class="n">zmax</span><span class="p">,:]</span>   <span class="c1"># no fully-stripped line radiation</span>
+<span class="n">aurora</span><span class="o">.</span><span class="n">slider_plot</span><span class="p">(</span><span class="n">rhop</span><span class="p">,</span><span class="n">time</span><span class="p">,</span> <span class="n">rad</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">/</span><span class="mf">1e6</span><span class="p">,</span>
+    <span class="n">xlabel</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;$\rho_p$&#39;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;time [s]&#39;</span><span class="p">,</span> 
+    <span class="n">zlabel</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;$P_</span><span class="si">{rad}</span><span class="s1">$ [$MW$]&#39;</span><span class="p">,</span>
+    <span class="n">plot_sum</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;Ca$^</span><span class="se">{{</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="se">}}</span><span class="s1">$&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nz_w</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)])</span>
+</pre></div>
+</div>
+<p>Note that, when sxr_flag=True, SXR radiation will be computed using the default ADAS ‘pls’ and ‘prs’ files
+(line and continuum radiation) given by the atomic.adas_files_dict() unless the sxr_pls_file and sxr_prs_file
+parameters are provided.</p>
+<p><em>All radiation outputs are given in W * cm^-3, consistently with units of cm^-3 given for inputs.</em></p>
+<dl>
+<dt>Args:</dt><dd><dl class="simple">
+<dt>imp<span class="classifier">str</span></dt><dd><p>Impurity symbol, e.g. Ca, F, W</p>
+</dd>
+<dt>rhop<span class="classifier">array (space,)</span></dt><dd><p>Sqrt of poloidal flux radial grid of simulation output.</p>
+</dd>
+<dt>time<span class="classifier">array (time,)</span></dt><dd><p>Time array of simulation output.</p>
+</dd>
+<dt>imp_dens<span class="classifier">array (time, nZ, space)</span></dt><dd><p>Dictionary with impurity density result, as given by <code class="xref py py-func docutils literal notranslate"><span class="pre">run_aurora()</span></code> method.</p>
+</dd>
+<dt>ne<span class="classifier">array (time,space) [cm^-3]</span></dt><dd><p>Electron density on the output grids.</p>
+</dd>
+<dt>Te<span class="classifier">array (time,space) [eV]</span></dt><dd><p>Electron temperature on the output grids.</p>
+</dd>
+</dl>
+<p>Optional: 
+n0 : array(time,space), optional [cm^-3]</p>
+<blockquote>
+<div><p>Background neutral density (assumed of hydrogen-isotopes). 
+This is only used if</p>
+</div></blockquote>
+<dl class="simple">
+<dt>nD<span class="classifier">array (time,space), optional [cm^-3]</span></dt><dd><p>Main ion density. This is only used if main_ion_brem_flag=True.
+Note that the impurity density of imp_dens times its Z value is internally 
+automatically subtracted from this main ion density.</p>
+</dd>
+<dt>nBckg<span class="classifier">array (time,space), optional [cm^-3]</span></dt><dd><p>Background impurity density. This is only used if main_ion_brem_flag=True.
+Note that this can be of any impurity for which atomic data is available. The atomic 
+symbol of this ion is taken to be ‘bckg_imp_name’.</p>
+</dd>
+<dt>main_ion_AZ<span class="classifier">2-tuple, optional</span></dt><dd><p>Mass number (number of neutrons+protons in nucleus) and Z for the main ion 
+(background) species. Default is (1,1), corresponding to hydrogen. 
+This is only used if main_ion_brem_flag=sxr_flag=True.</p>
+</dd>
+<dt>bckg_imp_AZ<span class="classifier">2-tuple, optional</span></dt><dd><p>Mass number (number of neutrons+protons in nucleus) and Z for the background 
+impurity species. Default is (12,6), corresponding to carbon.
+This is only used if main_ion_brem_flag=sxr_flag=True.
+Note that atomic data must be available for this calculation to be possible.</p>
+</dd>
+<dt>sxr_pls_file<span class="classifier">str</span></dt><dd><p>ADAS file used for SXR line radiation calculation if sxr_flag=True. If left to None, the 
+default in <a class="reference internal" href="#aurora.atomic.adas_files_dict" title="aurora.atomic.adas_files_dict"><code class="xref py py-func docutils literal notranslate"><span class="pre">adas_files_dict()</span></code></a> is used.</p>
+</dd>
+<dt>sxr_prs_file<span class="classifier">str</span></dt><dd><p>ADAS file used for SXR continuum radiation calculation if sxr_flag=True. If left to None, 
+the default in <a class="reference internal" href="#aurora.atomic.adas_files_dict" title="aurora.atomic.adas_files_dict"><code class="xref py py-func docutils literal notranslate"><span class="pre">adas_files_dict()</span></code></a> is used.</p>
+</dd>
+</dl>
+<p>Flags:
+prad_flag : bool, optional</p>
+<blockquote>
+<div><p>If True, total radiation is computed (for each charge state and their sum)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>thermal_cx_rad_flag<span class="classifier">bool, optional</span></dt><dd><p>If True, thermal charge exchange radiation is computed.</p>
+</dd>
+<dt>spectral_brem_flag<span class="classifier">bool, optional</span></dt><dd><p>If True, spectral bremstrahlung is computed (based on available ‘brs’ ADAS file)</p>
+</dd>
+<dt>sxr_flag<span class="classifier">bool, optional</span></dt><dd><p>If True, soft x-ray radiation is computed (for the given ‘pls’,’prs’ ADAS files)</p>
+</dd>
+<dt>main_ion_brem_flag<span class="classifier">bool, optional</span></dt><dd><p>If True, main ion bremstrahlung (all contributions) is computed.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl>
+<dt>res<span class="classifier">dict</span></dt><dd><p>Dictionary containing the radiation terms, depending on the activated flags.
+The structure of this output is intentionally left to be the same as in STRAHL
+for convenience.</p>
+<p>If all flags were on, the dictionary would include
+{‘impurity_radiation’,’spectral_bremsstrahlung’,’sxr_radiation’}</p>
+<p>Impurity_radiation and sxr_radiation:
+index 0: total line radiation of neutral impurity
+index 1: total line radiation of singly ionised impurity
+….
+index n-1: total line radiation of hydrogen-like ion
+index n: bremsstrahlung due to electron scattering at main ion (if requested)
+index n+1: total continuum radiation of impurity (bremsstrahlung and recombination continua)
+index n+2: bremsstrahlung due to electron scattering at impurity
+index n+3: total radiation of impurity (and main ion, if set in Xx.atomdat)</p>
+<p>Spectral_bremsstrahlung:
+index 0: = 0
+index 1: bremsstrahlung due to electron scattering at singly ionised impurity
+….
+index n: bremsstrahlung due to electron scattering at fully ionised impurity
+index n+1: bremsstrahlung due to electron scattering at main ion
+index n+2: total bremsstrahlung of impurity (and main ion, if set in Xx.atomdat)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.radiation.get_pec_prof">
+<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">get_pec_prof</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ion</span></em>, <em class="sig-param"><span class="n">cs</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">ne_cm3</span></em>, <em class="sig-param"><span class="n">Te_eV</span></em>, <em class="sig-param"><span class="n">lam_nm</span><span class="o">=</span><span class="default_value">1.8705</span></em>, <em class="sig-param"><span class="n">lam_width_nm</span><span class="o">=</span><span class="default_value">0.002</span></em>, <em class="sig-param"><span class="n">meta_idxs</span><span class="o">=</span><span class="default_value">[0]</span></em>, <em class="sig-param"><span class="n">adf04_repo</span><span class="o">=</span><span class="default_value">'/home/sciortino/adf04_files/ca/ca_adf04_adas/'</span></em>, <em class="sig-param"><span class="n">pec_threshold</span><span class="o">=</span><span class="default_value">1e-20</span></em>, <em class="sig-param"><span class="n">phot2energy</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#get_pec_prof"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.get_pec_prof" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute radial profile for Photon Emissivity Coefficients (PEC) for lines within the chosen
+wavelength range using the ColRadPy package. This is an alternative to the option of using 
+the :py:method:atomic.read_adf15() function to read PEC data from an ADAS ADF-15 file and 
+interpolate results on ne,Te grids.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>ion<span class="classifier">str</span></dt><dd><p>Ion atomic symbol</p>
+</dd>
+<dt>cs<span class="classifier">str</span></dt><dd><p>Charge state, given in format like ‘Ca18+’</p>
+</dd>
+<dt>rhop<span class="classifier">array (nr,)</span></dt><dd><p>Srt of normalized poloidal flux radial array</p>
+</dd>
+<dt>ne_cm3<span class="classifier">array (nr,)</span></dt><dd><p>Electron density in cm^-3 units</p>
+</dd>
+<dt>Te_eV<span class="classifier">array (nr,)</span></dt><dd><p>Electron temperature in eV units</p>
+</dd>
+<dt>lam_nm<span class="classifier">float</span></dt><dd><p>Center of the wavelength region of interest [nm]</p>
+</dd>
+<dt>lam_width_nm<span class="classifier">float</span></dt><dd><p>Width of the wavelength region of interest [nm]</p>
+</dd>
+<dt>meta_idxs<span class="classifier">list of integers</span></dt><dd><p>List of levels in ADF04 file to be treated as metastable states.</p>
+</dd>
+<dt>adf04_repo<span class="classifier">str</span></dt><dd><p>Location where ADF04 file from :py:method:adf04_files() should be fetched.</p>
+</dd>
+<dt>prec_threshold<span class="classifier">float</span></dt><dd><p>Minimum value of PECs to be considered, in photons.cm^3/s</p>
+</dd>
+<dt>phot2energy<span class="classifier">bool</span></dt><dd><p>If True, results are converted from photons.cm^3/s to W.cm^3</p>
+</dd>
+<dt>plot<span class="classifier">bool</span></dt><dd><p>If True, plot lines profiles and total</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>pec_tot_prof<span class="classifier">array (nr,)</span></dt><dd><p>Radial profile of PEC intensity, in units of photons.cm^3/s (if phot2energy=False) or 
+W.cm^3 depending (if phot2energy=True).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.radiation.radiation_model">
+<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">radiation_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">ne_cm3</span></em>, <em class="sig-param"><span class="n">Te_eV</span></em>, <em class="sig-param"><span class="n">gfilepath</span></em>, <em class="sig-param"><span class="n">n0_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nz_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">frac</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#radiation_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.radiation_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Model radiation from a fixed-impurity-fraction model or from detailed impurity density
+profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), 
+calculating radiation terms over the radius and integrated over the plasma cross section.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>imp<span class="classifier">str (nr,)</span></dt><dd><p>Impurity ion symbol, e.g. W</p>
+</dd>
+<dt>rhop<span class="classifier">array (nr,)</span></dt><dd><p>Sqrt of normalized poloidal flux array from the axis outwards</p>
+</dd>
+<dt>ne_cm3<span class="classifier">array (nr,)</span></dt><dd><p>Electron density in cm^-3 units.</p>
+</dd>
+<dt>Te_eV<span class="classifier">array (nr,)</span></dt><dd><p>Electron temperature in eV</p>
+</dd>
+<dt>gfilepath<span class="classifier">str</span></dt><dd><p>name of gfile to be loaded for equilibrium.</p>
+</dd>
+<dt>n0_cm3<span class="classifier">array (nr,), optional</span></dt><dd><p>Background ion density (H,D or T). If provided, charge exchange (CX) 
+recombination is included in the calculation of charge state fractional 
+abundances.</p>
+</dd>
+<dt>nz_cm3<span class="classifier">array (nr,nz), optional</span></dt><dd><p>Impurity charge state densities in cm^-3 units. Fractional abundancies can 
+alternatively be specified via the :param:frac parameter for a constant-fraction
+impurity model across the radius. If provided, nz_cm3 is used.</p>
+</dd>
+<dt>frac<span class="classifier">float, optional</span></dt><dd><p>Fractional abundance, with respect to ne, of the chosen impurity. 
+The same fraction is assumed across the radial profile. If left to None,
+nz_cm3 must be given.</p>
+</dd>
+<dt>plot<span class="classifier">bool, optional</span></dt><dd><p>If True, plot a number of diagnostic figures.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>res<span class="classifier">dict</span></dt><dd><p>Dictionary containing results of radiation model.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-aurora.grids_utils">
+<span id="aurora-grids-utils-module"></span><h2>aurora.grids_utils module<a class="headerlink" href="#module-aurora.grids_utils" title="Permalink to this headline">¶</a></h2>
+<p>Methods to create radial and time grids for aurora simulations.</p>
+<dl class="py function">
+<dt id="aurora.grids_utils.create_aurora_time_grid">
+<code class="sig-prename descclassname">aurora.grids_utils.</code><code class="sig-name descname">create_aurora_time_grid</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">timing</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/grids_utils.html#create_aurora_time_grid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.grids_utils.create_aurora_time_grid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create time grid for simulations using a Fortran routine for definitions. 
+The same functionality is offered by <code class="xref py py-func docutils literal notranslate"><span class="pre">create_time_grid()</span></code>, which however
+is written in Python. This method is legacy code; it is recommended to use the other.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>timing<span class="classifier">dict</span></dt><dd><p>Dictionary containing 
+timing[‘times’],timing[‘dt_start’],timing[‘steps_per_cycle’],timing[‘dt_increase’]
+which define the start times to change dt values at, the dt values to start with,
+the number of time steps before increasing the dt by dt_increase. 
+The last value in each of these arrays is used for sawteeth, whenever these are
+modelled, or else are ignored. This is the same time grid definition as used in STRAHL.</p>
+</dd>
+<dt>plot<span class="classifier">bool, optional</span></dt><dd><p>If True, display the created time grid.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>time<span class="classifier">array</span></dt><dd><p>Computational time grid corresponding to <cite>timing</cite> input.</p>
+</dd>
+<dt>save<span class="classifier">array</span></dt><dd><p>Array of zeros and ones, where ones indicate that the time step will be stored in memory
+in aurora simulations. Points corresponding to zeros will not be returned to spare memory.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.grids_utils.create_radial_grid">
+<code class="sig-prename descclassname">aurora.grids_utils.</code><code class="sig-name descname">create_radial_grid</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">namelist</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/grids_utils.html#create_radial_grid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.grids_utils.create_radial_grid" title="Permalink to this definition">¶</a></dt>
+<dd><dl>
+<dt>Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. </dt><dd><p>The lim_sep parameters is additionally used if plotting is requested.</p>
+<p>Radial mesh points are set to be equidistant in the coordinate $</p>
+</dd>
+</dl>
+<p>ho$, with</p>
+<blockquote>
+<div><div class="system-message">
+<p class="system-message-title">System Message: WARNING/2 (<span class="docutils literal"></span>)</p>
+<p>latex exited with error
+[stdout]
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=latex)
+ restricted \write18 enabled.
+entering extended mode
+(./math.tex
+LaTeX2e &lt;2017/01/01&gt; patch level 3
+Babel &lt;3.9r&gt; and hyphenation patterns for 81 language(s) loaded.
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2014/09/29 v1.4h Standard LaTeX document class
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/size12.clo))
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/inputenc.sty
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/utf8.def
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/t1enc.dfu)
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/ot1enc.dfu)
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/omsenc.dfu)))
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?' option.
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsmath/amstext.sty
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsmath/amsgen.sty))
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsmath/amsbsy.sty)
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsmath/amsopn.sty))
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amscls/amsthm.sty)
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsfonts/amssymb.sty
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsfonts/amsfonts.sty))
+
+! LaTeX Error: File `anyfontsize.sty' not found.
+
+Type X to quit or &lt;RETURN&gt; to proceed,
+or enter new name. (Default extension: sty)
+
+Enter file name: 
+! Emergency stop.
+&lt;read *&gt; 
+         
+l.8 \usepackage
+               {bm}^^M
+No pages of output.
+Transcript written on math.log.
+</p>
+</div>
+</div></blockquote>
+<p>ho = 
+rac{r}{Delta r_{centre}} + 
+rac{r_{edge}}{k+1} left(
+rac{1}{Delta r_{edge}} </p>
+<blockquote>
+<div><ul class="simple">
+<li></li>
+</ul>
+</div></blockquote>
+<p>rac{1}{Delta r_{centre}} 
+ight) left(
+rac{r}{r_{edge}} 
+ight)^{k+1}</p>
+<blockquote>
+<div><p>The corresponding radial step size is</p>
+<div class="system-message">
+<p class="system-message-title">System Message: WARNING/2 (<span class="docutils literal">\Delta r &amp;= \left[</span>)</p>
+<p>latex exited with error
+[stdout]
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=latex)
+ restricted \write18 enabled.
+entering extended mode
+(./math.tex
+LaTeX2e &lt;2017/01/01&gt; patch level 3
+Babel &lt;3.9r&gt; and hyphenation patterns for 81 language(s) loaded.
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2014/09/29 v1.4h Standard LaTeX document class
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/size12.clo))
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/inputenc.sty
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/utf8.def
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/t1enc.dfu)
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/ot1enc.dfu)
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/base/omsenc.dfu)))
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?' option.
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsmath/amstext.sty
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsmath/amsgen.sty))
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsmath/amsbsy.sty)
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsmath/amsopn.sty))
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amscls/amsthm.sty)
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsfonts/amssymb.sty
+(/home/sciortino/usr/lib/texlive/texmf-dist/tex/latex/amsfonts/amsfonts.sty))
+
+! LaTeX Error: File `anyfontsize.sty' not found.
+
+Type X to quit or &lt;RETURN&gt; to proceed,
+or enter new name. (Default extension: sty)
+
+Enter file name: 
+! Emergency stop.
+&lt;read *&gt; 
+         
+l.8 \usepackage
+               {bm}^^M
+No pages of output.
+Transcript written on math.log.
+</p>
+</div>
+</div></blockquote>
+<p>rac{1}{Delta r_{centre}} + left(
+rac{1}{Delta r_{edge}} </p>
+<blockquote>
+<div><ul class="simple">
+<li></li>
+</ul>
+</div></blockquote>
+<p>rac{1}{Delta r_{centre}} 
+ight) left(
+rac{r}{r_{edge}}
+ight)^k 
+ight]^{-1}</p>
+<blockquote>
+<div><p>See the STRAHL manual for details.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>namelist<span class="classifier">dict</span></dt><dd><p>Dictionary containing aurora namelist. This function uses the K, dr_0, dr_1, rvol_lcfs 
+and bound_sep parameters. Additionally, lim_sep is used if plotting is requested.</p>
+</dd>
+<dt>plot<span class="classifier">bool, optional</span></dt><dd><p>If True, plot the radial grid spacing vs. radial location.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>rvol_grid<span class="classifier">array</span></dt><dd><p>Volume-normalized grid used for aurora simulations.</p>
+</dd>
+<dt>pro<span class="classifier">array</span></dt><dd><p>Normalized first derivatives of the radial grid, defined as 
+pro = (drho/dr)/(2 d_rho) = rho’/(2 d_rho)</p>
+</dd>
+<dt>qpr<span class="classifier">array</span></dt><dd><p>Normalized second derivatives of the radial grid, defined as 
+qpr = (d^2 rho/dr^2)/(2 d_rho) = rho’’/(2 d_rho)</p>
+</dd>
+<dt>prox_param<span class="classifier">float</span></dt><dd><p>Grid parameter used for perpendicular loss rate at the last radial grid point.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.grids_utils.create_time_grid">
+<code class="sig-prename descclassname">aurora.grids_utils.</code><code class="sig-name descname">create_time_grid</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">timing</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/grids_utils.html#create_time_grid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.grids_utils.create_time_grid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create time grid for simulations using the Fortran implementation
+of the time grid generator.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>timing<span class="classifier">dict</span></dt><dd><p>Dictionary containing timing elements: ‘times’, ‘dt_start’, ‘steps_per_cycle’,’dt_increase’
+As in STRAHL, the last element in each of these arrays refers to sawtooth events.</p>
+</dd>
+<dt>plot<span class="classifier">bool</span></dt><dd><p>If True, plot time grid.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>time<span class="classifier">array</span></dt><dd><p>Computational time grid corresponding to :param:timing input.</p>
+</dd>
+<dt>save<span class="classifier">array</span></dt><dd><p>Array of zeros and ones, where ones indicate that the time step will be stored in memory
+in aurora simulations. Points corresponding to zeros will not be returned to spare memory.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.grids_utils.create_time_grid_new">
+<code class="sig-prename descclassname">aurora.grids_utils.</code><code class="sig-name descname">create_time_grid_new</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">timing</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/grids_utils.html#create_time_grid_new"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.grids_utils.create_time_grid_new" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define time base for Aurora based on user inputs
+This function reproduces the functionality of STRAHL’s time_steps.f
+Refer to the STRAHL manual for definitions of the time grid</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>n<span class="classifier">int</span></dt><dd><p>Number of elements in time definition arrays</p>
+</dd>
+<dt>t<span class="classifier">array</span></dt><dd><p>Time vector of the time base changes</p>
+</dd>
+<dt>dtstart<span class="classifier">array</span></dt><dd><p>dt value at the start of a cycle</p>
+</dd>
+<dt>itz<span class="classifier">array</span></dt><dd><p>cycle length, i.e. number of time steps before increasing dt</p>
+</dd>
+<dt>tinc :</dt><dd><p>factor by which time steps should be increasing within a cycle</p>
+</dd>
+<dt>verbose<span class="classifier">bool</span></dt><dd><p>If Trueprint to terminal a few extra info</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>t_vals<span class="classifier">array</span></dt><dd><p>Times in the time base [s]</p>
+</dd>
+<dt>i_save<span class="classifier">array</span></dt><dd><p>Array of 0,1 values indicating at which times internal arrays should be stored/returned.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>~~~~~~~~~~~ THIS ISN’T FUNCTIONAL YET! ~~~~~~~~~~~~</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.grids_utils.get_HFS_LFS">
+<code class="sig-prename descclassname">aurora.grids_utils.</code><code class="sig-name descname">get_HFS_LFS</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">geqdsk</span></em>, <em class="sig-param"><span class="n">rho_pol</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/grids_utils.html#get_HFS_LFS"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.grids_utils.get_HFS_LFS" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get high-field-side (HFS) and low-field-side (LFS) major radii from the g-EQDSK data. 
+This is useful to define the r_V grid outside of the LCFS. 
+See the <code class="xref py py-func docutils literal notranslate"><span class="pre">get_rhopol_rV_mapping()</span></code> for an application.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>geqdsk<span class="classifier">dict</span></dt><dd><p>Dictionary containing the g-EQDSK file as processed by the <code class="xref py py-mod docutils literal notranslate"><span class="pre">omfit_eqdsk</span></code> 
+package.</p>
+</dd>
+<dt>rho_pol<span class="classifier">array, optional</span></dt><dd><p>Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
+corresponding r_V grid should be found. If left to None, an arbitrary grid will be 
+created internally.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>Rhfs<span class="classifier">array</span></dt><dd><p>Major radius [m] on the HFS</p>
+</dd>
+<dt>Rlfs<span class="classifier">array</span></dt><dd><p>Major radius [m] on the LFS</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.grids_utils.get_rhopol_rV_mapping">
+<code class="sig-prename descclassname">aurora.grids_utils.</code><code class="sig-name descname">get_rhopol_rV_mapping</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">geqdsk</span></em>, <em class="sig-param"><span class="n">rho_pol</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/grids_utils.html#get_rhopol_rV_mapping"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.grids_utils.get_rhopol_rV_mapping" title="Permalink to this definition">¶</a></dt>
+<dd><dl>
+<dt>Compute arrays allowing 1-to-1 mapping of rho_pol and r_V, both inside and</dt><dd><p>outside the LCFS.</p>
+<p>r_V is defined as $sqrt{V/(2 pi^2 R_{axis}}$ inside the LCFS. Outside of it,
+we artificially expand the LCFS to fit true equilibrium at the midplane based
+on the rho_pol grid (sqrt of normalized poloidal flux).</p>
+<p>Method:</p>
+<p>r(</p>
+</dd>
+</dl>
+<p>ho,     heta) = r0(
+ho) +  (r_lcfs( heta) - r0_lcfs) * scale</p>
+<blockquote>
+<div><p>z(</p>
+</div></blockquote>
+<dl class="simple">
+<dt>ho,     heta) = z0      +  (z_lcfs(     heta) - z0     ) * scale</dt><dd><p>scale =</p>
+</dd>
+</dl>
+<p>rac{ r(
+ho,     heta=0) - r(
+ho,     heta=180)}{r_lcfs(      heta=0)- r_lcfs(        heta=180)}</p>
+<blockquote>
+<div><p>r0_lcfs = .5*(r_lcfs(       heta=0)+ r_lcfs(        heta=180))
+r0(</p>
+</div></blockquote>
+<p>ho) = .5*(r(
+ho,     heta=0) + r(
+ho,     heta=180))</p>
+<blockquote>
+<div><p>The mapping between rho_pol and r_V allows one to interpolate inputs on a
+rho_pol grid onto the r_V grid (in cm) used internally by the code.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>geqdsk<span class="classifier">dict</span></dt><dd><p>Dictionary containing the g-EQDSK file as processed by the <a href="#id1"><span class="problematic" id="id2">:py:module:`omfit_eqdsk`</span></a> 
+package.</p>
+</dd>
+<dt>rho_pol<span class="classifier">array, optional</span></dt><dd><p>Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
+corresponding r_V grid should be found. If left to None, an arbitrary grid will be 
+created internally.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>rho_pol<span class="classifier">array</span></dt><dd><p>Sqrt of normalized poloidal flux grid</p>
+</dd>
+<dt>r_V<span class="classifier">array</span></dt><dd><p>Mapping of rho_pol to a radial grid defined in terms of normalized flux surface volume.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+</div>
+<div class="section" id="module-aurora.coords">
+<span id="aurora-coords-module"></span><h2>aurora.coords module<a class="headerlink" href="#module-aurora.coords" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="aurora.coords.rV_vol_average">
+<code class="sig-prename descclassname">aurora.coords.</code><code class="sig-name descname">rV_vol_average</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">quant</span></em>, <em class="sig-param"><span class="n">r_V</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/coords.html#rV_vol_average"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.coords.rV_vol_average" title="Permalink to this definition">¶</a></dt>
+<dd><dl>
+<dt>Calculate a volume average of the given radially-dependent quantity on a r_V grid.</dt><dd><p>This function makes useof the fact that the r_V radial coordinate, defined as 
+r_V = sqrt{ V / (2 pi^2 R_{axis} },
+maps shaped volumes onto a circular geometry, making volume averaging a trivial 
+operation via
+langle Q</p>
+</dd>
+<dt>angle = Sigma_i Q(r_i) 2 pi Delta r_V</dt><dd><p>where $Delta r_V$ is the spacing between radial points in r_V.</p>
+<p>Note that if the input r_V coordinate is extended outside the LCFS,
+this function will return the effective volume average also in the SOL, since it is 
+agnostic to the presence of the LCFS.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>quant<span class="classifier">array, (space, …)</span></dt><dd><p>quantity that one wishes to volume-average. The first dimension must correspond to r_V,
+but other dimensions may be exist afterwards.</p>
+</dd>
+<dt>r_V<span class="classifier">array, (space,)</span></dt><dd><p>Radial r_V coordinate in cm units.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>quant_vol_avg<span class="classifier">array, (space, …)</span></dt><dd><p>Volume average of the quantity given as an input, in the same units as in the input</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.coords.rad_coord_transform">
+<code class="sig-prename descclassname">aurora.coords.</code><code class="sig-name descname">rad_coord_transform</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">name_in</span></em>, <em class="sig-param"><span class="n">name_out</span></em>, <em class="sig-param"><span class="n">geqdsk</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/coords.html#rad_coord_transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.coords.rad_coord_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform from one radial coordinate to another.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>x: array</dt><dd><p>input x coordinate</p>
+</dd>
+<dt>name_in: str</dt><dd><p>input x coordinate name (‘rhon’,’r_V’,’rhop’,’rhov’,’Rmid’,’rmid’,’roa’)</p>
+</dd>
+<dt>name_out: str</dt><dd><p>input x coordinate (‘rhon’, ‘r_V’, ‘rhop’,’rhov’,’Rmid’,’rmid’,’roa’)</p>
+</dd>
+<dt>geqdsk: dict</dt><dd><p>gEQDSK dictionary, as obtained from the omfit-eqdsk package.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><p>Conversion of <cite>x</cite> for the requested radial grid coordinate.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.coords.vol_average">
+<code class="sig-prename descclassname">aurora.coords.</code><code class="sig-name descname">vol_average</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">quant</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">method</span><span class="o">=</span><span class="default_value">'omfit'</span></em>, <em class="sig-param"><span class="n">geqdsk</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shot</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">time</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">return_geqdsk</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/coords.html#vol_average"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.coords.vol_average" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the volume average of the given radially-dependent quantity on a rhop grid.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>quant<span class="classifier">array, (space, …)</span></dt><dd><p>quantity that one wishes to volume-average. The first dimension must correspond to space,
+but other dimensions may be exist afterwards.</p>
+</dd>
+<dt>rhop<span class="classifier">array, (space,)</span></dt><dd><p>Radial rhop coordinate in cm units.</p>
+</dd>
+<dt>method<span class="classifier">{‘omfit’,’fs’}</span></dt><dd><p>Method to evaluate the volume average. The two options correspond to the way to compute
+volume averages via the OMFIT fluxSurfaces classes and via a simpler cumulative sum in r_V 
+coordinates. The methods only slightly differ in their results. Note that ‘omfit’ will fail if 
+rhop extends beyond the LCFS, while method ‘fs’ can estimate volume averages also into the SOL.
+Default is method=’omfit’.</p>
+</dd>
+<dt>geqdsk<span class="classifier">output of the omfit_eqdsk.OMFITgeqdsk class, postprocessing the EFIT geqdsk file</span></dt><dd><p>containing the magnetic geometry. If this is left to None, the function internally tries to fetch
+it using MDS+ and omfit_eqdsk. In this case, device, shot and time to fetch the equilibrium 
+are required.</p>
+</dd>
+<dt>device<span class="classifier">str</span></dt><dd><p>Device name. Note that routines for this device must be implemented in omfit_eqdsk for this 
+to work.</p>
+</dd>
+<dt>shot<span class="classifier">int</span></dt><dd><p>Shot number of the above device, e.g. 1101014019 for C-Mod.</p>
+</dd>
+<dt>time<span class="classifier">float</span></dt><dd><p>Time at which equilibrium should be fetched in units of ms.</p>
+</dd>
+<dt>return_geqdsk<span class="classifier">bool</span></dt><dd><p>If True, omfit_eqdsk dictionary is also returned</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>quant_vol_avg<span class="classifier">array, (space, …)</span></dt><dd><p>Volume average of the quantity given as an input, in the same units as in the input.
+If extrapolation beyond the range available from EFIT volume averages over a shorter section
+of the radial grid will be attempted. This does not affect volume averages within the LCFS.</p>
+</dd>
+<dt>geqdsk<span class="classifier">dict</span></dt><dd><p>Only returned if return_geqdsk=True.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-aurora.source_utils">
+<span id="aurora-source-utils-module"></span><h2>aurora.source_utils module<a class="headerlink" href="#module-aurora.source_utils" title="Permalink to this headline">¶</a></h2>
+<p>Methods related to impurity source functions.</p>
+<p>sciortino, 2020</p>
+<dl class="py function">
+<dt id="aurora.source_utils.get_aurora_source">
+<code class="sig-prename descclassname">aurora.source_utils.</code><code class="sig-name descname">get_aurora_source</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">namelist</span></em>, <em class="sig-param"><span class="n">time</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/source_utils.html#get_aurora_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.source_utils.get_aurora_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load source function based on current state of the namelist.</p>
+<p><a href="#id3"><span class="problematic" id="id4">`</span></a>time’ is only needed for time-dependent sources</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.source_utils.get_radial_source">
+<code class="sig-prename descclassname">aurora.source_utils.</code><code class="sig-name descname">get_radial_source</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">namelist</span></em>, <em class="sig-param"><span class="n">radius_grid</span></em>, <em class="sig-param"><span class="n">S</span></em>, <em class="sig-param"><span class="n">pro</span></em>, <em class="sig-param"><span class="n">Ti</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/source_utils.html#get_radial_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.source_utils.get_radial_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain spatial dependence of source function.</p>
+<p>If namelist[‘source_width_in’]==0 and namelist[‘source_width_out’]==0, the source
+radial profile is defined as an exponential decay due to ionization of neutrals. This requires
+S, the ionization rate of neutral impurities, to be given with S.shape=(len(radius_grid),)</p>
+<p>If axkopt=True, the neutrals speed is taken as the thermal speed based on Ti, otherwise
+the value corresponding to the namelist[‘imp_energy’] energy is used.</p>
+<p>This funtion reproduces the functionality of neutrals.f of STRAHL.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.source_utils.lbo_source_function">
+<code class="sig-prename descclassname">aurora.source_utils.</code><code class="sig-name descname">lbo_source_function</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t_start</span></em>, <em class="sig-param"><span class="n">t_rise</span></em>, <em class="sig-param"><span class="n">t_fall</span></em>, <em class="sig-param"><span class="n">n_particles</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">time_vec</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/source_utils.html#lbo_source_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.source_utils.lbo_source_function" title="Permalink to this definition">¶</a></dt>
+<dd><p>Model for the expected shape of the time-dependent source function,
+using a convolution of a gaussian and an exponential decay.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>t_start<span class="classifier">float or array-like [ms]</span></dt><dd><p>Injection time, beginning of source rise. If multiple values are given, they are
+used to create multiple source functions.</p>
+</dd>
+<dt>t_rise<span class="classifier">float or array-like [ms]</span></dt><dd><p>Time scale of source rise. Similarly to t_start for multiple values.</p>
+</dd>
+<dt>t_fall<span class="classifier">float or array-like [ms]</span></dt><dd><p>Time scale of source decay.Similarly to t_start for multiple values.</p>
+</dd>
+<dt>n_particles<span class="classifier">float, opt</span></dt><dd><p>Total number of particles in source. Similarly to t_start for multiple values.
+Defaults to 1.0.</p>
+</dd>
+<dt>time_vec<span class="classifier">array-like</span></dt><dd><p>Time vector on which to create source function. If left to None,
+use a linearly spaced time vector including the main features of the function.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>time_vec<span class="classifier">array</span></dt><dd><p>Times for the source function of each given impurity</p>
+</dd>
+<dt>source<span class="classifier">array</span></dt><dd><p>Time history of the synthetized source function.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.source_utils.read_source">
+<code class="sig-prename descclassname">aurora.source_utils.</code><code class="sig-name descname">read_source</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/source_utils.html#read_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.source_utils.read_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a STRAHL source file from {imp}flx{shot}.dat locally.</p>
+<dl>
+<dt>Args:</dt><dd><dl class="simple">
+<dt>filename<span class="classifier">str </span></dt><dd><p>Location of the file containing the STRAHL source file.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl>
+<dt>t<span class="classifier">array of float, (<cite>n</cite>,)</span></dt><dd><p>The timebase (in seconds).</p>
+</dd>
+<dt>s<span class="classifier">array of float, (<cite>n</cite>,)</span></dt><dd><p>The source function (#/s).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.source_utils.write_source">
+<code class="sig-prename descclassname">aurora.source_utils.</code><code class="sig-name descname">write_source</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t</span></em>, <em class="sig-param"><span class="n">s</span></em>, <em class="sig-param"><span class="n">shot</span></em>, <em class="sig-param"><span class="n">imp</span><span class="o">=</span><span class="default_value">'Ca'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/source_utils.html#write_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.source_utils.write_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write a STRAHL source file.</p>
+<p>This will overwrite any {imp}flx{shot}.dat locally.</p>
+<dl>
+<dt>Args:</dt><dd><dl>
+<dt>t<span class="classifier">array of float, (<cite>n</cite>,)</span></dt><dd><p>The timebase (in seconds).</p>
+</dd>
+<dt>s<span class="classifier">array of float, (<cite>n</cite>,)</span></dt><dd><p>The source function (in particles/s).</p>
+</dd>
+<dt>shot<span class="classifier">int</span></dt><dd><p>Shot number, only used for saving to a .dat file</p>
+</dd>
+<dt>imp<span class="classifier">str, optional</span></dt><dd><p>Impurity species atomic symbol</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>contents<span class="classifier">str</span></dt><dd><p>Content of the source file written to {imp}flx{shot}.dat</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-aurora.plot_tools">
+<span id="aurora-plot-tools-module"></span><h2>aurora.plot_tools module<a class="headerlink" href="#module-aurora.plot_tools" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="aurora.plot_tools.get_ls_cycle">
+<code class="sig-prename descclassname">aurora.plot_tools.</code><code class="sig-name descname">get_ls_cycle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/plot_tools.html#get_ls_cycle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.plot_tools.get_ls_cycle" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="aurora.plot_tools.plot_norm_ion_freq">
+<code class="sig-prename descclassname">aurora.plot_tools.</code><code class="sig-name descname">plot_norm_ion_freq</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">S_z</span></em>, <em class="sig-param"><span class="n">q_prof</span></em>, <em class="sig-param"><span class="n">R_prof</span></em>, <em class="sig-param"><span class="n">m_imp</span></em>, <em class="sig-param"><span class="n">Ti_prof</span></em>, <em class="sig-param"><span class="n">nz_profs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rhop</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">eps_prof</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/plot_tools.html#plot_norm_ion_freq"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.plot_tools.plot_norm_ion_freq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare effective ionization rate for each charge state with the 
+characteristic transit time that a non-trapped and trapped impurity ion takes
+to travel a parallel distance L = q R.</p>
+<p>If the normalized ionization rate is less than 1, then flux surface averaging of
+background asymmetries (e.g. from edge or beam neutrals) can be considered in a 
+“flux-surface-averaged” sense; otherwise, local effects (i.e. not flux-surface-averaged)
+may be too important to ignore.</p>
+<p>This function is inspired by Dux et al. NF 2020. Note that in this paper the ionization 
+rate averaged over all charge state densities is considered. This function avoids the 
+averaging over charge states, unless these are provided as an input.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>S_z<span class="classifier">array (r,cs) [s^-1]</span></dt><dd><p>Effective ionization rates for each charge state as a function of radius. 
+Note that, for convenience within aurora, cs includes the neutral stage.</p>
+</dd>
+<dt>q_prof<span class="classifier">array (r,)</span></dt><dd><p>Radial profile of safety factor</p>
+</dd>
+<dt>R_prof<span class="classifier">array (r,) or float [m]</span></dt><dd><p>Radial profile of major radius, either given as an average of HFS and LFS, or also
+simply as a scalar (major radius on axis)</p>
+</dd>
+<dt>m_imp<span class="classifier">float [amu]</span></dt><dd><p>Mass of impurity of interest in amu units (e.g. 2 for D)</p>
+</dd>
+<dt>Ti_prof<span class="classifier">array (r,)</span></dt><dd><p>Radial profile of ion temperature [eV]</p>
+</dd>
+<dt>nz_profs<span class="classifier">array (r,cs), optional</span></dt><dd><p>Radial profile for each charge state. If provided, calculate average normalized 
+ionization rate over all charge states.</p>
+</dd>
+<dt>rhop<span class="classifier">array (r,), optional</span></dt><dd><p>Sqrt of poloidal flux radial grid. This is used only for (optional) plotting.</p>
+</dd>
+<dt>plot<span class="classifier">bool, optional</span></dt><dd><p>If True, plot results.</p>
+</dd>
+<dt>eps_prof<span class="classifier">array (r,), optional</span></dt><dd><p>Radial profile of inverse aspect ratio, i.e. r/R, only used if plotting is requested.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>nu_ioniz_star<span class="classifier">array (r,cs) or (r,)</span></dt><dd><p>Normalized ionization rate. If nz_profs is given as an input, this is an average over
+all charge state; otherwise, it is given for each charge state.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.plot_tools.slider_plot">
+<code class="sig-prename descclassname">aurora.plot_tools.</code><code class="sig-name descname">slider_plot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">z</span></em>, <em class="sig-param"><span class="n">xlabel</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">ylabel</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">zlabel</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">labels</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot_sum</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">x_line</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">y_line</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/plot_tools.html#slider_plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.plot_tools.slider_plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a plot to explore multidimensional data.</p>
+<dl>
+<dt>Args:</dt><dd><dl>
+<dt>x<span class="classifier">array of float, (<cite>M</cite>,)</span></dt><dd><p>The abscissa. (in aurora, often this may be rhop)</p>
+</dd>
+<dt>y<span class="classifier">array of float, (<cite>N</cite>,)</span></dt><dd><p>The variable to slide over. (in aurora, often this may be time)</p>
+</dd>
+<dt>z<span class="classifier">array of float, (<cite>P</cite>, <cite>M</cite>, <cite>N</cite>)</span></dt><dd><p>The variables to plot.</p>
+</dd>
+<dt>xlabel<span class="classifier">str, optional</span></dt><dd><p>The label for the abscissa.</p>
+</dd>
+<dt>ylabel<span class="classifier">str, optional</span></dt><dd><p>The label for the slider.</p>
+</dd>
+<dt>zlabel<span class="classifier">str, optional</span></dt><dd><p>The label for the ordinate.</p>
+</dd>
+<dt>labels<span class="classifier">list of str with length <cite>P</cite></span></dt><dd><p>The labels for each curve in <cite>z</cite>.</p>
+</dd>
+<dt>plot_sum<span class="classifier">bool, optional</span></dt><dd><p>If True, will also plot the sum over all <cite>P</cite> cases. Default is False.</p>
+</dd>
+<dt>x_line<span class="classifier">float, optional</span></dt><dd><p>x coordinate at which a vertical line will be drawn.</p>
+</dd>
+<dt>y_line<span class="classifier">float, optional</span></dt><dd><p>y coordinate at which a horizontal line will be drawn.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-aurora.default_nml">
+<span id="aurora-default-nml-module"></span><h2>aurora.default_nml module<a class="headerlink" href="#module-aurora.default_nml" title="Permalink to this headline">¶</a></h2>
+<p>Method to load default namelist. This should be complemented with additional info 
+by each user.</p>
+<p>sciortino, July 2020</p>
+<dl class="py function">
+<dt id="aurora.default_nml.load_default_namelist">
+<code class="sig-prename descclassname">aurora.default_nml.</code><code class="sig-name descname">load_default_namelist</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/default_nml.html#load_default_namelist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.default_nml.load_default_namelist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load default namelist. 
+Users should modify and complement this for a successful run.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-aurora.interp">
+<span id="aurora-interp-module"></span><h2>aurora.interp module<a class="headerlink" href="#module-aurora.interp" title="Permalink to this headline">¶</a></h2>
+<p>This script contains a number of functions used for interpolation of kinetic profiles and D,V profiles in STRAHL.
+Refer to the STRAHL manual for details.</p>
+<dl class="py function">
+<dt id="aurora.interp.exppol0">
+<code class="sig-prename descclassname">aurora.interp.</code><code class="sig-name descname">exppol0</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">params</span></em>, <em class="sig-param"><span class="n">d</span></em>, <em class="sig-param"><span class="n">rLCFS</span></em>, <em class="sig-param"><span class="n">r</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/interp.html#exppol0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.interp.exppol0" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="aurora.interp.exppol1">
+<code class="sig-prename descclassname">aurora.interp.</code><code class="sig-name descname">exppol1</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">params</span></em>, <em class="sig-param"><span class="n">d</span></em>, <em class="sig-param"><span class="n">rLCFS</span></em>, <em class="sig-param"><span class="n">r</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/interp.html#exppol1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.interp.exppol1" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="aurora.interp.funct">
+<code class="sig-prename descclassname">aurora.interp.</code><code class="sig-name descname">funct</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">params</span></em>, <em class="sig-param"><span class="n">rLCFS</span></em>, <em class="sig-param"><span class="n">r</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/interp.html#funct"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.interp.funct" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function ‘funct’ in STRAHL manual
+# y0 is core offset
+# y1 is edge offset
+# y2 (&gt;y0, &gt;y1) sets the gaussian amplification
+# p0 sets the width of the inner gaussian
+# P1 sets the width of the outer gaussian
+# p2 sets the location of the inner and outer peaks</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.interp.funct2">
+<code class="sig-prename descclassname">aurora.interp.</code><code class="sig-name descname">funct2</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">params</span></em>, <em class="sig-param"><span class="n">rLCFS</span></em>, <em class="sig-param"><span class="n">r</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/interp.html#funct2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.interp.funct2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function ‘funct2’ in STRAHL manual.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.interp.interp">
+<code class="sig-prename descclassname">aurora.interp.</code><code class="sig-name descname">interp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">rLCFS</span></em>, <em class="sig-param"><span class="n">r</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/interp.html#interp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.interp.interp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="aurora.interp.interp_quad">
+<code class="sig-prename descclassname">aurora.interp.</code><code class="sig-name descname">interp_quad</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">d</span></em>, <em class="sig-param"><span class="n">rLCFS</span></em>, <em class="sig-param"><span class="n">r</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/interp.html#interp_quad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.interp.interp_quad" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="aurora.interp.interpa_quad">
+<code class="sig-prename descclassname">aurora.interp.</code><code class="sig-name descname">interpa_quad</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">rLCFS</span></em>, <em class="sig-param"><span class="n">r</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/interp.html#interpa_quad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.interp.interpa_quad" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="aurora.interp.ratfun">
+<code class="sig-prename descclassname">aurora.interp.</code><code class="sig-name descname">ratfun</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">params</span></em>, <em class="sig-param"><span class="n">d</span></em>, <em class="sig-param"><span class="n">rLCFS</span></em>, <em class="sig-param"><span class="n">r</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/interp.html#ratfun"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.interp.ratfun" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-aurora.animate">
+<span id="aurora-animate-module"></span><h2>aurora.animate module<a class="headerlink" href="#module-aurora.animate" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="aurora.animate.animate_aurora">
+<code class="sig-prename descclassname">aurora.animate.</code><code class="sig-name descname">animate_aurora</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">z</span></em>, <em class="sig-param"><span class="n">xlabel</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">ylabel</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">zlabel</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">labels</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot_sum</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">uniform_y_spacing</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">save_filename</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/animate.html#animate_aurora"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.animate.animate_aurora" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produce animation of time- and radially-dependent results from aurora.</p>
+<dl>
+<dt>Args:</dt><dd><dl>
+<dt>x<span class="classifier">array of float, (<cite>M</cite>,)</span></dt><dd><p>The abscissa. (in aurora, often this may be rhop)</p>
+</dd>
+<dt>y<span class="classifier">array of float, (<cite>N</cite>,)</span></dt><dd><p>The variable to slide over. (in aurora, often this may be time)</p>
+</dd>
+<dt>z<span class="classifier">array of float, (<cite>P</cite>, <cite>M</cite>, <cite>N</cite>)</span></dt><dd><p>The variables to plot.</p>
+</dd>
+<dt>xlabel<span class="classifier">str, optional</span></dt><dd><p>The label for the abscissa.</p>
+</dd>
+<dt>ylabel<span class="classifier">str, optional</span></dt><dd><p>The label for the animated coordinate. This is expected in a format such that ylabel.format(y_val)
+will display a good moving label, e.g. ylabel=’t={:.4f} s’.</p>
+</dd>
+<dt>zlabel<span class="classifier">str, optional</span></dt><dd><p>The label for the ordinate.</p>
+</dd>
+<dt>labels<span class="classifier">list of str with length <cite>P</cite></span></dt><dd><p>The labels for each curve in <cite>z</cite>.</p>
+</dd>
+<dt>plot_sum<span class="classifier">bool, optional</span></dt><dd><p>If True, will also plot the sum over all <cite>P</cite> cases. Default is False.</p>
+</dd>
+<dt>uniform_y_spacing<span class="classifier">bool, optional</span></dt><dd><p>If True, interpolate values in z onto a uniformly-spaced y grid</p>
+</dd>
+<dt>save_filename<span class="classifier">str</span></dt><dd><p>If a valid path/filename is provided, the animation will be saved here in mp4 format.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-aurora.particle_conserv">
+<span id="aurora-particle-conserv-module"></span><h2>aurora.particle_conserv module<a class="headerlink" href="#module-aurora.particle_conserv" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="aurora.particle_conserv.get_particle_nums">
+<code class="sig-prename descclassname">aurora.particle_conserv.</code><code class="sig-name descname">get_particle_nums</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filepath</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ds</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">R_axis</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/particle_conserv.html#get_particle_nums"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.particle_conserv.get_particle_nums" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check time evolution and particle conservation in (py)STRAHL output.
+If filepath is None, load data from output STRAHL file, otherwise use xarray Dataset in ds.</p>
+<p>R_axis [cm] is needed for volume integrals. If None, it is set to a C-Mod default.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.particle_conserv.plot_1d">
+<code class="sig-prename descclassname">aurora.particle_conserv.</code><code class="sig-name descname">plot_1d</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filepath</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ds</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">linestyle</span><span class="o">=</span><span class="default_value">'-'</span></em>, <em class="sig-param"><span class="n">axs</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">R_axis</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/particle_conserv.html#plot_1d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.particle_conserv.plot_1d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check time evolution and particle conservation in (py)STRAHL output.</p>
+<p>If filepath is None, load data from output STRAHL file, otherwise use xarray Dataset in ds.</p>
+<p>If axs is passed, it is assumed that this is a tuple of 2 set of axes: the first one for the separate 
+particle time variation in each reservoir, the second for the total particle-conservation check.</p>
+<p>R_axis [cm] is the major radius, used for volume integrals. If None, it is set to a C-Mod default.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.particle_conserv.plot_particle_conserv">
+<code class="sig-prename descclassname">aurora.particle_conserv.</code><code class="sig-name descname">plot_particle_conserv</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">res</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/particle_conserv.html#plot_particle_conserv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.particle_conserv.plot_particle_conserv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot number of particles in each Aurora simulation reservoir.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.particle_conserv.vol_int">
+<code class="sig-prename descclassname">aurora.particle_conserv.</code><code class="sig-name descname">vol_int</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ds</span></em>, <em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">rhop_max</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">R_axis</span><span class="o">=</span><span class="default_value">68.5</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/particle_conserv.html#vol_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.particle_conserv.vol_int" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform a volume integral of an input variable. If the variable is f(t,x) then the result is f(t).
+If the variable is f(t,*,x) then the result is f(t,charge) when “*” represents charge, line index, etc…</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ds</strong> – xarray dataset containing STRAHL result</p></li>
+<li><p><strong>var</strong> – Name of the variable in the strahl_result.cdf file</p></li>
+</ul>
+</dd>
+<dt class="field-even">Params rhop_max</dt>
+<dd class="field-even"><p>Maximum normalized poloidal flux for integral</p>
+</dd>
+<dt class="field-odd">Params R_axis</dt>
+<dd class="field-odd"><p>major radius on axis [cm]</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Time history of volume integrated variable</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-aurora.nbi_neutrals">
+<span id="aurora-nbi-neutrals-module"></span><h2>aurora.nbi_neutrals module<a class="headerlink" href="#module-aurora.nbi_neutrals" title="Permalink to this headline">¶</a></h2>
+<p>Methods for neutral beam analysis, particularly in relation to impurity transport studies.
+These script collects functions that should be device-agnostic.</p>
+<dl class="py function">
+<dt id="aurora.nbi_neutrals.beam_grid">
+<code class="sig-prename descclassname">aurora.nbi_neutrals.</code><code class="sig-name descname">beam_grid</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">uvw_src</span></em>, <em class="sig-param"><span class="n">axis</span></em>, <em class="sig-param"><span class="n">max_radius</span><span class="o">=</span><span class="default_value">255.0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/nbi_neutrals.html#beam_grid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.nbi_neutrals.beam_grid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method to obtain the 3D orientation of a beam with respect to the device.
+The uvw_src and (normalized) axis arrays may be obtained from the d3d_beams method
+of fidasim_lib.py in the FIDASIM module in OMFIT.</p>
+<p>This is inspired by <cite>beam_grid</cite> in fidasim_lib.py of the FIDASIM module (S. Haskey) 
+in OMFIT.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.nbi_neutrals.bt_rate_maxwell_average">
+<code class="sig-prename descclassname">aurora.nbi_neutrals.</code><code class="sig-name descname">bt_rate_maxwell_average</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sigma_fun</span></em>, <em class="sig-param"><span class="n">Ti</span></em>, <em class="sig-param"><span class="n">E_beam</span></em>, <em class="sig-param"><span class="n">m_bckg</span></em>, <em class="sig-param"><span class="n">m_beam</span></em>, <em class="sig-param"><span class="n">n_level</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/nbi_neutrals.html#bt_rate_maxwell_average"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.nbi_neutrals.bt_rate_maxwell_average" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates Maxwellian reaction rate for a beam with atomic mass <cite>m_beam</cite>, 
+energy <cite>E_beam</cite>, firing into a target with atomic mass <cite>m_bckg</cite> and temperature <cite>T</cite>.</p>
+<p><cite>sigma_fun</cite> must be a function for a specific charge and n-level of the beam particles.
+Ref: FIDASIM atomic_tables.f90 bt_maxwellian_n_m.</p>
+<dl>
+<dt>Args:</dt><dd><dl class="simple">
+<dt>sigma_fun: function to compute a specific cross section [cm^2], function of energy/amu ONLY.</dt><dd><p>Expected call form: sigma_fun(erel/ared)</p>
+</dd>
+<dt>Ti<span class="classifier">target temperature [keV], float, 1D or 2D array</span></dt><dd><p>Results will be computed for each Ti value in a vectorized manner.</p>
+</dd>
+</dl>
+<p>E_beam : beam energy [keV]
+m_bckg : target atomic mass [amu]
+m_beam : beam atomic mass [amu]
+n_level : n-level of beam. This is used to evaluate the hydrogen ionization potential,</p>
+<blockquote>
+<div><p>below which an electron is unlikely to charge exchange with surrounding ions.</p>
+</div></blockquote>
+</dd>
+<dt>Returns:</dt><dd><p>rate : output reaction rate in [cm^3/s] units</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.nbi_neutrals.bt_rate_maxwell_average_vec">
+<code class="sig-prename descclassname">aurora.nbi_neutrals.</code><code class="sig-name descname">bt_rate_maxwell_average_vec</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sigma_fun</span></em>, <em class="sig-param"><span class="n">Ti</span></em>, <em class="sig-param"><span class="n">E_beam</span></em>, <em class="sig-param"><span class="n">m_bckg</span></em>, <em class="sig-param"><span class="n">m_beam</span></em>, <em class="sig-param"><span class="n">n_level</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/nbi_neutrals.html#bt_rate_maxwell_average_vec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.nbi_neutrals.bt_rate_maxwell_average_vec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates Maxwellian reaction rate for a beam with atomic mass <cite>m_beam</cite>, 
+energy <cite>E_beam</cite>, firing into a target with atomic mass <cite>m_bckg</cite> and temperature <cite>T</cite>.</p>
+<p><cite>sigma_fun</cite> must be a function for a specific charge and n-level of the beam particles.
+Ref: FIDASIM atomic_tables.f90 bt_maxwellian_n_m.</p>
+<p>This version of the function attempts to vectorize the calculation such that we can have Ti
+being a function of space and time and deal with integrations in vr and vz with no loops.</p>
+<dl>
+<dt>Args:</dt><dd><dl class="simple">
+<dt>sigma_fun: function to compute a specific cross section [cm^2], function of energy/amu ONLY.</dt><dd><p>Expected call form: sigma_fun(erel/ared)</p>
+</dd>
+</dl>
+<p>Ti : target temperature [keV], float, 1D or 2D array
+E_beam : beam energy [keV]
+m_bckg : target atomic mass [amu]
+m_beam : beam atomic mass [amu]
+n_level : n-level of beam. This is used to evaluate the hydrogen ionization potential,</p>
+<blockquote>
+<div><p>below which an electron is unlikely to charge exchange with surrounding ions.</p>
+</div></blockquote>
+</dd>
+<dt>Returns:</dt><dd><p>rate : output reaction rate in [cm^3/s] units</p>
+</dd>
+</dl>
+<p>~~~~~~~~~~ UNTESTED!~~~~~~~~~~~</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.nbi_neutrals.get_NBI_imp_cxr_q">
+<code class="sig-prename descclassname">aurora.nbi_neutrals.</code><code class="sig-name descname">get_NBI_imp_cxr_q</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">neut_fsa</span></em>, <em class="sig-param"><span class="n">q</span></em>, <em class="sig-param"><span class="n">rhop_Ti</span></em>, <em class="sig-param"><span class="n">times_Ti</span></em>, <em class="sig-param"><span class="n">Ti_prof</span></em>, <em class="sig-param"><span class="n">include_fast</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">include_halo</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">debug_plots</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/nbi_neutrals.html#get_NBI_imp_cxr_q"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.nbi_neutrals.get_NBI_imp_cxr_q" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute flux-surface-averaged (FSA) charge exchange recombination for a given impurity with
+neutral beam components, applying appropriate Maxwellian averaging of cross sections and
+obtaining rates in [s^-1] units. This method expects all neutral components to be given in a
+dictionary with a structure that is independent of NBI model.</p>
+<p>Note that while Ti may be time-dependent, with a time base given by times_Ti, the FSA
+neutrals are expected to be time-independent. Hence, the resulting CXR rates will only have
+time dependence that reflects changes in Ti, but not the NBI.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>neut_fsa<span class="classifier">dict</span></dt><dd><p>Dictionary containing FSA neutral densities in the form that is output by :py:method:get_neutrals_fsa.</p>
+</dd>
+<dt>q<span class="classifier">int or float</span></dt><dd><p>Charge of impurity species</p>
+</dd>
+<dt>rhop_Ti<span class="classifier">array-like</span></dt><dd><p>Sqrt of poloidal flux radial coordinate for Ti profiles.</p>
+</dd>
+<dt>times_Ti<span class="classifier">array-like</span></dt><dd><p>Time base on which Ti_prof is given [s].</p>
+</dd>
+<dt>Ti_prof<span class="classifier">array-like</span></dt><dd><p>Ion temperature profile on the rhop_Ti, times_Ti bases.</p>
+</dd>
+<dt>include_fast<span class="classifier">bool, optional</span></dt><dd><p>If True, include CXR rates from fast NBI neutrals. Default is True.</p>
+</dd>
+<dt>include_halo<span class="classifier">bool, optional</span></dt><dd><p>If True, include CXR rates from themral NBI halo neutrals. Default is True.</p>
+</dd>
+<dt>debug_plots<span class="classifier">bool, optional</span></dt><dd><p>If True, plot several plots to assess the quality of the calculation.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>rates<span class="classifier">dict</span></dt><dd><p>Dictionary containing CXR rates from NBI neutrals. This dictionary has analogous form to the 
+:py:method:get_neutrals_fsa function, e.g. we have 
+&gt;&gt; rates[beam][f’n={n_level}’][‘halo’]
+Rates are on a radial grid corresponding to the input neut_fsa[‘rhop’].</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>For details on inputs and outputs, it is recommendeded to look at the internal plotting functions.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.nbi_neutrals.get_ls_cycle">
+<code class="sig-prename descclassname">aurora.nbi_neutrals.</code><code class="sig-name descname">get_ls_cycle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/nbi_neutrals.html#get_ls_cycle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.nbi_neutrals.get_ls_cycle" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="aurora.nbi_neutrals.get_neutrals_fsa">
+<code class="sig-prename descclassname">aurora.nbi_neutrals.</code><code class="sig-name descname">get_neutrals_fsa</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">neutrals</span></em>, <em class="sig-param"><span class="n">geqdsk</span></em>, <em class="sig-param"><span class="n">debug_plots</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/nbi_neutrals.html#get_neutrals_fsa"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.nbi_neutrals.get_neutrals_fsa" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute charge exchange recombination for a given impurity with neutral beam components,
+obtaining rates in [s^-1] units. This method expects all neutral components to be given in a
+dictionary with a structure that is independent of NBI model (i.e. coming from FIDASIM, NUBEAM, 
+pencil calculations, etc.).</p>
+<dl>
+<dt>Args:</dt><dd><dl class="simple">
+<dt>neutrals<span class="classifier">dict</span></dt><dd><p>Dictionary containing fields
+{‘beams’,’names’,’R’,’Z’, beam1, beam2, etc.}
+Here beam1,beam2,etc. are the names in neutrals[‘beams’]. ‘names’ are the names of each 
+beam component, e.g. ‘fdens’,’hdens’,’halo’, etc., ordered according to ‘names’. 
+‘R’,’Z’ are the major radius and vertical coordinates [cm] on which neutral density components are 
+given in elements such as 
+&gt;&gt; neutrals[beams[0]][‘n=0’][name_idx]
+It is currently assumed that n=0,1 and 2 beam components are provided by the user.</p>
+</dd>
+</dl>
+<p>geqdsk : gEQDSK post-processed dictionary, as given by the omfit_eqdsk package.</p>
+<dl class="simple">
+<dt>debug_plots<span class="classifier">bool, optional</span></dt><dd><p>If True, various plots are displayed.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>neut_fsa<span class="classifier">dict</span></dt><dd><p>Dictionary of flux-surface-averaged (FSA) neutral densities, in the same units as in the input. 
+Similarly to the input “neutrals”, this dictionary has a structure like
+&gt;&gt; neutrals_ext[beam][f’n={n_level}’][name_idx]</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.nbi_neutrals.rotation_matrix">
+<code class="sig-prename descclassname">aurora.nbi_neutrals.</code><code class="sig-name descname">rotation_matrix</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">alpha</span></em>, <em class="sig-param"><span class="n">beta</span></em>, <em class="sig-param"><span class="n">gamma</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/nbi_neutrals.html#rotation_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.nbi_neutrals.rotation_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>See the table of all rotation possiblities, on the Tait Bryan side
+<a class="reference external" href="https://en.wikipedia.org/wiki/Euler_angles#Tait.E2.80.93Bryan_angles">https://en.wikipedia.org/wiki/Euler_angles#Tait.E2.80.93Bryan_angles</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.nbi_neutrals.tt_rate_maxwell_average">
+<code class="sig-prename descclassname">aurora.nbi_neutrals.</code><code class="sig-name descname">tt_rate_maxwell_average</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sigma_fun</span></em>, <em class="sig-param"><span class="n">Ti</span></em>, <em class="sig-param"><span class="n">m_i</span></em>, <em class="sig-param"><span class="n">m_n</span></em>, <em class="sig-param"><span class="n">n_level</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/nbi_neutrals.html#tt_rate_maxwell_average"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.nbi_neutrals.tt_rate_maxwell_average" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates Maxwellian reaction rate for an interaction between two thermal populations,
+assumed to be of neutrals (mass m_n) and background ions (mass m_i).</p>
+<p><cite>sigma_fun</cite> must be a function for a specific charge and n-level of the neutral particles.
+This allows evaluation of atomic rates for charge exchange interactions between thermal
+beam halos and background ions.</p>
+<dl>
+<dt>Args:</dt><dd><dl class="simple">
+<dt>sigma_fun: function to compute a specific cross section [cm^2], function of energy/amu ONLY.</dt><dd><p>Expected call form: sigma_fun(erel/ared)</p>
+</dd>
+</dl>
+<p>Ti : background ion and halo temperature [keV], float or 1D
+m_i : mass of background ions [amu]
+m_n : mass of neutrals [amu]
+n_level : n-level of beam. This is used to evaluate the hydrogen ionization potential,</p>
+<blockquote>
+<div><p>below which an electron is unlikely to charge exchange with surrounding ions.</p>
+</div></blockquote>
+<p>TODO: add effect of toroidal rotation! This will require making the integration in this
+function 2-dimensional.</p>
+</dd>
+<dt>Returns:</dt><dd><p>rate : output reaction rate in [cm^3/s] units</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.nbi_neutrals.uvw_xyz">
+<code class="sig-prename descclassname">aurora.nbi_neutrals.</code><code class="sig-name descname">uvw_xyz</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">u</span></em>, <em class="sig-param"><span class="n">v</span></em>, <em class="sig-param"><span class="n">w</span></em>, <em class="sig-param"><span class="n">origin</span></em>, <em class="sig-param"><span class="n">R</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/nbi_neutrals.html#uvw_xyz"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.nbi_neutrals.uvw_xyz" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes array elements by multiplying the rows of the first
+array by the columns of the second array. The second array
+must have the same number of rows as the first array has
+columns. The resulting array has the same number of rows as
+the first array and the same number of columns as the second
+array.</p>
+<p>See uvw_to_xyz in fidasim.f90</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.nbi_neutrals.xyz_uvw">
+<code class="sig-prename descclassname">aurora.nbi_neutrals.</code><code class="sig-name descname">xyz_uvw</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">z</span></em>, <em class="sig-param"><span class="n">origin</span></em>, <em class="sig-param"><span class="n">R</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/nbi_neutrals.html#xyz_uvw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.nbi_neutrals.xyz_uvw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes array elements by multiplying the rows of the first
+array by the columns of the second array. The second array
+must have the same number of rows as the first array has
+columns. The resulting array has the same number of rows as
+the first array and the same number of columns as the second
+array.</p>
+<p>See xyz_to_uvw in fidasim.f90</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-aurora.janev_smith_rates">
+<span id="aurora-janev-smith-rates-module"></span><h2>aurora.janev_smith_rates module<a class="headerlink" href="#module-aurora.janev_smith_rates" title="Permalink to this headline">¶</a></h2>
+<p>Script collecting rates from Janev &amp; Smith, NF 1993. 
+These are useful in aurora to compute total (n-unresolved) charge exchange rates between heavy ions and neutrals.</p>
+<p>sciortino, 2020</p>
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em>, <em class="sig-param"><span class="n">q</span></em>, <em class="sig-param"><span class="n">n1</span></em>, <em class="sig-param"><span class="n">n2</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">type</span><span class="o">=</span><span class="default_value">'cx'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cross sections for collisional processes between beam neutrals and highly-charged 
+ions, from Janev &amp; Smith 1993.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>E<span class="classifier">float</span></dt><dd><p>Normalized beam energy [keV/amu]</p>
+</dd>
+<dt>q<span class="classifier">int</span></dt><dd><p>Impurity charge before interaction (interacting ion is A^{q+})</p>
+</dd>
+<dt>n1<span class="classifier">int</span></dt><dd><p>Principal quantum number of beam hydrogen.</p>
+</dd>
+<dt>n2: int</dt><dd><p>Principal quantum number of excited. This may not be needed for some transitions (if so, leave to None).</p>
+</dd>
+<dt>type<span class="classifier">str</span></dt><dd><p>Type of interaction. Possible choices:
+{‘exc’,’ioniz’,’cx’}
+where ‘cx’ refers to electron capture / charge exchange.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>sigma<span class="classifier">float</span></dt><dd><p>Cross section of selected process, in [cm^2] units.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>See comments in Janev &amp; Smith 1993 for uncertainty estimates.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma_cx_n1_q1">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma_cx_n1_q1</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma_cx_n1_q1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma_cx_n1_q1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Electron capture cross section for
+H^{+} + H(1s) –&gt; H + H^+
+Section 2.3.1</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma_cx_n1_q2">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma_cx_n1_q2</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma_cx_n1_q2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma_cx_n1_q2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Electron capture cross section for
+He^{2+} + H(1s) –&gt; He^+ + H^+
+Section 3.3.1</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma_cx_n1_q4">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma_cx_n1_q4</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma_cx_n1_q4"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma_cx_n1_q4" title="Permalink to this definition">¶</a></dt>
+<dd><p>Electron capture cross section for
+Be^{4+} + H(1s) –&gt; Be^{3+} + H^+
+Section 4.3.1</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma_cx_n1_q5">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma_cx_n1_q5</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma_cx_n1_q5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma_cx_n1_q5" title="Permalink to this definition">¶</a></dt>
+<dd><p>Electron capture cross section for
+B^{5+} + H(1s) –&gt; B^{4+} + H^+
+Section 4.3.2</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma_cx_n1_q6">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma_cx_n1_q6</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma_cx_n1_q6"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma_cx_n1_q6" title="Permalink to this definition">¶</a></dt>
+<dd><p>Electron capture cross section for
+C^{6+} + H(1s) –&gt; C^{5+} + H^+
+Section 4.3.3</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma_cx_n1_q8">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma_cx_n1_q8</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma_cx_n1_q8"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma_cx_n1_q8" title="Permalink to this definition">¶</a></dt>
+<dd><p>Electron capture cross section for
+O^{8+} + H(1s) –&gt; O^{7+} + H^+
+Section 4.3.4</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma_cx_n1_qg8">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma_cx_n1_qg8</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em>, <em class="sig-param"><span class="n">q</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma_cx_n1_qg8"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma_cx_n1_qg8" title="Permalink to this definition">¶</a></dt>
+<dd><p>Electron capture cross section for
+A^{q+} + H(1s) –&gt; A^{(q-1)+} + H^+,   q&gt;8
+Section 4.3.5, p.172</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma_cx_n2_q2">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma_cx_n2_q2</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma_cx_n2_q2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma_cx_n2_q2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Electron capture cross section for
+He^{2+} + H(n=2) –&gt; He^+ + H^+
+Section 3.3.2</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma_cx_ng1_q1">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma_cx_ng1_q1</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em>, <em class="sig-param"><span class="n">n1</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma_cx_ng1_q1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma_cx_ng1_q1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Electron capture cross section for
+H^{+} + H(n) –&gt; H + H^+ , n&gt;1
+Section 2.3.2</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma_cx_ng1_qg3">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma_cx_ng1_qg3</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em>, <em class="sig-param"><span class="n">n1</span></em>, <em class="sig-param"><span class="n">q</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma_cx_ng1_qg3"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma_cx_ng1_qg3" title="Permalink to this definition">¶</a></dt>
+<dd><p>Electron capture cross section for
+A^{q+} + H^*(n) –&gt; A^{(q-1)+}+H^+ , q&gt;3
+Section 4.3.6, p.174</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma_cx_ng2_q2">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma_cx_ng2_q2</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em>, <em class="sig-param"><span class="n">n1</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma_cx_ng2_q2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma_cx_ng2_q2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Electron capture cross section for
+He^{2+} + H*(n) –&gt; He^+ + H^+ , n&gt;2
+Section 3.2.3</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.js_sigma_ioniz_n1_q8">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">js_sigma_ioniz_n1_q8</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#js_sigma_ioniz_n1_q8"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.js_sigma_ioniz_n1_q8" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ionization cross section for
+O^{8+} + H(1s) –&gt; O^{8+} + H^+ +e^-
+Section 4.2.4</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.janev_smith_rates.plot_js_sigma">
+<code class="sig-prename descclassname">aurora.janev_smith_rates.</code><code class="sig-name descname">plot_js_sigma</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">q</span><span class="o">=</span><span class="default_value">18</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/janev_smith_rates.html#plot_js_sigma"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.janev_smith_rates.plot_js_sigma" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
 <div class="section" id="module-aurora">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-aurora" title="Permalink to this headline">¶</a></h2>
 <dl class="py data">
@@ -187,6 +1780,18 @@ nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = o
 <li class="toctree-l1 current"><a class="current reference internal" href="#">aurora package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-aurora.core">aurora.core module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.atomic">aurora.atomic module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.radiation">aurora.radiation module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.grids_utils">aurora.grids_utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.coords">aurora.coords module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.source_utils">aurora.source_utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.plot_tools">aurora.plot_tools module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.default_nml">aurora.default_nml module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.interp">aurora.interp module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.animate">aurora.animate module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.particle_conserv">aurora.particle_conserv module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.nbi_neutrals">aurora.nbi_neutrals module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.janev_smith_rates">aurora.janev_smith_rates module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-aurora">Module contents</a></li>
 </ul>
 </li>

@@ -9,28 +9,27 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
                 x_line=None, y_line=None, **kwargs):
     """Make a plot to explore multidimensional data.
 
-    INPUTS
-    ----------
-    x : array of float, (`M`,)
-        The abscissa. (in aurora, often this may be rhop)
-    y : array of float, (`N`,)
-        The variable to slide over. (in aurora, often this may be time)
-    z : array of float, (`P`, `M`, `N`)
-        The variables to plot.
-    xlabel : str, optional
-        The label for the abscissa.
-    ylabel : str, optional
-        The label for the slider.
-    zlabel : str, optional
-        The label for the ordinate.
-    labels : list of str with length `P`
-        The labels for each curve in `z`.
-    plot_sum : bool, optional
-        If True, will also plot the sum over all `P` cases. Default is False.
-    x_line : float, optional
-        x coordinate at which a vertical line will be drawn. 
-    y_line : float, optional
-        y coordinate at which a horizontal line will be drawn.
+    Args:
+        x : array of float, (`M`,)
+            The abscissa. (in aurora, often this may be rhop)
+        y : array of float, (`N`,)
+            The variable to slide over. (in aurora, often this may be time)
+        z : array of float, (`P`, `M`, `N`)
+            The variables to plot.
+        xlabel : str, optional
+            The label for the abscissa.
+        ylabel : str, optional
+            The label for the slider.
+        zlabel : str, optional
+            The label for the ordinate.
+        labels : list of str with length `P`
+            The labels for each curve in `z`.
+        plot_sum : bool, optional
+            If True, will also plot the sum over all `P` cases. Default is False.
+        x_line : float, optional
+            x coordinate at which a vertical line will be drawn. 
+        y_line : float, optional
+            y coordinate at which a horizontal line will be drawn.
     """
     if labels is None:
         labels = ['' for v in z]
@@ -149,36 +148,33 @@ def plot_norm_ion_freq(S_z, q_prof, R_prof, m_imp, Ti_prof,
     rate averaged over all charge state densities is considered. This function avoids the 
     averaging over charge states, unless these are provided as an input. 
 
-    INPUTS:
-    -------
-    S_z : array (r,cs) [s^-1]
-         Effective ionization rates for each charge state as a function of radius. 
-         Note that, for convenience within aurora, cs includes the neutral stage.
-    q_prof : array (r,)
-         Radial profile of safety factor
-    R_prof : array (r,) or float [m]
-         Radial profile of major radius, either given as an average of HFS and LFS, or also
-         simply as a scalar (major radius on axis)
-    m_imp : float [amu]
-         Mass of impurity of interest in amu units (e.g. 2 for D)
-    Ti_prof : array (r,)
-         Radial profile of ion temperature [eV]
-    nz_profs : array (r,cs), optional
-         Radial profile for each charge state. If provided, calculate average normalized 
-         ionization rate over all charge states.
-    rhop : array (r,), optional
-         Sqrt of poloidal flux radial grid. This is used only for (optional) plotting. 
-    plot : bool, optional
-         If True, plot results.
-    eps_prof : array (r,), optional
-         Radial profile of inverse aspect ratio, i.e. r/R, only used if plotting is requested.  
+    Args:
+        S_z : array (r,cs) [s^-1]
+             Effective ionization rates for each charge state as a function of radius. 
+             Note that, for convenience within aurora, cs includes the neutral stage.
+        q_prof : array (r,)
+             Radial profile of safety factor
+        R_prof : array (r,) or float [m]
+             Radial profile of major radius, either given as an average of HFS and LFS, or also
+             simply as a scalar (major radius on axis)
+        m_imp : float [amu]
+             Mass of impurity of interest in amu units (e.g. 2 for D)
+        Ti_prof : array (r,)
+             Radial profile of ion temperature [eV]
+        nz_profs : array (r,cs), optional
+             Radial profile for each charge state. If provided, calculate average normalized 
+             ionization rate over all charge states.
+        rhop : array (r,), optional
+             Sqrt of poloidal flux radial grid. This is used only for (optional) plotting. 
+        plot : bool, optional
+             If True, plot results.
+        eps_prof : array (r,), optional
+             Radial profile of inverse aspect ratio, i.e. r/R, only used if plotting is requested.  
 
-
-    OUTPUTS:
-    --------
-    nu_ioniz_star : array (r,cs) or (r,)
-         Normalized ionization rate. If nz_profs is given as an input, this is an average over
-         all charge state; otherwise, it is given for each charge state.
+    Returns:
+        nu_ioniz_star : array (r,cs) or (r,)
+             Normalized ionization rate. If nz_profs is given as an input, this is an average over
+             all charge state; otherwise, it is given for each charge state.
     '''
 
     nu = np.zeros_like(S_z)

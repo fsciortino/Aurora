@@ -10,7 +10,7 @@ from scipy.linalg import svd
 from IPython import embed
 
 def get_file_types():
-    ''' Returns main types of ADAS atomic data of interest '''
+    '''Returns main types of ADAS atomic data of interest '''
     return {'acd':'recombination',
             'scd':'ionization',
             'prb':'continuum radiation',
@@ -24,7 +24,7 @@ def get_file_types():
 
 
 def get_atomdat_info():
-    ''' Function to identify location of ADAS atomic data in a generalized fashion
+    '''Function to identify location of ADAS atomic data in a generalized fashion
     and to obtain the list of file_types of interest.
     '''
     if 'STRAHL_DIR' not in os.environ:
@@ -50,7 +50,7 @@ def get_atomdat_info():
 
 
 class adas_file():
-    ''' Read ADAS file in ADF11 format over the given ne, T. '''
+    '''Read ADAS file in ADF11 format over the given ne, T. '''
 
     def __init__(self, filepath):
 
@@ -175,48 +175,47 @@ def read_adf15(path, order=1, Te_max = None, ne_max = None,
     angstroms. The value is an interp2d instance that will evaluate the PEC at
     a desired dens, temp.
 
-    INPUTS:
-    ------
-    path : str
-        Path to adf15 file to read.
-    order : int, opt
-        Parameter to control the order of interpolation.
-    recomb : bool, opt
-        If True, fetch recombination contributions to available lines. If False,
-        fetch only ionization contributions.
+    Args:
+        path : str
+            Path to adf15 file to read.
+        order : int, opt
+            Parameter to control the order of interpolation.
+        recomb : bool, opt
+            If True, fetch recombination contributions to available lines. If False,
+            fetch only ionization contributions.
 
-    To plot PEC data:
-    ------
-    plot_lines : list
-        List of lines whose PEC data should be displayed. Lines should be identified
-        by their wavelengths. The list of available wavelengths in a given file can be retrieved
-        by first running this function ones, checking dictionary keys, and then requesting a
-        plot of one (or more) of them.
-    plot_log : bool
-        When plotting, set a log scale
-    plot_3d : bool
-        Display PEC data as a 3D plot rather than a 2D one.
-    pec_plot_min : float
-        Minimum value of PEC to visualize in a plot
-    pec_plot_max : float
-        Maximum value of PEC to visualize in a plot
-    ax : matplotlib axes instance
-        If not None, plot on this set of axes
-    Te_max : float
-        Maximum Te value to plot when len(plot_lines)>1
-    ne_max : float
-        Maximum ne value to plot when len(plot_lines)>1
+        To plot PEC data:
+        
+        plot_lines : list
+            List of lines whose PEC data should be displayed. Lines should be identified
+            by their wavelengths. The list of available wavelengths in a given file can be retrieved
+            by first running this function ones, checking dictionary keys, and then requesting a
+            plot of one (or more) of them.
+        plot_log : bool
+            When plotting, set a log scale
+        plot_3d : bool
+            Display PEC data as a 3D plot rather than a 2D one.
+        pec_plot_min : float
+            Minimum value of PEC to visualize in a plot
+        pec_plot_max : float
+            Maximum value of PEC to visualize in a plot
+        ax : matplotlib axes instance
+            If not None, plot on this set of axes
+        Te_max : float
+            Maximum Te value to plot when len(plot_lines)>1
+        ne_max : float
+            Maximum ne value to plot when len(plot_lines)>1
 
-    OUTPUTS:
-    pec_dict : dict
-        Dictionary containing interpolation functions for each of the available lines of the
-        indicated type (ionization or recombination). Each interpolation function takes as arguments
-        the log-10 of ne and Te.
+    Returns:
+        pec_dict : dict
+            Dictionary containing interpolation functions for each of the available lines of the
+            indicated type (ionization or recombination). Each interpolation function takes as arguments
+            the log-10 of ne and Te.
 
     MWE:
-    path='/home/sciortino/atomlib/atomdat_master/adf15/h/pju#h0.dat'
-    pec = read_adf15(path, recomb=False)
-    pec = read_adf15(path, plot_lines=[list(pec.keys())[0]], recomb=False)
+        path='/home/sciortino/atomlib/atomdat_master/adf15/h/pju#h0.dat'
+        pec = read_adf15(path, recomb=False)
+        pec = read_adf15(path, plot_lines=[list(pec.keys())[0]], recomb=False)
 
     This function should work with PEC files produced via adas810 or adas218.
 
@@ -301,39 +300,6 @@ def read_adf15(path, order=1, Te_max = None, ne_max = None,
                 )
             )
 
-            '''
-            ########## timing tests  #######
-            test1 = scipy.interpolate.RectBivariateSpline(
-                    np.log10(dens),
-                    np.log10(temp),
-                    np.log10(PEC),
-                    kx=order,
-                    ky=order
-                )
-            
-            # 
-            test2 = lambda logne_prof,logTe_prof: interp_atom_prof(
-                (np.log10(dens),np.log10(temp),np.log10(PEC).T[None,:,:]),
-                logne_prof,logTe_prof,x_multiply=False
-            )
-
-            logne_prof = np.log10(np.linspace(1e13,3e14,2))
-            logTe_prof = np.log10(np.linspace(1e2,5e3,2))
-            
-            import time as time_
-            t0 = time_.time()
-            for ijk in np.arange(1000):
-                aa = 10**test1.ev(logne_prof,logTe_prof)
-            print(f'Time for test1: {(time_.time()-t0)/1000}')
-            t0 = time_.time()
-            for ijk in np.arange(1000):
-                bb = test2(logne_prof,logTe_prof)
-            print(f'Time for test2: {(time_.time()-t0)/1000}')
-
-            print(f'Results: aa={aa}, bb={bb}')
-            embed()
-            '''
-
             # {'dens': dens, 'temp': temp, 'PEC': PEC}
             if lam in plot_lines:
 
@@ -401,10 +367,6 @@ def read_adf15(path, order=1, Te_max = None, ne_max = None,
                         ax1.set_title(cs + r' --- $\lambda$ = '+str(lam) +' A')
                         plt.tight_layout()
 
-                    # log scales don't work well in 3D...
-                    #ax2.set_zscale('log')
-                    #ax2.locator_params(axis='z', nbins=5)
-
                 else:
 
                     # plot in 2D
@@ -444,69 +406,64 @@ def null_space(A):
 def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
                         plot=True, ax = None, rho = None, rho_lbl=None,ls='-',
                         compute_rates=False):
-    '''
-    Calculate fractional abundances from ionization and recombination equilibrium.
+    '''Calculate fractional abundances from ionization and recombination equilibrium.
     If include_cx=True, radiative recombination and thermal charge exchange are summed.
 
-    INPUTS:
-    -------
-    atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
-        necessary only if include_cx=True
-    ne : float or array
-        Electron density in units of m^-3
-    Te : float or array, optional
-        Electron temperature in units of eV. If left to None, the Te grid given in the 
-        atomic data is used.
-    n0_by_ne: float or array, optional
-        Ratio of background neutral hydrogen to electron density, used if include_cx=True. 
-    include_cx : bool
-        If True, charge exchange with background thermal neutrals is included. 
-    plot : bool, optional
-        Show fractional abundances as a function of ne,Te profiles parameterization.
-    ax : matplotlib.pyplot Axes instance
-        Axes on which to plot if plot=True. If False, it creates new axes
-    rho : list or array, optional
-        Vector of radial coordinates on which ne,Te (and possibly n0_by_ne) are given. 
-        This is only used for plotting, if given. 
-    rho_lbl: str, optional
-        Label to be used for rho. If left to None, defaults to a general "rho".
-    ls : str, optional
-        Line style for plots. Continuous lines are used by default. 
-    compute_rates : bool
-        If True, compute rate coefficients for ionization/recombination equilibrium on top
-        of fractional abundances (which should be the same regardless of the method used). 
+    Args:
+        atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
+            necessary only if include_cx=True
+        ne : float or array
+            Electron density in units of m^-3
+        Te : float or array, optional
+            Electron temperature in units of eV. If left to None, the Te grid given in the 
+            atomic data is used.
+        n0_by_ne: float or array, optional
+            Ratio of background neutral hydrogen to electron density, used if include_cx=True. 
+        include_cx : bool
+            If True, charge exchange with background thermal neutrals is included. 
+        plot : bool, optional
+            Show fractional abundances as a function of ne,Te profiles parameterization.
+        ax : matplotlib.pyplot Axes instance
+            Axes on which to plot if plot=True. If False, it creates new axes
+        rho : list or array, optional
+            Vector of radial coordinates on which ne,Te (and possibly n0_by_ne) are given. 
+            This is only used for plotting, if given. 
+        rho_lbl: str, optional
+            Label to be used for rho. If left to None, defaults to a general "rho".
+        ls : str, optional
+            Line style for plots. Continuous lines are used by default. 
+        compute_rates : bool
+            If True, compute rate coefficients for ionization/recombination equilibrium on top
+            of fractional abundances (which should be the same regardless of the method used). 
 
-    OUTPUTS:
-    -------
-    logTe_ : array
-        log10 of electron temperatures as a function of which the fractional abundances and
-        rate coefficients are given.
-    fz : array, (space,nZ)
-        Fractional abundances across the same grid used by the input ne,Te values. 
-    rate_coeff : array, (space, nZ)
-        Rate coefficients in units of [s^-1]. 
+    Returns:
+        logTe : array
+            log10 of electron temperatures as a function of which the fractional abundances and
+            rate coefficients are given.
+        fz : array, (space,nZ)
+            Fractional abundances across the same grid used by the input ne,Te values. 
+        rate_coeff : array, (space, nZ)
+            Rate coefficients in units of [s^-1]. 
 
     '''
 
-    logTe_, logS,logR,logcx = get_cs_balance_terms(atom_data, ne,Te, maxTe=10e3, include_cx=include_cx)
+    logTe, logS,logR,logcx = get_cs_balance_terms(atom_data, ne,Te, maxTe=10e3, include_cx=include_cx)
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
         logR= np.logaddexp(logR,np.log(n0_by_ne)[:,None] +logcx)
         
     # analytical formula for fractional abundance
-    rate_ratio = np.hstack((np.zeros_like(logTe_)[:,None], logS-logR))
+    rate_ratio = np.hstack((np.zeros_like(logTe)[:,None], logS-logR))
     rate_ratio[rate_ratio<-10.]=-10.  # to avoid underflow in exponential
     fz = np.exp(np.cumsum(rate_ratio,axis=1))
     fz /= fz.sum(1)[:,None]
-
-    out = [logTe_,fz]
     
     if compute_rates:
         # numerical method which calculates also rate_coeff
         nion = logR.shape[1]
-        fz  = np.zeros((logTe_.size,nion+1))
-        rate_coeff = np.zeros(logTe_.size)
-        for it,t in enumerate(logTe_):
+        fz  = np.zeros((logTe.size,nion+1))
+        rate_coeff = np.zeros(logTe.size)
+        for it,t in enumerate(logTe):
 
             A = -np.diag(np.r_[np.exp(logS[it]),0])+np.diag(np.exp(logS[it]),-1)+\
                 np.diag(np.exp(logR[it]),1)- np.diag(np.r_[0,np.exp(logR[it])])
@@ -515,7 +472,6 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
             fz[it] = N/np.sum(N)
 
         rate_coeff*=ne
-        out.append(rate_coeff)
     
     if plot:
         # plot fractional abundances
@@ -525,7 +481,7 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
             axx = ax
 
         if rho is None:
-            x = 10**logTe_
+            x = 10**logTe
             axx.set_xlabel('T$_e$ [eV]')
             axx.set_xscale('log')
         else:
@@ -547,37 +503,38 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
     else:
         axx = None    
 
-    out.append(axx)
-    
-    return out 
+    if compute_rates:
+        return logTe, fz, rate_coeff
+    else:
+        return logTe, fz
 
 
 
 
 
 def get_cs_balance_terms(atom_data, ne=5e19,Te = None, maxTe=10e3, include_cx=True):
-    ''' Get S, R and cx on the same logTe grid. 
+    '''Get S, R and cx on the same logTe grid. 
     
-    INPUTS
-    ------
-    atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
-        necessary only if include_cx=True
-    ne : float or array
-        Electron density in units of m^-3
-    Te : float or array
-        Electron temperature in units of eV. If left to None, the Te grid
-        given in the atomic data is used.
-    maxTe : float
-        Maximum temperature of interest; only used if Te is left to None. 
-    include_cx : bool
-        If True, obtain charge exchange terms as well. 
+    Args:
+        atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
+            necessary only if include_cx=True
+        ne : float or array
+            Electron density in units of m^-3
+        Te : float or array
+            Electron temperature in units of eV. If left to None, the Te grid
+            given in the atomic data is used.
+        maxTe : float
+            Maximum temperature of interest; only used if Te is left to None. 
+        include_cx : bool
+            If True, obtain charge exchange terms as well. 
     
-    OUTPUTS
-    -------
-    logTe : log10 Te grid on which atomic rates are given
-    logS, logR (,logcx): atomic rates for effective ionization, radiative+dielectronic
-        recombination (+ charge exchange, if requested). After exponentiation, all terms
-        will be in units of s^-1. 
+    Returns:
+        logTe : array (n_Te)
+            log10 Te grid on which atomic rates are given
+        logS, logR (,logcx): arrays (n_ne,n_Te)
+            atomic rates for effective ionization, radiative+dielectronic
+            recombination (+ charge exchange, if requested). After exponentiation, all terms
+            will be in units of s^-1. 
     '''
     if Te is None:
         #find smallest Te grid from all files
@@ -740,11 +697,14 @@ def gff_mean(Z,Te):
 
 
 
-def impurity_brems( nz, ne, Te):
-    '''mW/nm/sr/m^3 *cm^3
-    This is only approximate and not very useful, since the bremsstrahlung contribution
+def impurity_brems(nz, ne, Te):
+    '''Impurity bremsstrahlung in units of mW/nm/sr/m^3.cm^3.
+
+    This is only approximate and may not be very useful, since this contribution
     is already included in the continuum in x2.
-    This estimate does not have the correct ne-dependence of the Gaunt factor...'''
+
+    This estimate does not have the correct ne-dependence of the Gaunt factor... use with care!
+    '''
 
     # neutral stage doesn't produce brems
     Z_imp = nz.shape[1]-1
@@ -757,16 +717,18 @@ def impurity_brems( nz, ne, Te):
 
 
 def main_ion_brems(Zi, ni, ne, Te):
-    ''' mW/nm/sr/m^3 *cm^3
-    Better to calculate this from H/D/T plt files, which will have more accurate Gaunt factors
-    with density dependence.'''
+    '''Main-ion bremsstrahlung in units of  mW/nm/sr/m^3.cm^3.
+
+    It is likely better to calculate this from H/D/T plt files, which will have more accurate 
+    Gaunt factors with the correct density dependence.
+    '''
     return 1.69e-32 * ni * Zi**2. * ne * np.sqrt(Te) * gff_mean(Zi,Te)
 
 
 
 
 def get_adas_ion_rad(ion_name, n_ion, logne_prof, logTe_prof, sxr=False):
-    ''' Get ADAS estimate for total radiation in [M/m^3] for the given ion
+    '''Get ADAS estimate for total radiation in [M/m^3] for the given ion
     with the given (log) density and temperature profiles. 
 
     If sxr=True, 'prs' files are used instead of 'prb' ones, thus giving SXR-filtered
@@ -788,8 +750,7 @@ def get_adas_ion_rad(ion_name, n_ion, logne_prof, logTe_prof, sxr=False):
 
 
 def get_cooling_factors(atom_data, logTe_, fz, ion_resolved = False, plot=True,ax=None):
-    '''
-    Calculate cooling coefficients from fz and prs,  pls (if these are available).
+    '''Calculate cooling coefficients from fz and prs,  pls (if these are available).
     Also plot the inverse of rate coefficients, which gives an estimate for relaxation times.
     '''
     try:
@@ -852,22 +813,19 @@ def get_cooling_factors(atom_data, logTe_, fz, ion_resolved = False, plot=True,a
 
 
 def plot_radiation_profs(atom_data, nz_prof, logne_prof, logTe_prof, xvar, imp='F', plot=False):
-    ''' Obtain profiles of predicted radiation.
+    '''Obtain profiles of predicted radiation.
 
     This function can be used to plot radial profiles (setting xvar to a radial grid)
     or profiles as a function of any variable on which the logne_prof and logTe_prof
     may depend.
 
-    The variable `nz_prof' may be a full description of impurity charge state densities
+    The variable :param:nz_prof may be a full description of impurity charge state densities
     (e.g. the output of Aurora), or profiles of fractional abundances from ionization
     equilibrium.
 
-    Note that the variables `xvar' (array) and imp (str) are only needed if plotting is requested.
+    Note that the variables :param:xvar (array) and :param:imp (str) are only needed if plotting is requested.
     '''
-
-
     pls, prs, pltt, prb = get_cooling_factors(atom_data, logTe_prof, nz_prof, ion_resolved = True, plot=False)
-
 
     emiss_sxr = np.zeros((len(xvar),nion))
     emiss_tot = np.zeros((len(xvar),nion))
@@ -905,7 +863,6 @@ def plot_radiation_profs(atom_data, nz_prof, logne_prof, logTe_prof, xvar, imp='
         a.set_prop_cycle('color',colors)
         a.grid(True)
 
-
     ax[0].plot(xvar,emiss_sxr); ax[0].set_title('SXR power [W]')
     ax[1].plot(xvar,emiss_tot); ax[1].set_title('Tot. rad. power [W]')
     ax[2].plot(xvar,emiss_sxr*10**logne_prof[:,None]); ax[2].set_title(r'SXR power [W/m$^{-3}$]')
@@ -919,7 +876,7 @@ def plot_radiation_profs(atom_data, nz_prof, logne_prof, logTe_prof, xvar, imp='
 
 
 def balance(logTe_val, cs, n0_by_ne, logTe_, S,R,cx):
-    ''' Evaluate balance of effective ionization, recombination and charge exchange at a given temperature. '''
+    '''Evaluate balance of effective ionization, recombination and charge exchange at a given temperature. '''
 
     a = R +n0_by_ne * cx
     SS_0 = 10**(interp1d(logTe_, np.log10(S[cs-1,:]), kind='cubic', bounds_error=False)(logTe_val))
@@ -934,7 +891,7 @@ def balance(logTe_val, cs, n0_by_ne, logTe_, S,R,cx):
 
 
 def adas_files_dict():
-    ''' Selections for ADAS files for Aurora runs and radiation calculations.
+    '''Selections for ADAS files for Aurora runs and radiation calculations.
     This function can be called to fetch a set of default files, which can then be modified (e.g. to 
     use a new file for a specific SXR filter) before running a calculation. 
     '''

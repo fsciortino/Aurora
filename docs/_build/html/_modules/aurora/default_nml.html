@@ -1,0 +1,196 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aurora.default_nml &#8212; aurora 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for aurora.default_nml</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39; Method to load default namelist. This should be complemented with additional info </span>
+<span class="sd">by each user. </span>
+
+<span class="sd">sciortino, July 2020</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<div class="viewcode-block" id="load_default_namelist"><a class="viewcode-back" href="../../aurora.html#aurora.default_nml.load_default_namelist">[docs]</a><span class="k">def</span> <span class="nf">load_default_namelist</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39; Load default namelist. </span>
+<span class="sd">    Users should modify and complement this for a successful run.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">namelist</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;device&#39;</span><span class="p">:</span> <span class="s1">&#39;CMOD&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;shot&#39;</span><span class="p">:</span> <span class="mi">99999</span><span class="p">,</span>
+        <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="mi">1250</span><span class="p">,</span> <span class="c1"># in ms, for equilibrium</span>
+        <span class="s1">&#39;imp&#39;</span><span class="p">:</span> <span class="s1">&#39;Ca&#39;</span><span class="p">,</span>
+        <span class="c1"># --------------------</span>
+        <span class="c1"># background:</span>
+        <span class="s1">&#39;Z&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="s1">&#39;main_element&#39;</span><span class="p">:</span> <span class="s1">&#39;D&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;Baxis&#39;</span><span class="p">:</span> <span class="mf">5.5</span><span class="p">,</span>
+        <span class="c1"># --------------------</span>
+        <span class="c1"># source</span>
+        <span class="s1">&#39;source_width_in&#39;</span> <span class="p">:</span>  <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="s1">&#39;source_width_out&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="s1">&#39;imp_energy&#39;</span> <span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span> <span class="c1">#eV</span>
+        <span class="s1">&#39;prompt_redep_flag&#39;</span> <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;Phi0&#39;</span><span class="p">:</span> <span class="mf">1e+24</span><span class="p">,</span>
+        <span class="s1">&#39;source_type&#39;</span><span class="p">:</span><span class="s1">&#39;file&#39;</span><span class="p">,</span> 
+        <span class="s1">&#39;source_file&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="c1"># required</span>
+        <span class="s1">&#39;source_position&#39;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="c1"># cm from LCFS</span>
+        <span class="s1">&#39;lbo_model&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;n_particles&#39;</span><span class="p">:</span> <span class="mf">1e+18</span><span class="p">,</span>
+                      <span class="s1">&#39;t_fall&#39;</span><span class="p">:</span> <span class="mf">1.71</span><span class="p">,</span>
+                      <span class="s1">&#39;t_rise&#39;</span><span class="p">:</span> <span class="mf">0.181</span><span class="p">,</span>
+                      <span class="s1">&#39;t_start&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+        <span class="c1"># --------------------</span>
+        <span class="c1"># timing</span>
+        <span class="s1">&#39;timing&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;dt_increase&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">]),</span>
+                   <span class="s1">&#39;dt_start&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">]),</span>
+                   <span class="s1">&#39;steps_per_cycle&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]),</span>
+                   <span class="s1">&#39;times&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">2.</span><span class="p">])},</span>
+        <span class="c1"># --------------------</span>
+        <span class="c1"># radial grid</span>
+        <span class="s1">&#39;K&#39;</span><span class="p">:</span> <span class="mf">6.0</span><span class="p">,</span>
+        <span class="s1">&#39;bound_sep&#39;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+        <span class="s1">&#39;clen_divertor&#39;</span><span class="p">:</span> <span class="mf">17.0</span><span class="p">,</span>
+        <span class="s1">&#39;clen_limiter&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+        <span class="s1">&#39;dr_0&#39;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+        <span class="s1">&#39;dr_1&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+        <span class="s1">&#39;eqdist_rK_grid&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;lim_sep&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="s1">&#39;ng&#39;</span><span class="p">:</span> <span class="mi">135</span><span class="p">,</span>
+        <span class="s1">&#39;SOL_decay&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span> 
+        <span class="c1"># -------------------</span>
+        <span class="s1">&#39;saw_model&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;saw_flag&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                      <span class="s1">&#39;rmix&#39;</span><span class="p">:</span> <span class="mf">1000.0</span><span class="p">,</span>
+                      <span class="s1">&#39;times&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,],</span> 
+                      <span class="s1">&#39;sawtooth_erfc_width&#39;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+        <span class="c1"># --------------------</span>
+        <span class="c1"># edge/recycling</span>
+        <span class="s1">&#39;recycling_flag&#39;</span> <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;wall_recycling&#39;</span> <span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> 
+        <span class="s1">&#39;divbls&#39;</span> <span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;tau_div_SOL&#39;</span> <span class="p">:</span> <span class="mf">50.0</span><span class="p">,</span>  
+        <span class="s1">&#39;tau_pump&#39;</span> <span class="p">:</span> <span class="mf">500.0</span><span class="p">,</span> 
+        <span class="s1">&#39;tau_rcl_ret&#39;</span> <span class="p">:</span> <span class="mf">50.0</span><span class="p">,</span> 
+        <span class="c1"># ------------------</span>
+        <span class="c1"># extras</span>
+        <span class="s1">&#39;Raxis&#39;</span><span class="p">:</span> <span class="mf">0.685</span><span class="p">,</span>
+        <span class="s1">&#39;SOL_mach&#39;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+        <span class="s1">&#39;nt&#39;</span><span class="p">:</span> <span class="mi">21</span><span class="p">,</span>
+        <span class="s1">&#39;sheath_voltage&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="c1"># --------------------</span>
+        <span class="c1"># kinetic profiles</span>
+        <span class="s1">&#39;average_kin_profs&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s1">&#39;kin_profs&#39;</span> <span class="p">:</span> <span class="p">{</span><span class="s1">&#39;ne&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;fun&#39;</span><span class="p">:</span> <span class="s1">&#39;interpa&#39;</span><span class="p">},</span> 
+                       <span class="s1">&#39;Te&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;fun&#39;</span><span class="p">:</span><span class="s1">&#39;interp&#39;</span><span class="p">}</span>
+                   <span class="p">},</span>
+        <span class="c1"># ----------------</span>
+        <span class="c1"># flags</span>
+        <span class="s1">&#39;cxr_flag&#39;</span> <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;nbi_cxr_flag&#39;</span> <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+
+        <span class="c1"># radiation flags</span>
+        <span class="s1">&#39;prad_flag&#39;</span> <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;thermal_cx_rad_flag&#39;</span> <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;spectral_brem_flag&#39;</span> <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;sxr_flag&#39;</span> <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="s1">&#39;main_ion_brem_flag&#39;</span> <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">namelist</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">aurora</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../aurora.html">aurora package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, F.Sciortino.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

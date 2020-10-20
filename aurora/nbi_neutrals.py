@@ -20,29 +20,27 @@ def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
     dictionary with a structure that is independent of NBI model (i.e. coming from FIDASIM, NUBEAM, 
     pencil calculations, etc.).
 
-    INPUTS:
-    -------
-    neutrals : dict
-        Dictionary containing fields
-        {'beams','names','R','Z', beam1, beam2, etc.}
-        Here beam1,beam2,etc. are the names in neutrals['beams']. 'names' are the names of each 
-        beam component, e.g. 'fdens','hdens','halo', etc., ordered according to 'names'. 
-        'R','Z' are the major radius and vertical coordinates [cm] on which neutral density components are 
-        given in elements such as 
-        >> neutrals[beams[0]]['n=0'][name_idx]
-        It is currently assumed that n=0,1 and 2 beam components are provided by the user. 
+    Args:
+        neutrals : dict
+            Dictionary containing fields
+            {'beams','names','R','Z', beam1, beam2, etc.}
+            Here beam1,beam2,etc. are the names in neutrals['beams']. 'names' are the names of each 
+            beam component, e.g. 'fdens','hdens','halo', etc., ordered according to 'names'. 
+            'R','Z' are the major radius and vertical coordinates [cm] on which neutral density components are 
+            given in elements such as 
+            >> neutrals[beams[0]]['n=0'][name_idx]
+            It is currently assumed that n=0,1 and 2 beam components are provided by the user. 
 
-    geqdsk : gEQDSK post-processed dictionary, as given by the omfit_eqdsk package. 
+        geqdsk : gEQDSK post-processed dictionary, as given by the omfit_eqdsk package. 
 
-    debug_plots : bool, optional
-        If True, various plots are displayed. 
+        debug_plots : bool, optional
+            If True, various plots are displayed. 
 
-    OUTPUTS:
-    -------
-    neut_fsa : dict
-         Dictionary of flux-surface-averaged (FSA) neutral densities, in the same units as in the input. 
-         Similarly to the input "neutrals", this dictionary has a structure like
-         >> neutrals_ext[beam][f'n={n_level}'][name_idx]
+    Returns:
+        neut_fsa : dict
+             Dictionary of flux-surface-averaged (FSA) neutral densities, in the same units as in the input. 
+             Similarly to the input "neutrals", this dictionary has a structure like
+             >> neutrals_ext[beam][f'n={n_level}'][name_idx]
 
     """
 
@@ -170,32 +168,30 @@ def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_prof, include_fast=True
     neutrals are expected to be time-independent. Hence, the resulting CXR rates will only have
     time dependence that reflects changes in Ti, but not the NBI.
 
-    INPUTS:
-    -------
-    neut_fsa : dict
-         Dictionary containing FSA neutral densities in the form that is output by :py:method:get_neutrals_fsa.
-    q : int or float
-         Charge of impurity species
-    rhop_Ti : array-like
-         Sqrt of poloidal flux radial coordinate for Ti profiles.
-    times_Ti : array-like
-         Time base on which Ti_prof is given [s]. 
-    Ti_prof : array-like
-         Ion temperature profile on the rhop_Ti, times_Ti bases.
-    include_fast : bool, optional
-         If True, include CXR rates from fast NBI neutrals. Default is True. 
-    include_halo : bool, optional
-         If True, include CXR rates from themral NBI halo neutrals. Default is True. 
-    debug_plots : bool, optional
-         If True, plot several plots to assess the quality of the calculation. 
+    Args:
+        neut_fsa : dict
+             Dictionary containing FSA neutral densities in the form that is output by :py:method:get_neutrals_fsa.
+        q : int or float
+             Charge of impurity species
+        rhop_Ti : array-like
+             Sqrt of poloidal flux radial coordinate for Ti profiles.
+        times_Ti : array-like
+             Time base on which Ti_prof is given [s]. 
+        Ti_prof : array-like
+             Ion temperature profile on the rhop_Ti, times_Ti bases.
+        include_fast : bool, optional
+             If True, include CXR rates from fast NBI neutrals. Default is True. 
+        include_halo : bool, optional
+             If True, include CXR rates from themral NBI halo neutrals. Default is True. 
+        debug_plots : bool, optional
+             If True, plot several plots to assess the quality of the calculation. 
 
-    OUTPUTS:
-    --------
-    rates : dict
-        Dictionary containing CXR rates from NBI neutrals. This dictionary has analogous form to the 
-        :py:method:get_neutrals_fsa function, e.g. we have 
-        >> rates[beam][f'n={n_level}']['halo']
-        Rates are on a radial grid corresponding to the input neut_fsa['rhop']. 
+    Returns:
+        rates : dict
+            Dictionary containing CXR rates from NBI neutrals. This dictionary has analogous form to the 
+            :py:method:get_neutrals_fsa function, e.g. we have 
+            >> rates[beam][f'n={n_level}']['halo']
+            Rates are on a radial grid corresponding to the input neut_fsa['rhop']. 
 
     For details on inputs and outputs, it is recommendeded to look at the internal plotting functions. 
 
@@ -415,27 +411,26 @@ def xyz_uvw(x, y, z, origin, R):
 
 
 def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
-    """
-    Calculates Maxwellian reaction rate for a beam with atomic mass `m_beam`, energy `E_beam`, firing into a target
-    with atomic mass `m_bckg` and temperature `T`.
+    """Calculates Maxwellian reaction rate for a beam with atomic mass `m_beam`, 
+    energy `E_beam`, firing into a target with atomic mass `m_bckg` and temperature `T`.
+
     `sigma_fun` must be a function for a specific charge and n-level of the beam particles.
     Ref: FIDASIM atomic_tables.f90 bt_maxwellian_n_m.
 
-    INPUTS:
-    -------
-    sigma_fun: function to compute a specific cross section [cm^2], function of energy/amu ONLY.
-        Expected call form: sigma_fun(erel/ared)
-    Ti : target temperature [keV], float, 1D or 2D array
-        Results will be computed for each Ti value in a vectorized manner.
-    E_beam : beam energy [keV]
-    m_bckg : target atomic mass [amu]
-    m_beam : beam atomic mass [amu]
-    n_level : n-level of beam. This is used to evaluate the hydrogen ionization potential,
-        below which an electron is unlikely to charge exchange with surrounding ions.
+    Args:
+        sigma_fun: function to compute a specific cross section [cm^2], function of energy/amu ONLY.
+            Expected call form: sigma_fun(erel/ared)
+        Ti : target temperature [keV], float, 1D or 2D array
+            Results will be computed for each Ti value in a vectorized manner.
+        E_beam : beam energy [keV]
+        m_bckg : target atomic mass [amu]
+        m_beam : beam atomic mass [amu]
+        n_level : n-level of beam. This is used to evaluate the hydrogen ionization potential,
+            below which an electron is unlikely to charge exchange with surrounding ions.
 
-    OUTPUTS:
-    --------
-    rate : output reaction rate in [cm^3/s] units
+    Returns:
+        rate : output reaction rate in [cm^3/s] units
+
     """
     from scipy import constants as consts
 
@@ -487,32 +482,30 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
 
 
 def bt_rate_maxwell_average_vec(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
-    """
-    Calculates Maxwellian reaction rate for a beam with atomic mass `m_beam`, energy `E_beam`, firing into a target
-    with atomic mass `m_bckg` and temperature `T`.
+    """Calculates Maxwellian reaction rate for a beam with atomic mass `m_beam`, 
+    energy `E_beam`, firing into a target with atomic mass `m_bckg` and temperature `T`.
+
     `sigma_fun` must be a function for a specific charge and n-level of the beam particles.
     Ref: FIDASIM atomic_tables.f90 bt_maxwellian_n_m.
 
     This version of the function attempts to vectorize the calculation such that we can have Ti
     being a function of space and time and deal with integrations in vr and vz with no loops.
 
-    INPUTS:
-    -------
-    sigma_fun: function to compute a specific cross section [cm^2], function of energy/amu ONLY.
-        Expected call form: sigma_fun(erel/ared)
-    Ti : target temperature [keV], float, 1D or 2D array
-    E_beam : beam energy [keV]
-    m_bckg : target atomic mass [amu]
-    m_beam : beam atomic mass [amu]
-    n_level : n-level of beam. This is used to evaluate the hydrogen ionization potential,
-        below which an electron is unlikely to charge exchange with surrounding ions.
+    Args:
+        sigma_fun: function to compute a specific cross section [cm^2], function of energy/amu ONLY.
+            Expected call form: sigma_fun(erel/ared)
+        Ti : target temperature [keV], float, 1D or 2D array
+        E_beam : beam energy [keV]
+        m_bckg : target atomic mass [amu]
+        m_beam : beam atomic mass [amu]
+        n_level : n-level of beam. This is used to evaluate the hydrogen ionization potential,
+            below which an electron is unlikely to charge exchange with surrounding ions.
 
-    OUTPUTS:
-    --------
-    rate : output reaction rate in [cm^3/s] units
+    Returns:
+        rate : output reaction rate in [cm^3/s] units
 
 
-    UNTESTED!!!
+    ~~~~~~~~~~ UNTESTED!~~~~~~~~~~~
 
     """
     from scipy import constants as consts
@@ -563,30 +556,27 @@ def bt_rate_maxwell_average_vec(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
 
 
 def tt_rate_maxwell_average(sigma_fun, Ti, m_i, m_n, n_level):
-    """
-    Calculates Maxwellian reaction rate for an interaction between two thermal populations,
+    """Calculates Maxwellian reaction rate for an interaction between two thermal populations,
     assumed to be of neutrals (mass m_n) and background ions (mass m_i).
 
     `sigma_fun` must be a function for a specific charge and n-level of the neutral particles.
     This allows evaluation of atomic rates for charge exchange interactions between thermal
     beam halos and background ions.
 
-    INPUTS:
-    -------
-    sigma_fun: function to compute a specific cross section [cm^2], function of energy/amu ONLY.
-        Expected call form: sigma_fun(erel/ared)
-    Ti : background ion and halo temperature [keV], float or 1D
-    m_i : mass of background ions [amu]
-    m_n : mass of neutrals [amu]
-    n_level : n-level of beam. This is used to evaluate the hydrogen ionization potential,
-        below which an electron is unlikely to charge exchange with surrounding ions.
+    Args:
+        sigma_fun: function to compute a specific cross section [cm^2], function of energy/amu ONLY.
+            Expected call form: sigma_fun(erel/ared)
+        Ti : background ion and halo temperature [keV], float or 1D
+        m_i : mass of background ions [amu]
+        m_n : mass of neutrals [amu]
+        n_level : n-level of beam. This is used to evaluate the hydrogen ionization potential,
+            below which an electron is unlikely to charge exchange with surrounding ions.
 
-    TODO: add effect of toroidal rotation! This will require making the integration in this
-    function 2-dimensional.
+        TODO: add effect of toroidal rotation! This will require making the integration in this
+        function 2-dimensional.
 
-    OUTPUTS:
-    --------
-    rate : output reaction rate in [cm^3/s] units
+    Returns:
+        rate : output reaction rate in [cm^3/s] units
     """
     Ti = np.atleast_1d(Ti)
 

@@ -3,43 +3,41 @@ from scipy.interpolate import interp1d
 from . import grids_utils
 
 def vol_average(quant, rhop, method='omfit', geqdsk=None, device=None, shot=None, time=None, return_geqdsk=False):
-    ''' Calculate the volume average of the given radially-dependent quantity on a rhop grid. 
+    '''Calculate the volume average of the given radially-dependent quantity on a rhop grid. 
 
-    INPUTS:
-    -----------
-    quant : array, (space, ...)
-        quantity that one wishes to volume-average. The first dimension must correspond to space,
-        but other dimensions may be exist afterwards.
-    rhop : array, (space,)
-        Radial rhop coordinate in cm units. 
-    method : {'omfit','fs'}
-        Method to evaluate the volume average. The two options correspond to the way to compute
-        volume averages via the OMFIT fluxSurfaces classes and via a simpler cumulative sum in r_V 
-        coordinates. The methods only slightly differ in their results. Note that 'omfit' will fail if 
-        rhop extends beyond the LCFS, while method 'fs' can estimate volume averages also into the SOL.
-        Default is method='omfit'. 
-    geqdsk : output of the omfit_eqdsk.OMFITgeqdsk class, postprocessing the EFIT geqdsk file
-        containing the magnetic geometry. If this is left to None, the function internally tries to fetch
-        it using MDS+ and omfit_eqdsk. In this case, device, shot and time to fetch the equilibrium 
-        are required. 
-    device : str
-        Device name. Note that routines for this device must be implemented in omfit_eqdsk for this 
-        to work. 
-    shot : int
-         Shot number of the above device, e.g. 1101014019 for C-Mod.
-    time : float
-         Time at which equilibrium should be fetched in units of ms. 
-    return_geqdsk : bool
-         If True, omfit_eqdsk dictionary is also returned
+    Args:
+        quant : array, (space, ...)
+            quantity that one wishes to volume-average. The first dimension must correspond to space,
+            but other dimensions may be exist afterwards.
+        rhop : array, (space,)
+            Radial rhop coordinate in cm units. 
+        method : {'omfit','fs'}
+            Method to evaluate the volume average. The two options correspond to the way to compute
+            volume averages via the OMFIT fluxSurfaces classes and via a simpler cumulative sum in r_V 
+            coordinates. The methods only slightly differ in their results. Note that 'omfit' will fail if 
+            rhop extends beyond the LCFS, while method 'fs' can estimate volume averages also into the SOL.
+            Default is method='omfit'. 
+        geqdsk : output of the omfit_eqdsk.OMFITgeqdsk class, postprocessing the EFIT geqdsk file
+            containing the magnetic geometry. If this is left to None, the function internally tries to fetch
+            it using MDS+ and omfit_eqdsk. In this case, device, shot and time to fetch the equilibrium 
+            are required. 
+        device : str
+            Device name. Note that routines for this device must be implemented in omfit_eqdsk for this 
+            to work. 
+        shot : int
+             Shot number of the above device, e.g. 1101014019 for C-Mod.
+        time : float
+             Time at which equilibrium should be fetched in units of ms. 
+        return_geqdsk : bool
+             If True, omfit_eqdsk dictionary is also returned
 
-    OUTPUTS:
-    ---------------
-    quant_vol_avg : array, (space, ...)
-        Volume average of the quantity given as an input, in the same units as in the input.
-        If extrapolation beyond the range available from EFIT volume averages over a shorter section
-        of the radial grid will be attempted. This does not affect volume averages within the LCFS. 
-    geqdsk : dict
-        Only returned if return_geqdsk=True. 
+    Returns:
+        quant_vol_avg : array, (space, ...)
+            Volume average of the quantity given as an input, in the same units as in the input.
+            If extrapolation beyond the range available from EFIT volume averages over a shorter section
+            of the radial grid will be attempted. This does not affect volume averages within the LCFS. 
+        geqdsk : dict
+            Only returned if return_geqdsk=True. 
     '''
     if time is not None and np.mean(time)<1e2:
         print('Input time was likely in the wrong units! It should be in [ms]!')
@@ -85,7 +83,7 @@ def vol_average(quant, rhop, method='omfit', geqdsk=None, device=None, shot=None
 
 
 def rV_vol_average(quant,r_V):
-    ''' Calculate a volume average of the given radially-dependent quantity on a r_V grid.
+    '''Calculate a volume average of the given radially-dependent quantity on a r_V grid.
     This function makes useof the fact that the r_V radial coordinate, defined as 
     r_V = \sqrt{ V / (2 \pi^2 R_{axis} },
     maps shaped volumes onto a circular geometry, making volume averaging a trivial 
@@ -97,18 +95,16 @@ def rV_vol_average(quant,r_V):
     this function will return the effective volume average also in the SOL, since it is 
     agnostic to the presence of the LCFS. 
 
-    INPUTS:
-    -----------
-    quant : array, (space, ...)
-        quantity that one wishes to volume-average. The first dimension must correspond to r_V,
-        but other dimensions may be exist afterwards. 
-    r_V : array, (space,)
-        Radial r_V coordinate in cm units. 
+    Args:
+        quant : array, (space, ...)
+            quantity that one wishes to volume-average. The first dimension must correspond to r_V,
+            but other dimensions may be exist afterwards. 
+        r_V : array, (space,)
+            Radial r_V coordinate in cm units. 
 
-    OUTPUTS:
-    --------------
-    quant_vol_avg : array, (space, ...)
-        Volume average of the quantity given as an input, in the same units as in the input
+    Returns:
+        quant_vol_avg : array, (space, ...)
+            Volume average of the quantity given as an input, in the same units as in the input
     '''
     quant_vol_avg = 2.*np.cumsum(quant*r_V*np.diff(r_V,prepend=0.0)) / (r_V[-1]**2 )
 
@@ -117,15 +113,20 @@ def rV_vol_average(quant,r_V):
 
     
 def rad_coord_transform(x,name_in,name_out, geqdsk):
-    """
-    Transform from one radial coordinate to another.
+    """Transform from one radial coordinate to another.
 
-    INPUTS:
-    :param x: input x coordinate
-    :param name_in: input x coordinate name ('rhon','r_V','rhop','rhov','Rmid','rmid','roa')
-    :param name_out: input x coordinate ('rhon', 'r_V', 'rhop','rhov','Rmid','rmid','roa')
-    :param eqdsk: gEQDSK dictionary, as obtained from the omfit-eqdsk package. 
-
+    Args:
+        x: array
+            input x coordinate
+        name_in: str
+            input x coordinate name ('rhon','r_V','rhop','rhov','Rmid','rmid','roa')
+        name_out: str
+            input x coordinate ('rhon', 'r_V', 'rhop','rhov','Rmid','rmid','roa')
+        geqdsk: dict
+            gEQDSK dictionary, as obtained from the omfit-eqdsk package. 
+    
+    Returns:
+        Conversion of `x` for the requested radial grid coordinate.
     """
     if name_in == name_out:
         return x

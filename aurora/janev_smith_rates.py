@@ -230,25 +230,26 @@ def js_sigma_cx_ng1_qg3(E, n1, q):
 
 
 def js_sigma(E, q, n1, n2=None, type='cx'):
-    """Cross sections for collisional processes between beam neutrals and highly-charged ions, from Janev & Smith 1993.
+    """Cross sections for collisional processes between beam neutrals and highly-charged 
+    ions, from Janev & Smith 1993.
 
-    INPUTS:
-    E : float
-        Normalized beam energy [keV/amu]
-    q : int
-        Impurity charge before interaction (interacting ion is A^{q+})
-    n1 : int
-        Principal quantum number of beam hydrogen.
-    n2: int
-        Principal quantum number of excited. This may not be needed for some transitions (if so, leave to None).
-    type : str
-        Type of interaction. Possible choices:
-        {'exc','ioniz','cx'}
-        where 'cx' refers to electron capture / charge exchange.
+    Args:
+        E : float
+            Normalized beam energy [keV/amu]
+        q : int
+            Impurity charge before interaction (interacting ion is A^{q+})
+        n1 : int
+            Principal quantum number of beam hydrogen.
+        n2: int
+            Principal quantum number of excited. This may not be needed for some transitions (if so, leave to None).
+        type : str
+            Type of interaction. Possible choices:
+            {'exc','ioniz','cx'}
+            where 'cx' refers to electron capture / charge exchange.
 
-    OUTPUTS:
-    sigma : float
-        Cross section of selected process, in [cm^2] units.
+    Returns:
+        sigma : float
+            Cross section of selected process, in [cm^2] units.
 
     See comments in Janev & Smith 1993 for uncertainty estimates.
     """

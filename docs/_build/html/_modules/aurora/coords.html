@@ -1,0 +1,301 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aurora.coords &#8212; aurora 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for aurora.coords</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span><span class="o">,</span><span class="nn">sys</span><span class="o">,</span><span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">grids_utils</span>
+
+<div class="viewcode-block" id="vol_average"><a class="viewcode-back" href="../../aurora.html#aurora.coords.vol_average">[docs]</a><span class="k">def</span> <span class="nf">vol_average</span><span class="p">(</span><span class="n">quant</span><span class="p">,</span> <span class="n">rhop</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;omfit&#39;</span><span class="p">,</span> <span class="n">geqdsk</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shot</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">return_geqdsk</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Calculate the volume average of the given radially-dependent quantity on a rhop grid. </span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        quant : array, (space, ...)</span>
+<span class="sd">            quantity that one wishes to volume-average. The first dimension must correspond to space,</span>
+<span class="sd">            but other dimensions may be exist afterwards.</span>
+<span class="sd">        rhop : array, (space,)</span>
+<span class="sd">            Radial rhop coordinate in cm units. </span>
+<span class="sd">        method : {&#39;omfit&#39;,&#39;fs&#39;}</span>
+<span class="sd">            Method to evaluate the volume average. The two options correspond to the way to compute</span>
+<span class="sd">            volume averages via the OMFIT fluxSurfaces classes and via a simpler cumulative sum in r_V </span>
+<span class="sd">            coordinates. The methods only slightly differ in their results. Note that &#39;omfit&#39; will fail if </span>
+<span class="sd">            rhop extends beyond the LCFS, while method &#39;fs&#39; can estimate volume averages also into the SOL.</span>
+<span class="sd">            Default is method=&#39;omfit&#39;. </span>
+<span class="sd">        geqdsk : output of the omfit_eqdsk.OMFITgeqdsk class, postprocessing the EFIT geqdsk file</span>
+<span class="sd">            containing the magnetic geometry. If this is left to None, the function internally tries to fetch</span>
+<span class="sd">            it using MDS+ and omfit_eqdsk. In this case, device, shot and time to fetch the equilibrium </span>
+<span class="sd">            are required. </span>
+<span class="sd">        device : str</span>
+<span class="sd">            Device name. Note that routines for this device must be implemented in omfit_eqdsk for this </span>
+<span class="sd">            to work. </span>
+<span class="sd">        shot : int</span>
+<span class="sd">             Shot number of the above device, e.g. 1101014019 for C-Mod.</span>
+<span class="sd">        time : float</span>
+<span class="sd">             Time at which equilibrium should be fetched in units of ms. </span>
+<span class="sd">        return_geqdsk : bool</span>
+<span class="sd">             If True, omfit_eqdsk dictionary is also returned</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        quant_vol_avg : array, (space, ...)</span>
+<span class="sd">            Volume average of the quantity given as an input, in the same units as in the input.</span>
+<span class="sd">            If extrapolation beyond the range available from EFIT volume averages over a shorter section</span>
+<span class="sd">            of the radial grid will be attempted. This does not affect volume averages within the LCFS. </span>
+<span class="sd">        geqdsk : dict</span>
+<span class="sd">            Only returned if return_geqdsk=True. </span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="n">time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">time</span><span class="p">)</span><span class="o">&lt;</span><span class="mf">1e2</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Input time was likely in the wrong units! It should be in [ms]!&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">rhop</span><span class="p">)</span><span class="o">&gt;</span><span class="mf">1.0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Input rhop goes beyond the LCFS! Results may not be meaningful (and can only be obtained via method==&#39;fs&#39;).&quot;</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="n">geqdsk</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Fetch device geqdsk from MDS+ and post-process it using the OMFIT geqdsk format.</span>
+        <span class="k">try</span><span class="p">:</span>
+                <span class="kn">import</span> <span class="nn">omfit_eqdsk</span>
+        <span class="k">except</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Could not import omfit_eqdsk! Install with pip install omfit_eqdsk&#39;</span><span class="p">)</span>
+        <span class="n">geqdsk</span> <span class="o">=</span> <span class="n">omfit_eqdsk</span><span class="o">.</span><span class="n">OMFITgeqdsk</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">from_mdsplus</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">shot</span><span class="o">=</span><span class="n">shot</span><span class="p">,</span>
+                                                          <span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="p">,</span> <span class="n">SNAPfile</span><span class="o">=</span><span class="s1">&#39;EFIT01&#39;</span><span class="p">,</span>
+                                                          <span class="n">fail_if_out_of_range</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">time_diff_warning_threshold</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">method</span><span class="o">==</span><span class="s1">&#39;fs&#39;</span><span class="p">:</span>
+        <span class="c1"># obtain mapping between rhop and r_V coordinates</span>
+        <span class="n">rho_pol</span><span class="p">,</span> <span class="n">r_V_</span> <span class="o">=</span> <span class="n">grids_utils</span><span class="o">.</span><span class="n">get_rhopol_rV_mapping</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">)</span>
+        
+        <span class="c1"># find r_V corresponding to input rhop (NB: extrapolation in the far SOL should be used carefully)</span>
+        <span class="n">r_V</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">rho_pol</span><span class="p">,</span> <span class="n">r_V_</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">)(</span><span class="n">rhop</span><span class="p">)</span>
+        
+        <span class="c1"># use convenient volume averaging in r_V coordinates</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">r_V</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Ignoring all nan points! These may derive from an attempted extrapolation or from nan inputs&#39;</span><span class="p">)</span>
+            
+        <span class="n">vol_avg</span> <span class="o">=</span> <span class="n">rV_vol_average</span><span class="p">(</span><span class="n">quant</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">r_V</span><span class="p">)],</span> <span class="n">r_V</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">r_V</span><span class="p">)])</span>
+        
+    <span class="k">elif</span> <span class="n">method</span><span class="o">==</span><span class="s1">&#39;omfit&#39;</span><span class="p">:</span>
+        <span class="c1"># use fluxSurfaces classes from OMFIT</span>
+        <span class="n">rhopp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;geo&#39;</span><span class="p">][</span><span class="s1">&#39;psin&#39;</span><span class="p">])</span>
+        <span class="n">quantp</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">rhop</span><span class="p">,</span> <span class="n">quant</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">fill_value</span><span class="o">=</span><span class="s1">&#39;extrapolate&#39;</span><span class="p">)(</span><span class="n">rhopp</span><span class="p">)</span>
+        <span class="n">vol_avg</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">volume_integral</span><span class="p">(</span><span class="n">quantp</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Input method for volume average could not be recognized&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">return_geqdsk</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">vol_avg</span><span class="p">,</span> <span class="n">geqdsk</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">vol_avg</span></div>
+
+
+<div class="viewcode-block" id="rV_vol_average"><a class="viewcode-back" href="../../aurora.html#aurora.coords.rV_vol_average">[docs]</a><span class="k">def</span> <span class="nf">rV_vol_average</span><span class="p">(</span><span class="n">quant</span><span class="p">,</span><span class="n">r_V</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Calculate a volume average of the given radially-dependent quantity on a r_V grid.</span>
+<span class="sd">    This function makes useof the fact that the r_V radial coordinate, defined as </span>
+<span class="sd">    r_V = \sqrt{ V / (2 \pi^2 R_{axis} },</span>
+<span class="sd">    maps shaped volumes onto a circular geometry, making volume averaging a trivial </span>
+<span class="sd">    operation via</span>
+<span class="sd">    \langle Q \rangle = \Sigma_i Q(r_i) 2 \pi \ \Delta r_V</span>
+<span class="sd">    where $\Delta r_V$ is the spacing between radial points in r_V.</span>
+<span class="sd">    </span>
+<span class="sd">    Note that if the input r_V coordinate is extended outside the LCFS,</span>
+<span class="sd">    this function will return the effective volume average also in the SOL, since it is </span>
+<span class="sd">    agnostic to the presence of the LCFS. </span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        quant : array, (space, ...)</span>
+<span class="sd">            quantity that one wishes to volume-average. The first dimension must correspond to r_V,</span>
+<span class="sd">            but other dimensions may be exist afterwards. </span>
+<span class="sd">        r_V : array, (space,)</span>
+<span class="sd">            Radial r_V coordinate in cm units. </span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        quant_vol_avg : array, (space, ...)</span>
+<span class="sd">            Volume average of the quantity given as an input, in the same units as in the input</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">quant_vol_avg</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">quant</span><span class="o">*</span><span class="n">r_V</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">r_V</span><span class="p">,</span><span class="n">prepend</span><span class="o">=</span><span class="mf">0.0</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">r_V</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">quant_vol_avg</span></div>
+
+
+    
+<div class="viewcode-block" id="rad_coord_transform"><a class="viewcode-back" href="../../aurora.html#aurora.coords.rad_coord_transform">[docs]</a><span class="k">def</span> <span class="nf">rad_coord_transform</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">name_in</span><span class="p">,</span><span class="n">name_out</span><span class="p">,</span> <span class="n">geqdsk</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Transform from one radial coordinate to another.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: array</span>
+<span class="sd">            input x coordinate</span>
+<span class="sd">        name_in: str</span>
+<span class="sd">            input x coordinate name (&#39;rhon&#39;,&#39;r_V&#39;,&#39;rhop&#39;,&#39;rhov&#39;,&#39;Rmid&#39;,&#39;rmid&#39;,&#39;roa&#39;)</span>
+<span class="sd">        name_out: str</span>
+<span class="sd">            input x coordinate (&#39;rhon&#39;, &#39;r_V&#39;, &#39;rhop&#39;,&#39;rhov&#39;,&#39;Rmid&#39;,&#39;rmid&#39;,&#39;roa&#39;)</span>
+<span class="sd">        geqdsk: dict</span>
+<span class="sd">            gEQDSK dictionary, as obtained from the omfit-eqdsk package. </span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Conversion of `x` for the requested radial grid coordinate.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">name_in</span> <span class="o">==</span> <span class="n">name_out</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">x</span>
+
+    <span class="k">if</span> <span class="s1">&#39;r_V&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;geo&#39;</span><span class="p">]:</span>
+        <span class="n">R0</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;RMAXIS&#39;</span><span class="p">]</span>
+        <span class="n">eq_vol</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;geo&#39;</span><span class="p">][</span><span class="s1">&#39;vol&#39;</span><span class="p">]</span>
+        <span class="n">r_V</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">eq_vol</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">R0</span><span class="p">))</span>
+        <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;geo&#39;</span><span class="p">][</span><span class="s1">&#39;r_V&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">r_V</span>
+
+    <span class="c1"># sqrt(norm. tor. flux)</span>
+    <span class="n">rhon_ref</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;geo&#39;</span><span class="p">][</span><span class="s1">&#39;rhon&#39;</span><span class="p">]</span>
+    <span class="c1"># norm. pol. flux</span>
+    <span class="n">psin_ref</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;geo&#39;</span><span class="p">][</span><span class="s1">&#39;psin&#39;</span><span class="p">]</span>
+    <span class="c1"># sqrt(norm. pol. flux)</span>
+    <span class="n">rhop_ref</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">psin_ref</span><span class="p">)</span>
+    <span class="c1">#volume radius</span>
+    <span class="n">r_V</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;geo&#39;</span><span class="p">][</span><span class="s1">&#39;r_V&#39;</span><span class="p">]</span>
+    <span class="c1"># R at midplane</span>
+    <span class="n">Rmid</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;midplane&#39;</span><span class="p">][</span><span class="s1">&#39;R&#39;</span><span class="p">]</span>
+    <span class="c1"># r at midplane</span>
+    <span class="n">R0</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;R0&#39;</span><span class="p">]</span>
+    <span class="n">rmid</span> <span class="o">=</span> <span class="n">Rmid</span> <span class="o">-</span> <span class="n">R0</span>
+
+    <span class="c1"># Interpolate to transform coordiantes</span>
+    <span class="k">if</span> <span class="n">name_in</span> <span class="o">==</span> <span class="s1">&#39;rhon&#39;</span><span class="p">:</span>
+        <span class="n">coord_in</span> <span class="o">=</span> <span class="n">rhon_ref</span>
+    <span class="k">elif</span> <span class="n">name_in</span> <span class="o">==</span> <span class="s1">&#39;rhop&#39;</span><span class="p">:</span>
+        <span class="n">coord_in</span> <span class="o">=</span> <span class="n">rhop_ref</span>
+    <span class="k">elif</span> <span class="n">name_in</span> <span class="o">==</span> <span class="s1">&#39;r_V&#39;</span><span class="p">:</span>
+        <span class="n">coord_in</span> <span class="o">=</span> <span class="n">r_V</span>
+    <span class="k">elif</span> <span class="n">name_in</span> <span class="o">==</span> <span class="s1">&#39;rhov&#39;</span><span class="p">:</span>
+        <span class="n">r_V_lcfs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">rhon_ref</span><span class="p">,</span> <span class="n">r_V</span><span class="p">)</span>
+        <span class="n">coord_in</span> <span class="o">=</span> <span class="n">r_V</span><span class="o">/</span><span class="n">r_V_lcfs</span>
+    <span class="k">elif</span> <span class="n">name_in</span> <span class="o">==</span> <span class="s1">&#39;Rmid&#39;</span><span class="p">:</span>
+        <span class="n">coord_in</span> <span class="o">=</span> <span class="n">Rmid</span>
+    <span class="k">elif</span> <span class="n">name_in</span> <span class="o">==</span> <span class="s1">&#39;rmid&#39;</span><span class="p">:</span>
+        <span class="n">coord_in</span> <span class="o">=</span> <span class="n">rmid</span>
+    <span class="k">elif</span> <span class="n">name_in</span> <span class="o">==</span> <span class="s1">&#39;roa&#39;</span><span class="p">:</span>
+        <span class="n">rmid_lcfs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">rhon_ref</span><span class="p">,</span> <span class="n">rmid</span><span class="p">)</span>
+        <span class="n">coord_in</span> <span class="o">=</span> <span class="n">rmid</span><span class="o">/</span><span class="n">rmid_lcfs</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Input coordinate was not recognized!&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">name_out</span> <span class="o">==</span> <span class="s1">&#39;rhon&#39;</span><span class="p">:</span>
+        <span class="n">coord_out</span> <span class="o">=</span> <span class="n">rhon_ref</span>
+    <span class="k">elif</span> <span class="n">name_out</span> <span class="o">==</span> <span class="s1">&#39;psin&#39;</span><span class="p">:</span>
+        <span class="n">coord_out</span> <span class="o">=</span> <span class="n">psin_ref</span>
+    <span class="k">elif</span> <span class="n">name_out</span> <span class="o">==</span> <span class="s1">&#39;rhop&#39;</span><span class="p">:</span>
+        <span class="n">coord_out</span> <span class="o">=</span> <span class="n">rhop_ref</span>
+    <span class="k">elif</span> <span class="n">name_out</span> <span class="o">==</span> <span class="s1">&#39;r_V&#39;</span><span class="p">:</span>
+        <span class="n">coord_out</span> <span class="o">=</span> <span class="n">r_V</span>
+    <span class="k">elif</span> <span class="n">name_out</span> <span class="o">==</span> <span class="s1">&#39;rhov&#39;</span><span class="p">:</span>
+        <span class="n">r_V_lcfs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">rhon_ref</span><span class="p">,</span> <span class="n">r_V</span><span class="p">)</span>
+        <span class="n">coord_out</span> <span class="o">=</span> <span class="n">r_V</span><span class="o">/</span><span class="n">r_V_lcfs</span>
+    <span class="k">elif</span> <span class="n">name_out</span> <span class="o">==</span> <span class="s1">&#39;Rmid&#39;</span><span class="p">:</span>
+        <span class="n">coord_out</span> <span class="o">=</span> <span class="n">Rmid</span>
+    <span class="k">elif</span> <span class="n">name_out</span> <span class="o">==</span> <span class="s1">&#39;rmid&#39;</span><span class="p">:</span>
+        <span class="n">coord_out</span> <span class="o">=</span> <span class="n">rmid</span>
+    <span class="k">elif</span> <span class="n">name_out</span> <span class="o">==</span> <span class="s1">&#39;roa&#39;</span><span class="p">:</span>
+        <span class="n">rmid_lcfs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">rhon_ref</span><span class="p">,</span> <span class="n">rmid</span><span class="p">)</span>
+        <span class="n">coord_out</span> <span class="o">=</span> <span class="n">rmid</span><span class="o">/</span><span class="n">rmid_lcfs</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Output coordinate was not recognized!&#39;</span><span class="p">)</span>
+
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">coord_in</span> <span class="o">!=</span> <span class="mi">0</span>
+
+    <span class="c1">#trick for better extrapolation</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">coord_in</span><span class="p">[</span><span class="n">ind</span><span class="p">],</span><span class="n">coord_out</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span><span class="o">/</span><span class="n">coord_in</span><span class="p">[</span><span class="n">ind</span><span class="p">])</span><span class="o">*</span><span class="n">x</span></div>
+
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">aurora</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../aurora.html">aurora package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, F.Sciortino.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -274,10 +274,12 @@ class aurora_sim:
         of space, time and potentially also ionization state. Users may give an initial state of each
         ion charge state as an input.
 
-        Results can be conveniently visualized with time-slider using:
+        Results can be conveniently visualized with time-slider using
 
-            aurora.slider_plot(rhop,time, nz.transpose(1,2,0),   # charge states in first dimension
-                               xlabel=r'$\rho_p$', ylabel='time [s]', 
+        .. code-block:: python
+
+            aurora.slider_plot(rhop,time, nz.transpose(1,2,0),
+                               xlabel=r'$\\rho_p$', ylabel='time [s]', 
                                zlabel=r'$n_z$ [cm$^{-3}$]', plot_sum=True,
                                labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]])
 
