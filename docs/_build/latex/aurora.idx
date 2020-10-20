@@ -1,0 +1,116 @@
+\indexentry{module@\spxentry{module}!aurora.core@\spxentry{aurora.core}|hyperpage}{11}
+\indexentry{aurora.core@\spxentry{aurora.core}!module@\spxentry{module}|hyperpage}{11}
+\indexentry{aurora\_sim (class in aurora.core)@\spxentry{aurora\_sim}\spxextra{class in aurora.core}|hyperpage}{11}
+\indexentry{get\_aurora\_kin\_profs() (aurora.core.aurora\_sim method)@\spxentry{get\_aurora\_kin\_profs()}\spxextra{aurora.core.aurora\_sim method}|hyperpage}{11}
+\indexentry{get\_par\_loss\_rate() (aurora.core.aurora\_sim method)@\spxentry{get\_par\_loss\_rate()}\spxextra{aurora.core.aurora\_sim method}|hyperpage}{11}
+\indexentry{get\_time\_dept\_atomic\_rates() (aurora.core.aurora\_sim method)@\spxentry{get\_time\_dept\_atomic\_rates()}\spxextra{aurora.core.aurora\_sim method}|hyperpage}{11}
+\indexentry{interp\_kin\_prof() (aurora.core.aurora\_sim method)@\spxentry{interp\_kin\_prof()}\spxextra{aurora.core.aurora\_sim method}|hyperpage}{11}
+\indexentry{run\_aurora() (aurora.core.aurora\_sim method)@\spxentry{run\_aurora()}\spxextra{aurora.core.aurora\_sim method}|hyperpage}{11}
+\indexentry{run\_julia() (aurora.core.aurora\_sim method)@\spxentry{run\_julia()}\spxextra{aurora.core.aurora\_sim method}|hyperpage}{11}
+\indexentry{module@\spxentry{module}!aurora.atomic@\spxentry{aurora.atomic}|hyperpage}{12}
+\indexentry{aurora.atomic@\spxentry{aurora.atomic}!module@\spxentry{module}|hyperpage}{12}
+\indexentry{CartesianGrid (class in aurora.atomic)@\spxentry{CartesianGrid}\spxextra{class in aurora.atomic}|hyperpage}{12}
+\indexentry{adas\_file (class in aurora.atomic)@\spxentry{adas\_file}\spxextra{class in aurora.atomic}|hyperpage}{12}
+\indexentry{load() (aurora.atomic.adas\_file method)@\spxentry{load()}\spxextra{aurora.atomic.adas\_file method}|hyperpage}{12}
+\indexentry{plot() (aurora.atomic.adas\_file method)@\spxentry{plot()}\spxextra{aurora.atomic.adas\_file method}|hyperpage}{12}
+\indexentry{adas\_files\_dict() (in module aurora.atomic)@\spxentry{adas\_files\_dict()}\spxextra{in module aurora.atomic}|hyperpage}{12}
+\indexentry{balance() (in module aurora.atomic)@\spxentry{balance()}\spxextra{in module aurora.atomic}|hyperpage}{12}
+\indexentry{get\_adas\_ion\_rad() (in module aurora.atomic)@\spxentry{get\_adas\_ion\_rad()}\spxextra{in module aurora.atomic}|hyperpage}{12}
+\indexentry{get\_all\_atom\_data() (in module aurora.atomic)@\spxentry{get\_all\_atom\_data()}\spxextra{in module aurora.atomic}|hyperpage}{12}
+\indexentry{get\_atomdat\_info() (in module aurora.atomic)@\spxentry{get\_atomdat\_info()}\spxextra{in module aurora.atomic}|hyperpage}{12}
+\indexentry{get\_cooling\_factors() (in module aurora.atomic)@\spxentry{get\_cooling\_factors()}\spxextra{in module aurora.atomic}|hyperpage}{12}
+\indexentry{get\_cs\_balance\_terms() (in module aurora.atomic)@\spxentry{get\_cs\_balance\_terms()}\spxextra{in module aurora.atomic}|hyperpage}{12}
+\indexentry{get\_file\_types() (in module aurora.atomic)@\spxentry{get\_file\_types()}\spxextra{in module aurora.atomic}|hyperpage}{13}
+\indexentry{get\_frac\_abundances() (in module aurora.atomic)@\spxentry{get\_frac\_abundances()}\spxextra{in module aurora.atomic}|hyperpage}{13}
+\indexentry{gff\_mean() (in module aurora.atomic)@\spxentry{gff\_mean()}\spxextra{in module aurora.atomic}|hyperpage}{13}
+\indexentry{impurity\_brems() (in module aurora.atomic)@\spxentry{impurity\_brems()}\spxextra{in module aurora.atomic}|hyperpage}{13}
+\indexentry{interp\_atom\_prof() (in module aurora.atomic)@\spxentry{interp\_atom\_prof()}\spxextra{in module aurora.atomic}|hyperpage}{14}
+\indexentry{main\_ion\_brems() (in module aurora.atomic)@\spxentry{main\_ion\_brems()}\spxextra{in module aurora.atomic}|hyperpage}{14}
+\indexentry{null\_space() (in module aurora.atomic)@\spxentry{null\_space()}\spxextra{in module aurora.atomic}|hyperpage}{14}
+\indexentry{plot\_radiation\_profs() (in module aurora.atomic)@\spxentry{plot\_radiation\_profs()}\spxextra{in module aurora.atomic}|hyperpage}{14}
+\indexentry{plot\_relax\_time() (in module aurora.atomic)@\spxentry{plot\_relax\_time()}\spxextra{in module aurora.atomic}|hyperpage}{14}
+\indexentry{read\_adf15() (in module aurora.atomic)@\spxentry{read\_adf15()}\spxextra{in module aurora.atomic}|hyperpage}{14}
+\indexentry{module@\spxentry{module}!aurora.radiation@\spxentry{aurora.radiation}|hyperpage}{15}
+\indexentry{aurora.radiation@\spxentry{aurora.radiation}!module@\spxentry{module}|hyperpage}{15}
+\indexentry{adf04\_files() (in module aurora.radiation)@\spxentry{adf04\_files()}\spxextra{in module aurora.radiation}|hyperpage}{15}
+\indexentry{compute\_rad() (in module aurora.radiation)@\spxentry{compute\_rad()}\spxextra{in module aurora.radiation}|hyperpage}{15}
+\indexentry{get\_pec\_prof() (in module aurora.radiation)@\spxentry{get\_pec\_prof()}\spxextra{in module aurora.radiation}|hyperpage}{16}
+\indexentry{radiation\_model() (in module aurora.radiation)@\spxentry{radiation\_model()}\spxextra{in module aurora.radiation}|hyperpage}{17}
+\indexentry{module@\spxentry{module}!aurora.grids\_utils@\spxentry{aurora.grids\_utils}|hyperpage}{17}
+\indexentry{aurora.grids\_utils@\spxentry{aurora.grids\_utils}!module@\spxentry{module}|hyperpage}{17}
+\indexentry{create\_aurora\_time\_grid() (in module aurora.grids\_utils)@\spxentry{create\_aurora\_time\_grid()}\spxextra{in module aurora.grids\_utils}|hyperpage}{17}
+\indexentry{create\_radial\_grid() (in module aurora.grids\_utils)@\spxentry{create\_radial\_grid()}\spxextra{in module aurora.grids\_utils}|hyperpage}{17}
+\indexentry{create\_time\_grid() (in module aurora.grids\_utils)@\spxentry{create\_time\_grid()}\spxextra{in module aurora.grids\_utils}|hyperpage}{18}
+\indexentry{create\_time\_grid\_new() (in module aurora.grids\_utils)@\spxentry{create\_time\_grid\_new()}\spxextra{in module aurora.grids\_utils}|hyperpage}{18}
+\indexentry{get\_HFS\_LFS() (in module aurora.grids\_utils)@\spxentry{get\_HFS\_LFS()}\spxextra{in module aurora.grids\_utils}|hyperpage}{18}
+\indexentry{get\_rhopol\_rV\_mapping() (in module aurora.grids\_utils)@\spxentry{get\_rhopol\_rV\_mapping()}\spxextra{in module aurora.grids\_utils}|hyperpage}{19}
+\indexentry{module@\spxentry{module}!aurora.coords@\spxentry{aurora.coords}|hyperpage}{19}
+\indexentry{aurora.coords@\spxentry{aurora.coords}!module@\spxentry{module}|hyperpage}{19}
+\indexentry{rV\_vol\_average() (in module aurora.coords)@\spxentry{rV\_vol\_average()}\spxextra{in module aurora.coords}|hyperpage}{19}
+\indexentry{rad\_coord\_transform() (in module aurora.coords)@\spxentry{rad\_coord\_transform()}\spxextra{in module aurora.coords}|hyperpage}{20}
+\indexentry{vol\_average() (in module aurora.coords)@\spxentry{vol\_average()}\spxextra{in module aurora.coords}|hyperpage}{20}
+\indexentry{module@\spxentry{module}!aurora.source\_utils@\spxentry{aurora.source\_utils}|hyperpage}{20}
+\indexentry{aurora.source\_utils@\spxentry{aurora.source\_utils}!module@\spxentry{module}|hyperpage}{20}
+\indexentry{get\_aurora\_source() (in module aurora.source\_utils)@\spxentry{get\_aurora\_source()}\spxextra{in module aurora.source\_utils}|hyperpage}{20}
+\indexentry{get\_radial\_source() (in module aurora.source\_utils)@\spxentry{get\_radial\_source()}\spxextra{in module aurora.source\_utils}|hyperpage}{20}
+\indexentry{lbo\_source\_function() (in module aurora.source\_utils)@\spxentry{lbo\_source\_function()}\spxextra{in module aurora.source\_utils}|hyperpage}{21}
+\indexentry{read\_source() (in module aurora.source\_utils)@\spxentry{read\_source()}\spxextra{in module aurora.source\_utils}|hyperpage}{21}
+\indexentry{write\_source() (in module aurora.source\_utils)@\spxentry{write\_source()}\spxextra{in module aurora.source\_utils}|hyperpage}{21}
+\indexentry{module@\spxentry{module}!aurora.plot\_tools@\spxentry{aurora.plot\_tools}|hyperpage}{22}
+\indexentry{aurora.plot\_tools@\spxentry{aurora.plot\_tools}!module@\spxentry{module}|hyperpage}{22}
+\indexentry{get\_ls\_cycle() (in module aurora.plot\_tools)@\spxentry{get\_ls\_cycle()}\spxextra{in module aurora.plot\_tools}|hyperpage}{22}
+\indexentry{plot\_norm\_ion\_freq() (in module aurora.plot\_tools)@\spxentry{plot\_norm\_ion\_freq()}\spxextra{in module aurora.plot\_tools}|hyperpage}{22}
+\indexentry{slider\_plot() (in module aurora.plot\_tools)@\spxentry{slider\_plot()}\spxextra{in module aurora.plot\_tools}|hyperpage}{22}
+\indexentry{module@\spxentry{module}!aurora.default\_nml@\spxentry{aurora.default\_nml}|hyperpage}{22}
+\indexentry{aurora.default\_nml@\spxentry{aurora.default\_nml}!module@\spxentry{module}|hyperpage}{22}
+\indexentry{load\_default\_namelist() (in module aurora.default\_nml)@\spxentry{load\_default\_namelist()}\spxextra{in module aurora.default\_nml}|hyperpage}{22}
+\indexentry{module@\spxentry{module}!aurora.interp@\spxentry{aurora.interp}|hyperpage}{23}
+\indexentry{aurora.interp@\spxentry{aurora.interp}!module@\spxentry{module}|hyperpage}{23}
+\indexentry{exppol0() (in module aurora.interp)@\spxentry{exppol0()}\spxextra{in module aurora.interp}|hyperpage}{23}
+\indexentry{exppol1() (in module aurora.interp)@\spxentry{exppol1()}\spxextra{in module aurora.interp}|hyperpage}{23}
+\indexentry{funct() (in module aurora.interp)@\spxentry{funct()}\spxextra{in module aurora.interp}|hyperpage}{23}
+\indexentry{funct2() (in module aurora.interp)@\spxentry{funct2()}\spxextra{in module aurora.interp}|hyperpage}{23}
+\indexentry{interp() (in module aurora.interp)@\spxentry{interp()}\spxextra{in module aurora.interp}|hyperpage}{23}
+\indexentry{interp\_quad() (in module aurora.interp)@\spxentry{interp\_quad()}\spxextra{in module aurora.interp}|hyperpage}{23}
+\indexentry{interpa\_quad() (in module aurora.interp)@\spxentry{interpa\_quad()}\spxextra{in module aurora.interp}|hyperpage}{23}
+\indexentry{ratfun() (in module aurora.interp)@\spxentry{ratfun()}\spxextra{in module aurora.interp}|hyperpage}{23}
+\indexentry{module@\spxentry{module}!aurora.animate@\spxentry{aurora.animate}|hyperpage}{23}
+\indexentry{aurora.animate@\spxentry{aurora.animate}!module@\spxentry{module}|hyperpage}{23}
+\indexentry{animate\_aurora() (in module aurora.animate)@\spxentry{animate\_aurora()}\spxextra{in module aurora.animate}|hyperpage}{23}
+\indexentry{module@\spxentry{module}!aurora.particle\_conserv@\spxentry{aurora.particle\_conserv}|hyperpage}{23}
+\indexentry{aurora.particle\_conserv@\spxentry{aurora.particle\_conserv}!module@\spxentry{module}|hyperpage}{23}
+\indexentry{get\_particle\_nums() (in module aurora.particle\_conserv)@\spxentry{get\_particle\_nums()}\spxextra{in module aurora.particle\_conserv}|hyperpage}{23}
+\indexentry{plot\_1d() (in module aurora.particle\_conserv)@\spxentry{plot\_1d()}\spxextra{in module aurora.particle\_conserv}|hyperpage}{23}
+\indexentry{plot\_particle\_conserv() (in module aurora.particle\_conserv)@\spxentry{plot\_particle\_conserv()}\spxextra{in module aurora.particle\_conserv}|hyperpage}{23}
+\indexentry{vol\_int() (in module aurora.particle\_conserv)@\spxentry{vol\_int()}\spxextra{in module aurora.particle\_conserv}|hyperpage}{23}
+\indexentry{module@\spxentry{module}!aurora.nbi\_neutrals@\spxentry{aurora.nbi\_neutrals}|hyperpage}{24}
+\indexentry{aurora.nbi\_neutrals@\spxentry{aurora.nbi\_neutrals}!module@\spxentry{module}|hyperpage}{24}
+\indexentry{beam\_grid() (in module aurora.nbi\_neutrals)@\spxentry{beam\_grid()}\spxextra{in module aurora.nbi\_neutrals}|hyperpage}{24}
+\indexentry{bt\_rate\_maxwell\_average() (in module aurora.nbi\_neutrals)@\spxentry{bt\_rate\_maxwell\_average()}\spxextra{in module aurora.nbi\_neutrals}|hyperpage}{24}
+\indexentry{bt\_rate\_maxwell\_average\_vec() (in module aurora.nbi\_neutrals)@\spxentry{bt\_rate\_maxwell\_average\_vec()}\spxextra{in module aurora.nbi\_neutrals}|hyperpage}{24}
+\indexentry{get\_NBI\_imp\_cxr\_q() (in module aurora.nbi\_neutrals)@\spxentry{get\_NBI\_imp\_cxr\_q()}\spxextra{in module aurora.nbi\_neutrals}|hyperpage}{25}
+\indexentry{get\_ls\_cycle() (in module aurora.nbi\_neutrals)@\spxentry{get\_ls\_cycle()}\spxextra{in module aurora.nbi\_neutrals}|hyperpage}{25}
+\indexentry{get\_neutrals\_fsa() (in module aurora.nbi\_neutrals)@\spxentry{get\_neutrals\_fsa()}\spxextra{in module aurora.nbi\_neutrals}|hyperpage}{25}
+\indexentry{rotation\_matrix() (in module aurora.nbi\_neutrals)@\spxentry{rotation\_matrix()}\spxextra{in module aurora.nbi\_neutrals}|hyperpage}{26}
+\indexentry{tt\_rate\_maxwell\_average() (in module aurora.nbi\_neutrals)@\spxentry{tt\_rate\_maxwell\_average()}\spxextra{in module aurora.nbi\_neutrals}|hyperpage}{26}
+\indexentry{uvw\_xyz() (in module aurora.nbi\_neutrals)@\spxentry{uvw\_xyz()}\spxextra{in module aurora.nbi\_neutrals}|hyperpage}{26}
+\indexentry{xyz\_uvw() (in module aurora.nbi\_neutrals)@\spxentry{xyz\_uvw()}\spxextra{in module aurora.nbi\_neutrals}|hyperpage}{26}
+\indexentry{module@\spxentry{module}!aurora.janev\_smith\_rates@\spxentry{aurora.janev\_smith\_rates}|hyperpage}{26}
+\indexentry{aurora.janev\_smith\_rates@\spxentry{aurora.janev\_smith\_rates}!module@\spxentry{module}|hyperpage}{26}
+\indexentry{js\_sigma() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{26}
+\indexentry{js\_sigma\_cx\_n1\_q1() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma\_cx\_n1\_q1()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{js\_sigma\_cx\_n1\_q2() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma\_cx\_n1\_q2()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{js\_sigma\_cx\_n1\_q4() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma\_cx\_n1\_q4()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{js\_sigma\_cx\_n1\_q5() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma\_cx\_n1\_q5()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{js\_sigma\_cx\_n1\_q6() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma\_cx\_n1\_q6()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{js\_sigma\_cx\_n1\_q8() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma\_cx\_n1\_q8()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{js\_sigma\_cx\_n1\_qg8() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma\_cx\_n1\_qg8()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{js\_sigma\_cx\_n2\_q2() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma\_cx\_n2\_q2()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{js\_sigma\_cx\_ng1\_q1() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma\_cx\_ng1\_q1()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{js\_sigma\_cx\_ng1\_qg3() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma\_cx\_ng1\_qg3()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{js\_sigma\_cx\_ng2\_q2() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma\_cx\_ng2\_q2()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{js\_sigma\_ioniz\_n1\_q8() (in module aurora.janev\_smith\_rates)@\spxentry{js\_sigma\_ioniz\_n1\_q8()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{plot\_js\_sigma() (in module aurora.janev\_smith\_rates)@\spxentry{plot\_js\_sigma()}\spxextra{in module aurora.janev\_smith\_rates}|hyperpage}{27}
+\indexentry{module@\spxentry{module}!aurora@\spxentry{aurora}|hyperpage}{27}
+\indexentry{aurora@\spxentry{aurora}!module@\spxentry{module}|hyperpage}{27}
+\indexentry{name (in module aurora)@\spxentry{name}\spxextra{in module aurora}|hyperpage}{27}

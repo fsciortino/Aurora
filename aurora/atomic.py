@@ -135,13 +135,22 @@ class adas_file():
                 ax.set_ylabel('$\log('+self.file_type+')\ \mathrm{[W\cdot cm^3]}$')
 
 
-def get_all_atom_data(imp, files = None):
-    ''' Collect atomic data for a given impurity from all types of ADAS files available.
+def get_atom_data(imp, files = None):
+    ''' Collect atomic data for a given impurity from all types of ADAS files available or
+    for only those requested. 
 
-    imp: str
-        Atomic symbol of impurity ion.
-    files : list or array-like
-        ADAS file names to be fetched. 
+    Args:
+        imp : str
+            Atomic symbol of impurity ion.
+        files : list or array-like
+            ADAS file names to be fetched. 
+    
+    Returns:
+        atom_data : dict
+           Dictionary containing data for each of the requested files (or all files returned by
+           :py:meth:`~aurora.atomic.adas_files_dict` for the impurity ion of interest). 
+           Each entry of the dictionary gives log-10 of ne, log-10 of Te and log-10 of the data
+           as attributes atom_data[key].logNe, atom_data[key].logT, atom_data[key].data
     '''
     atomdat_dir = get_atomdat_info()
 
@@ -156,7 +165,7 @@ def get_all_atom_data(imp, files = None):
 
     for key in files:
         file = files_dict[imp][key]
-        
+
         # load specific file and add it to output dictionary
         res = adas_file(atomdat_dir+file)
         atom_data[key] = res.logNe, res.logT, res.data
@@ -727,31 +736,52 @@ def main_ion_brems(Zi, ni, ne, Te):
 
 
 
-def get_adas_ion_rad(ion_name, n_ion, logne_prof, logTe_prof, sxr=False):
-    '''Get ADAS estimate for total radiation in [M/m^3] for the given ion
-    with the given (log) density and temperature profiles. 
+def get_adas_continuum_rad(ion_name, n_ion, logne_prof, logTe_prof, sxr=False):
+    '''Convenience function to get ADAS estimate for continuum radiation in [M/m^3] for a 
+    given background ion at given (log) density and temperature profiles. 
 
     If sxr=True, 'prs' files are used instead of 'prb' ones, thus giving SXR-filtered
-    radiation for the SXR filter indicated by the atomic data dictionary.
+    continuum radiation for the SXR filter indicated by the atomic data dictionary.
+
+    Args:
+        ion_name : str
+            Atomic symbol of ion.
+        n_ion : array (nt,nr,nz)
+            Density of each charge state of the ion of interest
+        logne_prof : array (nt,nr)
+            Log-10 of electron density profile (in cm^-3)
+        logTe_prof : array (nt,nr)
+            Log-10 of electron temperature profile (in eV)
+        sxr : bool, optional
+            If True, compute continuum radiation in the SXR range rather than the total 
+            continuum radiation.
+
+    Returns:
+        cont_rad : array (nt,nr)
+            Continuum radiation, either total or in the SXR-range, depending on the 
+            'sxr' input variable.    
     '''        
-    # get all atomic data for chosen ion
-    atom_data = get_all_atom_data(ion_name,['prs' if sxr else 'prb'])
-
-    # load filtered data in the SXR range
+    # get continuum radiation data for chosen ion (either total or SXR-filtered)
+    atom_data = get_atom_data(ion_name,['prs' if sxr else 'prb'])
     x,y,tab = atom_data['prs' if sxr else 'prb']
+
+    # recombination and bremstrahlung of fully stripped ion
+    atom_rates = interp_atom_prof((x,y,tab[[-1]]),logne_prof,logTe_prof,x_multiply=False)
     
-    #recombination and bremstrahlung of fully striped ion
-    prs = interp_atom_prof((x,y,tab[[-1]]),logne_prof,logTe_prof,x_multiply=False)
+    # Now compute expected continuum radiation from this ion:
+    cont_rad = atom_rates[:,0] * n_ion * 1e6 # bulk fully-stripped ion radiation [W/m^3]
 
-    # Now compute expected radiation expected from this background ion:
-    bckg = prs[:,0] * n_ion * 1e6 # bulk fully-stripped ion radiation [W/m^3]
-
-    return bckg
+    return cont_rad
 
 
-def get_cooling_factors(atom_data, logTe_, fz, ion_resolved = False, plot=True,ax=None):
-    '''Calculate cooling coefficients from fz and prs,  pls (if these are available).
-    Also plot the inverse of rate coefficients, which gives an estimate for relaxation times.
+def get_cooling_factors(atom_data, logTe_prof, fz, ion_resolved = False, plot=True,ax=None):
+    '''Calculate cooling coefficients for the given fractional abundances and kinetic profiles.
+
+    Args:
+        atom_data : dict
+            Dictionary containing atomic data as output by :py:meth:`~aurora.atomic.get_atom_data`
+            for the atomic processes of interest. "prs","pls","plt" and "prb" are required by this function.
+        
     '''
     try:
         atom_data['prs']
@@ -762,10 +792,10 @@ def get_cooling_factors(atom_data, logTe_, fz, ion_resolved = False, plot=True,a
         raise ValueError('prs, plt and/or prb files not available!')
 
 
-    prs = interp_atom_prof(atom_data['prs'],None,logTe_)#continuum radiation in SXR range
-    pls = interp_atom_prof(atom_data['pls'],None,logTe_)#line radiation in SXR range
-    pltt= interp_atom_prof(atom_data['plt'],None,logTe_) #line radiation
-    prb = interp_atom_prof(atom_data['prb'],None,logTe_)#continuum radiation
+    prs = interp_atom_prof(atom_data['prs'],None,logTe_prof)#continuum radiation in SXR range
+    pls = interp_atom_prof(atom_data['pls'],None,logTe_prof)#line radiation in SXR range
+    pltt= interp_atom_prof(atom_data['plt'],None,logTe_prof) #line radiation
+    prb = interp_atom_prof(atom_data['prb'],None,logTe_prof)#continuum radiation
 
     pls *= fz[:,:-1]
     prs *= fz[:, 1:]
@@ -782,20 +812,21 @@ def get_cooling_factors(atom_data, logTe_, fz, ion_resolved = False, plot=True,a
         if ax is None:
             ax = plt.subplot(111)
 
-        ax.loglog(10**logTe_, line_rad_sxr,'b',label='SXR line radiation ')   # can be many orders of magnitude different from brms_rad_sxr (e.g. lower in F)
-        ax.loglog(10**logTe_, brems_rad_sxr,'r',label='SXR bremsstrahlung and recombination')
-
-        # total SXR rad = brems + line rad in SXR range:
-        ax.loglog(10**logTe_, brems_rad_sxr+line_rad_sxr,'k',label='total SXR radiation',lw=2)
+        # SXR radiation components
+        ax.loglog(10**logTe_prof, line_rad_sxr,'b',label='SXR line radiation')   
+        ax.loglog(10**logTe_prof, brems_rad_sxr,'r',label='SXR bremsstrahlung and recombination')
+        ax.loglog(10**logTe_prof, brems_rad_sxr+line_rad_sxr,'k',label='total SXR radiation',lw=2)
 
         # total radiation (includes hard X-ray, visible, UV, etc.)
-        ax.loglog(10**logTe_, line_rad_tot,'g--',label='total line radiation')
-        ax.loglog(10**logTe_, brems_rad_tot,'y--',label='total continuum radiation')
+        ax.loglog(10**logTe_prof, line_rad_tot,'g--',label='Unfiltered line radiation')
+        ax.loglog(10**logTe_prof, brems_rad_tot,'y--',label='Unfiltered continuum radiation')
+        ax.loglog(10**logTe_prof, brems_rad_tot+line_rad_tot,'y--',label='Unfiltered total continuum radiation')
 
         ax.legend(loc='best')
-        #### set xlims to visualize scales better
-        ax.set_xlim(50,10**logTe_[-1])
-        ax.set_ylim( line_rad_sxr[np.argmin(np.abs(10**logTe_ - 50))], np.nanmax( line_rad_tot)*10)
+        
+        # Set xlims to visualize scales better
+        ax.set_xlim(50,10**logTe_prof[-1])
+        ax.set_ylim( line_rad_sxr[np.argmin(np.abs(10**logTe_prof - 50))], np.nanmax( line_rad_tot)*10)
 
         ax.grid('on')
         ax.set_xlabel('T$_e$ [eV]')
@@ -805,71 +836,11 @@ def get_cooling_factors(atom_data, logTe_, fz, ion_resolved = False, plot=True,a
     elif ion_resolved:
         return pls, prs, pltt,prb
 
-
     else:
         return line_rad_sxr, brems_rad_sxr, line_rad_tot, brems_rad_tot
 
 
 
-
-def plot_radiation_profs(atom_data, nz_prof, logne_prof, logTe_prof, xvar, imp='F', plot=False):
-    '''Obtain profiles of predicted radiation.
-
-    This function can be used to plot radial profiles (setting xvar to a radial grid)
-    or profiles as a function of any variable on which the logne_prof and logTe_prof
-    may depend.
-
-    The variable :param:nz_prof may be a full description of impurity charge state densities
-    (e.g. the output of Aurora), or profiles of fractional abundances from ionization
-    equilibrium.
-
-    Note that the variables :param:xvar (array) and :param:imp (str) are only needed if plotting is requested.
-    '''
-    pls, prs, pltt, prb = get_cooling_factors(atom_data, logTe_prof, nz_prof, ion_resolved = True, plot=False)
-
-    emiss_sxr = np.zeros((len(xvar),nion))
-    emiss_tot = np.zeros((len(xvar),nion))
-    emiss_sxr[:, 1: ] += prs
-    emiss_sxr[:, :-1] += pls
-    emiss_tot[:, 1: ] += prb
-    emiss_tot[:, :-1] += pltt
-
-    # plot radiation components
-    fig,axx = plt.subplots(2,2,figsize=(12,8),sharex=True)
-    ax = axx.flatten()
-    nion = prs.shape[1]+1
-    colors = cm.plasma(np.linspace(0,1, nion))
-    for a in ax:
-        a.set_prop_cycle('color',colors)
-        a.grid(True)
-
-    ax[0].plot([],[]) #empty plot for bremstrahlung of neutral ion
-    ax[0].plot(xvar,prs); ax[0].set_title('PRS: cont SXR rad')
-    ax[1].plot(xvar,pls); ax[1].set_title('PLS: SXR line rad')
-    ax[2].plot(xvar,pltt); ax[2].set_title('PLT: tot line rad')
-    ax[3].plot([],[])#empty plot for bremstrahlung of neutral ion
-    ax[3].plot(xvar,prb); ax[3].set_title('PRB: tot cont rad')
-
-    ax[2].set_xlabel('$r/a$'); ax[3].set_xlabel('$r/a$')
-    labels = [r'$%s^{%d\!+}$'%(imp,cc) for cc in range(nion)]
-    ax[0].legend(labels)
-    ax[0].set_xlim(xvar[0], xvar[-1])
-
-    # plot total power (in SXR and whole range)
-    fig,axx = plt.subplots(2,2,figsize=(12,8),sharex=True)
-    ax = axx.flatten()
-
-    for a in ax:
-        a.set_prop_cycle('color',colors)
-        a.grid(True)
-
-    ax[0].plot(xvar,emiss_sxr); ax[0].set_title('SXR power [W]')
-    ax[1].plot(xvar,emiss_tot); ax[1].set_title('Tot. rad. power [W]')
-    ax[2].plot(xvar,emiss_sxr*10**logne_prof[:,None]); ax[2].set_title(r'SXR power [W/m$^{-3}$]')
-    ax[3].plot(xvar,emiss_tot*10**logne_prof[:,None]); ax[3].set_title(r'Tot. rad. power [W/m$^{-3}$]')
-    ax[2].set_xlabel('$r/a$'); ax[3].set_xlabel('$r/a$')
-    ax[0].legend(labels)
-    ax[0].set_xlim(xvar[0], xvar[-1])
 
 
 

@@ -189,7 +189,7 @@ class aurora_sim:
         lTe = np.log10(self._Te)
 
         # get TIME-DEPENDENT atomic rates
-        atom_data = atomic.get_all_atom_data(self.imp,['acd','scd'])
+        atom_data = atomic.get_atom_data(self.imp,['acd','scd'])
 
         # get electron impact ionization and radiative recombination rates in units of [s^-1]
         S_rates = atomic.interp_atom_prof(atom_data['scd'],lne, lTe)
@@ -199,7 +199,7 @@ class aurora_sim:
         R_rates = copy.deepcopy(alpha_rates)
         if self.namelist['cxr_flag']:
             # include thermal charge exchange recombination
-            atom_data = atomic.get_all_atom_data(self.imp,['ccd'])
+            atom_data = atomic.get_atom_data(self.imp,['ccd'])
 
             lTi = np.log10(Ti)
             alpha_CX_rates = atomic.interp_atom_prof(atom_data['ccd'], lne, lTi, x_multiply=False)

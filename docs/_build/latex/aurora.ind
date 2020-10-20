@@ -1,0 +1,217 @@
+\begin{sphinxtheindex}
+\let\bigletter\sphinxstyleindexlettergroup
+\let\spxpagem \sphinxstyleindexpagemain
+\let\spxentry \sphinxstyleindexentry
+\let\spxextra \sphinxstyleindexextra
+
+  \bigletter A
+  \item \spxentry{adas\_file}\spxextra{class in aurora.atomic}, \hyperpage{12}
+  \item \spxentry{adas\_files\_dict()}\spxextra{in module aurora.atomic}, \hyperpage{12}
+  \item \spxentry{adf04\_files()}\spxextra{in module aurora.radiation}, \hyperpage{15}
+  \item \spxentry{animate\_aurora()}\spxextra{in module aurora.animate}, \hyperpage{23}
+  \item \spxentry{aurora}
+    \subitem \spxentry{module}, \hyperpage{27}
+  \item \spxentry{aurora.animate}
+    \subitem \spxentry{module}, \hyperpage{23}
+  \item \spxentry{aurora.atomic}
+    \subitem \spxentry{module}, \hyperpage{12}
+  \item \spxentry{aurora.coords}
+    \subitem \spxentry{module}, \hyperpage{19}
+  \item \spxentry{aurora.core}
+    \subitem \spxentry{module}, \hyperpage{11}
+  \item \spxentry{aurora.default\_nml}
+    \subitem \spxentry{module}, \hyperpage{22}
+  \item \spxentry{aurora.grids\_utils}
+    \subitem \spxentry{module}, \hyperpage{17}
+  \item \spxentry{aurora.interp}
+    \subitem \spxentry{module}, \hyperpage{23}
+  \item \spxentry{aurora.janev\_smith\_rates}
+    \subitem \spxentry{module}, \hyperpage{26}
+  \item \spxentry{aurora.nbi\_neutrals}
+    \subitem \spxentry{module}, \hyperpage{24}
+  \item \spxentry{aurora.particle\_conserv}
+    \subitem \spxentry{module}, \hyperpage{23}
+  \item \spxentry{aurora.plot\_tools}
+    \subitem \spxentry{module}, \hyperpage{22}
+  \item \spxentry{aurora.radiation}
+    \subitem \spxentry{module}, \hyperpage{15}
+  \item \spxentry{aurora.source\_utils}
+    \subitem \spxentry{module}, \hyperpage{20}
+  \item \spxentry{aurora\_sim}\spxextra{class in aurora.core}, \hyperpage{11}
+
+  \indexspace
+  \bigletter B
+  \item \spxentry{balance()}\spxextra{in module aurora.atomic}, \hyperpage{12}
+  \item \spxentry{beam\_grid()}\spxextra{in module aurora.nbi\_neutrals}, \hyperpage{24}
+  \item \spxentry{bt\_rate\_maxwell\_average()}\spxextra{in module aurora.nbi\_neutrals}, 
+		\hyperpage{24}
+  \item \spxentry{bt\_rate\_maxwell\_average\_vec()}\spxextra{in module aurora.nbi\_neutrals}, 
+		\hyperpage{24}
+
+  \indexspace
+  \bigletter C
+  \item \spxentry{CartesianGrid}\spxextra{class in aurora.atomic}, \hyperpage{12}
+  \item \spxentry{compute\_rad()}\spxextra{in module aurora.radiation}, \hyperpage{15}
+  \item \spxentry{create\_aurora\_time\_grid()}\spxextra{in module aurora.grids\_utils}, 
+		\hyperpage{17}
+  \item \spxentry{create\_radial\_grid()}\spxextra{in module aurora.grids\_utils}, \hyperpage{17}
+  \item \spxentry{create\_time\_grid()}\spxextra{in module aurora.grids\_utils}, \hyperpage{18}
+  \item \spxentry{create\_time\_grid\_new()}\spxextra{in module aurora.grids\_utils}, 
+		\hyperpage{18}
+
+  \indexspace
+  \bigletter E
+  \item \spxentry{exppol0()}\spxextra{in module aurora.interp}, \hyperpage{23}
+  \item \spxentry{exppol1()}\spxextra{in module aurora.interp}, \hyperpage{23}
+
+  \indexspace
+  \bigletter F
+  \item \spxentry{funct()}\spxextra{in module aurora.interp}, \hyperpage{23}
+  \item \spxentry{funct2()}\spxextra{in module aurora.interp}, \hyperpage{23}
+
+  \indexspace
+  \bigletter G
+  \item \spxentry{get\_adas\_ion\_rad()}\spxextra{in module aurora.atomic}, \hyperpage{12}
+  \item \spxentry{get\_all\_atom\_data()}\spxextra{in module aurora.atomic}, \hyperpage{12}
+  \item \spxentry{get\_atomdat\_info()}\spxextra{in module aurora.atomic}, \hyperpage{12}
+  \item \spxentry{get\_aurora\_kin\_profs()}\spxextra{aurora.core.aurora\_sim method}, 
+		\hyperpage{11}
+  \item \spxentry{get\_aurora\_source()}\spxextra{in module aurora.source\_utils}, \hyperpage{20}
+  \item \spxentry{get\_cooling\_factors()}\spxextra{in module aurora.atomic}, \hyperpage{12}
+  \item \spxentry{get\_cs\_balance\_terms()}\spxextra{in module aurora.atomic}, \hyperpage{12}
+  \item \spxentry{get\_file\_types()}\spxextra{in module aurora.atomic}, \hyperpage{13}
+  \item \spxentry{get\_frac\_abundances()}\spxextra{in module aurora.atomic}, \hyperpage{13}
+  \item \spxentry{get\_HFS\_LFS()}\spxextra{in module aurora.grids\_utils}, \hyperpage{18}
+  \item \spxentry{get\_ls\_cycle()}\spxextra{in module aurora.nbi\_neutrals}, \hyperpage{25}
+  \item \spxentry{get\_ls\_cycle()}\spxextra{in module aurora.plot\_tools}, \hyperpage{22}
+  \item \spxentry{get\_NBI\_imp\_cxr\_q()}\spxextra{in module aurora.nbi\_neutrals}, \hyperpage{25}
+  \item \spxentry{get\_neutrals\_fsa()}\spxextra{in module aurora.nbi\_neutrals}, \hyperpage{25}
+  \item \spxentry{get\_par\_loss\_rate()}\spxextra{aurora.core.aurora\_sim method}, \hyperpage{11}
+  \item \spxentry{get\_particle\_nums()}\spxextra{in module aurora.particle\_conserv}, 
+		\hyperpage{23}
+  \item \spxentry{get\_pec\_prof()}\spxextra{in module aurora.radiation}, \hyperpage{16}
+  \item \spxentry{get\_radial\_source()}\spxextra{in module aurora.source\_utils}, \hyperpage{20}
+  \item \spxentry{get\_rhopol\_rV\_mapping()}\spxextra{in module aurora.grids\_utils}, 
+		\hyperpage{19}
+  \item \spxentry{get\_time\_dept\_atomic\_rates()}\spxextra{aurora.core.aurora\_sim method}, 
+		\hyperpage{11}
+  \item \spxentry{gff\_mean()}\spxextra{in module aurora.atomic}, \hyperpage{13}
+
+  \indexspace
+  \bigletter I
+  \item \spxentry{impurity\_brems()}\spxextra{in module aurora.atomic}, \hyperpage{13}
+  \item \spxentry{interp()}\spxextra{in module aurora.interp}, \hyperpage{23}
+  \item \spxentry{interp\_atom\_prof()}\spxextra{in module aurora.atomic}, \hyperpage{14}
+  \item \spxentry{interp\_kin\_prof()}\spxextra{aurora.core.aurora\_sim method}, \hyperpage{11}
+  \item \spxentry{interp\_quad()}\spxextra{in module aurora.interp}, \hyperpage{23}
+  \item \spxentry{interpa\_quad()}\spxextra{in module aurora.interp}, \hyperpage{23}
+
+  \indexspace
+  \bigletter J
+  \item \spxentry{js\_sigma()}\spxextra{in module aurora.janev\_smith\_rates}, \hyperpage{26}
+  \item \spxentry{js\_sigma\_cx\_n1\_q1()}\spxextra{in module aurora.janev\_smith\_rates}, 
+		\hyperpage{27}
+  \item \spxentry{js\_sigma\_cx\_n1\_q2()}\spxextra{in module aurora.janev\_smith\_rates}, 
+		\hyperpage{27}
+  \item \spxentry{js\_sigma\_cx\_n1\_q4()}\spxextra{in module aurora.janev\_smith\_rates}, 
+		\hyperpage{27}
+  \item \spxentry{js\_sigma\_cx\_n1\_q5()}\spxextra{in module aurora.janev\_smith\_rates}, 
+		\hyperpage{27}
+  \item \spxentry{js\_sigma\_cx\_n1\_q6()}\spxextra{in module aurora.janev\_smith\_rates}, 
+		\hyperpage{27}
+  \item \spxentry{js\_sigma\_cx\_n1\_q8()}\spxextra{in module aurora.janev\_smith\_rates}, 
+		\hyperpage{27}
+  \item \spxentry{js\_sigma\_cx\_n1\_qg8()}\spxextra{in module aurora.janev\_smith\_rates}, 
+		\hyperpage{27}
+  \item \spxentry{js\_sigma\_cx\_n2\_q2()}\spxextra{in module aurora.janev\_smith\_rates}, 
+		\hyperpage{27}
+  \item \spxentry{js\_sigma\_cx\_ng1\_q1()}\spxextra{in module aurora.janev\_smith\_rates}, 
+		\hyperpage{27}
+  \item \spxentry{js\_sigma\_cx\_ng1\_qg3()}\spxextra{in module aurora.janev\_smith\_rates}, 
+		\hyperpage{27}
+  \item \spxentry{js\_sigma\_cx\_ng2\_q2()}\spxextra{in module aurora.janev\_smith\_rates}, 
+		\hyperpage{27}
+  \item \spxentry{js\_sigma\_ioniz\_n1\_q8()}\spxextra{in module aurora.janev\_smith\_rates}, 
+		\hyperpage{27}
+
+  \indexspace
+  \bigletter L
+  \item \spxentry{lbo\_source\_function()}\spxextra{in module aurora.source\_utils}, \hyperpage{21}
+  \item \spxentry{load()}\spxextra{aurora.atomic.adas\_file method}, \hyperpage{12}
+  \item \spxentry{load\_default\_namelist()}\spxextra{in module aurora.default\_nml}, 
+		\hyperpage{22}
+
+  \indexspace
+  \bigletter M
+  \item \spxentry{main\_ion\_brems()}\spxextra{in module aurora.atomic}, \hyperpage{14}
+  \item \spxentry{module}
+    \subitem \spxentry{aurora}, \hyperpage{27}
+    \subitem \spxentry{aurora.animate}, \hyperpage{23}
+    \subitem \spxentry{aurora.atomic}, \hyperpage{12}
+    \subitem \spxentry{aurora.coords}, \hyperpage{19}
+    \subitem \spxentry{aurora.core}, \hyperpage{11}
+    \subitem \spxentry{aurora.default\_nml}, \hyperpage{22}
+    \subitem \spxentry{aurora.grids\_utils}, \hyperpage{17}
+    \subitem \spxentry{aurora.interp}, \hyperpage{23}
+    \subitem \spxentry{aurora.janev\_smith\_rates}, \hyperpage{26}
+    \subitem \spxentry{aurora.nbi\_neutrals}, \hyperpage{24}
+    \subitem \spxentry{aurora.particle\_conserv}, \hyperpage{23}
+    \subitem \spxentry{aurora.plot\_tools}, \hyperpage{22}
+    \subitem \spxentry{aurora.radiation}, \hyperpage{15}
+    \subitem \spxentry{aurora.source\_utils}, \hyperpage{20}
+
+  \indexspace
+  \bigletter N
+  \item \spxentry{name}\spxextra{in module aurora}, \hyperpage{27}
+  \item \spxentry{null\_space()}\spxextra{in module aurora.atomic}, \hyperpage{14}
+
+  \indexspace
+  \bigletter P
+  \item \spxentry{plot()}\spxextra{aurora.atomic.adas\_file method}, \hyperpage{12}
+  \item \spxentry{plot\_1d()}\spxextra{in module aurora.particle\_conserv}, \hyperpage{23}
+  \item \spxentry{plot\_js\_sigma()}\spxextra{in module aurora.janev\_smith\_rates}, \hyperpage{27}
+  \item \spxentry{plot\_norm\_ion\_freq()}\spxextra{in module aurora.plot\_tools}, \hyperpage{22}
+  \item \spxentry{plot\_particle\_conserv()}\spxextra{in module aurora.particle\_conserv}, 
+		\hyperpage{23}
+  \item \spxentry{plot\_radiation\_profs()}\spxextra{in module aurora.atomic}, \hyperpage{14}
+  \item \spxentry{plot\_relax\_time()}\spxextra{in module aurora.atomic}, \hyperpage{14}
+
+  \indexspace
+  \bigletter R
+  \item \spxentry{rad\_coord\_transform()}\spxextra{in module aurora.coords}, \hyperpage{20}
+  \item \spxentry{radiation\_model()}\spxextra{in module aurora.radiation}, \hyperpage{17}
+  \item \spxentry{ratfun()}\spxextra{in module aurora.interp}, \hyperpage{23}
+  \item \spxentry{read\_adf15()}\spxextra{in module aurora.atomic}, \hyperpage{14}
+  \item \spxentry{read\_source()}\spxextra{in module aurora.source\_utils}, \hyperpage{21}
+  \item \spxentry{rotation\_matrix()}\spxextra{in module aurora.nbi\_neutrals}, \hyperpage{26}
+  \item \spxentry{run\_aurora()}\spxextra{aurora.core.aurora\_sim method}, \hyperpage{11}
+  \item \spxentry{run\_julia()}\spxextra{aurora.core.aurora\_sim method}, \hyperpage{11}
+  \item \spxentry{rV\_vol\_average()}\spxextra{in module aurora.coords}, \hyperpage{19}
+
+  \indexspace
+  \bigletter S
+  \item \spxentry{slider\_plot()}\spxextra{in module aurora.plot\_tools}, \hyperpage{22}
+
+  \indexspace
+  \bigletter T
+  \item \spxentry{tt\_rate\_maxwell\_average()}\spxextra{in module aurora.nbi\_neutrals}, 
+		\hyperpage{26}
+
+  \indexspace
+  \bigletter U
+  \item \spxentry{uvw\_xyz()}\spxextra{in module aurora.nbi\_neutrals}, \hyperpage{26}
+
+  \indexspace
+  \bigletter V
+  \item \spxentry{vol\_average()}\spxextra{in module aurora.coords}, \hyperpage{20}
+  \item \spxentry{vol\_int()}\spxextra{in module aurora.particle\_conserv}, \hyperpage{23}
+
+  \indexspace
+  \bigletter W
+  \item \spxentry{write\_source()}\spxextra{in module aurora.source\_utils}, \hyperpage{21}
+
+  \indexspace
+  \bigletter X
+  \item \spxentry{xyz\_uvw()}\spxextra{in module aurora.nbi\_neutrals}, \hyperpage{26}
+
+\end{sphinxtheindex}
