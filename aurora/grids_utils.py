@@ -11,19 +11,14 @@ def create_radial_grid(namelist,plot=False):
     '''Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. 
     The lim_sep parameters is additionally used if plotting is requested. 
 
-    Radial mesh points are set to be equidistant in the coordinate $\rho$, with
+    Radial mesh points are set to be equidistant in the coordinate :math:`\rho`, with
 
-    .. math::
-    
-        \rho = \frac{r}{\Delta r_{centre}} + \frac{r_{edge}}{k+1} \left(\frac{1}{\Delta r_{edge}} \\
-               - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}} \right)^{k+1}
+    :math:`\rho = \frac{r}{\Delta r_{centre}} + \frac{r_{edge}}{k+1} \left(\frac{1}{\Delta r_{edge}}- \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}} \right)^{k+1}`
 
     The corresponding radial step size is 
+    
+    :math:`\Delta r = \left[\frac{1}{\Delta r_{centre}} + \left(\frac{1}{\Delta r_{edge}} - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}}\right)^k \right]^{-1}`
 
-    .. math::
-
-        \Delta r &= \left[\frac{1}{\Delta r_{centre}} + \left(\frac{1}{\Delta r_{edge}} \\
-                  - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}}\right)^k \right]^{-1}
 
     See the STRAHL manual for details. 
 
@@ -356,7 +351,7 @@ def get_HFS_LFS(geqdsk, rho_pol=None):
 
     Args:
         geqdsk : dict
-            Dictionary containing the g-EQDSK file as processed by the :py:mod:`omfit_eqdsk` 
+            Dictionary containing the g-EQDSK file as processed by the *omfit_eqdsk*
             package. 
         rho_pol : array, optional
             Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
@@ -404,19 +399,18 @@ def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
     on the rho_pol grid (sqrt of normalized poloidal flux).
 
     Method:
-    
-    r(\rho,\theta) = r0(\rho) +  (r_lcfs(\theta) - r0_lcfs) * scale
-    z(\rho,\theta) = z0      +  (z_lcfs(\theta) - z0     ) * scale
-    scale = \frac{ r(\rho,\theta=0) - r(\rho,\theta=180)}{r_lcfs(\theta=0)- r_lcfs(\theta=180)}
-    r0_lcfs = .5*(r_lcfs(\theta=0)+ r_lcfs(\theta=180))
-    r0(\rho) = .5*(r(\rho,\theta=0) + r(\rho,\theta=180))
+    :math:`r(\rho,\theta) = r0(\rho) +  (r_{lcfs}(\theta) - r0_{lcfs}) \times scale`
+    :math:`z(\rho,\theta) = z0      +  (z_{lcfs}(\theta) - z0     ) \times scale`
+    :math:`scale = \frac{ r(\rho,\theta=0) - r(\rho,\theta=180)}{r_{lcfs}(\theta=0)- r_{lcfs}(\theta=180)}`
+    :math:`r0_{lcfs} = \frac{1}{2} (r_{lcfs}(\theta=0)+ r_{lcfs}(\theta=180))`
+    :math:`r0(\rho) = \frac{1}{2} (r(\rho,\theta=0) + r(\rho,\theta=180))`
 
     The mapping between rho_pol and r_V allows one to interpolate inputs on a
     rho_pol grid onto the r_V grid (in cm) used internally by the code.
 
     Args:
         geqdsk : dict
-            Dictionary containing the g-EQDSK file as processed by the :py:module:`omfit_eqdsk` 
+            Dictionary containing the g-EQDSK file as processed by the *omfit_eqdsk*
             package. 
         rho_pol : array, optional
             Array corresponding to a grid in sqrt of normalized poloidal flux for which a 

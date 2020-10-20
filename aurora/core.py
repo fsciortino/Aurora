@@ -68,7 +68,7 @@ class aurora_sim:
         self.rhop_grid = interp1d(_rvol,rho_pol)(self.rvol_grid)
 
         # Save R on LFS and HFS
-        self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(geqdsk, rho_pol_arb=self.rhop_grid)
+        self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(geqdsk, rho_pol=self.rhop_grid)
 
         # define time grid ('timing' must be in namelist)
         self.time_grid, self.save_time = grids_utils.create_time_grid(timing=self.namelist['timing'], plot=False)

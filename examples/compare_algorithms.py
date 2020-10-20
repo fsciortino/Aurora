@@ -118,7 +118,7 @@ aurora.grids_utils.create_time_grid(namelist['timing'], plot=True)
 
 # choose transport coefficients
 D_eff = 1e4 #cm^2/s
-v_eff = -1e4 #-1e2 #-2e2 #cm/s
+v_eff = -3e4 #-1e2 #-2e2 #cm/s
 
 # # set transport coefficients to the right format
 D_z = np.ones((len(asim.rvol_grid),1)) * D_eff

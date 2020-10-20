@@ -45,19 +45,14 @@
     <span class="sd">&#39;&#39;&#39;Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. </span>
 <span class="sd">    The lim_sep parameters is additionally used if plotting is requested. </span>
 
-<span class="sd">    Radial mesh points are set to be equidistant in the coordinate $\rho$, with</span>
+<span class="sd">    Radial mesh points are set to be equidistant in the coordinate :math:`\rho`, with</span>
 
-<span class="sd">    .. math::</span>
-<span class="sd">    </span>
-<span class="sd">        \rho = \frac{r}{\Delta r_{centre}} + \frac{r_{edge}}{k+1} \left(\frac{1}{\Delta r_{edge}} \\</span>
-<span class="sd">               - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}} \right)^{k+1}</span>
+<span class="sd">    :math:`\rho = \frac{r}{\Delta r_{centre}} + \frac{r_{edge}}{k+1} \left(\frac{1}{\Delta r_{edge}}- \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}} \right)^{k+1}`</span>
 
 <span class="sd">    The corresponding radial step size is </span>
+<span class="sd">    </span>
+<span class="sd">    :math:`\Delta r = \left[\frac{1}{\Delta r_{centre}} + \left(\frac{1}{\Delta r_{edge}} - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}}\right)^k \right]^{-1}`</span>
 
-<span class="sd">    .. math::</span>
-
-<span class="sd">        \Delta r &amp;= \left[\frac{1}{\Delta r_{centre}} + \left(\frac{1}{\Delta r_{edge}} \\</span>
-<span class="sd">                  - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}}\right)^k \right]^{-1}</span>
 
 <span class="sd">    See the STRAHL manual for details. </span>
 
@@ -390,7 +385,7 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        geqdsk : dict</span>
-<span class="sd">            Dictionary containing the g-EQDSK file as processed by the :py:mod:`omfit_eqdsk` </span>
+<span class="sd">            Dictionary containing the g-EQDSK file as processed by the *omfit_eqdsk*</span>
 <span class="sd">            package. </span>
 <span class="sd">        rho_pol : array, optional</span>
 <span class="sd">            Array corresponding to a grid in sqrt of normalized poloidal flux for which a </span>
@@ -438,19 +433,18 @@
 <span class="sd">    on the rho_pol grid (sqrt of normalized poloidal flux).</span>
 
 <span class="sd">    Method:</span>
-<span class="sd">    </span>
-<span class="sd">    r(\rho,\theta) = r0(\rho) +  (r_lcfs(\theta) - r0_lcfs) * scale</span>
-<span class="sd">    z(\rho,\theta) = z0      +  (z_lcfs(\theta) - z0     ) * scale</span>
-<span class="sd">    scale = \frac{ r(\rho,\theta=0) - r(\rho,\theta=180)}{r_lcfs(\theta=0)- r_lcfs(\theta=180)}</span>
-<span class="sd">    r0_lcfs = .5*(r_lcfs(\theta=0)+ r_lcfs(\theta=180))</span>
-<span class="sd">    r0(\rho) = .5*(r(\rho,\theta=0) + r(\rho,\theta=180))</span>
+<span class="sd">    :math:`r(\rho,\theta) = r0(\rho) +  (r_{lcfs}(\theta) - r0_{lcfs}) \times scale`</span>
+<span class="sd">    :math:`z(\rho,\theta) = z0      +  (z_{lcfs}(\theta) - z0     ) \times scale`</span>
+<span class="sd">    :math:`scale = \frac{ r(\rho,\theta=0) - r(\rho,\theta=180)}{r_{lcfs}(\theta=0)- r_{lcfs}(\theta=180)}`</span>
+<span class="sd">    :math:`r0_{lcfs} = \frac{1}{2} (r_{lcfs}(\theta=0)+ r_{lcfs}(\theta=180))`</span>
+<span class="sd">    :math:`r0(\rho) = \frac{1}{2} (r(\rho,\theta=0) + r(\rho,\theta=180))`</span>
 
 <span class="sd">    The mapping between rho_pol and r_V allows one to interpolate inputs on a</span>
 <span class="sd">    rho_pol grid onto the r_V grid (in cm) used internally by the code.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        geqdsk : dict</span>
-<span class="sd">            Dictionary containing the g-EQDSK file as processed by the :py:module:`omfit_eqdsk` </span>
+<span class="sd">            Dictionary containing the g-EQDSK file as processed by the *omfit_eqdsk*</span>
 <span class="sd">            package. </span>
 <span class="sd">        rho_pol : array, optional</span>
 <span class="sd">            Array corresponding to a grid in sqrt of normalized poloidal flux for which a </span>

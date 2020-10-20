@@ -16,7 +16,7 @@ A number of standard tests and examples are provided using a real set of Alcator
 
 The library in :py:meth:`~aurora.atomic` provides functions to load and interpolate atomic rates from ADAS ADF-11 files, as well as from ADF-15 photon emissivity coefficients (PEC) files. PEC data can alternatively be computed using the collisional-radiative model of CollRadPy, using methods in :py:func:`~aurora.radiation`.
 
-:py:mod:`aurora` was born as a fast forward model of impurity transport, but it can do much more. For example, it may be helpful for parameter scans in modeling of future devices. The :py:func:`~aurora.radiation_model` allows one to use ADAS atomic rates and given kinetic profiles to compute line radiation, bremsstrahlung, continuum and soft-x-ray-filtered radiation. Ionization equilibria can also be computed using the :py:meth:`~aurora.atomic` methods, thus enabling simple "constant-fraction" models where the total density of an impurity species is fixed to a certain percentage of the electron density. 
+:py:mod:`aurora` was born as a fast forward model of impurity transport, but it can do much more. For example, it may be helpful for parameter scans in modeling of future devices. The :py:func:`~aurora.radiation.radiation_model` method allows one to use ADAS atomic rates and given kinetic profiles to compute line radiation, bremsstrahlung, continuum and soft-x-ray-filtered radiation. Ionization equilibria can also be computed using the :py:meth:`~aurora.atomic` methods, thus enabling simple "constant-fraction" models where the total density of an impurity species is fixed to a certain percentage of the electron density. 
 
 
 Installation

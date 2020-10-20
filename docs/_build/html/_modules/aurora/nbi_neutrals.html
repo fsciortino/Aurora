@@ -57,12 +57,16 @@
 <span class="sd">    Args:</span>
 <span class="sd">        neutrals : dict</span>
 <span class="sd">            Dictionary containing fields</span>
-<span class="sd">            {&#39;beams&#39;,&#39;names&#39;,&#39;R&#39;,&#39;Z&#39;, beam1, beam2, etc.}</span>
-<span class="sd">            Here beam1,beam2,etc. are the names in neutrals[&#39;beams&#39;]. &#39;names&#39; are the names of each </span>
-<span class="sd">            beam component, e.g. &#39;fdens&#39;,&#39;hdens&#39;,&#39;halo&#39;, etc., ordered according to &#39;names&#39;. </span>
-<span class="sd">            &#39;R&#39;,&#39;Z&#39; are the major radius and vertical coordinates [cm] on which neutral density components are </span>
-<span class="sd">            given in elements such as </span>
-<span class="sd">            &gt;&gt; neutrals[beams[0]][&#39;n=0&#39;][name_idx]</span>
+<span class="sd">            {&quot;beams&quot;,&quot;names&quot;,&quot;R&quot;,&quot;Z&quot;, beam1, beam2, etc.}</span>
+<span class="sd">            Here beam1,beam2,etc. are the names in neutrals[&quot;beams&quot;]. &quot;names&quot; are the names of each </span>
+<span class="sd">            beam component, e.g. &#39;fdens&#39;,&#39;hdens&#39;,&#39;halo&#39;, etc., ordered according to &quot;names&quot;. </span>
+<span class="sd">            &quot;R&quot;,&quot;Z&quot; are the major radius and vertical coordinates [cm] on which neutral density components are </span>
+<span class="sd">            given in elements such as</span>
+<span class="sd">    </span>
+<span class="sd">            .. code-block:: python</span>
+<span class="sd">            </span>
+<span class="sd">                neutrals[beams[0]][&quot;n=0&quot;][name_idx]</span>
+
 <span class="sd">            It is currently assumed that n=0,1 and 2 beam components are provided by the user. </span>
 
 <span class="sd">        geqdsk : gEQDSK post-processed dictionary, as given by the omfit_eqdsk package. </span>
@@ -74,7 +78,10 @@
 <span class="sd">        neut_fsa : dict</span>
 <span class="sd">             Dictionary of flux-surface-averaged (FSA) neutral densities, in the same units as in the input. </span>
 <span class="sd">             Similarly to the input &quot;neutrals&quot;, this dictionary has a structure like</span>
-<span class="sd">             &gt;&gt; neutrals_ext[beam][f&#39;n={n_level}&#39;][name_idx]</span>
+
+<span class="sd">             .. code-block:: python</span>
+<span class="sd">             </span>
+<span class="sd">                 neutrals_ext[beam][f&#39;n={n_level}&#39;][name_idx]</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -204,7 +211,7 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        neut_fsa : dict</span>
-<span class="sd">             Dictionary containing FSA neutral densities in the form that is output by :py:method:get_neutrals_fsa.</span>
+<span class="sd">             Dictionary containing FSA neutral densities in the form that is output by :py:meth:`get_neutrals_fsa`.</span>
 <span class="sd">        q : int or float</span>
 <span class="sd">             Charge of impurity species</span>
 <span class="sd">        rhop_Ti : array-like</span>
@@ -223,8 +230,12 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        rates : dict</span>
 <span class="sd">            Dictionary containing CXR rates from NBI neutrals. This dictionary has analogous form to the </span>
-<span class="sd">            :py:method:get_neutrals_fsa function, e.g. we have </span>
-<span class="sd">            &gt;&gt; rates[beam][f&#39;n={n_level}&#39;][&#39;halo&#39;]</span>
+<span class="sd">            :py:meth:`get_neutrals_fsa` function, e.g. we have </span>
+
+<span class="sd">            .. code-block:: python</span>
+
+<span class="sd">                rates[beam][f&#39;n={n_level}&#39;][&#39;halo&#39;]</span>
+
 <span class="sd">            Rates are on a radial grid corresponding to the input neut_fsa[&#39;rhop&#39;]. </span>
 
 <span class="sd">    For details on inputs and outputs, it is recommendeded to look at the internal plotting functions. </span>
@@ -593,24 +604,30 @@
     <span class="sd">&quot;&quot;&quot;Calculates Maxwellian reaction rate for an interaction between two thermal populations,</span>
 <span class="sd">    assumed to be of neutrals (mass m_n) and background ions (mass m_i).</span>
 
-<span class="sd">    `sigma_fun` must be a function for a specific charge and n-level of the neutral particles.</span>
-<span class="sd">    This allows evaluation of atomic rates for charge exchange interactions between thermal</span>
+<span class="sd">    The &#39;sigma_fun&#39; argument must be a function for a specific charge and n-level of the neutral </span>
+<span class="sd">    particles. This allows evaluation of atomic rates for charge exchange interactions between thermal</span>
 <span class="sd">    beam halos and background ions.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        sigma_fun: function to compute a specific cross section [cm^2], function of energy/amu ONLY.</span>
+<span class="sd">        sigma_fun: python function</span>
+<span class="sd">            Function to compute a specific cross section [cm^2], function of energy/amu ONLY.</span>
 <span class="sd">            Expected call form: sigma_fun(erel/ared)</span>
-<span class="sd">        Ti : background ion and halo temperature [keV], float or 1D</span>
-<span class="sd">        m_i : mass of background ions [amu]</span>
-<span class="sd">        m_n : mass of neutrals [amu]</span>
-<span class="sd">        n_level : n-level of beam. This is used to evaluate the hydrogen ionization potential,</span>
+<span class="sd">        Ti: float or 1D array</span>
+<span class="sd">            background ion and halo temperature [keV]</span>
+<span class="sd">        m_i: float</span>
+<span class="sd">            mass of background ions [amu]</span>
+<span class="sd">        m_n: float </span>
+<span class="sd">            mass of neutrals [amu]</span>
+<span class="sd">        n_level: int</span>
+<span class="sd">            n-level of beam. This is used to evaluate the hydrogen ionization potential,</span>
 <span class="sd">            below which an electron is unlikely to charge exchange with surrounding ions.</span>
 
 <span class="sd">        TODO: add effect of toroidal rotation! This will require making the integration in this</span>
 <span class="sd">        function 2-dimensional.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        rate : output reaction rate in [cm^3/s] units</span>
+<span class="sd">        rate : float or 1D array</span>
+<span class="sd">            output reaction rate in [cm^3/s] units</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">Ti</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">Ti</span><span class="p">)</span>
 

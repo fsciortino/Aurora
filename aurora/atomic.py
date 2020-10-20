@@ -504,9 +504,9 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
         axx = None    
 
     if compute_rates:
-        return logTe, fz, rate_coeff
+        return logTe, fz, axx, rate_coeff
     else:
-        return logTe, fz
+        return logTe, fz, axx
 
 
 
