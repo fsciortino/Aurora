@@ -1,6 +1,5 @@
-#-*-Python-*-
-# Created by sciortino & odstrcil
-
+'''This module includes the core class to set up simulations with :py:mod:`eqtools`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.
+'''
 import scipy.io
 import copy,os,sys
 import numpy as np
@@ -19,23 +18,26 @@ class aurora_sim:
     def __init__(self, namelist, geqdsk=None, nbi_cxr=None):
         ''' Setup aurora simulation input dictionary from the given namelist.
 
-        INPUTS
-        ------
-        namelist : dict
-            Dictionary containing aurora inputs. See default_nml.py for some defaults, which users should 
-            modify for their runs.
-        geqdsk : dict, optional
-            EFIT gfile as returned after postprocessing by the omfit_eqdsk package (OMFITgeqdsk class). 
-            If left to None (default), the geqdsk dictionary is constructed starting from the gfile in the MDS+ tree.
-        nbi_cxr : array, optional
-            If namelist['nbi_cxr']=True, this array represents the charge exchange rates with NBI neutrals, fast and/or
-            thermal, across the entire radius and on the time base of interest. 
-            Creating this input is not trivial and must be done externally to aurora. General steps:
-            - get density of fast NBI neutrals (both fast and thermal/halo) ---> n0_nbi, n0_halo
-            - get total rates (n-unresolved) for CX with NBI neutrals --> _alpha_CX_NBI_rates
-            - thermal rates for the halo may be from ADAS CCD files or from the same methods used for fast neutrals
-            - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
-            This method still needs more testing within this class. Please contact author for details. 
+        Args:
+            namelist : dict
+                Dictionary containing aurora inputs. See default_nml.py for some defaults, 
+                which users should modify for their runs.
+            geqdsk : dict, optional
+                EFIT gfile as returned after postprocessing by the :py:mod:`omfit_eqdsk` 
+                package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary 
+                is constructed starting from the gfile in the MDS+ tree.
+            nbi_cxr : array, optional
+                If namelist['nbi_cxr']=True, this array represents the charge exchange rates 
+                with NBI neutrals, fast and/or thermal, across the entire radius and on the 
+                time base of interest. 
+                Creating this input is not trivial and must be done externally to aurora. 
+                General steps:
+                - get density of fast NBI neutrals (both fast and thermal/halo) ---> n0_nbi, n0_halo
+                - get total rates (n-unresolved) for CX with NBI neutrals --> _alpha_CX_NBI_rates
+                - thermal rates for the halo may be from ADAS CCD files or from the same methods used 
+                for fast neutrals
+                - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
+                This method still needs more testing within this class. Please contact author for details. 
 
         '''
         self.namelist = namelist
@@ -48,7 +50,7 @@ class aurora_sim:
             try:
                 import omfit_eqdsk
             except:
-                raise ValueError('Could not import omfit_eqdsk! Install with pip install omfit_eqdsk')
+                raise ValueError('Could not import omfit_eqdsk!')
             geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(device=namelist['device'],shot=namelist['shot'],
                                                               time=namelist['time'], SNAPfile='EFIT01',
                                                               fail_if_out_of_range=False,time_diff_warning_threshold=20)
@@ -151,7 +153,8 @@ class aurora_sim:
 
 
     def get_aurora_kin_profs(self, min_T=1.01, min_ne=1e10):
-        ''' Get kinetic profiles on radial and time grids.  '''
+        '''Get kinetic profiles on radial and time grids.
+        '''
 
         Te = self.interp_kin_prof('Te')
         ne = self.interp_kin_prof('ne')
@@ -178,7 +181,7 @@ class aurora_sim:
 
 
     def get_time_dept_atomic_rates(self):
-        ''' Obtain time-dependent ionization and recombination rates for a simulation run.
+        '''Obtain time-dependent ionization and recombination rates for a simulation run.
         If kinetic profiles are given as time-independent, atomic rates for each time slice
         will be set to be the same.
         '''
@@ -226,12 +229,11 @@ class aurora_sim:
 
 
     def get_par_loss_rate(self, trust_SOL_Ti=False):
-        '''
-        Calculate the parallel loss frequency on the radial and temporal grids [1/s].
+        '''Calculate the parallel loss frequency on the radial and temporal grids [1/s].
 
         trust_SOL_Ti should generally be set to False, unless specific Ti measurements are available
         in the SOL.
-        ***
+        
         '''
         # background mass (=2 for D)
         apl = float(self.namelist['a'])
@@ -268,40 +270,41 @@ class aurora_sim:
 
 
     def run_aurora(self, times_DV, D_z, V_z, nz_init=None, method='old',evolneut=False):
-        ''' Run a simulation using inputs in the given dictionary and D,v profiles as a function
+        '''Run a simulation using inputs in the given dictionary and D,v profiles as a function
         of space, time and potentially also ionization state. Users may give an initial state of each
         ion charge state as an input.
 
-        Results can be conveniently visualized with time-slider using
+        Results can be conveniently visualized with time-slider using:
 
-        >> aurora.slider_plot(rhop,time, nz.transpose(1,2,0),   # charge states in first dimension
-                                   xlabel=r'$\rho_p$', ylabel='time [s]', zlabel=r'$n_z$ [cm$^{-3}$]', plot_sum=True,
-                                   labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]])
-        INPUTS
-        -------------
-        times_DV : 1D array
-            Array of times at which D_z and V_z profiles are given. (Note that it is assumed that
-            D and V profiles are already on the self.rvol_grid radial grid).
-        D_z, V_z: arrays, shape of (space, time,nZ) or (space,time)
-            Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
-            This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
-            the number of charge states. If inputs are found to be have only 2 dimensions, it is
-            assumed that all charge states should be set to have the same transport coefficients.
-        nz_init: array, shape of (space, nZ)
-            Impurity charge states at the initial time of the simulation. If left to None, this is
-            internally set to an array of 0's.
-        method : str, optional
-            If method='linder', use the Linder algorithm for increased stability and accuracy.
-        evolneut : bool, optional
-            If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
-            which case neutrals are only taken as a source and those that are not ionized immediately after
-            injection are neglected.
+            aurora.slider_plot(rhop,time, nz.transpose(1,2,0),   # charge states in first dimension
+                               xlabel=r'$\rho_p$', ylabel='time [s]', 
+                               zlabel=r'$n_z$ [cm$^{-3}$]', plot_sum=True,
+                               labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]])
 
-        OUTPUTS:
-        -------------
-        out : list
-            List containing each particle reservoir of a simulation, i.e.
-            nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
+        Args:
+            times_DV : 1D array
+                Array of times at which D_z and V_z profiles are given. (Note that it is assumed that
+                D and V profiles are already on the self.rvol_grid radial grid).
+            D_z, V_z: arrays, shape of (space, time,nZ) or (space,time)
+                Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
+                This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
+                the number of charge states. If inputs are found to be have only 2 dimensions, it is
+                assumed that all charge states should be set to have the same transport coefficients.
+            nz_init: array, shape of (space, nZ)
+                Impurity charge states at the initial time of the simulation. If left to None, this is
+                internally set to an array of 0's.
+            method : str, optional
+                If method='linder', use the Linder algorithm for increased stability and accuracy.
+            evolneut : bool, optional
+                If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
+                which case neutrals are only taken as a source and those that are not ionized immediately after
+                injection are neglected.
+
+        Returns:
+            out : list
+                List containing each particle reservoir of a simulation, i.e.
+                nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
+
         '''
         if nz_init is None:
             # default: start in a state with no impurity ions
@@ -356,27 +359,25 @@ class aurora_sim:
 
 
     def run_julia(self, times_DV, D_z, V_z, nz_init=None):
-        ''' Run a single simulation using the Julia version.
+        '''Run a single simulation using the Julia version.
 
-        INPUTS
-        -------------
-        times_DV : 1D array
-            Array of times at which D_z and V_z profiles are given. (Note that it is assumed that
-            D and V profiles are already on the self.rvol_grid radial grid).
-        D_z, V_z: arrays, shape of (space, nZ, time)
-            Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
-            This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
-            the number of charge states. If inputs are found to be have only 2 dimensions, it is
-            assumed that all charge states should be set to have the same transport coefficients.
-        nz_init: array, shape of (space, nZ)
-            Impurity charge states at the initial time of the simulation. If left to None, this is
-            internally set to an array of 0's.
+        Args:
+            times_DV : 1D array
+                Array of times at which D_z and V_z profiles are given. (Note that it is assumed that
+                D and V profiles are already on the self.rvol_grid radial grid).
+            D_z, V_z: arrays, shape of (space, nZ, time)
+                Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
+                This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
+                the number of charge states. If inputs are found to be have only 2 dimensions, it is
+                assumed that all charge states should be set to have the same transport coefficients.
+            nz_init: array, shape of (space, nZ)
+                Impurity charge states at the initial time of the simulation. If left to None, this is
+                internally set to an array of 0's.
 
-        OUTPUTS:
-        -------------
-        out : list
-            List containing each particle reservoir of a simulation, i.e.
-            nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
+        Returns:
+            out : list
+                List containing each particle reservoir of a simulation, i.e.
+                nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
         '''
 
         from julia.api import Julia

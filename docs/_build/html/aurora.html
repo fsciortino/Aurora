@@ -1,0 +1,241 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aurora package &#8212; aurora 1.0.0 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="aurora: modern 1.5D modeling of particle transport in magnetically-confined plasmas" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="aurora-package">
+<h1>aurora package<a class="headerlink" href="#aurora-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-aurora.core">
+<span id="aurora-core-module"></span><h2>aurora.core module<a class="headerlink" href="#module-aurora.core" title="Permalink to this headline">¶</a></h2>
+<p>This module includes the core class to set up simulations with <code class="xref py py-mod docutils literal notranslate"><span class="pre">eqtools</span></code>. The <a class="reference internal" href="#aurora.core.aurora_sim" title="aurora.core.aurora_sim"><code class="xref py py-class docutils literal notranslate"><span class="pre">aurora_sim</span></code></a> takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.</p>
+<dl class="py class">
+<dt id="aurora.core.aurora_sim">
+<em class="property">class </em><code class="sig-prename descclassname">aurora.core.</code><code class="sig-name descname">aurora_sim</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">namelist</span></em>, <em class="sig-param"><span class="n">geqdsk</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nbi_cxr</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to setup and run aurora simulations.</p>
+<dl class="py method">
+<dt id="aurora.core.aurora_sim.get_aurora_kin_profs">
+<code class="sig-name descname">get_aurora_kin_profs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">min_T</span><span class="o">=</span><span class="default_value">1.01</span></em>, <em class="sig-param"><span class="n">min_ne</span><span class="o">=</span><span class="default_value">10000000000.0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.get_aurora_kin_profs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.get_aurora_kin_profs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get kinetic profiles on radial and time grids.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="aurora.core.aurora_sim.get_par_loss_rate">
+<code class="sig-name descname">get_par_loss_rate</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">trust_SOL_Ti</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.get_par_loss_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.get_par_loss_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the parallel loss frequency on the radial and temporal grids [1/s].</p>
+<p>trust_SOL_Ti should generally be set to False, unless specific Ti measurements are available
+in the SOL.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="aurora.core.aurora_sim.get_time_dept_atomic_rates">
+<code class="sig-name descname">get_time_dept_atomic_rates</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.get_time_dept_atomic_rates"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.get_time_dept_atomic_rates" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain time-dependent ionization and recombination rates for a simulation run.
+If kinetic profiles are given as time-independent, atomic rates for each time slice
+will be set to be the same.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="aurora.core.aurora_sim.interp_kin_prof">
+<code class="sig-name descname">interp_kin_prof</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">prof</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.interp_kin_prof"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.interp_kin_prof" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolate the given kinetic profile on the radial and temporal grids [units of s].
+This function extrapolates in the SOL based on input options using the same methods as in STRAHL.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="aurora.core.aurora_sim.run_aurora">
+<code class="sig-name descname">run_aurora</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">times_DV</span></em>, <em class="sig-param"><span class="n">D_z</span></em>, <em class="sig-param"><span class="n">V_z</span></em>, <em class="sig-param"><span class="n">nz_init</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">method</span><span class="o">=</span><span class="default_value">'old'</span></em>, <em class="sig-param"><span class="n">evolneut</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.run_aurora"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.run_aurora" title="Permalink to this definition">¶</a></dt>
+<dd><dl>
+<dt>Run a simulation using inputs in the given dictionary and D,v profiles as a function</dt><dd><p>of space, time and potentially also ionization state. Users may give an initial state of each
+ion charge state as an input.</p>
+<p>Results can be conveniently visualized with time-slider using:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>aurora.slider_plot(rhop,time, nz.transpose(1,2,0),   # charge states in first dimension</dt><dd><p>xlabel=r’$</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd>
+<dt>ho_p$’, ylabel=’time [s]’, </dt><dd><blockquote>
+<div><p>zlabel=r’$n_z$ [cm$^{-3}$]’, plot_sum=True,
+labels=[f’Ca$^{{{str(i)}}}$’ for i in np.arange(nz_w.shape[1]])</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>times_DV<span class="classifier">1D array</span></dt><dd><p>Array of times at which D_z and V_z profiles are given. (Note that it is assumed that
+D and V profiles are already on the self.rvol_grid radial grid).</p>
+</dd>
+<dt>D_z, V_z: arrays, shape of (space, time,nZ) or (space,time)</dt><dd><p>Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
+This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
+the number of charge states. If inputs are found to be have only 2 dimensions, it is
+assumed that all charge states should be set to have the same transport coefficients.</p>
+</dd>
+<dt>nz_init: array, shape of (space, nZ)</dt><dd><p>Impurity charge states at the initial time of the simulation. If left to None, this is
+internally set to an array of 0’s.</p>
+</dd>
+<dt>method<span class="classifier">str, optional</span></dt><dd><p>If method=’linder’, use the Linder algorithm for increased stability and accuracy.</p>
+</dd>
+<dt>evolneut<span class="classifier">bool, optional</span></dt><dd><p>If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
+which case neutrals are only taken as a source and those that are not ionized immediately after
+injection are neglected.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>out<span class="classifier">list</span></dt><dd><p>List containing each particle reservoir of a simulation, i.e.
+nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="aurora.core.aurora_sim.run_julia">
+<code class="sig-name descname">run_julia</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">times_DV</span></em>, <em class="sig-param"><span class="n">D_z</span></em>, <em class="sig-param"><span class="n">V_z</span></em>, <em class="sig-param"><span class="n">nz_init</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.run_julia"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.run_julia" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a single simulation using the Julia version.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>times_DV<span class="classifier">1D array</span></dt><dd><p>Array of times at which D_z and V_z profiles are given. (Note that it is assumed that
+D and V profiles are already on the self.rvol_grid radial grid).</p>
+</dd>
+<dt>D_z, V_z: arrays, shape of (space, nZ, time)</dt><dd><p>Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
+This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
+the number of charge states. If inputs are found to be have only 2 dimensions, it is
+assumed that all charge states should be set to have the same transport coefficients.</p>
+</dd>
+<dt>nz_init: array, shape of (space, nZ)</dt><dd><p>Impurity charge states at the initial time of the simulation. If left to None, this is
+internally set to an array of 0’s.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>out<span class="classifier">list</span></dt><dd><p>List containing each particle reservoir of a simulation, i.e.
+nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-aurora">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-aurora" title="Permalink to this headline">¶</a></h2>
+<dl class="py data">
+<dt id="aurora.name">
+<code class="sig-prename descclassname">aurora.</code><code class="sig-name descname">name</code><em class="property"> = 'aurora'</em><a class="headerlink" href="#aurora.name" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a></p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">aurora</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">aurora package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.core">aurora.core module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">aurora: modern 1.5D modeling of particle transport in magnetically-confined plasmas</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, F.Sciortino.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/aurora.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,529 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aurora.core &#8212; aurora 1.0.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for aurora.core</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39;This module includes the core class to set up simulations with :py:mod:`eqtools`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="kn">import</span> <span class="nn">scipy.io</span>
+<span class="kn">import</span> <span class="nn">copy</span><span class="o">,</span><span class="nn">os</span><span class="o">,</span><span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">_aurora</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">interp</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">atomic</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">grids_utils</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">source_utils</span>
+
+
+<div class="viewcode-block" id="aurora_sim"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim">[docs]</a><span class="k">class</span> <span class="nc">aurora_sim</span><span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Class to setup and run aurora simulations.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">namelist</span><span class="p">,</span> <span class="n">geqdsk</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nbi_cxr</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Setup aurora simulation input dictionary from the given namelist.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            namelist : dict</span>
+<span class="sd">                Dictionary containing aurora inputs. See default_nml.py for some defaults, </span>
+<span class="sd">                which users should modify for their runs.</span>
+<span class="sd">            geqdsk : dict, optional</span>
+<span class="sd">                EFIT gfile as returned after postprocessing by the :py:mod:`omfit_eqdsk` </span>
+<span class="sd">                package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary </span>
+<span class="sd">                is constructed starting from the gfile in the MDS+ tree.</span>
+<span class="sd">            nbi_cxr : array, optional</span>
+<span class="sd">                If namelist[&#39;nbi_cxr&#39;]=True, this array represents the charge exchange rates </span>
+<span class="sd">                with NBI neutrals, fast and/or thermal, across the entire radius and on the </span>
+<span class="sd">                time base of interest. </span>
+<span class="sd">                Creating this input is not trivial and must be done externally to aurora. </span>
+<span class="sd">                General steps:</span>
+<span class="sd">                - get density of fast NBI neutrals (both fast and thermal/halo) ---&gt; n0_nbi, n0_halo</span>
+<span class="sd">                - get total rates (n-unresolved) for CX with NBI neutrals --&gt; _alpha_CX_NBI_rates</span>
+<span class="sd">                - thermal rates for the halo may be from ADAS CCD files or from the same methods used </span>
+<span class="sd">                for fast neutrals</span>
+<span class="sd">                - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates</span>
+<span class="sd">                This method still needs more testing within this class. Please contact author for details. </span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span> <span class="o">=</span> <span class="n">namelist</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span> <span class="o">=</span> <span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;kin_profs&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nbi_cxr</span> <span class="o">=</span> <span class="n">nbi_cxr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">imp</span> <span class="o">=</span> <span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;imp&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">geqdsk</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Fetch CMOD geqdsk from MDS+ and post-process it using the OMFIT geqdsk format.</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">import</span> <span class="nn">omfit_eqdsk</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Could not import omfit_eqdsk!&#39;</span><span class="p">)</span>
+            <span class="n">geqdsk</span> <span class="o">=</span> <span class="n">omfit_eqdsk</span><span class="o">.</span><span class="n">OMFITgeqdsk</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">from_mdsplus</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;device&#39;</span><span class="p">],</span><span class="n">shot</span><span class="o">=</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;shot&#39;</span><span class="p">],</span>
+                                                              <span class="n">time</span><span class="o">=</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">SNAPfile</span><span class="o">=</span><span class="s1">&#39;EFIT01&#39;</span><span class="p">,</span>
+                                                              <span class="n">fail_if_out_of_range</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">time_diff_warning_threshold</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+        <span class="c1"># Get r_V to rho_pol mapping</span>
+        <span class="n">rho_pol</span><span class="p">,</span> <span class="n">_rvol</span> <span class="o">=</span> <span class="n">grids_utils</span><span class="o">.</span><span class="n">get_rhopol_rV_mapping</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">)</span>
+        <span class="n">rvol_lcfs</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">rho_pol</span><span class="p">,</span><span class="n">_rvol</span><span class="p">)(</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rvol_lcfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;rvol_lcfs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">rvol_lcfs</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span>  <span class="c1"># set limit on accuracy</span>
+
+        <span class="c1"># create radial grid</span>
+        <span class="n">grid_params</span> <span class="o">=</span> <span class="n">grids_utils</span><span class="o">.</span><span class="n">create_radial_grid</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">pro_grid</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">qpr_grid</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">prox_param</span> <span class="o">=</span> <span class="n">grid_params</span>
+
+        <span class="c1"># get rho_poloidal grid corresponding to aurora internal (rvol) grid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rhop_grid</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">_rvol</span><span class="p">,</span><span class="n">rho_pol</span><span class="p">)(</span><span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">)</span>
+
+        <span class="c1"># Save R on LFS and HFS</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Rhfs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Rlfs</span> <span class="o">=</span> <span class="n">grids_utils</span><span class="o">.</span><span class="n">get_HFS_LFS</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">,</span> <span class="n">rho_pol_arb</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rhop_grid</span><span class="p">)</span>
+
+        <span class="c1"># define time grid (&#39;timing&#39; must be in namelist)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_time</span> <span class="o">=</span> <span class="n">grids_utils</span><span class="o">.</span><span class="n">create_time_grid</span><span class="p">(</span><span class="n">timing</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;timing&#39;</span><span class="p">],</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">save_time</span><span class="p">]</span>
+
+        <span class="c1"># get kinetic profiles on the radial and (internal) temporal grids</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ne</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_Te</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_Ti</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_n0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_aurora_kin_profs</span><span class="p">()</span>
+
+        <span class="c1"># store also kinetic profiles on output time grid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ne</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ne</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">save_time</span><span class="p">,:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Te</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Te</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">save_time</span><span class="p">,:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Ti</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Ti</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">save_time</span><span class="p">,:]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n0</span>  <span class="c1"># at present, n0 is assumed to be time-indpt</span>
+        
+        <span class="c1"># Get time-dependent parallel loss rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">par_loss_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_par_loss_rate</span><span class="p">()</span>
+
+        <span class="c1"># Obtain atomic rates on the computational time and radial grids</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">S_rates</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">R_rates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_time_dept_atomic_rates</span><span class="p">()</span>
+
+        <span class="c1"># get radial profile of source function</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_rad_prof</span> <span class="o">=</span> <span class="n">source_utils</span><span class="o">.</span><span class="n">get_radial_source</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">,</span>
+                                                              <span class="bp">self</span><span class="o">.</span><span class="n">S_rates</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span>  <span class="c1"># take only 1 time slice of S_rates</span>
+                                                              <span class="bp">self</span><span class="o">.</span><span class="n">pro_grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Ti</span><span class="p">)</span>
+        
+        <span class="c1"># create array of 0&#39;s of length equal to self.time_grid, with 1&#39;s where sawteeth must be triggered</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">saw_on</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">saw_times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;saw_model&#39;</span><span class="p">][</span><span class="s1">&#39;times&#39;</span><span class="p">])[</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;saw_model&#39;</span><span class="p">][</span><span class="s1">&#39;times&#39;</span><span class="p">]</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;saw_model&#39;</span><span class="p">][</span><span class="s1">&#39;saw_flag&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;saw_model&#39;</span><span class="p">][</span><span class="s1">&#39;times&#39;</span><span class="p">])</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">saw_on</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">saw_times</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># source function</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_time_prof</span> <span class="o">=</span> <span class="n">source_utils</span><span class="o">.</span><span class="n">get_aurora_source</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">)</span>
+
+        <span class="c1"># Extract other inputs from namelist:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mixing_radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;saw_model&#39;</span><span class="p">][</span><span class="s1">&#39;rmix&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decay_length_boundary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;SOL_decay&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Z_imp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;Z_imp&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wall_recycling</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;wall_recycling&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_div_fraction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;divbls&#39;</span><span class="p">]</span>   <span class="c1"># change of nomenclature</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;tau_div_SOL&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;tau_pump&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;tau_rcl_ret&#39;</span><span class="p">]</span>
+        
+        <span class="c1"># if recycling flag is set to False, then prevent any divertor return flows</span>
+        <span class="c1"># To include divertor return flows but no recycling, user should use wall_recycling=0</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;recycling_flag&#39;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wall_recycling</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>  <span class="c1"># no divertor return flows</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">bound_sep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;bound_sep&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lim_sep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;lim_sep&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sawtooth_erfc_width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;saw_model&#39;</span><span class="p">][</span><span class="s1">&#39;sawtooth_erfc_width&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">main_ion_Z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;Z&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">main_ion_A</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cxr_flag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;cxr_flag&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nbi_cxr_flag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;nbi_cxr_flag&#39;</span><span class="p">]</span>
+
+        
+        
+<div class="viewcode-block" id="aurora_sim.interp_kin_prof"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.interp_kin_prof">[docs]</a>    <span class="k">def</span> <span class="nf">interp_kin_prof</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prof</span><span class="p">):</span> 
+        <span class="sd">&#39;&#39;&#39; Interpolate the given kinetic profile on the radial and temporal grids [units of s].</span>
+<span class="sd">        This function extrapolates in the SOL based on input options using the same methods as in STRAHL.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">times</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="n">prof</span><span class="p">][</span><span class="s1">&#39;times&#39;</span><span class="p">]</span>
+
+        <span class="n">r_lcfs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">rhop_grid</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">)</span>
+
+        <span class="c1"># extrapolate profiles outside of LCFS by exponential decays</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rhop_grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">,</span><span class="n">fill_value</span><span class="o">=</span><span class="s1">&#39;extrapolate&#39;</span><span class="p">)(</span><span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="n">prof</span><span class="p">][</span><span class="s1">&#39;rhop&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="n">prof</span><span class="p">][</span><span class="s1">&#39;fun&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;interp&#39;</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">interp</span><span class="o">.</span><span class="n">interp_quad</span><span class="p">(</span><span class="n">r</span><span class="o">/</span><span class="n">r_lcfs</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="n">prof</span><span class="p">][</span><span class="s1">&#39;vals&#39;</span><span class="p">],</span>
+                                             <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="n">prof</span><span class="p">][</span><span class="s1">&#39;decay&#39;</span><span class="p">],</span><span class="n">r_lcfs</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">)</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">data</span> <span class="o">&lt;</span> <span class="mf">1.01</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="n">prof</span><span class="p">][</span><span class="s1">&#39;fun&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;interpa&#39;</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">interp</span><span class="o">.</span><span class="n">interpa_quad</span><span class="p">(</span><span class="n">r</span><span class="o">/</span><span class="n">r_lcfs</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="n">prof</span><span class="p">][</span><span class="s1">&#39;vals&#39;</span><span class="p">],</span><span class="n">r_lcfs</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">)</span>
+
+        <span class="c1"># linear interpolation in time</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># time-dept</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">times</span><span class="p">,</span><span class="n">data</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">,</span><span class="o">*</span><span class="n">times</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]]))</span>
+
+        <span class="k">return</span> <span class="n">data</span></div>
+
+
+<div class="viewcode-block" id="aurora_sim.get_aurora_kin_profs"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.get_aurora_kin_profs">[docs]</a>    <span class="k">def</span> <span class="nf">get_aurora_kin_profs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_T</span><span class="o">=</span><span class="mf">1.01</span><span class="p">,</span> <span class="n">min_ne</span><span class="o">=</span><span class="mf">1e10</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Get kinetic profiles on radial and time grids.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="n">Te</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_kin_prof</span><span class="p">(</span><span class="s1">&#39;Te&#39;</span><span class="p">)</span>
+        <span class="n">ne</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_kin_prof</span><span class="p">(</span><span class="s1">&#39;ne&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;Ti&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">:</span>
+            <span class="n">Ti</span> <span class="o">=</span> <span class="n">interp_kin_prof</span><span class="p">(</span><span class="s1">&#39;Ti&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">Ti</span> <span class="o">=</span> <span class="n">Te</span>
+
+        <span class="c1"># get neutral background ion density</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cxr_flag&#39;</span><span class="p">,</span><span class="kc">False</span><span class="p">):</span>
+            <span class="n">n0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_kin_prof</span><span class="p">(</span><span class="s1">&#39;n0&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n0</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># set minima in temperature and density</span>
+        <span class="n">Te</span><span class="p">[</span><span class="n">Te</span> <span class="o">&lt;</span> <span class="n">min_T</span><span class="p">]</span> <span class="o">=</span> <span class="n">min_T</span>
+        <span class="n">Ti</span><span class="p">[</span><span class="n">Ti</span> <span class="o">&lt;</span> <span class="n">min_T</span><span class="p">]</span> <span class="o">=</span> <span class="n">min_T</span>
+        <span class="n">ne</span><span class="p">[</span><span class="n">ne</span> <span class="o">&lt;</span> <span class="n">min_ne</span><span class="p">]</span> <span class="o">=</span> <span class="n">min_ne</span>
+
+        <span class="c1"># make sure that Te,ne have the same shape at this stage (allow n0 to be time-indpt)</span>
+        <span class="n">ne</span><span class="p">,</span><span class="n">Te</span><span class="p">,</span><span class="n">Ti</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">broadcast_arrays</span><span class="p">(</span><span class="n">ne</span><span class="p">,</span><span class="n">Te</span><span class="p">,</span><span class="n">Ti</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ne</span><span class="p">,</span><span class="n">Te</span><span class="p">,</span><span class="n">Ti</span><span class="p">,</span><span class="n">n0</span></div>
+
+
+<div class="viewcode-block" id="aurora_sim.get_time_dept_atomic_rates"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.get_time_dept_atomic_rates">[docs]</a>    <span class="k">def</span> <span class="nf">get_time_dept_atomic_rates</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Obtain time-dependent ionization and recombination rates for a simulation run.</span>
+<span class="sd">        If kinetic profiles are given as time-independent, atomic rates for each time slice</span>
+<span class="sd">        will be set to be the same.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">lne</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ne</span><span class="p">)</span>
+        <span class="n">lTe</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_Te</span><span class="p">)</span>
+
+        <span class="c1"># get TIME-DEPENDENT atomic rates</span>
+        <span class="n">atom_data</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">get_all_atom_data</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imp</span><span class="p">,[</span><span class="s1">&#39;acd&#39;</span><span class="p">,</span><span class="s1">&#39;scd&#39;</span><span class="p">])</span>
+
+        <span class="c1"># get electron impact ionization and radiative recombination rates in units of [s^-1]</span>
+        <span class="n">S_rates</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;scd&#39;</span><span class="p">],</span><span class="n">lne</span><span class="p">,</span> <span class="n">lTe</span><span class="p">)</span>
+        <span class="n">alpha_rates</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;acd&#39;</span><span class="p">],</span><span class="n">lne</span><span class="p">,</span> <span class="n">lTe</span><span class="p">)</span>
+
+        <span class="c1"># define effective recombination rate as R:</span>
+        <span class="n">R_rates</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">alpha_rates</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;cxr_flag&#39;</span><span class="p">]:</span>
+            <span class="c1"># include thermal charge exchange recombination</span>
+            <span class="n">atom_data</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">get_all_atom_data</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imp</span><span class="p">,[</span><span class="s1">&#39;ccd&#39;</span><span class="p">])</span>
+
+            <span class="n">lTi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">Ti</span><span class="p">)</span>
+            <span class="n">alpha_CX_rates</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;ccd&#39;</span><span class="p">],</span> <span class="n">lne</span><span class="p">,</span> <span class="n">lTi</span><span class="p">,</span> <span class="n">x_multiply</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="c1"># change rates from units of [1/s/cm^3] to [1/s] ---&gt; this is the result of STRAHL&#39;s `sas&#39; subroutine</span>
+            <span class="n">R_rates</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n0</span><span class="p">[:,</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">alpha_CX_rates</span><span class="p">[:,:</span><span class="n">alpha_rates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],:]</span>   <span class="c1"># select only relevant CCD ion stages (useful for Foster scaling)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;nbi_cxr_flag&#39;</span><span class="p">]:</span>
+            <span class="c1"># include charge exchange between NBI neutrals and impurities</span>
+            <span class="n">R_rates</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbi_cxr</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># nz=nion of rates arrays must be filled with zeros - final shape: (nr,nion,nt)</span>
+        <span class="n">S_rates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">S_rates</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">S_rates</span><span class="p">[:,[</span><span class="mi">0</span><span class="p">]]),</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">R_rates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">R_rates</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">R_rates</span><span class="p">[:,[</span><span class="mi">0</span><span class="p">]]),</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="c1"># broadcast in the requested time-dependent shape</span>
+        <span class="n">S_rates</span><span class="p">,</span><span class="n">R_rates</span><span class="p">,</span><span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">broadcast_arrays</span><span class="p">(</span><span class="n">S_rates</span><span class="p">,</span><span class="n">R_rates</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:])</span>
+
+        <span class="c1"># set up as Fortran order in memory for speed</span>
+        <span class="n">S_rates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asfortranarray</span><span class="p">(</span><span class="n">S_rates</span><span class="p">)</span>
+        <span class="n">R_rates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asfortranarray</span><span class="p">(</span><span class="n">R_rates</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">S_rates</span><span class="p">,</span> <span class="n">R_rates</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="aurora_sim.get_par_loss_rate"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.get_par_loss_rate">[docs]</a>    <span class="k">def</span> <span class="nf">get_par_loss_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trust_SOL_Ti</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Calculate the parallel loss frequency on the radial and temporal grids [1/s].</span>
+
+<span class="sd">        trust_SOL_Ti should generally be set to False, unless specific Ti measurements are available</span>
+<span class="sd">        in the SOL.</span>
+<span class="sd">        </span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c1"># background mass (=2 for D)</span>
+        <span class="n">apl</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">])</span>
+
+        <span class="c1"># factor for v = machnumber * sqrt((3T_i+T_e)k/m)</span>
+        <span class="n">vpf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;SOL_mach&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">1.602e-19</span><span class="o">/</span><span class="mf">1.601e-27</span><span class="o">/</span><span class="n">apl</span><span class="p">)</span>  <span class="c1"># v[m/s]=vpf*sqrt(T[ev])</span>
+
+        <span class="c1"># number of points inside of LCFS</span>
+        <span class="n">ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;rvol_lcfs&#39;</span><span class="p">],</span><span class="n">side</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+        <span class="n">idl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;rvol_lcfs&#39;</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;lim_sep&#39;</span><span class="p">],</span><span class="n">side</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Calculate parallel loss frequency using different connection lengths in the SOL and in the limiter shadow</span>
+        <span class="n">dv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_Te</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="c1"># space x time</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">trust_SOL_Ti</span><span class="p">:</span>
+            <span class="c1"># Ti may not be reliable in SOL, replace it by Te</span>
+            <span class="n">Ti</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Te</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">Ti</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Ti</span>
+
+        <span class="c1"># open SOL</span>
+        <span class="n">dv</span><span class="p">[</span><span class="n">ids</span><span class="p">:</span><span class="n">idl</span><span class="p">]</span> <span class="o">=</span> <span class="n">vpf</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">3.</span><span class="o">*</span><span class="n">Ti</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">ids</span><span class="p">:</span><span class="n">idl</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Te</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">ids</span><span class="p">:</span><span class="n">idl</span><span class="p">])</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;clen_divertor&#39;</span><span class="p">]</span>
+
+        <span class="c1"># limiter shadow</span>
+        <span class="n">dv</span><span class="p">[</span><span class="n">idl</span><span class="p">:]</span> <span class="o">=</span> <span class="n">vpf</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">3.</span><span class="o">*</span><span class="n">Ti</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">idl</span><span class="p">:]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Te</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">idl</span><span class="p">:])</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;clen_limiter&#39;</span><span class="p">]</span>
+
+        <span class="n">dv</span><span class="p">,</span><span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">broadcast_arrays</span><span class="p">(</span><span class="n">dv</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">[</span><span class="kc">None</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asfortranarray</span><span class="p">(</span><span class="n">dv</span><span class="p">)</span></div>
+
+
+
+
+
+
+<div class="viewcode-block" id="aurora_sim.run_aurora"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.run_aurora">[docs]</a>    <span class="k">def</span> <span class="nf">run_aurora</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">times_DV</span><span class="p">,</span> <span class="n">D_z</span><span class="p">,</span> <span class="n">V_z</span><span class="p">,</span> <span class="n">nz_init</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;old&#39;</span><span class="p">,</span><span class="n">evolneut</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Run a simulation using inputs in the given dictionary and D,v profiles as a function</span>
+<span class="sd">        of space, time and potentially also ionization state. Users may give an initial state of each</span>
+<span class="sd">        ion charge state as an input.</span>
+
+<span class="sd">        Results can be conveniently visualized with time-slider using:</span>
+
+<span class="sd">            aurora.slider_plot(rhop,time, nz.transpose(1,2,0),   # charge states in first dimension</span>
+<span class="sd">                               xlabel=r&#39;$\rho_p$&#39;, ylabel=&#39;time [s]&#39;, </span>
+<span class="sd">                               zlabel=r&#39;$n_z$ [cm$^{-3}$]&#39;, plot_sum=True,</span>
+<span class="sd">                               labels=[f&#39;Ca$^{{{str(i)}}}$&#39; for i in np.arange(nz_w.shape[1]])</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            times_DV : 1D array</span>
+<span class="sd">                Array of times at which D_z and V_z profiles are given. (Note that it is assumed that</span>
+<span class="sd">                D and V profiles are already on the self.rvol_grid radial grid).</span>
+<span class="sd">            D_z, V_z: arrays, shape of (space, time,nZ) or (space,time)</span>
+<span class="sd">                Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.</span>
+<span class="sd">                This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates</span>
+<span class="sd">                the number of charge states. If inputs are found to be have only 2 dimensions, it is</span>
+<span class="sd">                assumed that all charge states should be set to have the same transport coefficients.</span>
+<span class="sd">            nz_init: array, shape of (space, nZ)</span>
+<span class="sd">                Impurity charge states at the initial time of the simulation. If left to None, this is</span>
+<span class="sd">                internally set to an array of 0&#39;s.</span>
+<span class="sd">            method : str, optional</span>
+<span class="sd">                If method=&#39;linder&#39;, use the Linder algorithm for increased stability and accuracy.</span>
+<span class="sd">            evolneut : bool, optional</span>
+<span class="sd">                If True, evolve neutral impurities based on their D,V coefficients. Default is False, in</span>
+<span class="sd">                which case neutrals are only taken as a source and those that are not ionized immediately after</span>
+<span class="sd">                injection are neglected.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            out : list</span>
+<span class="sd">                List containing each particle reservoir of a simulation, i.e.</span>
+<span class="sd">                nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">nz_init</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># default: start in a state with no impurity ions</span>
+            <span class="n">nz_init</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Z_imp</span><span class="o">+</span><span class="mi">1</span><span class="p">)))</span>
+
+        <span class="k">if</span> <span class="n">D_z</span><span class="o">.</span><span class="n">ndim</span><span class="o">==</span><span class="mi">2</span><span class="p">:</span>
+            <span class="c1"># set all charge states to have the same transport</span>
+            <span class="n">D_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">atleast_3d</span><span class="p">(</span><span class="n">D_z</span><span class="p">),(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">Z_imp</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>  <span class="c1"># include elements for neutrals</span>
+            <span class="c1"># unless specified, D_z for neutrals should be 0</span>
+            <span class="n">D_z</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">if</span> <span class="n">V_z</span><span class="o">.</span><span class="n">ndim</span><span class="o">==</span><span class="mi">2</span><span class="p">:</span>
+            <span class="n">V_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">atleast_3d</span><span class="p">(</span><span class="n">V_z</span><span class="p">),(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">Z_imp</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>  <span class="c1"># include elements for neutrals</span>
+            <span class="c1"># unless specified, V_z for neutrals should be 0</span>
+            <span class="n">V_z</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="c1"># Use only f_contiguous arrays for speed in Fortran!</span>
+        <span class="k">return</span> <span class="n">_aurora</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_out</span><span class="p">),</span> <span class="c1"># number of times at which simulation outputs results</span>
+            <span class="n">times_DV</span><span class="p">,</span>
+            <span class="n">D_z</span><span class="p">,</span> <span class="c1"># cm^2/s      #(ir,nt_trans,nion)</span>
+            <span class="n">V_z</span><span class="p">,</span> <span class="c1"># cm/s</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">par_loss_rate</span><span class="p">,</span>  <span class="c1"># time dependent</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">source_rad_prof</span><span class="p">,</span><span class="c1"># source profile in radius</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">S_rates</span><span class="p">,</span> <span class="c1"># ioniz_rate,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">R_rates</span><span class="p">,</span> <span class="c1"># recomb_rate,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pro_grid</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">qpr_grid</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mixing_radius</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">decay_length_boundary</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">saw_on</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">source_time_prof</span><span class="p">,</span> <span class="c1"># source profile in time</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">save_time</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sawtooth_erfc_width</span><span class="p">,</span> <span class="c1"># dsaw width  [cm, circ geometry]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wall_recycling</span><span class="p">,</span> <span class="c1"># rcl   [fraction]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">source_div_fraction</span><span class="p">,</span> <span class="c1"># divbls   [fraction of source into divertor]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="c1"># taudiv   [s]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span> <span class="c1"># taupump  [s]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span>   <span class="c1"># tauwret  [s]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rvol_lcfs</span><span class="p">,</span>       <span class="c1"># rx = rvol_lcfs + dbound</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bound_sep</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lim_sep</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prox_param</span><span class="p">,</span>
+            <span class="n">rn_t0</span> <span class="o">=</span> <span class="n">nz_init</span><span class="p">,</span>  <span class="c1"># if omitted, internally set to 0&#39;s</span>
+            <span class="n">linder</span><span class="o">=</span><span class="kc">True</span> <span class="k">if</span> <span class="n">method</span><span class="o">==</span><span class="s1">&#39;linder&#39;</span> <span class="k">else</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="n">evolneut</span><span class="o">=</span><span class="n">evolneut</span>
+        <span class="p">)</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="aurora_sim.run_julia"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.run_julia">[docs]</a>    <span class="k">def</span> <span class="nf">run_julia</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">times_DV</span><span class="p">,</span> <span class="n">D_z</span><span class="p">,</span> <span class="n">V_z</span><span class="p">,</span> <span class="n">nz_init</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Run a single simulation using the Julia version.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            times_DV : 1D array</span>
+<span class="sd">                Array of times at which D_z and V_z profiles are given. (Note that it is assumed that</span>
+<span class="sd">                D and V profiles are already on the self.rvol_grid radial grid).</span>
+<span class="sd">            D_z, V_z: arrays, shape of (space, nZ, time)</span>
+<span class="sd">                Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.</span>
+<span class="sd">                This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates</span>
+<span class="sd">                the number of charge states. If inputs are found to be have only 2 dimensions, it is</span>
+<span class="sd">                assumed that all charge states should be set to have the same transport coefficients.</span>
+<span class="sd">            nz_init: array, shape of (space, nZ)</span>
+<span class="sd">                Impurity charge states at the initial time of the simulation. If left to None, this is</span>
+<span class="sd">                internally set to an array of 0&#39;s.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            out : list</span>
+<span class="sd">                List containing each particle reservoir of a simulation, i.e.</span>
+<span class="sd">                nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="kn">from</span> <span class="nn">julia.api</span> <span class="kn">import</span> <span class="n">Julia</span>
+        <span class="kn">import</span> <span class="nn">os</span>
+
+        <span class="n">jl</span> <span class="o">=</span> <span class="n">Julia</span><span class="p">(</span><span class="n">compiled_modules</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sysimage</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;/jlib/aurora.so&quot;</span><span class="p">)</span>
+        <span class="kn">from</span> <span class="nn">julia</span> <span class="kn">import</span> <span class="n">aurora</span> <span class="k">as</span> <span class="n">aurora_jl</span>
+
+        <span class="k">if</span> <span class="n">nz_init</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># default: start in a state with no impurity ions</span>
+            <span class="n">nz_init</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Z_imp</span><span class="o">+</span><span class="mi">1</span><span class="p">)))</span>
+
+        <span class="k">if</span> <span class="n">D_z</span><span class="o">.</span><span class="n">ndim</span><span class="o">==</span><span class="mi">2</span><span class="p">:</span>
+            <span class="c1"># set all charge states to have the same transport</span>
+            <span class="n">D_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">atleast_3d</span><span class="p">(</span><span class="n">D_z</span><span class="p">),(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">Z_imp</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>  <span class="c1"># include elements for neutrals</span>
+        <span class="k">if</span> <span class="n">V_z</span><span class="o">.</span><span class="n">ndim</span><span class="o">==</span><span class="mi">2</span><span class="p">:</span>
+            <span class="n">V_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">atleast_3d</span><span class="p">(</span><span class="n">V_z</span><span class="p">),(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">Z_imp</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>  <span class="c1"># include elements for neutrals</span>
+
+        
+        <span class="c1"># NOTE: use only f_contiguous arrays for speed in Julia, like in Fortran!</span>
+        <span class="k">return</span> <span class="n">aurora_jl</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_out</span><span class="p">),</span>  <span class="c1"># number of times at which simulation outputs results</span>
+                             <span class="n">times_DV</span><span class="p">,</span>
+                             <span class="n">D_z</span><span class="p">,</span>
+                             <span class="n">V_z</span><span class="p">,</span> <span class="c1"># cm/s</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">par_loss_rate</span><span class="p">,</span>  <span class="c1"># time dependent</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">source_rad_prof</span><span class="p">,</span><span class="c1"># source profile in radius</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">S_rates</span><span class="p">,</span> <span class="c1"># ioniz_rate,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">R_rates</span><span class="p">,</span> <span class="c1"># recomb_rate,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">pro_grid</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">qpr_grid</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">mixing_radius</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">decay_length_boundary</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">saw_on</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">source_time_prof</span><span class="p">,</span> <span class="c1"># source profile in time</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">save_time</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">sawtooth_erfc_width</span><span class="p">,</span> <span class="c1"># dsaw width  [cm, circ geometry]</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">wall_recycling</span><span class="p">,</span> <span class="c1"># rcl   [fraction]</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">source_div_fraction</span><span class="p">,</span> <span class="c1"># divbls   [fraction of source into divertor]</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="c1"># taudiv   [s]</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span> <span class="c1"># taupump  [s]</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span>   <span class="c1"># tauwret  [s]</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">rvol_lcfs</span><span class="p">,</span>       <span class="c1"># rx = rvol_lcfs + dbound</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">bound_sep</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">lim_sep</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">prox_param</span><span class="p">,</span>
+                             <span class="n">nz_init</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">aurora</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../aurora.html">aurora package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, F.Sciortino.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

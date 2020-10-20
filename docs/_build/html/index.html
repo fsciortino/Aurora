@@ -5,7 +5,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Welcome to aurora’s documentation! &#8212; aurora 1.0 documentation</title>
+    <title>aurora: modern 1.5D modeling of particle transport in magnetically-confined plasmas &#8212; aurora 1.0.0 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -15,6 +15,7 @@
     <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="aurora package" href="aurora.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -31,9 +32,52 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="welcome-to-aurora-s-documentation">
-<h1>Welcome to aurora’s documentation!<a class="headerlink" href="#welcome-to-aurora-s-documentation" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="aurora-modern-1-5d-modeling-of-particle-transport-in-magnetically-confined-plasmas">
+<h1>aurora: modern 1.5D modeling of particle transport in magnetically-confined plasmas<a class="headerlink" href="#aurora-modern-1-5d-modeling-of-particle-transport-in-magnetically-confined-plasmas" title="Permalink to this headline">¶</a></h1>
+<p>Github repo: <a class="reference external" href="https://github.com/fsciortino/aurora">https://github.com/fsciortino/aurora</a></p>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> is a 1.5D modern forward model for radial particle transport in magnetically confined plasmas. It inherets many of its methods from the historical STRAHL code and has been thoroughly benchmarked with it. The core of <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> is written in Python3 and Fortran90, with a Julia interface also under development.</p>
+<p><a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> includes Python functionality to create inputs and read/plot outputs. OMFIT users may access this functionality via the OMFIT STRAHL module. <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> was designed to be as efficient as possible in iterative workflows, where different diffusion and convection coefficients are run through the code in order to match some experimental observations. For this reason, <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> keeps all data in memory and avoids any I/O during operation.</p>
+<p>A number of standard tests and examples are provided using a real set of Alcator C-Mod kinetic profiles and geometry. In order to interface with EFIT gEQDSK files, <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> makes use of the <code class="xref py py-mod docutils literal notranslate"><span class="pre">omfit_eqdsk</span></code> package, which offers flexibility to work with data from many devices worldwide. Users may easily substitute this dependence with different magnetic reconstruction packages and/or postprocessing interfaces, if required.</p>
+<p><a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> provides convenient interfaces to load a default namelist via <code class="xref py py-func docutils literal notranslate"><span class="pre">default_nml()</span></code>, modify it as required and then pass the resulting namelist dictionary into the simulation setup. This is in the main class of <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a>, <a class="reference internal" href="aurora.html#aurora.core.aurora_sim" title="aurora.core.aurora_sim"><code class="xref py py-class docutils literal notranslate"><span class="pre">aurora_sim</span></code></a>, which allows creation of radial and temporal grids, interpolation of atomic rates, preparation of parallel loss rates at the edge, etc.</p>
+<p>The library in <code class="xref py py-meth docutils literal notranslate"><span class="pre">atomic()</span></code> provides functions to load and interpolate atomic rates from ADAS ADF-11 files, as well as from ADF-15 photon emissivity coefficients (PEC) files. PEC data can alternatively be computed using the collisional-radiative model of CollRadPy, using methods in <code class="xref py py-func docutils literal notranslate"><span class="pre">radiation()</span></code>.</p>
+<p><a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> was born as a fast forward model of impurity transport, but it can do much more. For example, it may be helpful for parameter scans in modeling of future devices. The <code class="xref py py-func docutils literal notranslate"><span class="pre">radiation_model()</span></code> allows one to use ADAS atomic rates and given kinetic profiles to compute line radiation, bremsstrahlung, continuum and soft-x-ray-filtered radiation. Ionization equilibria can also be computed using the <code class="xref py py-meth docutils literal notranslate"><span class="pre">atomic()</span></code> methods, thus enabling simple “constant-fraction” models where the total density of an impurity species is fixed to a certain percentage of the electron density.</p>
+</div>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>To obtain the latest version of the code, it is recommended to git-clone the repo
+<a class="reference external" href="https://github.com/fsciortino/aurora">https://github.com/fsciortino/aurora</a>
+and run the makefile from the command line.</p>
+<p>The latest stable version of the code can also be obtained via:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">aurora</span>
+</pre></div>
+</div>
+<p>of from Anaconda Cloud:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="n">aurora</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="demos-examples">
+<h2>Demos/Examples<a class="headerlink" href="#demos-examples" title="Permalink to this headline">¶</a></h2>
+<p>A number of demonstrations and examples are available in the <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> “examples” directory. These show how to load a default namelist, modify it with specific kinetic profiles, load a magnetic equilibrium, set up an <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> object and run. A number of plotting tools and postprocessing scripts to calculate radiation are also presented.</p>
+</div>
+<div class="section" id="questions-suggestions">
+<h2>Questions? Suggestions?<a class="headerlink" href="#questions-suggestions" title="Permalink to this headline">¶</a></h2>
+<p>Please contact sciortino-at-psfc.mit.edu for any questions. Suggestions and collaborations are more than welcome!</p>
+</div>
+<div class="section" id="package-reference">
+<h2>Package Reference<a class="headerlink" href="#package-reference" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="aurora.html">aurora package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="aurora.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="aurora.html#module-aurora.core">aurora.core module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="aurora.html#module-aurora">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 </div>
 <div class="section" id="indices-and-tables">
@@ -62,11 +106,15 @@
 
 
 <h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="aurora.html">aurora package</a></li>
+</ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="aurora.html" title="next chapter">aurora package</a></li>
   </ul></li>
 </ul>
 </div>
