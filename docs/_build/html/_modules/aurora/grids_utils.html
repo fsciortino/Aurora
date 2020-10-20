@@ -13,6 +13,7 @@
     <script src="../../_static/underscore.js"></script>
     <script src="../../_static/doctools.js"></script>
     <script src="../../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
@@ -42,16 +43,20 @@
 
 
 <div class="viewcode-block" id="create_radial_grid"><a class="viewcode-back" href="../../aurora.html#aurora.grids_utils.create_radial_grid">[docs]</a><span class="k">def</span> <span class="nf">create_radial_grid</span><span class="p">(</span><span class="n">namelist</span><span class="p">,</span><span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. </span>
+    <span class="sa">r</span><span class="sd">&#39;&#39;&#39;Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. </span>
 <span class="sd">    The lim_sep parameters is additionally used if plotting is requested. </span>
 
 <span class="sd">    Radial mesh points are set to be equidistant in the coordinate :math:`\rho`, with</span>
 
-<span class="sd">    :math:`\rho = \frac{r}{\Delta r_{centre}} + \frac{r_{edge}}{k+1} \left(\frac{1}{\Delta r_{edge}}- \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}} \right)^{k+1}`</span>
+<span class="sd">    .. math::</span>
+
+<span class="sd">        \rho = \frac{r}{\Delta r_{centre}} + \frac{r_{edge}}{k+1} \left(\frac{1}{\Delta r_{edge}}- \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}} \right)^{k+1}</span>
 
 <span class="sd">    The corresponding radial step size is </span>
-<span class="sd">    </span>
-<span class="sd">    :math:`\Delta r = \left[\frac{1}{\Delta r_{centre}} + \left(\frac{1}{\Delta r_{edge}} - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}}\right)^k \right]^{-1}`</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">        \Delta r = \left[\frac{1}{\Delta r_{centre}} + \left(\frac{1}{\Delta r_{edge}} - \frac{1}{\Delta r_{centre}} \right) \left(\frac{r}{r_{edge}}\right)^k \right]^{-1}</span>
 
 
 <span class="sd">    See the STRAHL manual for details. </span>
@@ -425,19 +430,22 @@
 
 
 <div class="viewcode-block" id="get_rhopol_rV_mapping"><a class="viewcode-back" href="../../aurora.html#aurora.grids_utils.get_rhopol_rV_mapping">[docs]</a><span class="k">def</span> <span class="nf">get_rhopol_rV_mapping</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">,</span> <span class="n">rho_pol</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Compute arrays allowing 1-to-1 mapping of rho_pol and r_V, both inside and</span>
+    <span class="sa">r</span><span class="sd">&#39;&#39;&#39;Compute arrays allowing 1-to-1 mapping of rho_pol and r_V, both inside and</span>
 <span class="sd">    outside the LCFS.</span>
 
-<span class="sd">    r_V is defined as $\sqrt{V/(2 \pi^2 R_{axis}}$ inside the LCFS. Outside of it,</span>
+<span class="sd">    r_V is defined as :math:`\sqrt{V/(2 \pi^2 R_{axis}}` inside the LCFS. Outside of it,</span>
 <span class="sd">    we artificially expand the LCFS to fit true equilibrium at the midplane based</span>
 <span class="sd">    on the rho_pol grid (sqrt of normalized poloidal flux).</span>
 
 <span class="sd">    Method:</span>
-<span class="sd">    :math:`r(\rho,\theta) = r0(\rho) +  (r_{lcfs}(\theta) - r0_{lcfs}) \times scale`</span>
-<span class="sd">    :math:`z(\rho,\theta) = z0      +  (z_{lcfs}(\theta) - z0     ) \times scale`</span>
-<span class="sd">    :math:`scale = \frac{ r(\rho,\theta=0) - r(\rho,\theta=180)}{r_{lcfs}(\theta=0)- r_{lcfs}(\theta=180)}`</span>
-<span class="sd">    :math:`r0_{lcfs} = \frac{1}{2} (r_{lcfs}(\theta=0)+ r_{lcfs}(\theta=180))`</span>
-<span class="sd">    :math:`r0(\rho) = \frac{1}{2} (r(\rho,\theta=0) + r(\rho,\theta=180))`</span>
+<span class="sd">    </span>
+<span class="sd">    .. math::</span>
+
+<span class="sd">        r(\rho,\theta) = r_0(\rho) +  (r_{lcfs}(\theta) - r_{0,lcfs}) \times \mathcal{f} \\</span>
+<span class="sd">        z(\rho,\theta) = z_0      +  (z_{lcfs}(\theta) - z_0     ) \times \mathcal{f} \\</span>
+<span class="sd">        \mathcal{f} = \frac{ r(\rho,\theta=0) - r(\rho,\theta=180)}{r_{lcfs}(\theta=0)- r_{lcfs}(\theta=180)} \\</span>
+<span class="sd">        r_{0,lcfs} = \frac{1}{2} (r_{lcfs}(\theta=0)+ r_{lcfs}(\theta=180)) \\</span>
+<span class="sd">        r_0(\rho) = \frac{1}{2} (r(\rho,\theta=0) + r(\rho,\theta=180))</span>
 
 <span class="sd">    The mapping between rho_pol and r_V allows one to interpolate inputs on a</span>
 <span class="sd">    rho_pol grid onto the r_V grid (in cm) used internally by the code.</span>
