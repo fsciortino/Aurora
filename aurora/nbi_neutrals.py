@@ -422,26 +422,30 @@ def xyz_uvw(x, y, z, origin, R):
 
 
 def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
-    """Calculates Maxwellian reaction rate for a beam with atomic mass `m_beam`, 
-    energy `E_beam`, firing into a target with atomic mass `m_bckg` and temperature `T`.
+    """Calculates Maxwellian reaction rate for a beam with atomic mass "m_beam", 
+    energy "E_beam", firing into a target with atomic mass "m_bckg" and temperature "T".
 
-    `sigma_fun` must be a function for a specific charge and n-level of the beam particles.
+    The "sigma_fun" argument must be a function for a specific charge and n-level of the beam particles.
     Ref: FIDASIM atomic_tables.f90 bt_maxwellian_n_m.
 
     Args:
-        sigma_fun: function to compute a specific cross section [cm^2], function of energy/amu ONLY.
+        sigma_fun: :py:meth
+            Function to compute a specific cross section [cm^2], function of energy/amu ONLY.
             Expected call form: sigma_fun(erel/ared)
-        Ti : target temperature [keV], float, 1D or 2D array
-            Results will be computed for each Ti value in a vectorized manner.
-        E_beam : beam energy [keV]
-        m_bckg : target atomic mass [amu]
-        m_beam : beam atomic mass [amu]
-        n_level : n-level of beam. This is used to evaluate the hydrogen ionization potential,
+        Ti : float, 1D or 2D array
+            Target temperature [keV]. Results will be computed for each Ti value in a vectorized manner.
+        E_beam : float
+            Beam energy [keV]
+        m_bckg : float
+            Target atomic mass [amu]
+        m_beam : float
+            Beam atomic mass [amu]
+        n_level :int
+            n-level of beam. This is used to evaluate the hydrogen ionization potential,
             below which an electron is unlikely to charge exchange with surrounding ions.
 
     Returns:
         rate : output reaction rate in [cm^3/s] units
-
     """
     from scipy import constants as consts
 
@@ -493,28 +497,33 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
 
 
 def bt_rate_maxwell_average_vec(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
-    """Calculates Maxwellian reaction rate for a beam with atomic mass `m_beam`, 
-    energy `E_beam`, firing into a target with atomic mass `m_bckg` and temperature `T`.
+    """Calculates Maxwellian reaction rate for a beam with atomic mass "m_beam", 
+    energy "E_beam", firing into a target with atomic mass "m_bckg" and temperature "T".
 
-    `sigma_fun` must be a function for a specific charge and n-level of the beam particles.
+    The "sigma_fun" argument must be a function for a specific charge and n-level of the beam particles.
     Ref: FIDASIM atomic_tables.f90 bt_maxwellian_n_m.
 
     This version of the function attempts to vectorize the calculation such that we can have Ti
     being a function of space and time and deal with integrations in vr and vz with no loops.
 
     Args:
-        sigma_fun: function to compute a specific cross section [cm^2], function of energy/amu ONLY.
+        sigma_fun: :py:meth
+            Function to compute a specific cross section [cm^2], function of energy/amu ONLY.
             Expected call form: sigma_fun(erel/ared)
-        Ti : target temperature [keV], float, 1D or 2D array
-        E_beam : beam energy [keV]
-        m_bckg : target atomic mass [amu]
-        m_beam : beam atomic mass [amu]
-        n_level : n-level of beam. This is used to evaluate the hydrogen ionization potential,
+        Ti : float, 1D or 2D array
+            Target temperature [keV]
+        E_beam : float
+            Beam energy [keV]
+        m_bckg : float
+            Target atomic mass [amu]
+        m_beam : float
+            Beam atomic mass [amu]
+        n_level : int
+            n-level of beam. This is used to evaluate the hydrogen ionization potential,
             below which an electron is unlikely to charge exchange with surrounding ions.
 
     Returns:
         rate : output reaction rate in [cm^3/s] units
-
 
     ~~~~~~~~~~ UNTESTED!~~~~~~~~~~~
 

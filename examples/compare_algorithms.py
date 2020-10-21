@@ -10,7 +10,6 @@ import omfit_eqdsk
 import pickle as pkl
 import scipy,sys,os
 import time
-import xarray
 from copy import deepcopy
 
 # Make sure that package home is added to sys.path
@@ -20,34 +19,6 @@ import aurora
 
 # number of repetitions to accurately time runs
 num=1
-
-def check_conservation(pdict, out, axs=None):
-    ''' Convenient function to check particle conservation '''
-    nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
-    nz = nz.transpose(2,1,0)   # time,nZ,space
-    
-    # Check particle conservation
-    ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','radius_grid'], nz),
-                     'source_function': (['time'], pdict['source_function'] ),
-                     'particles_in_divertor': (['time'], N_div), 
-                     'particles_in_pump': (['time'], N_pump), 
-                     'parallel_loss': (['time'], N_dsu), 
-                     'parallel_loss_to_limiter': (['time'], N_dsul), 
-                     'edge_loss': (['time'], N_tsu), 
-                     'particles_at_wall': (['time'], N_wall), 
-                     'particles_retained_at_wall': (['time'], N_ret), 
-                     'recycling_from_wall':  (['time'], rclw_rate), 
-                     'recycling_from_divertor':  (['time'], rcld_rate), 
-                     'pro': (['radius_grid'], pdict['pro']), 
-                     'rhop_grid': (['radius_grid'], pdict['rhop_grid'])
-                     },
-                    coords={'time': pdict['time_out'], 
-                            'radius_grid': pdict['radius_grid'],
-                            'charge_states': np.arange(nz.shape[1])
-                            })
-
-    ds, res, (ax1,ax2) = aurora.particle_conserv.plot_1d(ds = ds, axs=axs)
-    return (ax1,ax2)
 
 ###########
 namelist = aurora.default_nml.load_default_namelist()
@@ -89,7 +60,6 @@ rhop = kin_profs['ne']['rhop'] = ne_profs['rhop']
 kin_profs['Te']['vals'] = Te_profs['Te']*1e3  # keV --> eV
 kin_profs['Te']['times'] = Te_profs['t']
 kin_profs['Te']['rhop'] = Te_profs['rhop']
-kin_profs['Te']['decay'] = np.ones(len(Te_profs['Te']))*1.0
 
 # set no sources of impurities
 namelist['source_type'] = 'const'
@@ -97,8 +67,6 @@ namelist['Phi0'] = 1e24 #1.0
 
 # Set up for 1 ion:
 imp = namelist['imp'] = 'Ar' # 'W' #'Ca' #'Ar' #'Ca'
-namelist['Z_imp'] = 18 #74 #20 #18. #20.
-namelist['imp_a'] = 39.948 #183.84 #40.078 #39.948  # 40.078
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -118,18 +86,16 @@ aurora.grids_utils.create_time_grid(namelist['timing'], plot=True)
 
 # choose transport coefficients
 D_eff = 1e4 #cm^2/s
-v_eff = -3e4 #-1e2 #-2e2 #cm/s
+v_eff = 0.0 #-3e4 #-1e2 #-2e2 #cm/s
 
 # # set transport coefficients to the right format
-D_z = np.ones((len(asim.rvol_grid),1)) * D_eff
-#V_z = np.ones((len(asim.rvol_grid),1)) * v_eff
-V_z = asim.rhop_grid[:,None]**10 * v_eff  # increasing towards edge
-times_DV = [1.0]  # dummy
+D_z = np.ones_like(asim.rvol_grid) * D_eff
+V_z = asim.rhop_grid**10 * v_eff  # increasing towards edge
 
 # plot transport coefficients
 fig,ax = plt.subplots(2,1, sharex=True, figsize=(8,8))
-ax[0].plot( asim.rhop_grid, D_z[:,0]/1e4)
-ax[1].plot( asim.rhop_grid, V_z[:,0]/1e2)
+ax[0].plot( asim.rhop_grid, D_z/1e4)
+ax[1].plot( asim.rhop_grid, V_z/1e2)
 ax[1].set_xlabel(r'$\rho_p$')
 ax[0].set_ylabel(r'$D$ [$m^2/s$]')
 ax[1].set_ylabel(r'$v$ [$m/s$]')
@@ -138,12 +104,12 @@ plt.subplots_adjust(wspace=0, hspace=0)
 
 ####### Original method #########
 # # set transport coefficients to the right format
-D_z = np.ones((len(asim.rvol_grid),1)) * D_eff
-V_z = asim.rhop_grid[:,None]**4 * v_eff  # increasing towards edge
+D_z = np.ones_like(asim.rvol_grid) * D_eff
+V_z = asim.rhop_grid**4 * v_eff  # increasing towards edge
 
 start = time.time()
 for n in np.arange(num):
-    out = asim.run_aurora(times_DV, D_z, V_z)
+    out = asim.run_aurora(D_z, V_z)
 print('Average time per run: ', (time.time() - start)/num)
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 nz = nz.transpose(2,1,0)   # time,nZ,space
@@ -157,8 +123,8 @@ aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,2,0)
                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
                              plot_sum=True, x_line=asim.rvol_lcfs)
 
-# # Check particle conservation
-#axs = check_conservation(aurora_dict, out)
+# Check particle conservation
+axs = asim.check_conservation()
 
 
 
@@ -166,7 +132,7 @@ aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,2,0)
 ####### Linder method #########
 start = time.time()
 for n in np.arange(num):
-    out_2 = asim.run_aurora(times_DV, D_z, V_z, method='linder', evolneut=False) 
+    out_2 = asim.run_aurora(D_z, V_z, method='linder', evolneut=False) 
 print('Average time per run: ', (time.time() - start)/num)
 nz_2, N_wall_2, N_div_2, N_pump_2, N_ret_2, N_tsu_2, N_dsu_2, N_dsul_2, rcld_rate_2, rclw_rate_2 = out_2
 nz_2 = nz_2.transpose(2,1,0)   # time,nZ,space
@@ -181,16 +147,15 @@ aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz_2.transpose(1,2,
                              plot_sum=True, x_line=asim.rvol_lcfs)
 
 # Check particle conservation
-#axs = check_conservation(aurora_dict, out_2, axs=axs)
-
+axs = asim.check_conservation()
 
 ######################################
 #### Plot difference between the two algorithms with slider  #####
-aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out,
-                             np.abs(nz.transpose(1,2,0) - nz_2.transpose(1,2,0)),
-                             xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='$\Delta$ nz [A.U.]',
-                             labels=[str(i) for i in np.arange(0,nz_2.shape[1])],
-                             plot_sum=True, x_line=asim.rvol_lcfs)
+# aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out,
+#                              np.abs(nz.transpose(1,2,0) - nz_2.transpose(1,2,0)),
+#                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='$\Delta$ nz [A.U.]',
+#                              labels=[str(i) for i in np.arange(0,nz_2.shape[1])],
+#                              plot_sum=True, x_line=asim.rvol_lcfs)
 
 
 
@@ -198,7 +163,7 @@ aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out,
 # ####### Linder method evoling neutrals #########
 start = time.time()
 for n in np.arange(num):
-    out_3 = asim.run_aurora(times_DV,D_z, V_z, method='linder', evolneut=True) 
+    out_3 = asim.run_aurora(D_z, V_z, method='linder', evolneut=True) 
 print('Average time per run: ', (time.time() - start)/num)
 nz_3, N_wall_3, N_div_3, N_pump_3, N_ret_3, N_tsu_3, N_dsu_3, N_dsul_3, rcld_rate_3, rclw_rate_3 = out_3
 nz_3 = nz_3.transpose(2,1,0)   # time,nZ,space
@@ -213,7 +178,7 @@ aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz_3.transpose(1,2,
                              plot_sum=True, x_line=asim.rvol_lcfs)
 
 # # Check particle conservation
-#axs = check_conservation(aurora_dict, out_3, axs=axs)
+axs = asim.check_conservation()
 
 
 ##############################################

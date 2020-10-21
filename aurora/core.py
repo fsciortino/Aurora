@@ -4,19 +4,24 @@ import scipy.io
 import copy,os,sys
 import numpy as np
 from scipy.interpolate import interp1d
+from omfit_commonclasses.utils_math import atomic_element
 from . import _aurora
 from . import interp
 from . import atomic
 from . import grids_utils
 from . import source_utils
-
+from . import particle_conserv
+from IPython import embed
+import omfit_eqdsk
+from scipy.constants import e as q_electron, m_p
+import xarray
 
 class aurora_sim:
     '''
     Class to setup and run aurora simulations.
     '''
     def __init__(self, namelist, geqdsk=None, nbi_cxr=None):
-        ''' Setup aurora simulation input dictionary from the given namelist.
+        '''Setup aurora simulation input dictionary from the given namelist.
 
         Args:
             namelist : dict
@@ -46,14 +51,11 @@ class aurora_sim:
         self.imp = namelist['imp']
 
         if geqdsk is None:
-            # Fetch CMOD geqdsk from MDS+ and post-process it using the OMFIT geqdsk format.
-            try:
-                import omfit_eqdsk
-            except:
-                raise ValueError('Could not import omfit_eqdsk!')
+            # Fetch geqdsk from MDS+ (using EFIT01) and post-process it using the OMFIT geqdsk format.
             geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(device=namelist['device'],shot=namelist['shot'],
                                                               time=namelist['time'], SNAPfile='EFIT01',
-                                                              fail_if_out_of_range=False,time_diff_warning_threshold=20)
+                                                              fail_if_out_of_range=False,
+                                                              time_diff_warning_threshold=20)
 
         # Get r_V to rho_pol mapping
         rho_pol, _rvol = grids_utils.get_rhopol_rV_mapping(geqdsk)
@@ -103,10 +105,14 @@ class aurora_sim:
         # source function
         self.source_time_prof = source_utils.get_aurora_source(self.namelist, self.time_grid)
 
+        # get maximum Z of impurity ion
+        out = atomic_element(symbol=self.imp)
+        spec = list(out.keys())[0]
+        self.Z_imp = int(out[spec]['Z'])
+        
         # Extract other inputs from namelist:
         self.mixing_radius = self.namelist['saw_model']['rmix']
         self.decay_length_boundary = self.namelist['SOL_decay']
-        self.Z_imp = int(self.namelist['Z_imp'])
         self.wall_recycling = self.namelist['wall_recycling']
         self.source_div_fraction = self.namelist['divbls']   # change of nomenclature
         self.tau_div_SOL = self.namelist['tau_div_SOL']
@@ -121,8 +127,8 @@ class aurora_sim:
         self.bound_sep = self.namelist['bound_sep']
         self.lim_sep = self.namelist['lim_sep']
         self.sawtooth_erfc_width = self.namelist['saw_model']['sawtooth_erfc_width']
-        self.main_ion_Z = self.namelist['Z']
-        self.main_ion_A = self.namelist['a']
+        #self.main_ion_Z = self.namelist['Z']
+        #self.main_ion_A = self.namelist['a']
         self.cxr_flag = self.namelist['cxr_flag']
         self.nbi_cxr_flag = self.namelist['nbi_cxr_flag']
 
@@ -139,9 +145,15 @@ class aurora_sim:
         # extrapolate profiles outside of LCFS by exponential decays
         r = interp1d(self.rhop_grid, self.rvol_grid,fill_value='extrapolate')(self.kin_profs[prof]['rhop'])
         if self.kin_profs[prof]['fun'] == 'interp':
+            if 'decay' not in self.kin_profs[prof]:
+                # if decay length in the SOL was not given by the user, assume a decay length of 1cm
+                print(f'Namelist did not provide a {prof} decay length for the SOL. Setting it to 1cm.')
+                self.kin_profs[prof]['decay'] = np.ones(len(self.kin_profs[prof]['vals']))
+                
             data = interp.interp_quad(r/r_lcfs,self.kin_profs[prof]['vals'],
                                              self.kin_profs[prof]['decay'],r_lcfs,self.rvol_grid)
             data[data < 1.01] = 1
+            
         elif self.kin_profs[prof]['fun'] == 'interpa':
             data = interp.interpa_quad(r/r_lcfs,self.kin_profs[prof]['vals'],r_lcfs,self.rvol_grid)
 
@@ -235,11 +247,13 @@ class aurora_sim:
         in the SOL.
         
         '''
-        # background mass (=2 for D)
-        apl = float(self.namelist['a'])
+        # background mass number (=2 for D)
+        out = atomic_element(symbol=self.namelist['main_element'])
+        spec = list(out.keys())[0]
+        main_ion_A = int(out[spec]['A'])
 
         # factor for v = machnumber * sqrt((3T_i+T_e)k/m)
-        vpf = self.namelist['SOL_mach']*np.sqrt(1.602e-19/1.601e-27/apl)  # v[m/s]=vpf*sqrt(T[ev])
+        vpf = self.namelist['SOL_mach']*np.sqrt(q_electron/m_p/main_ion_A)  # v[m/s]=vpf*sqrt(T[ev])
 
         # number of points inside of LCFS
         ids = self.rvol_grid.searchsorted(self.namelist['rvol_lcfs'],side='left')
@@ -269,7 +283,9 @@ class aurora_sim:
 
 
 
-    def run_aurora(self, times_DV, D_z, V_z, nz_init=None, method='old',evolneut=False):
+    def run_aurora(self, D_z, V_z,
+                   times_DV=None, nz_init=None, method='old',evolneut=False,
+                   use_julia=False):
         '''Run a simulation using inputs in the given dictionary and D,v profiles as a function
         of space, time and potentially also ionization state. Users may give an initial state of each
         ion charge state as an input.
@@ -284,14 +300,17 @@ class aurora_sim:
                                labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]])
 
         Args:
-            times_DV : 1D array
-                Array of times at which D_z and V_z profiles are given. (Note that it is assumed that
-                D and V profiles are already on the self.rvol_grid radial grid).
-            D_z, V_z: arrays, shape of (space, time,nZ) or (space,time)
+            D_z, V_z: arrays, shape of (space, time,nZ) or (space,time) or (space,)
                 Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
                 This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
-                the number of charge states. If inputs are found to be have only 2 dimensions, it is
-                assumed that all charge states should be set to have the same transport coefficients.
+                the number of charge states. If D_z and V_z are found to be have only 2 dimensions, 
+                it is assumed that all charge states should have the same transport coefficients.
+                If they are only 1-D, it is further assumed that they are time-independent. 
+                Note that it is assumed that D_z and V_z profiles are already on the self.rvol_grid 
+                radial grid.
+            times_DV : 1D array, optional
+                Array of times at which D_z and V_z profiles are given. By Default, this is None, 
+                which implies that D_z and V_z are time independent. 
             nz_init: array, shape of (space, nZ)
                 Impurity charge states at the initial time of the simulation. If left to None, this is
                 internally set to an array of 0's.
@@ -301,13 +320,29 @@ class aurora_sim:
                 If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
                 which case neutrals are only taken as a source and those that are not ionized immediately after
                 injection are neglected.
+            use_julia : bool, optional
+                If True, run the Julia pre-compiled version of the code. Run the julia makefile option to set 
+                this up. Default is False (still under development)
 
         Returns:
-            out : list
-                List containing each particle reservoir of a simulation, i.e.
-                nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
+            nz : array, 
+            N_wall : array (nt,)
+            N_div : array (nt,)
+            N_pump : array (nt,)
+            N_ret : array (nt,)
+            N_tsu : array (nt,)
+            N_dsu : array (nt,)
+            N_dsul : array (nt,)
+            rcld_rate : array (nt,)
+            rclw_rate : array (nt,)
 
         '''
+        # D_z and V_z must have the same shape
+        assert np.array(D_z).shape == np.array(V_z).shape
+        
+        if (times_DV is None) and (D_z.ndim>1 or V_z.ndim>1):
+            raise ValueError('D_z and V_z given as time dependent, but times were not specified!')
+        
         if nz_init is None:
             # default: start in a state with no impurity ions
             nz_init = np.zeros((len(self.rvol_grid),int(self.Z_imp+1)))
@@ -315,116 +350,105 @@ class aurora_sim:
         if D_z.ndim==2:
             # set all charge states to have the same transport
             D_z = np.tile(np.atleast_3d(D_z),(1,1,self.Z_imp+1))  # include elements for neutrals
-            # unless specified, D_z for neutrals should be 0
+            V_z = np.tile(np.atleast_3d(V_z),(1,1,self.Z_imp+1))
+            
+            # unless specified, set transport coefficients for neutrals to 0
             D_z[:,:,0] = 0.0
-        if V_z.ndim==2:
-            V_z = np.tile(np.atleast_3d(V_z),(1,1,self.Z_imp+1))  # include elements for neutrals
-            # unless specified, V_z for neutrals should be 0
             V_z[:,:,0] = 0.0
 
-        # Use only f_contiguous arrays for speed in Fortran!
-        return _aurora.run(
-            len(self.time_out), # number of times at which simulation outputs results
-            times_DV,
-            D_z, # cm^2/s      #(ir,nt_trans,nion)
-            V_z, # cm/s
-            self.par_loss_rate,  # time dependent
-            self.source_rad_prof,# source profile in radius
-            self.S_rates, # ioniz_rate,
-            self.R_rates, # recomb_rate,
-            self.rvol_grid,
-            self.pro_grid,
-            self.qpr_grid,
-            self.mixing_radius,
-            self.decay_length_boundary,
-            self.time_grid,
-            self.saw_on,
-            self.source_time_prof, # source profile in time
-            self.save_time,
-            self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
-            self.wall_recycling, # rcl   [fraction]
-            self.source_div_fraction, # divbls   [fraction of source into divertor]
-            self.tau_div_SOL * 1e-3, # taudiv   [s]
-            self.tau_pump *1e-3, # taupump  [s]
-            self.tau_rcl_ret *1e-3,   # tauwret  [s]
-            self.rvol_lcfs,       # rx = rvol_lcfs + dbound
-            self.bound_sep,
-            self.lim_sep,
-            self.prox_param,
-            rn_t0 = nz_init,  # if omitted, internally set to 0's
-            linder=True if method=='linder' else False,
-            evolneut=evolneut
-        )
+        if D_z.ndim==1:
+            # D_z was given as time-independent
+            D_z = np.tile(np.atleast_3d(D_z[:,None]),(1,1,self.Z_imp+1))  # include elements for neutrals
+            V_z = np.tile(np.atleast_3d(V_z[:,None]),(1,1,self.Z_imp+1))
+            times_DV = [1.] # dummy, no time dependence
 
+        # NOTE: for both Fortran and Julia, use f_configuous arrays for speed!
+        if use_julia:
+            # run Julia version of the code
+            from julia.api import Julia
+            jl = Julia(compiled_modules=False,
+                       sysimage=os.path.dirname(os.path.realpath(__file__)) + "/jlib/aurora.so")
+            from julia import aurora as aurora_jl
 
-
-
-
-    def run_julia(self, times_DV, D_z, V_z, nz_init=None):
-        '''Run a single simulation using the Julia version.
-
-        Args:
-            times_DV : 1D array
-                Array of times at which D_z and V_z profiles are given. (Note that it is assumed that
-                D and V profiles are already on the self.rvol_grid radial grid).
-            D_z, V_z: arrays, shape of (space, nZ, time)
-                Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
-                This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
-                the number of charge states. If inputs are found to be have only 2 dimensions, it is
-                assumed that all charge states should be set to have the same transport coefficients.
-            nz_init: array, shape of (space, nZ)
-                Impurity charge states at the initial time of the simulation. If left to None, this is
-                internally set to an array of 0's.
-
-        Returns:
-            out : list
-                List containing each particle reservoir of a simulation, i.e.
-                nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
-        '''
-
-        from julia.api import Julia
-        import os
-
-        jl = Julia(compiled_modules=False, sysimage=os.path.dirname(os.path.realpath(__file__)) + "/jlib/aurora.so")
-        from julia import aurora as aurora_jl
-
-        if nz_init is None:
-            # default: start in a state with no impurity ions
-            nz_init = np.zeros((len(self.rvol_grid),int(self.Z_imp+1)))
-
-        if D_z.ndim==2:
-            # set all charge states to have the same transport
-            D_z = np.tile(np.atleast_3d(D_z),(1,1,self.Z_imp+1))  # include elements for neutrals
-        if V_z.ndim==2:
-            V_z = np.tile(np.atleast_3d(V_z),(1,1,self.Z_imp+1))  # include elements for neutrals
-
+            self.res = aurora_jl.run(len(self.time_out),  # number of times at which simulation outputs results
+                                     times_DV,
+                                     D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
+                                     self.par_loss_rate,  # time dependent
+                                     self.source_rad_prof,# source profile in radius
+                                     self.S_rates, # ioniz_rate,
+                                     self.R_rates, # recomb_rate,
+                                     self.rvol_grid, self.pro_grid, self.qpr_grid,
+                                    self.mixing_radius, self.decay_length_boundary,
+                                     self.time_grid, self.saw_on,
+                                     self.source_time_prof, # source profile in time
+                                     self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
+                                     self.wall_recycling,
+                                     self.source_div_fraction, # divbls [fraction of source into divertor]
+                                     # timescales in [s]:
+                                     self.tau_div_SOL * 1e-3, self.tau_pump *1e-3, self.tau_rcl_ret *1e-3,  
+                                     self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
+                                     nz_init)
+        else:
+            self.res =  _aurora.run(len(self.time_out),  # number of times at which simulation outputs results
+                                    times_DV,
+                                    D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
+                                    self.par_loss_rate,  # time dependent
+                                    self.source_rad_prof,# source profile in radius
+                                    self.S_rates, # ioniz_rate,
+                                    self.R_rates, # recomb_rate,
+                                    self.rvol_grid, self.pro_grid, self.qpr_grid,
+                                    self.mixing_radius, self.decay_length_boundary,
+                                    self.time_grid, self.saw_on,
+                                    self.source_time_prof, # source profile in time
+                                    self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
+                                    self.wall_recycling,
+                                    self.source_div_fraction, # divbls [fraction of source into divertor]
+                                    # timescales in [s]:
+                                    self.tau_div_SOL * 1e-3, self.tau_pump *1e-3, self.tau_rcl_ret *1e-3,  
+                                    self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
+                                    rn_t0 = nz_init,  # if omitted, internally set to 0's
+                                    linder=True if method=='linder' else False,
+                                    evolneut=evolneut)
+            
+        # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
+        return self.res
+    
         
-        # NOTE: use only f_contiguous arrays for speed in Julia, like in Fortran!
-        return aurora_jl.run(len(self.time_out),  # number of times at which simulation outputs results
-                             times_DV,
-                             D_z,
-                             V_z, # cm/s
-                             self.par_loss_rate,  # time dependent
-                             self.source_rad_prof,# source profile in radius
-                             self.S_rates, # ioniz_rate,
-                             self.R_rates, # recomb_rate,
-                             self.rvol_grid,
-                             self.pro_grid,
-                             self.qpr_grid,
-                             self.mixing_radius,
-                             self.decay_length_boundary,
-                             self.time_grid,
-                             self.saw_on,
-                             self.source_time_prof, # source profile in time
-                             self.save_time,
-                             self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
-                             self.wall_recycling, # rcl   [fraction]
-                             self.source_div_fraction, # divbls   [fraction of source into divertor]
-                             self.tau_div_SOL * 1e-3, # taudiv   [s]
-                             self.tau_pump *1e-3, # taupump  [s]
-                             self.tau_rcl_ret *1e-3,   # tauwret  [s]
-                             self.rvol_lcfs,       # rx = rvol_lcfs + dbound
-                             self.bound_sep,
-                             self.lim_sep,
-                             self.prox_param,
-                             nz_init)
+
+    def check_conservation(self, axs=None):
+        '''Check particle conservation for an aurora simulation.
+
+        Args : 
+            axs : matplotlib.Axes instances
+                Axes to pass to :py:meth:`~aurora.particle_conver.plot_1d`
+                These may be the axes returned from a previous call to this function, to overlap 
+                results for different runs. 
+        Returns : 
+            axs : matplotlib.Axes instances
+                New or updated axes returned by :py:meth:`~aurora.particle_conver.plot_1d`
+        '''
+        nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
+        nz = nz.transpose(2,1,0)   # time,nZ,space
+
+        # Check particle conservation
+        ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','radius_grid'], nz),
+                         'source_function': (['time'], self.source_time_prof ),
+                         'particles_in_divertor': (['time'], N_div), 
+                         'particles_in_pump': (['time'], N_pump), 
+                         'parallel_loss': (['time'], N_dsu), 
+                         'parallel_loss_to_limiter': (['time'], N_dsul), 
+                         'edge_loss': (['time'], N_tsu), 
+                         'particles_at_wall': (['time'], N_wall), 
+                         'particles_retained_at_wall': (['time'], N_ret), 
+                         'recycling_from_wall':  (['time'], rclw_rate), 
+                         'recycling_from_divertor':  (['time'], rcld_rate), 
+                         'pro': (['radius_grid'], self.pro_grid), 
+                         'rhop_grid': (['radius_grid'], self.rhop_grid)
+                         },
+                        coords={'time': self.time_out, 
+                                'radius_grid': self.rvol_grid,
+                                'charge_states': np.arange(nz.shape[1])
+                                })
+
+        ds, out, (ax1,ax2) = particle_conserv.plot_1d(ds = ds, axs=axs)
+        return (ax1,ax2)

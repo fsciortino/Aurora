@@ -7,11 +7,12 @@ sciortino, 2020
 import numpy as np
 import copy
 from scipy.constants import m_p, e as q_electron
+from omfit_commonclasses.utils_math import atomic_element
 
 def get_aurora_source(namelist, time=None):
     '''Load source function based on current state of the namelist.
 
-    `time' is only needed for time-dependent sources
+    The "time" argument is only needed for time-dependent sources
     '''
     imp = namelist['imp']
 
@@ -219,8 +220,10 @@ def get_radial_source(namelist, radius_grid, S, pro, Ti=None):
                 raise ValueError('Could not compute a valid energy of injected ions!')
 
         # velocity of neutrals [cm/s]
-        
-        v = - np.sqrt(2.*q_electron*E0/(namelist['imp_a']*m_p))
+        out = atomic_element(symbol=namelist['main_element'])
+        spec = list(out.keys())[0]
+        main_ion_A = int(out[spec]['A'])
+        v = - np.sqrt(2.*q_electron*E0/(main_ion_A*m_p))
 
         #integration of ne*S for atoms and calculation of ionization length for normalizing neutral density
         sint[i_src]= -0.0625*S[i_src]/pro[i_src]/v[i_src]   #1/16

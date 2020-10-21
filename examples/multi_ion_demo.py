@@ -61,12 +61,10 @@ namelist['Phi0'] = 1e24 #1.0
 
 # Set up for 2 different ions:
 imp = namelist['imp'] = 'Ca' 
-namelist['Z_imp'] = 20 
-namelist['imp_a'] = 40.078 
 asim_Ca = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
 # get charge state distributions from ionization equilibrium
-atom_data = aurora.atomic.get_all_atom_data(imp,['acd','scd'])
+atom_data = aurora.atomic.get_atom_data(imp,['acd','scd'])
 ne_avg = np.mean(kin_profs['ne']['vals'],axis=0) # average over time
 Te_avg = np.mean(kin_profs['Te']['vals'],axis=0)  # must be on the same radial basis as ne_avg
 
@@ -74,12 +72,11 @@ Te_avg = np.mean(kin_profs['Te']['vals'],axis=0)  # must be on the same radial b
 logTe, fz_Ca = aurora.atomic.get_frac_abundances(atom_data, ne_avg*1e6, Te_avg, rho=rhop)
 
 imp = namelist['imp'] = 'Ar' 
-namelist['Z_imp'] = 18. 
-namelist['imp_a'] = 39.948 
+
 asim_Ar = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
 # get charge state distributions from ionization equilibrium
-atom_data = aurora.atomic.get_all_atom_data(imp,['acd','scd'])
+atom_data = aurora.atomic.get_atom_data(imp,['acd','scd'])
 ne_avg = np.mean(kin_profs['ne']['vals'],axis=0) # average over time
 Te_avg = np.mean(kin_profs['Te']['vals'],axis=0)  # must be on the same radial basis as ne_avg
 
@@ -119,12 +116,11 @@ D_eff = 1e4 #cm^2/s
 v_eff = -2e2 #cm/s
 
 # # set transport coefficients to the right format
-D_z = np.ones((len(asim_Ca.rvol_grid),1)) * D_eff
-V_z = np.ones((len(asim_Ca.rvol_grid),1)) * v_eff
-times_DV = [1.0]  # dummy
+D_z = np.ones(len(asim_Ca.rvol_grid)) * D_eff
+V_z = np.ones(len(asim_Ca.rvol_grid)) * v_eff
 
 # set initial charge state distributions to ionization equilibrium (no transport)
-out = asim_Ca.run_aurora(times_DV, D_z, V_z) #, nz_init=nz_init.T)
+out = asim_Ca.run_aurora(D_z, V_z)
 nz_Ca, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 nz_Ca = nz_Ca.transpose(2,1,0)
 
@@ -133,7 +129,7 @@ asim_Ca.rad = aurora.radiation.compute_rad('Ca', asim_Ca.rhop_grid, asim_Ca.time
                                              spectral_brem_flag=False, sxr_flag=False, 
                                              main_ion_brem_flag=False)
 
-out = asim_Ar.run_aurora(times_DV, D_z, V_z) #, nz_init=nz_init.T)
+out = asim_Ar.run_aurora(D_z, V_z)
 nz_Ar, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 nz_Ar = nz_Ar.transpose(2,1,0)
 

@@ -7,12 +7,14 @@ import numpy as np
 
 def funct(params,rLCFS,r):
     ''' Function 'funct' in STRAHL manual
-    # y0 is core offset
-    # y1 is edge offset
-    # y2 (>y0, >y1) sets the gaussian amplification
-    # p0 sets the width of the inner gaussian
-    # P1 sets the width of the outer gaussian
-    # p2 sets the location of the inner and outer peaks
+
+    The "params" input is broken down into 6 arguments:
+        y0 is core offset
+        y1 is edge offset
+        y2 (>y0, >y1) sets the gaussian amplification
+        p0 sets the width of the inner gaussian
+        P1 sets the width of the outer gaussian
+        p2 sets the location of the inner and outer peaks
     '''
     params = np.reshape(params,(-1,6))
     out = []
@@ -31,7 +33,8 @@ def funct(params,rLCFS,r):
 
 
 def funct2(params,rLCFS,r):
-    ''' Function 'funct2' in STRAHL manual.   '''
+    '''Function 'funct2' in STRAHL manual.   
+    '''
     params_1,params_2 = np.swapaxes(np.reshape(params,(-1,2,6)),0,1)
 
     funct_1 = funct(params_1,rLCFS,r)
@@ -73,24 +76,26 @@ def ratfun(params,d,rLCFS,r):
     edge = core[-1]*np.exp(-(rho[idx:]-rho[idx-1])/d)
     return np.concatenate([core,edge]).T
 
-# Function 'interp' used for kinetic profiles
 def interp_quad(x,y,d,rLCFS,r):
+    '''Function 'interp' used for kinetic profiles.
+    '''
     f = interp1d(x,np.log(y), kind='quadratic', assume_sorted=True, copy=False)
     idx = np.searchsorted(r,rLCFS)
     core = np.exp(f(np.clip(r[:idx]/rLCFS,0, x[-1])))
     edge =  core[...,[idx-1]]*np.exp(-np.outer(1./np.asarray(d),r[idx:]-r[idx-1]))
 
-
     return np.concatenate([core,edge],axis=-1)
 
-# Function 'interpa' used for kinetic profiles
 def interpa_quad(x,y,rLCFS,r):
+    '''Function 'interpa' used for kinetic profiles
+    '''
     f = interp1d(x,np.log(y),bounds_error=False, kind='quadratic',
                              assume_sorted=True, copy=False)
     return np.exp(f(np.minimum(r/rLCFS, x[-1])))
 
 
-# Function 'interp' used in STRAHL for D and V profiles
 def interp(x,y,rLCFS,r):
+    '''Function 'interp' used in STRAHL for D and V profiles.
+    '''
     f = interp1d(x,y,fill_value='extrapolate', assume_sorted=True, copy=False)
     return f(r/rLCFS)

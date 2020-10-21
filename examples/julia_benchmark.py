@@ -49,14 +49,11 @@ rhop = kin_profs['ne']['rhop'] = ne_profs['rhop']
 kin_profs['Te']['vals'] = Te_profs['Te']*1e3  # keV --> eV
 kin_profs['Te']['times'] = Te_profs['t']
 kin_profs['Te']['rhop'] = Te_profs['rhop']
-kin_profs['Te']['decay'] = np.ones(len(Te_profs['Te']))*1.0
 
 # set no sources of impurities
 namelist['source_type'] = 'const'
 namelist['Phi0'] = 1e24 #1.0
 imp = namelist['imp'] = 'Ca' #'Ar' #'Ca'
-namelist['Z_imp'] = 20 #18. #20.
-namelist['imp_a'] = 40.078 #39.948  # 40.078
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -66,25 +63,24 @@ D_eff = 1e4 #cm^2/s
 v_eff = 0.0
 
 # # set transport coefficients to the right format
-D_z = np.ones((len(asim.rvol_grid),1)) * D_eff
-V_z = np.ones((len(asim.rvol_grid),1)) * v_eff
-times_DV = [1.0]  # dummy
+D_z = np.ones(len(asim.rvol_grid)) * D_eff
+V_z = np.ones(len(asim.rvol_grid)) * v_eff
 
 num=10
 
 start = time.time()
 for i in range(num):
-    pyout = asim.run_aurora(times_DV, D_z, V_z)
+    pyout = out = asim.run_aurora(D_z, V_z) 
 print("Fortran: ", (time.time() - start)/num, " seconds on average")
 
 # First call includes precompilation, not a good timing example. Time second run
 start = time.time()
-juout = asim.run_julia(times_DV, D_z, V_z)
+juout = asim.run_aurora(D_z, V_z, use_julia=True)
 print("Julia time for first call (compiling): ", time.time() - start, " second")
 
 start = time.time()
 for i in range(num):
-    juout = asim.run_julia(times_DV, D_z, V_z)
+    juout = asim.run_aurora(D_z, V_z, use_julia=True)
 print("Julia: ", (time.time() - start)/num, " seconds on average")
 
 
@@ -95,4 +91,4 @@ for i in range(len(juout)):
         all_good = False
         break
 if all_good:
-    print("Results equivalent")
+    print("Fortran and Julia results are equivalent")

@@ -337,29 +337,70 @@ Evaluate balance of effective ionization, recombination and charge exchange at a
 
 \end{fulllineitems}
 
-\index{get\_adas\_ion\_rad() (in module aurora.atomic)@\spxentry{get\_adas\_ion\_rad()}\spxextra{in module aurora.atomic}}
+\index{get\_adas\_continuum\_rad() (in module aurora.atomic)@\spxentry{get\_adas\_continuum\_rad()}\spxextra{in module aurora.atomic}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.atomic.get_adas_ion_rad}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{get\_adas\_ion\_rad}}}{\emph{\DUrole{n}{ion\_name}}, \emph{\DUrole{n}{n\_ion}}, \emph{\DUrole{n}{logne\_prof}}, \emph{\DUrole{n}{logTe\_prof}}, \emph{\DUrole{n}{sxr}\DUrole{o}{=}\DUrole{default_value}{False}}}{}
-Get ADAS estimate for total radiation in {[}M/m\textasciicircum{}3{]} for the given ion
-with the given (log) density and temperature profiles.
+\phantomsection\label{\detokenize{aurora:aurora.atomic.get_adas_continuum_rad}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{get\_adas\_continuum\_rad}}}{\emph{\DUrole{n}{ion\_name}}, \emph{\DUrole{n}{n\_ion}}, \emph{\DUrole{n}{logne\_prof}}, \emph{\DUrole{n}{logTe\_prof}}, \emph{\DUrole{n}{sxr}\DUrole{o}{=}\DUrole{default_value}{False}}}{}
+Convenience function to get ADAS estimate for continuum radiation in {[}M/m\textasciicircum{}3{]} for a 
+given background ion at given (log) density and temperature profiles.
 
 If sxr=True, ‘prs’ files are used instead of ‘prb’ ones, thus giving SXR\sphinxhyphen{}filtered
-radiation for the SXR filter indicated by the atomic data dictionary.
+continuum radiation for the SXR filter indicated by the atomic data dictionary.
+\begin{description}
+\item[{Args:}] \leavevmode\begin{description}
+\item[{ion\_name}] \leavevmode{[}str{]}
+Atomic symbol of ion.
+
+\item[{n\_ion}] \leavevmode{[}array (nt,nr,nz){]}
+Density of each charge state of the ion of interest
+
+\item[{logne\_prof}] \leavevmode{[}array (nt,nr){]}
+Log\sphinxhyphen{}10 of electron density profile (in cm\textasciicircum{}\sphinxhyphen{}3)
+
+\item[{logTe\_prof}] \leavevmode{[}array (nt,nr){]}
+Log\sphinxhyphen{}10 of electron temperature profile (in eV)
+
+\item[{sxr}] \leavevmode{[}bool, optional{]}
+If True, compute continuum radiation in the SXR range rather than the total 
+continuum radiation.
+
+\end{description}
+
+\item[{Returns:}] \leavevmode\begin{description}
+\item[{cont\_rad}] \leavevmode{[}array (nt,nr){]}
+Continuum radiation, either total or in the SXR\sphinxhyphen{}range, depending on the 
+‘sxr’ input variable.
+
+\end{description}
+
+\end{description}
 
 \end{fulllineitems}
 
-\index{get\_all\_atom\_data() (in module aurora.atomic)@\spxentry{get\_all\_atom\_data()}\spxextra{in module aurora.atomic}}
+\index{get\_atom\_data() (in module aurora.atomic)@\spxentry{get\_atom\_data()}\spxextra{in module aurora.atomic}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.atomic.get_all_atom_data}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{get\_all\_atom\_data}}}{\emph{\DUrole{n}{imp}}, \emph{\DUrole{n}{files}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
-Collect atomic data for a given impurity from all types of ADAS files available.
+\phantomsection\label{\detokenize{aurora:aurora.atomic.get_atom_data}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{get\_atom\_data}}}{\emph{\DUrole{n}{imp}}, \emph{\DUrole{n}{files}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
+Collect atomic data for a given impurity from all types of ADAS files available or
+for only those requested.
 \begin{description}
-\item[{imp: str}] \leavevmode
+\item[{Args:}] \leavevmode\begin{description}
+\item[{imp}] \leavevmode{[}str{]}
 Atomic symbol of impurity ion.
 
 \item[{files}] \leavevmode{[}list or array\sphinxhyphen{}like{]}
 ADAS file names to be fetched.
+
+\end{description}
+
+\item[{Returns:}] \leavevmode\begin{description}
+\item[{atom\_data}] \leavevmode{[}dict{]}
+Dictionary containing data for each of the requested files (or all files returned by
+{\hyperref[\detokenize{aurora:aurora.atomic.adas_files_dict}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{adas\_files\_dict()}}}}} for the impurity ion of interest). 
+Each entry of the dictionary gives log\sphinxhyphen{}10 of ne, log\sphinxhyphen{}10 of Te and log\sphinxhyphen{}10 of the data
+as attributes atom\_data{[}key{]}.logNe, atom\_data{[}key{]}.logT, atom\_data{[}key{]}.data
+
+\end{description}
 
 \end{description}
 
@@ -377,9 +418,17 @@ and to obtain the list of file\_types of interest.
 \index{get\_cooling\_factors() (in module aurora.atomic)@\spxentry{get\_cooling\_factors()}\spxextra{in module aurora.atomic}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.atomic.get_cooling_factors}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{get\_cooling\_factors}}}{\emph{\DUrole{n}{atom\_data}}, \emph{\DUrole{n}{logTe\_}}, \emph{\DUrole{n}{fz}}, \emph{\DUrole{n}{ion\_resolved}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{plot}\DUrole{o}{=}\DUrole{default_value}{True}}, \emph{\DUrole{n}{ax}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
-Calculate cooling coefficients from fz and prs,  pls (if these are available).
-Also plot the inverse of rate coefficients, which gives an estimate for relaxation times.
+\phantomsection\label{\detokenize{aurora:aurora.atomic.get_cooling_factors}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{get\_cooling\_factors}}}{\emph{\DUrole{n}{atom\_data}}, \emph{\DUrole{n}{logTe\_prof}}, \emph{\DUrole{n}{fz}}, \emph{\DUrole{n}{ion\_resolved}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{plot}\DUrole{o}{=}\DUrole{default_value}{True}}, \emph{\DUrole{n}{ax}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
+Calculate cooling coefficients for the given fractional abundances and kinetic profiles.
+\begin{description}
+\item[{Args:}] \leavevmode\begin{description}
+\item[{atom\_data}] \leavevmode{[}dict{]}
+Dictionary containing atomic data as output by {\hyperref[\detokenize{aurora:aurora.atomic.get_atom_data}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{get\_atom\_data()}}}}}
+for the atomic processes of interest. “prs”,”pls”,”plt” and “prb” are required by this function.
+
+\end{description}
+
+\end{description}
 
 \end{fulllineitems}
 
@@ -550,24 +599,6 @@ Find null space of matrix A
 
 \end{fulllineitems}
 
-\index{plot\_radiation\_profs() (in module aurora.atomic)@\spxentry{plot\_radiation\_profs()}\spxextra{in module aurora.atomic}}
-
-\begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.atomic.plot_radiation_profs}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{plot\_radiation\_profs}}}{\emph{\DUrole{n}{atom\_data}}, \emph{\DUrole{n}{nz\_prof}}, \emph{\DUrole{n}{logne\_prof}}, \emph{\DUrole{n}{logTe\_prof}}, \emph{\DUrole{n}{xvar}}, \emph{\DUrole{n}{imp}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}F\textquotesingle{}}}, \emph{\DUrole{n}{plot}\DUrole{o}{=}\DUrole{default_value}{False}}}{}
-Obtain profiles of predicted radiation.
-
-This function can be used to plot radial profiles (setting xvar to a radial grid)
-or profiles as a function of any variable on which the logne\_prof and logTe\_prof
-may depend.
-
-The variable :param:nz\_prof may be a full description of impurity charge state densities
-(e.g. the output of Aurora), or profiles of fractional abundances from ionization
-equilibrium.
-
-Note that the variables :param:xvar (array) and :param:imp (str) are only needed if plotting is requested.
-
-\end{fulllineitems}
-
 \index{plot\_relax\_time() (in module aurora.atomic)@\spxentry{plot\_relax\_time()}\spxextra{in module aurora.atomic}}
 
 \begin{fulllineitems}
@@ -665,7 +696,7 @@ This function will be moved and expanded in ColRadPy in the near future.
 \index{compute\_rad() (in module aurora.radiation)@\spxentry{compute\_rad()}\spxextra{in module aurora.radiation}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.radiation.compute_rad}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.radiation.}}\sphinxbfcode{\sphinxupquote{compute\_rad}}}{\emph{\DUrole{n}{imp}}, \emph{\DUrole{n}{rhop}}, \emph{\DUrole{n}{time}}, \emph{\DUrole{n}{imp\_dens}}, \emph{\DUrole{n}{ne}}, \emph{\DUrole{n}{Te}}, \emph{\DUrole{n}{n0}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{nD}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{nBckg}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{main\_ion\_AZ}\DUrole{o}{=}\DUrole{default_value}{2, 1}}, \emph{\DUrole{n}{bckg\_imp\_AZ}\DUrole{o}{=}\DUrole{default_value}{12, 6}}, \emph{\DUrole{n}{sxr\_pls\_file}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{sxr\_prs\_file}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{prad\_flag}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{thermal\_cx\_rad\_flag}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{spectral\_brem\_flag}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{sxr\_flag}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{main\_ion\_brem\_flag}\DUrole{o}{=}\DUrole{default_value}{False}}}{}
+\phantomsection\label{\detokenize{aurora:aurora.radiation.compute_rad}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.radiation.}}\sphinxbfcode{\sphinxupquote{compute\_rad}}}{\emph{\DUrole{n}{imp}}, \emph{\DUrole{n}{rhop}}, \emph{\DUrole{n}{time}}, \emph{\DUrole{n}{imp\_dens}}, \emph{\DUrole{n}{ne}}, \emph{\DUrole{n}{Te}}, \emph{\DUrole{n}{n0}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{nD}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{main\_ion\_name}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}D\textquotesingle{}}}, \emph{\DUrole{n}{sxr\_pls\_file}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{sxr\_prs\_file}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{prad\_flag}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{thermal\_cx\_rad\_flag}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{spectral\_brem\_flag}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{sxr\_flag}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{main\_ion\_brem\_flag}\DUrole{o}{=}\DUrole{default_value}{False}}}{}
 Calculate radiation terms corresponding to a simulation result. 
 Results are in SI units (NB: inputs are not).
 
@@ -685,7 +716,7 @@ Note that, when sxr\_flag=True, SXR radiation will be computed using the default
 (line and continuum radiation) given by the atomic.adas\_files\_dict() unless the sxr\_pls\_file and sxr\_prs\_file
 parameters are provided.
 
-\sphinxstyleemphasis{All radiation outputs are given in W * cm\textasciicircum{}\sphinxhyphen{}3, consistently with units of cm\textasciicircum{}\sphinxhyphen{}3 given for inputs.}
+All radiation outputs are given in \(W cm^-3\), consistently with units of \(cm^-3\) given for inputs.
 \begin{description}
 \item[{Args:}] \leavevmode\begin{description}
 \item[{imp}] \leavevmode{[}str{]}
@@ -706,36 +737,16 @@ Electron density on the output grids.
 \item[{Te}] \leavevmode{[}array (time,space) {[}eV{]}{]}
 Electron temperature on the output grids.
 
-\end{description}
-
-Optional: 
-n0 : array(time,space), optional {[}cm\textasciicircum{}\sphinxhyphen{}3{]}
-\begin{quote}
-
+\item[{n0}] \leavevmode{[}array(time,space), optional {[}cm\textasciicircum{}\sphinxhyphen{}3{]}{]}
 Background neutral density (assumed of hydrogen\sphinxhyphen{}isotopes). 
-This is only used if
-\end{quote}
-\begin{description}
+This is only used if thermal\_cx\_rad\_flag=True.
+
 \item[{nD}] \leavevmode{[}array (time,space), optional {[}cm\textasciicircum{}\sphinxhyphen{}3{]}{]}
 Main ion density. This is only used if main\_ion\_brem\_flag=True.
-Note that the impurity density of imp\_dens times its Z value is internally 
-automatically subtracted from this main ion density.
 
-\item[{nBckg}] \leavevmode{[}array (time,space), optional {[}cm\textasciicircum{}\sphinxhyphen{}3{]}{]}
-Background impurity density. This is only used if main\_ion\_brem\_flag=True.
-Note that this can be of any impurity for which atomic data is available. The atomic 
-symbol of this ion is taken to be ‘bckg\_imp\_name’.
-
-\item[{main\_ion\_AZ}] \leavevmode{[}2\sphinxhyphen{}tuple, optional{]}
-Mass number (number of neutrons+protons in nucleus) and Z for the main ion 
-(background) species. Default is (1,1), corresponding to hydrogen. 
-This is only used if main\_ion\_brem\_flag=sxr\_flag=True.
-
-\item[{bckg\_imp\_AZ}] \leavevmode{[}2\sphinxhyphen{}tuple, optional{]}
-Mass number (number of neutrons+protons in nucleus) and Z for the background 
-impurity species. Default is (12,6), corresponding to carbon.
-This is only used if main\_ion\_brem\_flag=sxr\_flag=True.
-Note that atomic data must be available for this calculation to be possible.
+\item[{main\_ion\_name}] \leavevmode{[}str, optional{]}
+Atomic symbol of main ion species. Default is ‘D’.
+This is only used if main\_ion\_brem\_flag=True.
 
 \item[{sxr\_pls\_file}] \leavevmode{[}str{]}
 ADAS file used for SXR line radiation calculation if sxr\_flag=True. If left to None, the 
@@ -745,15 +756,9 @@ default in {\hyperref[\detokenize{aurora:aurora.atomic.adas_files_dict}]{\sphinx
 ADAS file used for SXR continuum radiation calculation if sxr\_flag=True. If left to None, 
 the default in {\hyperref[\detokenize{aurora:aurora.atomic.adas_files_dict}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{adas\_files\_dict()}}}}} is used.
 
-\end{description}
-
-Flags:
-prad\_flag : bool, optional
-\begin{quote}
-
+\item[{prad\_flag}] \leavevmode{[}bool, optional{]}
 If True, total radiation is computed (for each charge state and their sum)
-\end{quote}
-\begin{description}
+
 \item[{thermal\_cx\_rad\_flag}] \leavevmode{[}bool, optional{]}
 If True, thermal charge exchange radiation is computed.
 
@@ -851,8 +856,68 @@ If True, plot lines profiles and total
 
 \item[{Returns:}] \leavevmode\begin{description}
 \item[{pec\_tot\_prof}] \leavevmode{[}array (nr,){]}
-Radial profile of PEC intensity, in units of photons.cm\textasciicircum{}3/s (if phot2energy=False) or 
-W.cm\textasciicircum{}3 depending (if phot2energy=True).
+Radial profile of PEC intensity, in units of \(photons cm^3/s\) (if phot2energy=False) or 
+\(W \cdot cm^3\) depending (if phot2energy=True).
+
+\end{description}
+
+\end{description}
+
+\end{fulllineitems}
+
+\index{plot\_radiation\_profs() (in module aurora.radiation)@\spxentry{plot\_radiation\_profs()}\spxextra{in module aurora.radiation}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{aurora:aurora.radiation.plot_radiation_profs}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.radiation.}}\sphinxbfcode{\sphinxupquote{plot\_radiation\_profs}}}{\emph{\DUrole{n}{imp}}, \emph{\DUrole{n}{nz\_prof}}, \emph{\DUrole{n}{logne\_prof}}, \emph{\DUrole{n}{logTe\_prof}}, \emph{\DUrole{n}{xvar\_prof}}, \emph{\DUrole{n}{xvar\_label}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}\textquotesingle{}}}, \emph{\DUrole{n}{atom\_data}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
+Compute profiles of predicted radiation, both SXR\sphinxhyphen{}filtered and unfiltered.
+This function offers a simplified interface to radiation calculation with respect to 
+{\hyperref[\detokenize{aurora:aurora.radiation.compute_rad}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{compute\_rad()}}}}}, which is more complete.
+
+This function can be used to plot radial profiles (setting xvar\_prof to a radial grid)
+or profiles as a function of any variable on which the logne\_prof and logTe\_prof
+may depend.
+
+The variable “nz\_prof” may be a full description of impurity charge state densities
+(e.g. the output of aurora), or profiles of fractional abundances from ionization equilibrium.
+\begin{description}
+\item[{Args: }] \leavevmode\begin{description}
+\item[{imp}] \leavevmode{[}str, optional{]}
+Impurity ion atomic symbol.
+
+\item[{nz\_prof}] \leavevmode{[}array (TODO for docs: check dimensions){]}
+Impurity charge state densities
+
+\item[{logne\_prof}] \leavevmode{[}array (TODO for docs: check dimensions){]}
+Electron density profiles in cm\textasciicircum{}\sphinxhyphen{}3
+
+\item[{logTe\_prof}] \leavevmode{[}array (TODO for docs: check dimensions){]}
+Electron temperature profiles in eV
+
+\item[{xvar\_prof}] \leavevmode{[}array (TODO for docs: check dimensions){]}
+Profiles of a variable of interest, on the same grid as kinetic profiles.
+
+\item[{xvar\_label}] \leavevmode{[}str, optional{]}
+Label for x\sphinxhyphen{}axis.
+
+\item[{atom\_data}] \leavevmode{[}dict, optional{]}
+Dictionary containing atomic data as output by {\hyperref[\detokenize{aurora:aurora.atomic.get_atom_data}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{get\_atom\_data()}}}}}
+for the atomic processes of interest. “prs”,”pls”,”plt” and “prb” are required by this function.
+If not provided, this function loads these files internally.
+
+\end{description}
+
+\item[{Returns:}] \leavevmode\begin{description}
+\item[{pls}] \leavevmode{[}array (TODO for docs: check dimensions){]}
+SXR line radiation.
+
+\item[{prs}] \leavevmode{[}array (TODO for docs: check dimensions){]}
+SXR continuum radiation.
+
+\item[{pltt}] \leavevmode{[}array (TODO for docs: check dimensions){]}
+Unfiltered line radiation.
+
+\item[{prb}] \leavevmode{[}array (TODO for docs: check dimensions){]}
+Unfiltered continuum radiation.
 
 \end{description}
 
@@ -1298,7 +1363,7 @@ sciortino, 2020
 \phantomsection\label{\detokenize{aurora:aurora.source_utils.get_aurora_source}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.source\_utils.}}\sphinxbfcode{\sphinxupquote{get\_aurora\_source}}}{\emph{\DUrole{n}{namelist}}, \emph{\DUrole{n}{time}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
 Load source function based on current state of the namelist.
 
-{\color{red}\bfseries{}\textasciigrave{}}time’ is only needed for time\sphinxhyphen{}dependent sources
+The “time” argument is only needed for time\sphinxhyphen{}dependent sources
 
 \end{fulllineitems}
 
@@ -1748,29 +1813,34 @@ in OMFIT.
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{aurora:aurora.nbi_neutrals.bt_rate_maxwell_average}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.nbi\_neutrals.}}\sphinxbfcode{\sphinxupquote{bt\_rate\_maxwell\_average}}}{\emph{\DUrole{n}{sigma\_fun}}, \emph{\DUrole{n}{Ti}}, \emph{\DUrole{n}{E\_beam}}, \emph{\DUrole{n}{m\_bckg}}, \emph{\DUrole{n}{m\_beam}}, \emph{\DUrole{n}{n\_level}}}{}
-Calculates Maxwellian reaction rate for a beam with atomic mass \sphinxtitleref{m\_beam}, 
-energy \sphinxtitleref{E\_beam}, firing into a target with atomic mass \sphinxtitleref{m\_bckg} and temperature \sphinxtitleref{T}.
+Calculates Maxwellian reaction rate for a beam with atomic mass “m\_beam”, 
+energy “E\_beam”, firing into a target with atomic mass “m\_bckg” and temperature “T”.
 
-\sphinxtitleref{sigma\_fun} must be a function for a specific charge and n\sphinxhyphen{}level of the beam particles.
+The “sigma\_fun” argument must be a function for a specific charge and n\sphinxhyphen{}level of the beam particles.
 Ref: FIDASIM atomic\_tables.f90 bt\_maxwellian\_n\_m.
 \begin{description}
 \item[{Args:}] \leavevmode\begin{description}
-\item[{sigma\_fun: function to compute a specific cross section {[}cm\textasciicircum{}2{]}, function of energy/amu ONLY.}] \leavevmode
+\item[{sigma\_fun: :py:meth}] \leavevmode
+Function to compute a specific cross section {[}cm\textasciicircum{}2{]}, function of energy/amu ONLY.
 Expected call form: sigma\_fun(erel/ared)
 
-\item[{Ti}] \leavevmode{[}target temperature {[}keV{]}, float, 1D or 2D array{]}
-Results will be computed for each Ti value in a vectorized manner.
+\item[{Ti}] \leavevmode{[}float, 1D or 2D array{]}
+Target temperature {[}keV{]}. Results will be computed for each Ti value in a vectorized manner.
+
+\item[{E\_beam}] \leavevmode{[}float{]}
+Beam energy {[}keV{]}
+
+\item[{m\_bckg}] \leavevmode{[}float{]}
+Target atomic mass {[}amu{]}
+
+\item[{m\_beam}] \leavevmode{[}float{]}
+Beam atomic mass {[}amu{]}
+
+\item[{n\_level :int}] \leavevmode
+n\sphinxhyphen{}level of beam. This is used to evaluate the hydrogen ionization potential,
+below which an electron is unlikely to charge exchange with surrounding ions.
 
 \end{description}
-
-E\_beam : beam energy {[}keV{]}
-m\_bckg : target atomic mass {[}amu{]}
-m\_beam : beam atomic mass {[}amu{]}
-n\_level : n\sphinxhyphen{}level of beam. This is used to evaluate the hydrogen ionization potential,
-\begin{quote}
-
-below which an electron is unlikely to charge exchange with surrounding ions.
-\end{quote}
 
 \item[{Returns:}] \leavevmode
 rate : output reaction rate in {[}cm\textasciicircum{}3/s{]} units
@@ -1783,30 +1853,37 @@ rate : output reaction rate in {[}cm\textasciicircum{}3/s{]} units
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{aurora:aurora.nbi_neutrals.bt_rate_maxwell_average_vec}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.nbi\_neutrals.}}\sphinxbfcode{\sphinxupquote{bt\_rate\_maxwell\_average\_vec}}}{\emph{\DUrole{n}{sigma\_fun}}, \emph{\DUrole{n}{Ti}}, \emph{\DUrole{n}{E\_beam}}, \emph{\DUrole{n}{m\_bckg}}, \emph{\DUrole{n}{m\_beam}}, \emph{\DUrole{n}{n\_level}}}{}
-Calculates Maxwellian reaction rate for a beam with atomic mass \sphinxtitleref{m\_beam}, 
-energy \sphinxtitleref{E\_beam}, firing into a target with atomic mass \sphinxtitleref{m\_bckg} and temperature \sphinxtitleref{T}.
+Calculates Maxwellian reaction rate for a beam with atomic mass “m\_beam”, 
+energy “E\_beam”, firing into a target with atomic mass “m\_bckg” and temperature “T”.
 
-\sphinxtitleref{sigma\_fun} must be a function for a specific charge and n\sphinxhyphen{}level of the beam particles.
+The “sigma\_fun” argument must be a function for a specific charge and n\sphinxhyphen{}level of the beam particles.
 Ref: FIDASIM atomic\_tables.f90 bt\_maxwellian\_n\_m.
 
 This version of the function attempts to vectorize the calculation such that we can have Ti
 being a function of space and time and deal with integrations in vr and vz with no loops.
 \begin{description}
 \item[{Args:}] \leavevmode\begin{description}
-\item[{sigma\_fun: function to compute a specific cross section {[}cm\textasciicircum{}2{]}, function of energy/amu ONLY.}] \leavevmode
+\item[{sigma\_fun: :py:meth}] \leavevmode
+Function to compute a specific cross section {[}cm\textasciicircum{}2{]}, function of energy/amu ONLY.
 Expected call form: sigma\_fun(erel/ared)
 
-\end{description}
+\item[{Ti}] \leavevmode{[}float, 1D or 2D array{]}
+Target temperature {[}keV{]}
 
-Ti : target temperature {[}keV{]}, float, 1D or 2D array
-E\_beam : beam energy {[}keV{]}
-m\_bckg : target atomic mass {[}amu{]}
-m\_beam : beam atomic mass {[}amu{]}
-n\_level : n\sphinxhyphen{}level of beam. This is used to evaluate the hydrogen ionization potential,
-\begin{quote}
+\item[{E\_beam}] \leavevmode{[}float{]}
+Beam energy {[}keV{]}
 
+\item[{m\_bckg}] \leavevmode{[}float{]}
+Target atomic mass {[}amu{]}
+
+\item[{m\_beam}] \leavevmode{[}float{]}
+Beam atomic mass {[}amu{]}
+
+\item[{n\_level}] \leavevmode{[}int{]}
+n\sphinxhyphen{}level of beam. This is used to evaluate the hydrogen ionization potential,
 below which an electron is unlikely to charge exchange with surrounding ions.
-\end{quote}
+
+\end{description}
 
 \item[{Returns:}] \leavevmode
 rate : output reaction rate in {[}cm\textasciicircum{}3/s{]} units

@@ -44,7 +44,7 @@ ax.set_xlabel('Wavelength (nm)')
 ax.set_ylabel('PEC (ph cm$^3$ s$^{-1}$)')
 ax.legend().set_draggable(True)
 
-############
+
 ## Plot only lines with sufficiently high PEC (most likely to be measured)
 
 pec_threshold=1e-20  #1e-31

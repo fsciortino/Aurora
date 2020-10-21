@@ -9,6 +9,7 @@ import scipy.ndimage
 from scipy.linalg import svd
 from IPython import embed
 
+
 def get_file_types():
     '''Returns main types of ADAS atomic data of interest '''
     return {'acd':'recombination',
@@ -513,9 +514,9 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
         axx = None    
 
     if compute_rates:
-        return logTe, fz, axx, rate_coeff
+        return logTe, fz, rate_coeff
     else:
-        return logTe, fz, axx
+        return logTe, fz
 
 
 
@@ -841,11 +842,6 @@ def get_cooling_factors(atom_data, logTe_prof, fz, ion_resolved = False, plot=Tr
 
 
 
-
-
-
-
-
 def balance(logTe_val, cs, n0_by_ne, logTe_, S,R,cx):
     '''Evaluate balance of effective ionization, recombination and charge exchange at a given temperature. '''
 
@@ -858,6 +854,83 @@ def balance(logTe_val, cs, n0_by_ne, logTe_, S,R,cx):
     val = SS_0 - SS_1 - aa_0 + aa_1
     return val*1e20 # get this to large-ish units to avoid tolerance issues due to small powers of 10
 
+
+
+
+def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
+                       nz_profs=None, rhop=None, plot=True, eps_prof=None):
+    '''
+    Compare effective ionization rate for each charge state with the 
+    characteristic transit time that a non-trapped and trapped impurity ion takes
+    to travel a parallel distance L = q R. 
+
+    If the normalized ionization rate is less than 1, then flux surface averaging of
+    background asymmetries (e.g. from edge or beam neutrals) can be considered in a 
+    "flux-surface-averaged" sense; otherwise, local effects (i.e. not flux-surface-averaged)
+    may be too important to ignore. 
+
+    This function is inspired by Dux et al. NF 2020. Note that in this paper the ionization 
+    rate averaged over all charge state densities is considered. This function avoids the 
+    averaging over charge states, unless these are provided as an input. 
+
+    Args:
+        S_z : array (r,cs) [s^-1]
+             Effective ionization rates for each charge state as a function of radius. 
+             Note that, for convenience within aurora, cs includes the neutral stage.
+        q_prof : array (r,)
+             Radial profile of safety factor
+        R_prof : array (r,) or float [m]
+             Radial profile of major radius, either given as an average of HFS and LFS, or also
+             simply as a scalar (major radius on axis)
+        imp_A : float [amu]
+             Atomic mass number, i.e. number of protons + neutrons (e.g. 2 for D)
+        Ti_prof : array (r,)
+             Radial profile of ion temperature [eV]
+        nz_profs : array (r,cs), optional
+             Radial profile for each charge state. If provided, calculate average normalized 
+             ionization rate over all charge states.
+        rhop : array (r,), optional
+             Sqrt of poloidal flux radial grid. This is used only for (optional) plotting. 
+        plot : bool, optional
+             If True, plot results.
+        eps_prof : array (r,), optional
+             Radial profile of inverse aspect ratio, i.e. r/R, only used if plotting is requested.  
+
+    Returns:
+        nu_ioniz_star : array (r,cs) or (r,)
+             Normalized ionization rate. If nz_profs is given as an input, this is an average over
+             all charge state; otherwise, it is given for each charge state.
+    '''
+
+    nu = np.zeros_like(S_z)
+    for cs in np.arange(S_z.shape[1]): # exclude neutral states
+        nu[:,cs] = S_z[:,cs] * q_prof * R_prof * np.sqrt((imp_A * m_p)/(2*Ti_prof))
+
+    if nz_profs is not None:
+        # calculate average nu_ioniz_star 
+        nu_ioniz_star = np.sum(nz_profs[:,1:]*nu[:,1:],axis=1)/np.sum(nz_profs[:,1:],axis=1)
+    else:
+        # return normalized ionization rate for each charge state
+        nu_ioniz_star = nu[:,1:]
+
+    if plot:
+        if rhop is None:
+            rhop = np.arange(nu.shape[0])
+            
+        fig,ax = plt.subplots()
+        if nu_ioniz_star.ndim==1:
+            ax.semilogy(rhop,nu_ioniz_star, label=r'$\nu_{ion}^*$')
+        else:
+            for cs in np.arange(S_z.shape[1]-1):
+                ax.semilogy(rhop, nu_ioniz_star[:,cs], label=f'q={cs+1}')
+            ax.set_ylabel(r'$\nu_{ion}^*$')
+
+        ax.set_xlabel(r'$\rho_p$')
+
+        if eps_prof is not None:
+            ax.semilogy(rhop, np.sqrt(eps_prof), label=r'$\sqrt{\epsilon}$')
+
+        ax.legend().set_draggable(True)
 
 
 

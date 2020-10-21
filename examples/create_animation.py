@@ -63,9 +63,7 @@ namelist['source_type'] = 'const'
 namelist['Phi0'] = 1e24 #1.0
 
 # Set up for 1 ion:
-imp = namelist['imp'] = 'Ca' #'Ar' #'Ca'
-namelist['Z_imp'] = 20 #18. #20.
-namelist['imp_a'] = 40.078 #39.948  # 40.078
+imp = namelist['imp'] = 'Ca' #'Ar' 
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -75,12 +73,11 @@ D_eff = 1e4 #cm^2/s
 v_eff = -2e2 #cm/s
 
 # # set transport coefficients to the right format
-D_z = np.ones((len(asim.rvol_grid),1)) * D_eff
-V_z = np.ones((len(asim.rvol_grid),1)) * v_eff
-times_DV = [1.0]  # dummy
+D_z = np.ones_like(asim.rvol_grid) * D_eff
+V_z = np.ones_like(asim.rvol_grid) * v_eff
 
 # set initial charge state distributions to ionization equilibrium (no transport)
-out = asim.run_aurora(times_DV, D_z, V_z) #, nz_init=nz_init.T)
+out = asim.run_aurora(D_z, V_z)
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 nz = nz.transpose(2,1,0)
 

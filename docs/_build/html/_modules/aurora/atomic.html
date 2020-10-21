@@ -1,36 +1,150 @@
 
+
 <!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>aurora.atomic &mdash; aurora 1.0.0 documentation</title>
+  
 
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>aurora.atomic &#8212; aurora 1.0.0 documentation</title>
-    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
-    <script src="../../_static/doctools.js"></script>
-    <script src="../../_static/language_data.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
     <link rel="index" title="Index" href="../../genindex.html" />
-    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
    
-  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
-  
-  
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
-
-  </head><body>
-  
-
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
           
 
-          <div class="body" role="main">
+          
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> aurora
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../aurora.html">aurora package</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">aurora</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>aurora.atomic</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
             
   <h1>Source code for aurora.atomic</h1><div class="highlight"><pre>
 <span></span><span class="c1">#-*-Python-*-</span>
@@ -43,6 +157,7 @@
 <span class="kn">import</span> <span class="nn">scipy.ndimage</span>
 <span class="kn">from</span> <span class="nn">scipy.linalg</span> <span class="kn">import</span> <span class="n">svd</span>
 <span class="kn">from</span> <span class="nn">IPython</span> <span class="kn">import</span> <span class="n">embed</span>
+
 
 <div class="viewcode-block" id="get_file_types"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_file_types">[docs]</a><span class="k">def</span> <span class="nf">get_file_types</span><span class="p">():</span>
     <span class="sd">&#39;&#39;&#39;Returns main types of ADAS atomic data of interest &#39;&#39;&#39;</span>
@@ -170,13 +285,22 @@
                 <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;$\log(&#39;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">file_type</span><span class="o">+</span><span class="s1">&#39;)\ \mathrm{[W\cdot cm^3]}$&#39;</span><span class="p">)</span></div></div>
 
 
-<div class="viewcode-block" id="get_all_atom_data"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_all_atom_data">[docs]</a><span class="k">def</span> <span class="nf">get_all_atom_data</span><span class="p">(</span><span class="n">imp</span><span class="p">,</span> <span class="n">files</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39; Collect atomic data for a given impurity from all types of ADAS files available.</span>
+<div class="viewcode-block" id="get_atom_data"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_atom_data">[docs]</a><span class="k">def</span> <span class="nf">get_atom_data</span><span class="p">(</span><span class="n">imp</span><span class="p">,</span> <span class="n">files</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Collect atomic data for a given impurity from all types of ADAS files available or</span>
+<span class="sd">    for only those requested. </span>
 
-<span class="sd">    imp: str</span>
-<span class="sd">        Atomic symbol of impurity ion.</span>
-<span class="sd">    files : list or array-like</span>
-<span class="sd">        ADAS file names to be fetched. </span>
+<span class="sd">    Args:</span>
+<span class="sd">        imp : str</span>
+<span class="sd">            Atomic symbol of impurity ion.</span>
+<span class="sd">        files : list or array-like</span>
+<span class="sd">            ADAS file names to be fetched. </span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        atom_data : dict</span>
+<span class="sd">           Dictionary containing data for each of the requested files (or all files returned by</span>
+<span class="sd">           :py:meth:`~aurora.atomic.adas_files_dict` for the impurity ion of interest). </span>
+<span class="sd">           Each entry of the dictionary gives log-10 of ne, log-10 of Te and log-10 of the data</span>
+<span class="sd">           as attributes atom_data[key].logNe, atom_data[key].logT, atom_data[key].data</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="n">atomdat_dir</span> <span class="o">=</span> <span class="n">get_atomdat_info</span><span class="p">()</span>
 
@@ -191,7 +315,7 @@
 
     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
         <span class="n">file</span> <span class="o">=</span> <span class="n">files_dict</span><span class="p">[</span><span class="n">imp</span><span class="p">][</span><span class="n">key</span><span class="p">]</span>
-        
+
         <span class="c1"># load specific file and add it to output dictionary</span>
         <span class="n">res</span> <span class="o">=</span> <span class="n">adas_file</span><span class="p">(</span><span class="n">atomdat_dir</span><span class="o">+</span><span class="n">file</span><span class="p">)</span>
         <span class="n">atom_data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">logNe</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">logT</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">data</span>
@@ -539,9 +663,9 @@
         <span class="n">axx</span> <span class="o">=</span> <span class="kc">None</span>    
 
     <span class="k">if</span> <span class="n">compute_rates</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">logTe</span><span class="p">,</span> <span class="n">fz</span><span class="p">,</span> <span class="n">axx</span><span class="p">,</span> <span class="n">rate_coeff</span>
+        <span class="k">return</span> <span class="n">logTe</span><span class="p">,</span> <span class="n">fz</span><span class="p">,</span> <span class="n">rate_coeff</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">logTe</span><span class="p">,</span> <span class="n">fz</span><span class="p">,</span> <span class="n">axx</span></div>
+        <span class="k">return</span> <span class="n">logTe</span><span class="p">,</span> <span class="n">fz</span></div>
 
 
 
@@ -762,31 +886,52 @@
 
 
 
-<div class="viewcode-block" id="get_adas_ion_rad"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_adas_ion_rad">[docs]</a><span class="k">def</span> <span class="nf">get_adas_ion_rad</span><span class="p">(</span><span class="n">ion_name</span><span class="p">,</span> <span class="n">n_ion</span><span class="p">,</span> <span class="n">logne_prof</span><span class="p">,</span> <span class="n">logTe_prof</span><span class="p">,</span> <span class="n">sxr</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Get ADAS estimate for total radiation in [M/m^3] for the given ion</span>
-<span class="sd">    with the given (log) density and temperature profiles. </span>
+<div class="viewcode-block" id="get_adas_continuum_rad"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_adas_continuum_rad">[docs]</a><span class="k">def</span> <span class="nf">get_adas_continuum_rad</span><span class="p">(</span><span class="n">ion_name</span><span class="p">,</span> <span class="n">n_ion</span><span class="p">,</span> <span class="n">logne_prof</span><span class="p">,</span> <span class="n">logTe_prof</span><span class="p">,</span> <span class="n">sxr</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Convenience function to get ADAS estimate for continuum radiation in [M/m^3] for a </span>
+<span class="sd">    given background ion at given (log) density and temperature profiles. </span>
 
 <span class="sd">    If sxr=True, &#39;prs&#39; files are used instead of &#39;prb&#39; ones, thus giving SXR-filtered</span>
-<span class="sd">    radiation for the SXR filter indicated by the atomic data dictionary.</span>
+<span class="sd">    continuum radiation for the SXR filter indicated by the atomic data dictionary.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ion_name : str</span>
+<span class="sd">            Atomic symbol of ion.</span>
+<span class="sd">        n_ion : array (nt,nr,nz)</span>
+<span class="sd">            Density of each charge state of the ion of interest</span>
+<span class="sd">        logne_prof : array (nt,nr)</span>
+<span class="sd">            Log-10 of electron density profile (in cm^-3)</span>
+<span class="sd">        logTe_prof : array (nt,nr)</span>
+<span class="sd">            Log-10 of electron temperature profile (in eV)</span>
+<span class="sd">        sxr : bool, optional</span>
+<span class="sd">            If True, compute continuum radiation in the SXR range rather than the total </span>
+<span class="sd">            continuum radiation.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        cont_rad : array (nt,nr)</span>
+<span class="sd">            Continuum radiation, either total or in the SXR-range, depending on the </span>
+<span class="sd">            &#39;sxr&#39; input variable.    </span>
 <span class="sd">    &#39;&#39;&#39;</span>        
-    <span class="c1"># get all atomic data for chosen ion</span>
-    <span class="n">atom_data</span> <span class="o">=</span> <span class="n">get_all_atom_data</span><span class="p">(</span><span class="n">ion_name</span><span class="p">,[</span><span class="s1">&#39;prs&#39;</span> <span class="k">if</span> <span class="n">sxr</span> <span class="k">else</span> <span class="s1">&#39;prb&#39;</span><span class="p">])</span>
-
-    <span class="c1"># load filtered data in the SXR range</span>
+    <span class="c1"># get continuum radiation data for chosen ion (either total or SXR-filtered)</span>
+    <span class="n">atom_data</span> <span class="o">=</span> <span class="n">get_atom_data</span><span class="p">(</span><span class="n">ion_name</span><span class="p">,[</span><span class="s1">&#39;prs&#39;</span> <span class="k">if</span> <span class="n">sxr</span> <span class="k">else</span> <span class="s1">&#39;prb&#39;</span><span class="p">])</span>
     <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">tab</span> <span class="o">=</span> <span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;prs&#39;</span> <span class="k">if</span> <span class="n">sxr</span> <span class="k">else</span> <span class="s1">&#39;prb&#39;</span><span class="p">]</span>
+
+    <span class="c1"># recombination and bremstrahlung of fully stripped ion</span>
+    <span class="n">atom_rates</span> <span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">((</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">tab</span><span class="p">[[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]),</span><span class="n">logne_prof</span><span class="p">,</span><span class="n">logTe_prof</span><span class="p">,</span><span class="n">x_multiply</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     
-    <span class="c1">#recombination and bremstrahlung of fully striped ion</span>
-    <span class="n">prs</span> <span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">((</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">tab</span><span class="p">[[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]),</span><span class="n">logne_prof</span><span class="p">,</span><span class="n">logTe_prof</span><span class="p">,</span><span class="n">x_multiply</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="c1"># Now compute expected continuum radiation from this ion:</span>
+    <span class="n">cont_rad</span> <span class="o">=</span> <span class="n">atom_rates</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_ion</span> <span class="o">*</span> <span class="mf">1e6</span> <span class="c1"># bulk fully-stripped ion radiation [W/m^3]</span>
 
-    <span class="c1"># Now compute expected radiation expected from this background ion:</span>
-    <span class="n">bckg</span> <span class="o">=</span> <span class="n">prs</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_ion</span> <span class="o">*</span> <span class="mf">1e6</span> <span class="c1"># bulk fully-stripped ion radiation [W/m^3]</span>
-
-    <span class="k">return</span> <span class="n">bckg</span></div>
+    <span class="k">return</span> <span class="n">cont_rad</span></div>
 
 
-<div class="viewcode-block" id="get_cooling_factors"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_cooling_factors">[docs]</a><span class="k">def</span> <span class="nf">get_cooling_factors</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span> <span class="n">logTe_</span><span class="p">,</span> <span class="n">fz</span><span class="p">,</span> <span class="n">ion_resolved</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Calculate cooling coefficients from fz and prs,  pls (if these are available).</span>
-<span class="sd">    Also plot the inverse of rate coefficients, which gives an estimate for relaxation times.</span>
+<div class="viewcode-block" id="get_cooling_factors"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_cooling_factors">[docs]</a><span class="k">def</span> <span class="nf">get_cooling_factors</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span> <span class="n">logTe_prof</span><span class="p">,</span> <span class="n">fz</span><span class="p">,</span> <span class="n">ion_resolved</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Calculate cooling coefficients for the given fractional abundances and kinetic profiles.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        atom_data : dict</span>
+<span class="sd">            Dictionary containing atomic data as output by :py:meth:`~aurora.atomic.get_atom_data`</span>
+<span class="sd">            for the atomic processes of interest. &quot;prs&quot;,&quot;pls&quot;,&quot;plt&quot; and &quot;prb&quot; are required by this function.</span>
+<span class="sd">        </span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span>
@@ -797,10 +942,10 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;prs, plt and/or prb files not available!&#39;</span><span class="p">)</span>
 
 
-    <span class="n">prs</span> <span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;prs&#39;</span><span class="p">],</span><span class="kc">None</span><span class="p">,</span><span class="n">logTe_</span><span class="p">)</span><span class="c1">#continuum radiation in SXR range</span>
-    <span class="n">pls</span> <span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;pls&#39;</span><span class="p">],</span><span class="kc">None</span><span class="p">,</span><span class="n">logTe_</span><span class="p">)</span><span class="c1">#line radiation in SXR range</span>
-    <span class="n">pltt</span><span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;plt&#39;</span><span class="p">],</span><span class="kc">None</span><span class="p">,</span><span class="n">logTe_</span><span class="p">)</span> <span class="c1">#line radiation</span>
-    <span class="n">prb</span> <span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;prb&#39;</span><span class="p">],</span><span class="kc">None</span><span class="p">,</span><span class="n">logTe_</span><span class="p">)</span><span class="c1">#continuum radiation</span>
+    <span class="n">prs</span> <span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;prs&#39;</span><span class="p">],</span><span class="kc">None</span><span class="p">,</span><span class="n">logTe_prof</span><span class="p">)</span><span class="c1">#continuum radiation in SXR range</span>
+    <span class="n">pls</span> <span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;pls&#39;</span><span class="p">],</span><span class="kc">None</span><span class="p">,</span><span class="n">logTe_prof</span><span class="p">)</span><span class="c1">#line radiation in SXR range</span>
+    <span class="n">pltt</span><span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;plt&#39;</span><span class="p">],</span><span class="kc">None</span><span class="p">,</span><span class="n">logTe_prof</span><span class="p">)</span> <span class="c1">#line radiation</span>
+    <span class="n">prb</span> <span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;prb&#39;</span><span class="p">],</span><span class="kc">None</span><span class="p">,</span><span class="n">logTe_prof</span><span class="p">)</span><span class="c1">#continuum radiation</span>
 
     <span class="n">pls</span> <span class="o">*=</span> <span class="n">fz</span><span class="p">[:,:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">prs</span> <span class="o">*=</span> <span class="n">fz</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span>
@@ -817,20 +962,21 @@
         <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
 
-        <span class="n">ax</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_</span><span class="p">,</span> <span class="n">line_rad_sxr</span><span class="p">,</span><span class="s1">&#39;b&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;SXR line radiation &#39;</span><span class="p">)</span>   <span class="c1"># can be many orders of magnitude different from brms_rad_sxr (e.g. lower in F)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_</span><span class="p">,</span> <span class="n">brems_rad_sxr</span><span class="p">,</span><span class="s1">&#39;r&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;SXR bremsstrahlung and recombination&#39;</span><span class="p">)</span>
-
-        <span class="c1"># total SXR rad = brems + line rad in SXR range:</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_</span><span class="p">,</span> <span class="n">brems_rad_sxr</span><span class="o">+</span><span class="n">line_rad_sxr</span><span class="p">,</span><span class="s1">&#39;k&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;total SXR radiation&#39;</span><span class="p">,</span><span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="c1"># SXR radiation components</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_prof</span><span class="p">,</span> <span class="n">line_rad_sxr</span><span class="p">,</span><span class="s1">&#39;b&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;SXR line radiation&#39;</span><span class="p">)</span>   
+        <span class="n">ax</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_prof</span><span class="p">,</span> <span class="n">brems_rad_sxr</span><span class="p">,</span><span class="s1">&#39;r&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;SXR bremsstrahlung and recombination&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_prof</span><span class="p">,</span> <span class="n">brems_rad_sxr</span><span class="o">+</span><span class="n">line_rad_sxr</span><span class="p">,</span><span class="s1">&#39;k&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;total SXR radiation&#39;</span><span class="p">,</span><span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
         <span class="c1"># total radiation (includes hard X-ray, visible, UV, etc.)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_</span><span class="p">,</span> <span class="n">line_rad_tot</span><span class="p">,</span><span class="s1">&#39;g--&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;total line radiation&#39;</span><span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_</span><span class="p">,</span> <span class="n">brems_rad_tot</span><span class="p">,</span><span class="s1">&#39;y--&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;total continuum radiation&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_prof</span><span class="p">,</span> <span class="n">line_rad_tot</span><span class="p">,</span><span class="s1">&#39;g--&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Unfiltered line radiation&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_prof</span><span class="p">,</span> <span class="n">brems_rad_tot</span><span class="p">,</span><span class="s1">&#39;y--&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Unfiltered continuum radiation&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">loglog</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_prof</span><span class="p">,</span> <span class="n">brems_rad_tot</span><span class="o">+</span><span class="n">line_rad_tot</span><span class="p">,</span><span class="s1">&#39;y--&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Unfiltered total continuum radiation&#39;</span><span class="p">)</span>
 
         <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;best&#39;</span><span class="p">)</span>
-        <span class="c1">#### set xlims to visualize scales better</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span> <span class="n">line_rad_sxr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_</span> <span class="o">-</span> <span class="mi">50</span><span class="p">))],</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span> <span class="n">line_rad_tot</span><span class="p">)</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span>
+        
+        <span class="c1"># Set xlims to visualize scales better</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_prof</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span> <span class="n">line_rad_sxr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_prof</span> <span class="o">-</span> <span class="mi">50</span><span class="p">))],</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span> <span class="n">line_rad_tot</span><span class="p">)</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span>
 
         <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="s1">&#39;on&#39;</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;T$_e$ [eV]&#39;</span><span class="p">)</span>
@@ -840,73 +986,8 @@
     <span class="k">elif</span> <span class="n">ion_resolved</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">pls</span><span class="p">,</span> <span class="n">prs</span><span class="p">,</span> <span class="n">pltt</span><span class="p">,</span><span class="n">prb</span>
 
-
     <span class="k">else</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">line_rad_sxr</span><span class="p">,</span> <span class="n">brems_rad_sxr</span><span class="p">,</span> <span class="n">line_rad_tot</span><span class="p">,</span> <span class="n">brems_rad_tot</span></div>
-
-
-
-
-<div class="viewcode-block" id="plot_radiation_profs"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.plot_radiation_profs">[docs]</a><span class="k">def</span> <span class="nf">plot_radiation_profs</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span> <span class="n">nz_prof</span><span class="p">,</span> <span class="n">logne_prof</span><span class="p">,</span> <span class="n">logTe_prof</span><span class="p">,</span> <span class="n">xvar</span><span class="p">,</span> <span class="n">imp</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Obtain profiles of predicted radiation.</span>
-
-<span class="sd">    This function can be used to plot radial profiles (setting xvar to a radial grid)</span>
-<span class="sd">    or profiles as a function of any variable on which the logne_prof and logTe_prof</span>
-<span class="sd">    may depend.</span>
-
-<span class="sd">    The variable :param:nz_prof may be a full description of impurity charge state densities</span>
-<span class="sd">    (e.g. the output of Aurora), or profiles of fractional abundances from ionization</span>
-<span class="sd">    equilibrium.</span>
-
-<span class="sd">    Note that the variables :param:xvar (array) and :param:imp (str) are only needed if plotting is requested.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">pls</span><span class="p">,</span> <span class="n">prs</span><span class="p">,</span> <span class="n">pltt</span><span class="p">,</span> <span class="n">prb</span> <span class="o">=</span> <span class="n">get_cooling_factors</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span> <span class="n">logTe_prof</span><span class="p">,</span> <span class="n">nz_prof</span><span class="p">,</span> <span class="n">ion_resolved</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-    <span class="n">emiss_sxr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">xvar</span><span class="p">),</span><span class="n">nion</span><span class="p">))</span>
-    <span class="n">emiss_tot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">xvar</span><span class="p">),</span><span class="n">nion</span><span class="p">))</span>
-    <span class="n">emiss_sxr</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:</span> <span class="p">]</span> <span class="o">+=</span> <span class="n">prs</span>
-    <span class="n">emiss_sxr</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">pls</span>
-    <span class="n">emiss_tot</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:</span> <span class="p">]</span> <span class="o">+=</span> <span class="n">prb</span>
-    <span class="n">emiss_tot</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">pltt</span>
-
-    <span class="c1"># plot radiation components</span>
-    <span class="n">fig</span><span class="p">,</span><span class="n">axx</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">8</span><span class="p">),</span><span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">ax</span> <span class="o">=</span> <span class="n">axx</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
-    <span class="n">nion</span> <span class="o">=</span> <span class="n">prs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span>
-    <span class="n">colors</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">plasma</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span> <span class="n">nion</span><span class="p">))</span>
-    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">ax</span><span class="p">:</span>
-        <span class="n">a</span><span class="o">.</span><span class="n">set_prop_cycle</span><span class="p">(</span><span class="s1">&#39;color&#39;</span><span class="p">,</span><span class="n">colors</span><span class="p">)</span>
-        <span class="n">a</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">([],[])</span> <span class="c1">#empty plot for bremstrahlung of neutral ion</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xvar</span><span class="p">,</span><span class="n">prs</span><span class="p">);</span> <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;PRS: cont SXR rad&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xvar</span><span class="p">,</span><span class="n">pls</span><span class="p">);</span> <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;PLS: SXR line rad&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xvar</span><span class="p">,</span><span class="n">pltt</span><span class="p">);</span> <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;PLT: tot line rad&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">([],[])</span><span class="c1">#empty plot for bremstrahlung of neutral ion</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xvar</span><span class="p">,</span><span class="n">prb</span><span class="p">);</span> <span class="n">ax</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;PRB: tot cont rad&#39;</span><span class="p">)</span>
-
-    <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;$r/a$&#39;</span><span class="p">);</span> <span class="n">ax</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;$r/a$&#39;</span><span class="p">)</span>
-    <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="sa">r</span><span class="s1">&#39;$</span><span class="si">%s</span><span class="s1">^{</span><span class="si">%d</span><span class="s1">\!+}$&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">imp</span><span class="p">,</span><span class="n">cc</span><span class="p">)</span> <span class="k">for</span> <span class="n">cc</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nion</span><span class="p">)]</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">xvar</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xvar</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-
-    <span class="c1"># plot total power (in SXR and whole range)</span>
-    <span class="n">fig</span><span class="p">,</span><span class="n">axx</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">8</span><span class="p">),</span><span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">ax</span> <span class="o">=</span> <span class="n">axx</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
-
-    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">ax</span><span class="p">:</span>
-        <span class="n">a</span><span class="o">.</span><span class="n">set_prop_cycle</span><span class="p">(</span><span class="s1">&#39;color&#39;</span><span class="p">,</span><span class="n">colors</span><span class="p">)</span>
-        <span class="n">a</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xvar</span><span class="p">,</span><span class="n">emiss_sxr</span><span class="p">);</span> <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;SXR power [W]&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xvar</span><span class="p">,</span><span class="n">emiss_tot</span><span class="p">);</span> <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Tot. rad. power [W]&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xvar</span><span class="p">,</span><span class="n">emiss_sxr</span><span class="o">*</span><span class="mi">10</span><span class="o">**</span><span class="n">logne_prof</span><span class="p">[:,</span><span class="kc">None</span><span class="p">]);</span> <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;SXR power [W/m$^{-3}$]&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">xvar</span><span class="p">,</span><span class="n">emiss_tot</span><span class="o">*</span><span class="mi">10</span><span class="o">**</span><span class="n">logne_prof</span><span class="p">[:,</span><span class="kc">None</span><span class="p">]);</span> <span class="n">ax</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;Tot. rad. power [W/m$^{-3}$]&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;$r/a$&#39;</span><span class="p">);</span> <span class="n">ax</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;$r/a$&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
-    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">xvar</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">xvar</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span></div>
-
-
 
 
 
@@ -922,6 +1003,83 @@
     <span class="n">val</span> <span class="o">=</span> <span class="n">SS_0</span> <span class="o">-</span> <span class="n">SS_1</span> <span class="o">-</span> <span class="n">aa_0</span> <span class="o">+</span> <span class="n">aa_1</span>
     <span class="k">return</span> <span class="n">val</span><span class="o">*</span><span class="mf">1e20</span> <span class="c1"># get this to large-ish units to avoid tolerance issues due to small powers of 10</span></div>
 
+
+
+
+<div class="viewcode-block" id="plot_norm_ion_freq"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.plot_norm_ion_freq">[docs]</a><span class="k">def</span> <span class="nf">plot_norm_ion_freq</span><span class="p">(</span><span class="n">S_z</span><span class="p">,</span> <span class="n">q_prof</span><span class="p">,</span> <span class="n">R_prof</span><span class="p">,</span> <span class="n">imp_A</span><span class="p">,</span> <span class="n">Ti_prof</span><span class="p">,</span>
+                       <span class="n">nz_profs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rhop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">eps_prof</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Compare effective ionization rate for each charge state with the </span>
+<span class="sd">    characteristic transit time that a non-trapped and trapped impurity ion takes</span>
+<span class="sd">    to travel a parallel distance L = q R. </span>
+
+<span class="sd">    If the normalized ionization rate is less than 1, then flux surface averaging of</span>
+<span class="sd">    background asymmetries (e.g. from edge or beam neutrals) can be considered in a </span>
+<span class="sd">    &quot;flux-surface-averaged&quot; sense; otherwise, local effects (i.e. not flux-surface-averaged)</span>
+<span class="sd">    may be too important to ignore. </span>
+
+<span class="sd">    This function is inspired by Dux et al. NF 2020. Note that in this paper the ionization </span>
+<span class="sd">    rate averaged over all charge state densities is considered. This function avoids the </span>
+<span class="sd">    averaging over charge states, unless these are provided as an input. </span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        S_z : array (r,cs) [s^-1]</span>
+<span class="sd">             Effective ionization rates for each charge state as a function of radius. </span>
+<span class="sd">             Note that, for convenience within aurora, cs includes the neutral stage.</span>
+<span class="sd">        q_prof : array (r,)</span>
+<span class="sd">             Radial profile of safety factor</span>
+<span class="sd">        R_prof : array (r,) or float [m]</span>
+<span class="sd">             Radial profile of major radius, either given as an average of HFS and LFS, or also</span>
+<span class="sd">             simply as a scalar (major radius on axis)</span>
+<span class="sd">        imp_A : float [amu]</span>
+<span class="sd">             Atomic mass number, i.e. number of protons + neutrons (e.g. 2 for D)</span>
+<span class="sd">        Ti_prof : array (r,)</span>
+<span class="sd">             Radial profile of ion temperature [eV]</span>
+<span class="sd">        nz_profs : array (r,cs), optional</span>
+<span class="sd">             Radial profile for each charge state. If provided, calculate average normalized </span>
+<span class="sd">             ionization rate over all charge states.</span>
+<span class="sd">        rhop : array (r,), optional</span>
+<span class="sd">             Sqrt of poloidal flux radial grid. This is used only for (optional) plotting. </span>
+<span class="sd">        plot : bool, optional</span>
+<span class="sd">             If True, plot results.</span>
+<span class="sd">        eps_prof : array (r,), optional</span>
+<span class="sd">             Radial profile of inverse aspect ratio, i.e. r/R, only used if plotting is requested.  </span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        nu_ioniz_star : array (r,cs) or (r,)</span>
+<span class="sd">             Normalized ionization rate. If nz_profs is given as an input, this is an average over</span>
+<span class="sd">             all charge state; otherwise, it is given for each charge state.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">nu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">S_z</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">cs</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">S_z</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span> <span class="c1"># exclude neutral states</span>
+        <span class="n">nu</span><span class="p">[:,</span><span class="n">cs</span><span class="p">]</span> <span class="o">=</span> <span class="n">S_z</span><span class="p">[:,</span><span class="n">cs</span><span class="p">]</span> <span class="o">*</span> <span class="n">q_prof</span> <span class="o">*</span> <span class="n">R_prof</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">imp_A</span> <span class="o">*</span> <span class="n">m_p</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">Ti_prof</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">nz_profs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># calculate average nu_ioniz_star </span>
+        <span class="n">nu_ioniz_star</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">nz_profs</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span><span class="o">*</span><span class="n">nu</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:],</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">nz_profs</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:],</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># return normalized ionization rate for each charge state</span>
+        <span class="n">nu_ioniz_star</span> <span class="o">=</span> <span class="n">nu</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span>
+
+    <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">rhop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">rhop</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nu</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            
+        <span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">nu_ioniz_star</span><span class="o">.</span><span class="n">ndim</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span><span class="n">rhop</span><span class="p">,</span><span class="n">nu_ioniz_star</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;$\nu_</span><span class="si">{ion}</span><span class="s1">^*$&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">cs</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">S_z</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span><span class="n">rhop</span><span class="p">,</span> <span class="n">nu_ioniz_star</span><span class="p">[:,</span><span class="n">cs</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;q=</span><span class="si">{</span><span class="n">cs</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$\nu_</span><span class="si">{ion}</span><span class="s1">^*$&#39;</span><span class="p">)</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$\rho_p$&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">eps_prof</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span><span class="n">rhop</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">eps_prof</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;$\sqrt{\epsilon}$&#39;</span><span class="p">)</span>
+
+        <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span><span class="o">.</span><span class="n">set_draggable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span></div>
 
 
 
@@ -1132,68 +1290,50 @@
     <span class="k">return</span> <span class="n">files</span></div>
 </pre></div>
 
+           </div>
+           
           </div>
-          
-        </div>
-      </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="../../index.html">aurora</a></h1>
+          <footer>
+  
 
+  <hr/>
 
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, F.Sciortino
 
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
-
-
-
-
-<h3>Navigation</h3>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../aurora.html">aurora package</a></li>
-</ul>
-
-<div class="relations">
-<h3>Related Topics</h3>
-<ul>
-  <li><a href="../../index.html">Documentation overview</a><ul>
-  <li><a href="../index.html">Module code</a><ul>
-  </ul></li>
-  </ul></li>
-</ul>
-</div>
-<div id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
-      <input type="submit" value="Go" />
-    </form>
-    </div>
-</div>
-<script>$('#searchbox').show(0);</script>
-
-
-
-
-
-
-
+</footer>
 
         </div>
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="footer">
-      &copy;2020, F.Sciortino.
-      
-      |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
-      
-    </div>
 
-    
+    </section>
 
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
     
-  </body>
+   
+
+</body>
 </html>

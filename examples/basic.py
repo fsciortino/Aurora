@@ -56,7 +56,6 @@ rhop = kin_profs['ne']['rhop'] = ne_profs['rhop']
 kin_profs['Te']['vals'] = Te_profs['Te']*1e3  # keV --> eV
 kin_profs['Te']['times'] = Te_profs['t']
 kin_profs['Te']['rhop'] = Te_profs['rhop']
-kin_profs['Te']['decay'] = np.ones(len(Te_profs['Te']))*1.0
 
 # set no sources of impurities
 namelist['source_type'] = 'const'
@@ -64,8 +63,6 @@ namelist['Phi0'] = 1e24 #1.0
 
 # Set up for 1 ion:
 imp = namelist['imp'] = 'Ca' #'Ar' #'Ca'
-namelist['Z_imp'] = 20 #18. #20.
-namelist['imp_a'] = 40.078 #39.948  # 40.078
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -75,15 +72,17 @@ D_eff = 1e4 #cm^2/s
 v_eff = -2e2 #cm/s
 
 # # set transport coefficients to the right format
-D_z = np.ones((len(asim.rvol_grid),1)) * D_eff
-V_z = np.ones((len(asim.rvol_grid),1)) * v_eff
-times_DV = [1.0]  # dummy
+#D_z = np.ones((len(asim.rvol_grid),1)) * D_eff
+#V_z = np.ones((len(asim.rvol_grid),1)) * v_eff
+D_z = np.ones(len(asim.rvol_grid)) * D_eff
+V_z = np.ones(len(asim.rvol_grid)) * v_eff
+
 
 # set initial charge state distributions to ionization equilibrium (no transport)
 num=10
 start = time.time()
 for n in np.arange(num):
-    out = asim.run_aurora(times_DV, D_z, V_z) #, nz_init=nz_init.T)
+    out = asim.run_aurora(D_z, V_z)
 print('Average time per run: ', (time.time() - start)/num)
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 nz = nz.transpose(2,1,0)

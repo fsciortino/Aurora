@@ -19,8 +19,6 @@ def load_default_namelist():
         'imp': 'Ca',
         # --------------------
         # background:
-        'Z': 1,
-        'a': 2,
         'main_element': 'D',
         'Baxis': 5.5,
         # --------------------
@@ -77,8 +75,10 @@ def load_default_namelist():
         # --------------------
         # kinetic profiles
         'average_kin_profs': True,
-        'kin_profs' : {'ne': {'fun': 'interpa'}, 
-                       'Te': {'fun':'interp'}
+        'kin_profs' : {'ne': {'fun': 'interpa',
+                              'times': [1.]}, 
+                       'Te': {'fun':'interp',
+                              'times': [1.]}
                    },
         # ----------------
         # flags

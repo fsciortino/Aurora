@@ -13,6 +13,7 @@ import pickle as pkl
 import scipy,sys,os
 import time
 from scipy.interpolate import interp1d
+from omfit_commonclasses.utils_math import atomic_element
 
 # Make sure that package home is added to sys.path
 import sys
@@ -57,7 +58,6 @@ rhop = kin_profs['ne']['rhop'] = ne_profs['rhop']
 kin_profs['Te']['vals'] = Te_profs['Te']*1e3  # keV --> eV
 kin_profs['Te']['times'] = Te_profs['t']
 kin_profs['Te']['rhop'] = Te_profs['rhop']
-kin_profs['Te']['decay'] = np.ones(len(Te_profs['Te']))*1.0
 
 # set no sources of impurities
 namelist['source_type'] = 'const'
@@ -65,8 +65,6 @@ namelist['Phi0'] = 1e24 #1.0
 
 # Set up for 1 ion:
 imp = namelist['imp'] = 'Ca' #'Ar' #'Ca'
-namelist['Z_imp'] = 20 #18. #20.
-namelist['imp_a'] = 40.078 #39.948  # 40.078
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -78,11 +76,17 @@ S_z = asim.S_rates[asim.rhop_grid<1.0,:,-1] # take last time point
 q_prof = interp1d(geqdsk['AuxQuantities']['RHOp'], geqdsk['QPSI'])(rhop_in)
 Rhfs,Rlfs = aurora.grids_utils.get_HFS_LFS(geqdsk, rho_pol_arb=rhop_in)
 R_prof = (Rhfs+Rlfs)/2.   # take as average of flux surface
-m_imp = namelist['imp_a']
+
+
+# get impurity mass
+out = atomic_element(symbol=imp)
+spec = list(out.keys())[0]
+imp_A = int(out[spec]['A'])
+
 Ti_prof = asim.Te[-1, asim.rhop_grid<1.0] # use Ti=Te, only last time point
 
 eps_prof = (Rlfs-geqdsk['RMAXIS'])/geqdsk['RMAXIS'] # use LFS radius for considerations on trapped particles
-nu_ioniz_star = aurora.plot_tools.plot_norm_ion_freq( S_z, q_prof, R_prof, m_imp, Ti_prof,
+nu_ioniz_star = aurora.atomic.plot_norm_ion_freq( S_z, q_prof, R_prof, imp_A, Ti_prof,
                                                       rhop=rhop_in, plot=True, eps_prof=eps_prof)
 
 
@@ -93,13 +97,13 @@ ne_avg = np.mean(kin_profs['ne']['vals'],axis=0)
 Te_avg = np.mean(kin_profs['Te']['vals'],axis=0)  # assume on the same radial basis as ne_avg
 
 # get_frac_abundances takes inputs in m^-3 and eV
-atom_data = aurora.atomic.get_all_atom_data(imp,['acd','scd'])
+atom_data = aurora.get_atom_data(imp,['acd','scd'])
 logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_avg*1e6, Te_avg, rho=rhop)
 
 fz_profs = np.zeros_like(S_z)
 for cs in np.arange(S_z.shape[1]):
     fz_profs[:,cs] = interp1d(rhop, fz[:,cs])(rhop_in)
 
-nu_ioniz_star = aurora.plot_tools.plot_norm_ion_freq( S_z, q_prof, R_prof, m_imp, Ti_prof,
+nu_ioniz_star = aurora.atomic.plot_norm_ion_freq( S_z, q_prof, R_prof, m_imp, Ti_prof,
                                                       nz_profs=fz_profs, rhop=rhop_in, plot=True,
                                                       eps_prof=eps_prof)

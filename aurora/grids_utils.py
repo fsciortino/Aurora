@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np, sys, os
 from scipy.interpolate import interp1d
 from . import _aurora
-
+from IPython import embed
 
 def create_radial_grid(namelist,plot=False):
     r'''Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. 
@@ -462,7 +462,7 @@ def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
     V = np.interp(rho_pol,rhop_inner, V_inner)
     V[rho_pol > 1] = V_outer[rho_pol > 1]
 
-    #correct errors in V close to magnetic axis inside of rho = .2
+    # correct errors in V close to magnetic axis inside of rho = .2
     V[rho_pol <.2] = V_outer[rho_pol <.2]/V_outer[rho_pol <.2][-1]*V[rho_pol <.2][-1]
 
     # compute r_V

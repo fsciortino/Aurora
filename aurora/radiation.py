@@ -3,7 +3,6 @@ import numpy as np
 from scipy.interpolate import interp1d
 from omfit_commonclasses.utils_math import atomic_element
 from . import atomic
-import omfit_eqdsk
 from scipy.integrate import cumtrapz
 import matplotlib.pyplot as plt
 from colradpy import colradpy
@@ -35,7 +34,7 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
     (line and continuum radiation) given by the atomic.adas_files_dict() unless the sxr_pls_file and sxr_prs_file
     parameters are provided. 
 
-    *All radiation outputs are given in :math:`W cm^-3`, consistently with units of :math:`cm^-3` given for inputs.*
+    All radiation outputs are given in :math:`W cm^-3`, consistently with units of :math:`cm^-3` given for inputs.
 
     Args:
         imp : str
@@ -45,13 +44,11 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
         time : array (time,)
              Time array of simulation output.
         imp_dens : array (time, nZ, space)
-            Dictionary with impurity density result, as given by :py:func:`~aurora.run_aurora` method.
+            Dictionary with impurity density result, as given by :py:func:`~aurora.core.run_aurora` method.
         ne : array (time,space) [cm^-3]
             Electron density on the output grids.
         Te : array (time,space) [eV]
             Electron temperature on the output grids.
-
-        Optional: 
         n0 : array(time,space), optional [cm^-3]
              Background neutral density (assumed of hydrogen-isotopes). 
              This is only used if thermal_cx_rad_flag=True.
@@ -66,8 +63,6 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
         sxr_prs_file : str
             ADAS file used for SXR continuum radiation calculation if sxr_flag=True. If left to None, 
             the default in :py:func:`~aurora.atomic.adas_files_dict` is used. 
-
-        Flags:
         prad_flag : bool, optional
             If True, total radiation is computed (for each charge state and their sum)
         thermal_cx_rad_flag : bool, optional
@@ -347,7 +342,7 @@ def plot_radiation_profs(imp, nz_prof, logne_prof, logTe_prof, xvar_prof,
 
 
 
-def radiation_model(imp,rhop, ne_cm3, Te_eV, gfilepath,
+def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
                     n0_cm3=None, nz_cm3=None, frac=None, plot=False):
     '''Model radiation from a fixed-impurity-fraction model or from detailed impurity density
     profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), 
@@ -359,11 +354,11 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, gfilepath,
         rhop : array (nr,)
             Sqrt of normalized poloidal flux array from the axis outwards
         ne_cm3 : array (nr,)
-            Electron density in cm^-3 units.
+            Electron density in :math:`cm^-3` units.
         Te_eV : array (nr,)
             Electron temperature in eV
-        gfilepath : str
-            name of gfile to be loaded for equilibrium.
+        vol : array (nr,)
+            Volume of each flux surface in :math:`m^3`.
         n0_cm3 : array (nr,), optional
             Background ion density (H,D or T). If provided, charge exchange (CX) 
             recombination is included in the calculation of charge state fractional 
@@ -387,11 +382,12 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, gfilepath,
         assert frac is not None
     
     # limit all considerations to inside LCFS
-    ne_cm3 = ne_cm3[rhop<1.]
-    Te_eV = Te_eV[rhop<1.]
+    ne_cm3 = ne_cm3[rhop<=1.]
+    Te_eV = Te_eV[rhop<=1.]
+    vol = vol[rhop<=1.]
     
-    if n0_cm3 is not None: n0_cm3 = n0_cm3[rhop<1.]
-    rhop = rhop[rhop<1.]
+    if n0_cm3 is not None: n0_cm3 = n0_cm3[rhop<=1.]
+    rhop = rhop[rhop<=1.]
 
     # load ionization and recombination rates
     filetypes = ['acd','scd']
@@ -439,16 +435,6 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, gfilepath,
     res['cont_rad_dens'] = rad['impurity_radiation'][0,Z_imp+1,:]*1e6
     res['rad_tot_dens'] = rad['impurity_radiation'][0,Z_imp+3,:]*1e6
     
-    # Load equilibrium
-    geqdsk = omfit_eqdsk.OMFITgeqdsk(gfilepath)
-
-    # get flux surface volumes and coordinates
-    grhop = np.sqrt(geqdsk['fluxSurfaces']['geo']['psin'])
-    gvol = geqdsk['fluxSurfaces']['geo']['vol']
-    
-    # interpolate on our grid
-    vol = interp1d(grhop, gvol)(rhop)
-
     # cumulative integral over all volume
     res['line_rad'] = cumtrapz(res['line_rad_dens'], vol, initial=0.)
     res['line_rad_tot'] = cumtrapz(res['line_rad_dens'].sum(0), vol, initial=0.)
@@ -471,7 +457,7 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, gfilepath,
         ax.plot(rhop, res['cont_rad_dens']/1e6, label=r'$P_{cont}$')
         ax.plot(rhop, res['rad_tot_dens']/1e6, label=r'$P_{rad,tot}$')
         ax.set_xlabel(r'$\rho_p$')
-        ax.set_ylabel(r'$P_{rad}$ [$MW/m^3$]')
+        ax.set_ylabel(fr'{imp} $P_{{rad}}$ [$MW/m^3$]')
         ax.legend().set_draggable(True)
         
         # plot power in MW 
@@ -482,7 +468,8 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, gfilepath,
         ax.plot(rhop, res['rad_tot']/1e6, label=r'$P_{rad,tot}$')
         
         ax.set_xlabel(r'$\rho_p$')
-        ax.set_ylabel(r'$P_{rad}$ [MW]')
+        ax.set_ylabel(fr'{imp} $P_{{rad}}$ [MW]')
+        fig.suptitle('Cumulative power')
         ax.legend().set_draggable(True)
 
         # power per charge state
@@ -490,14 +477,14 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, gfilepath,
         for cs in np.arange(res['line_rad_dens'].shape[0]):
             ax.plot(rhop, res['line_rad_dens'][cs,:]/1e6, label=imp+fr'$^{{{cs+1}+}}$')
         ax.set_xlabel(r'$\rho_p$')
-        ax.set_ylabel(r'$P_{rad}$ [MW]')
+        ax.set_ylabel(fr'{imp} $P_{{rad}}$ [MW]')
         ax.legend().set_draggable(True)
 
         # plot average Z over radius
         fig,ax = plt.subplots()
         ax.plot(rhop, res['Z_avg'])
         ax.set_xlabel(r'$\rho_p$')
-        ax.set_ylabel(r'$\langle Z \rangle$')
+        ax.set_ylabel(fr'{imp} $\langle Z \rangle$')
     
     return res
 
