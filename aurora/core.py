@@ -90,20 +90,23 @@ class aurora_sim:
 
         # Obtain atomic rates on the computational time and radial grids
         self.S_rates, self.R_rates = self.get_time_dept_atomic_rates()
-
-        # get radial profile of source function
-        self.source_rad_prof = source_utils.get_radial_source(self.namelist, self.rvol_grid,
-                                                              self.S_rates[:,0],  # take only 1 time slice of S_rates
-                                                              self.pro_grid, self._Ti)
         
         # create array of 0's of length equal to self.time_grid, with 1's where sawteeth must be triggered
         self.saw_on = np.zeros_like(self.time_grid)
-        self.saw_times = np.array(self.namelist['saw_model']['times'])[self.namelist['saw_model']['times']<self.time_grid[-1]]
-        if self.namelist['saw_model']['saw_flag'] and len(self.namelist['saw_model']['times'])>0:
+        input_saw_times = self.namelist['saw_model']['times']
+        self.saw_times = np.array(input_saw_times)[input_saw_times<self.time_grid[-1]]
+        if self.namelist['saw_model']['saw_flag'] and len(self.saw_times)>0:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
 
         # source function
         self.source_time_prof = source_utils.get_aurora_source(self.namelist, self.time_grid)
+        
+        # get radial profile of source function when the impurity source begins
+        source_tidx = np.min(np.nonzero(self.source_time_prof))
+        self.source_rad_prof = source_utils.get_radial_source(self.namelist,
+                                                              self.rvol_grid, self.pro_grid,
+                                                              self.S_rates[:,source_tidx],
+                                                              self._Ti[source_tidx,:]) 
 
         # get maximum Z of impurity ion
         out = atomic_element(symbol=self.imp)

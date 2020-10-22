@@ -23,14 +23,14 @@ def load_default_namelist():
         'Baxis': 5.5,
         # --------------------
         # source
-        'source_width_in' :  -1.0,
-        'source_width_out': -1.0,
-        'imp_energy' : 3.0, #eV
+        'source_width_in' :  0.0,   # exponential ionization decay from wall boundary if widths both = 0
+        'source_width_out': 0.0,    
+        'imp_source_energy_eV' : 3.0, # only needed if source_width_in=source_width_out=0.0
         'prompt_redep_flag' : False,
         'Phi0': 1e+24,
         'source_type':'file', 
-        'source_file': None, # required
-        'source_position' : 1.0, # cm from LCFS
+        'source_file': None, # required if source_type='file'
+        'source_cm_out_lcfs' : 1.0, # source distance in cm from LCFS
         'lbo_model': {'n_particles': 1e+18,
                       't_fall': 1.71,
                       't_rise': 0.181,
@@ -49,9 +49,8 @@ def load_default_namelist():
         'clen_limiter': 0.5,
         'dr_0': 0.3,
         'dr_1': 0.05,
-        'eqdist_rK_grid': False,
         'lim_sep': 1.0,
-        'ng': 135,
+        #'ng': 135,
         'SOL_decay': 0.05, 
         # -------------------
         'saw_model': {'saw_flag': False,
@@ -70,8 +69,8 @@ def load_default_namelist():
         # extras
         'Raxis': 0.685,
         'SOL_mach': 0.1,
-        'nt': 21,
-        'sheath_voltage': 0.0,
+        #'nt': 21,
+        #'sheath_voltage': 0.0,
         # --------------------
         # kinetic profiles
         'average_kin_profs': True,

@@ -788,39 +788,54 @@
 
 <div class="viewcode-block" id="interp_atom_prof"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.interp_atom_prof">[docs]</a><span class="k">def</span> <span class="nf">interp_atom_prof</span><span class="p">(</span><span class="n">atom_table</span><span class="p">,</span><span class="n">x_prof</span><span class="p">,</span> <span class="n">y_prof</span><span class="p">,</span><span class="n">log_val</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">x_multiply</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39; Fast interpolate atomic data in atom_table onto the x_prof and y_prof profiles.</span>
-<span class="sd">    assume that x_prof, y_prof, x,y, table are all decadic logarithms</span>
-<span class="sd">    and x_prof, y_prof are equally spaced(always for ADAS data)</span>
-<span class="sd">    log_val bool: return natural logarithm of the data</span>
-<span class="sd">    x_multiply bool: multiply output by 10**x_prof , it will not not multiplied if x_prof is None</span>
+<span class="sd">    This function assume that x_prof, y_prof, x,y, table are all base-10 logarithms,</span>
+<span class="sd">    and x_prof, y_prof are equally spaced.</span>
 
-<span class="sd">    return data interpolated on shape(nt,nion,nr)</span>
+<span class="sd">    Args:</span>
+<span class="sd">        atom_table : list</span>
+<span class="sd">            List with x,y, table = atom_table, containing atomic data from one of the ADAS files. </span>
+<span class="sd">        x_prof : array (nt,nr)</span>
+<span class="sd">            Spatio-temporal profiles of the first coordinate of the ADAS file table (usually </span>
+<span class="sd">            electron density in cm^-3)</span>
+<span class="sd">        y_prof : array (nt,nr)</span>
+<span class="sd">            Spatio-temporal profiles of the second coordinate of the ADAS file table (usually </span>
+<span class="sd">            electron temperature in eV)</span>
+<span class="sd">        log_val : bool</span>
+<span class="sd">            If True, return natural logarithm of the data</span>
+<span class="sd">        x_multiply : bool</span>
+<span class="sd">            If True, multiply output by 10**x_prof. </span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        interp_vals : array (nt,nion,nr)</span>
+<span class="sd">            Interpolated atomic data on time,charge state and spatial grid that correspond to the </span>
+<span class="sd">            ion of interest and the spatiotemporal grids of x_prof and y_prof. </span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span> <span class="n">table</span> <span class="o">=</span> <span class="n">atom_table</span>
 
     <span class="k">if</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">table</span><span class="o">-</span><span class="n">table</span><span class="p">[</span><span class="o">...</span><span class="p">,[</span><span class="mi">0</span><span class="p">]])</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>  <span class="o">&lt;</span> <span class="o">.</span><span class="mi">05</span><span class="p">)</span> <span class="ow">or</span> <span class="n">x_prof</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1">#1D interpolaion if independent of the last dimension - like SXR radiation data</span>
+        <span class="c1"># 1D interpolaion if independent of the last dimension - like SXR radiation data</span>
 
         <span class="n">reg_interp</span> <span class="o">=</span> <span class="n">CartesianGrid</span><span class="p">((</span><span class="n">y</span><span class="p">,</span> <span class="p">),</span><span class="n">table</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
         <span class="n">interp_vals</span> <span class="o">=</span> <span class="n">reg_interp</span><span class="p">(</span><span class="n">y_prof</span><span class="p">)</span> 
 
-        <span class="c1">#multipling of logarithms is just adding</span>
+        <span class="c1"># multipling of logarithms is just adding</span>
         <span class="k">if</span> <span class="n">x_multiply</span> <span class="ow">and</span> <span class="n">x_prof</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">interp_vals</span> <span class="o">+=</span> <span class="n">x_prof</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
 
-    <span class="k">else</span><span class="p">:</span><span class="c1">#2D interpolation</span>
+    <span class="k">else</span><span class="p">:</span> <span class="c1"># 2D interpolation</span>
         <span class="k">if</span> <span class="n">x_multiply</span><span class="p">:</span> <span class="c1">#multipling of logarithms is just adding</span>
             <span class="n">table</span> <span class="o">+=</span> <span class="n">x</span>
-        <span class="c1">#breadcast both variables in the sae shape</span>
+        <span class="c1"># broadcast both variables in the sae shape</span>
         <span class="n">x_prof</span><span class="p">,</span> <span class="n">y_prof</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">broadcast_arrays</span><span class="p">(</span><span class="n">x_prof</span><span class="p">,</span> <span class="n">y_prof</span><span class="p">)</span>
         <span class="c1">#perform fast linear interpolation</span>
         <span class="n">reg_interp</span> <span class="o">=</span> <span class="n">CartesianGrid</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span><span class="n">table</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
         <span class="n">interp_vals</span> <span class="o">=</span> <span class="n">reg_interp</span><span class="p">(</span><span class="n">x_prof</span><span class="p">,</span><span class="n">y_prof</span><span class="p">)</span> 
 
-    <span class="c1">#reshape to shape(nt,nion,nr)</span>
+    <span class="c1"># reshape to shape(nt,nion,nr)</span>
     <span class="n">interp_vals</span> <span class="o">=</span> <span class="n">interp_vals</span><span class="o">.</span><span class="n">swapaxes</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">log_val</span><span class="p">:</span>
-        <span class="c1">#return actual value, not logarithm</span>
+        <span class="c1"># return actual value, not logarithm</span>
         <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">interp_vals</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">interp_vals</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">interp_vals</span></div>

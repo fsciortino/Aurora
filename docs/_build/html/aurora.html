@@ -507,11 +507,31 @@ is already included in the continuum in x2.</p>
 <dt id="aurora.atomic.interp_atom_prof">
 <code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">interp_atom_prof</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">atom_table</span></em>, <em class="sig-param"><span class="n">x_prof</span></em>, <em class="sig-param"><span class="n">y_prof</span></em>, <em class="sig-param"><span class="n">log_val</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">x_multiply</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#interp_atom_prof"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.interp_atom_prof" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fast interpolate atomic data in atom_table onto the x_prof and y_prof profiles.
-assume that x_prof, y_prof, x,y, table are all decadic logarithms
-and x_prof, y_prof are equally spaced(always for ADAS data)
-log_val bool: return natural logarithm of the data
-x_multiply bool: multiply output by 10**x_prof , it will not not multiplied if x_prof is None</p>
-<p>return data interpolated on shape(nt,nion,nr)</p>
+This function assume that x_prof, y_prof, x,y, table are all base-10 logarithms,
+and x_prof, y_prof are equally spaced.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>atom_table<span class="classifier">list</span></dt><dd><p>List with x,y, table = atom_table, containing atomic data from one of the ADAS files.</p>
+</dd>
+<dt>x_prof<span class="classifier">array (nt,nr)</span></dt><dd><p>Spatio-temporal profiles of the first coordinate of the ADAS file table (usually 
+electron density in cm^-3)</p>
+</dd>
+<dt>y_prof<span class="classifier">array (nt,nr)</span></dt><dd><p>Spatio-temporal profiles of the second coordinate of the ADAS file table (usually 
+electron temperature in eV)</p>
+</dd>
+<dt>log_val<span class="classifier">bool</span></dt><dd><p>If True, return natural logarithm of the data</p>
+</dd>
+<dt>x_multiply<span class="classifier">bool</span></dt><dd><p>If True, multiply output by 10**x_prof.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>interp_vals<span class="classifier">array (nt,nion,nr)</span></dt><dd><p>Interpolated atomic data on time,charge state and spatial grid that correspond to the 
+ion of interest and the spatiotemporal grids of x_prof and y_prof.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -1174,14 +1194,36 @@ of the radial grid will be attempted. This does not affect volume averages withi
 
 <dl class="py function">
 <dt id="aurora.source_utils.get_radial_source">
-<code class="sig-prename descclassname">aurora.source_utils.</code><code class="sig-name descname">get_radial_source</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">namelist</span></em>, <em class="sig-param"><span class="n">radius_grid</span></em>, <em class="sig-param"><span class="n">S</span></em>, <em class="sig-param"><span class="n">pro</span></em>, <em class="sig-param"><span class="n">Ti</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/source_utils.html#get_radial_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.source_utils.get_radial_source" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">aurora.source_utils.</code><code class="sig-name descname">get_radial_source</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">namelist</span></em>, <em class="sig-param"><span class="n">rvol_grid</span></em>, <em class="sig-param"><span class="n">pro_grid</span></em>, <em class="sig-param"><span class="n">S_rates</span></em>, <em class="sig-param"><span class="n">Ti_eV</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/source_utils.html#get_radial_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.source_utils.get_radial_source" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain spatial dependence of source function.</p>
 <p>If namelist[‘source_width_in’]==0 and namelist[‘source_width_out’]==0, the source
 radial profile is defined as an exponential decay due to ionization of neutrals. This requires
-S, the ionization rate of neutral impurities, to be given with S.shape=(len(radius_grid),)</p>
-<p>If axkopt=True, the neutrals speed is taken as the thermal speed based on Ti, otherwise
-the value corresponding to the namelist[‘imp_energy’] energy is used.</p>
-<p>This funtion reproduces the functionality of neutrals.f of STRAHL.</p>
+S_rates, the ionization rate of neutral impurities, to be given with S_rates.shape=(len(rvol_grid),)</p>
+<p>If namelist[‘imp_source_energy_eV’]&lt;0, the neutrals speed is taken as the thermal speed based
+on Ti_eV, otherwise the value corresponding to namelist[‘imp_source_energy_eV’] is used.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>namelist<span class="classifier">dict</span></dt><dd><p>Aurora namelist. Only elements referring to the spatial distribution and energy of 
+source atoms are accessed.</p>
+</dd>
+<dt>rvol_grid<span class="classifier">array (nr,)</span></dt><dd><p>Radial grid in volume-normalized coordinates [cm]</p>
+</dd>
+<dt>S_rates<span class="classifier">array (nr,)</span></dt><dd><p>Ionization rate of neutral impurity at initial time step.</p>
+</dd>
+<dt>pro_grid<span class="classifier">array (nr,)</span></dt><dd><p>Normalized first derivatives of the radial grid in volume-normalized coordinates.</p>
+</dd>
+<dt>Ti_eV<span class="classifier">array, optional (nr)</span></dt><dd><p>Background ion temperature, only used if source_width_in=source_width_out=0.0 and 
+imp_source_energy_eV&lt;=0, in which case the source impurity neutrals are taken to 
+have energy equal to the local Ti [eV].</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>source_rad_prof<span class="classifier">array (nr,)</span></dt><dd><p>Radial profile of the impurity neutral source.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">

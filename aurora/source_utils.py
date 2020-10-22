@@ -171,51 +171,68 @@ def lbo_source_function(t_start, t_rise, t_fall, n_particles=1.0, time_vec=None)
 
 
 
-def get_radial_source(namelist, radius_grid, S, pro, Ti=None):
+def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
     ''' Obtain spatial dependence of source function.
 
     If namelist['source_width_in']==0 and namelist['source_width_out']==0, the source
     radial profile is defined as an exponential decay due to ionization of neutrals. This requires
-    S, the ionization rate of neutral impurities, to be given with S.shape=(len(radius_grid),)
+    S_rates, the ionization rate of neutral impurities, to be given with S_rates.shape=(len(rvol_grid),)
 
-    If axkopt=True, the neutrals speed is taken as the thermal speed based on Ti, otherwise
-    the value corresponding to the namelist['imp_energy'] energy is used.
+    If namelist['imp_source_energy_eV']<0, the neutrals speed is taken as the thermal speed based
+    on Ti_eV, otherwise the value corresponding to namelist['imp_source_energy_eV'] is used.
 
-    This funtion reproduces the functionality of neutrals.f of STRAHL.
+    Args:
+        namelist : dict
+            Aurora namelist. Only elements referring to the spatial distribution and energy of 
+            source atoms are accessed. 
+        rvol_grid : array (nr,)
+            Radial grid in volume-normalized coordinates [cm]
+        S_rates : array (nr,)
+            Ionization rate of neutral impurity at initial time step. 
+        pro_grid : array (nr,)
+            Normalized first derivatives of the radial grid in volume-normalized coordinates. 
+        Ti_eV : array, optional (nr)
+            Background ion temperature, only used if source_width_in=source_width_out=0.0 and 
+            imp_source_energy_eV<=0, in which case the source impurity neutrals are taken to 
+            have energy equal to the local Ti [eV]. 
+
+    Returns:
+        source_rad_prof : array (nr,)
+            Radial profile of the impurity neutral source. 
     '''
-    r_src = namelist['rvol_lcfs'] + namelist['source_position']
+    r_src = namelist['rvol_lcfs'] + namelist['source_cm_out_lcfs']
 
-    sint = np.zeros_like(S)
+    source_rad_prof = np.zeros_like(S_rates)
 
     # find index of radial grid vector that is just greater than r_src
-    i_src = radius_grid.searchsorted(r_src)-1
+    i_src = rvol_grid.searchsorted(r_src)-1
     # set source to be inside of the wall
-    i_src = min(i_src, len(radius_grid)-1)
+    i_src = min(i_src, len(rvol_grid)-1)
 
     if (namelist['source_width_in'] < 0. and namelist['source_width_out'] < 0.):
         # point source
-        sint[i_src] = 1.0
+        source_rad_prof[i_src] = 1.0
 
     # source with FWHM=source_width_in inside and FWHM=source_width_out outside
     if namelist['source_width_in']>0. or namelist['source_width_out']>0.:
 
         if namelist['source_width_in']> 0.:
             ff = np.log(2.)/namelist['source_width_in']**2
-            sint[:i_src] = np.exp(-(radius_grid[:i_src]-radius_grid[i_src])**2*ff)[:,None]
+            source_rad_prof[:i_src] = np.exp(-(rvol_grid[:i_src]-rvol_grid[i_src])**2*ff)[:,None]
 
         if namelist['source_width_out']>0.:
             ff = np.log(2.)/namelist['source_width_out']**2
-            sint[i_src:] = np.exp(-(radius_grid[i_src:]-radius_grid[i_src])**2*ff)[:,None]
+            source_rad_prof[i_src:] = np.exp(-(rvol_grid[i_src:]-rvol_grid[i_src])**2*ff)[:,None]
 
 
     # decay of neutral density with exp(-Int( [ne*S+dv/dr]/v ))
     if namelist['source_width_in']==0 and namelist['source_width_out']==0:
         #neutrals energy
-        if namelist['imp_energy'] > 0: 
-            E0 = namelist['imp_energy']*np.ones_like(radius_grid)
+        if namelist['imp_source_energy_eV'] > 0: 
+            E0 = namelist['imp_source_energy_eV']*np.ones_like(rvol_grid)
         else:
-            if Ti is not None:
-                E0 = Ti.mean(0)
+            if Ti_eV is not None:
+                E0 = copy.deepcopy(Ti_eV)
             else:
                 raise ValueError('Could not compute a valid energy of injected ions!')
 
@@ -226,31 +243,31 @@ def get_radial_source(namelist, radius_grid, S, pro, Ti=None):
         v = - np.sqrt(2.*q_electron*E0/(main_ion_A*m_p))
 
         #integration of ne*S for atoms and calculation of ionization length for normalizing neutral density
-        sint[i_src]= -0.0625*S[i_src]/pro[i_src]/v[i_src]   #1/16
+        source_rad_prof[i_src]= -0.0625*S_rates[i_src]/pro_grid[i_src]/v[i_src]   #1/16
         for i in np.arange(i_src-1,0,-1):
-            sint[i]=sint[i+1]+0.25*(S[i+1]/pro[i+1]/v[i+1] + S[i]/pro[i]/v[i])
+            source_rad_prof[i]=source_rad_prof[i+1]+0.25*(S_rates[i+1]/pro_grid[i+1]/v[i+1] + S_rates[i]/pro_grid[i]/v[i])
 
         #prevents FloatingPointError: underflow encountered
-        sint[1:i_src] = np.exp(np.maximum(sint[1:i_src],-100))
+        source_rad_prof[1:i_src] = np.exp(np.maximum(source_rad_prof[1:i_src],-100))
 
         # calculate relative density of neutrals
-        sint[1:i_src] *= (radius_grid[i_src]*v[i_src]/radius_grid[1:i_src]/v[1:i_src])[:,None]
-        sint[i_src]=1.0
+        source_rad_prof[1:i_src] *= (rvol_grid[i_src]*v[i_src]/rvol_grid[1:i_src]/v[1:i_src])[:,None]
+        source_rad_prof[i_src]=1.0
 
         # remove promptly redeposited ions
         if namelist['prompt_redep_flag']:
-            omega_c = 1.602e-19/1.601e-27*namelist['Baxis']/namelist['a']    #Baxis = btotav in STRAHL neutrals.f
-            dt = (radius_grid[i_src]-radius_grid)/v
+            omega_c = 1.602e-19/1.601e-27*namelist['Baxis']/namelist['a']  
+            dt = (rvol_grid[i_src]-rvol_grid)/v
             pp = dt*omega_c
             non_redep =  pp**2/(1.+pp**2)
-            sint*=  non_redep
+            source_rad_prof*=  non_redep
 
 
     # total ion source
-    pnorm = np.pi*np.sum(sint*S*(radius_grid/pro)[:,None],0)
+    pnorm = np.pi*np.sum(source_rad_prof*S_rates*(rvol_grid/pro_grid)[:,None],0)
 
     # neutral density for influx/unitlength = 1/cm
-    sint /= pnorm
+    source_rad_prof /= pnorm
 
-    return np.asfortranarray(sint)
+    return np.asfortranarray(source_rad_prof)
 

@@ -172,14 +172,14 @@
         <span class="s1">&#39;Baxis&#39;</span><span class="p">:</span> <span class="mf">5.5</span><span class="p">,</span>
         <span class="c1"># --------------------</span>
         <span class="c1"># source</span>
-        <span class="s1">&#39;source_width_in&#39;</span> <span class="p">:</span>  <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span>
-        <span class="s1">&#39;source_width_out&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span>
-        <span class="s1">&#39;imp_energy&#39;</span> <span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span> <span class="c1">#eV</span>
+        <span class="s1">&#39;source_width_in&#39;</span> <span class="p">:</span>  <span class="mf">0.0</span><span class="p">,</span>   <span class="c1"># exponential ionization decay from wall boundary if widths both = 0</span>
+        <span class="s1">&#39;source_width_out&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>    
+        <span class="s1">&#39;imp_source_energy_eV&#39;</span> <span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span> <span class="c1"># only needed if source_width_in=source_width_out=0.0</span>
         <span class="s1">&#39;prompt_redep_flag&#39;</span> <span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
         <span class="s1">&#39;Phi0&#39;</span><span class="p">:</span> <span class="mf">1e+24</span><span class="p">,</span>
         <span class="s1">&#39;source_type&#39;</span><span class="p">:</span><span class="s1">&#39;file&#39;</span><span class="p">,</span> 
-        <span class="s1">&#39;source_file&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="c1"># required</span>
-        <span class="s1">&#39;source_position&#39;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="c1"># cm from LCFS</span>
+        <span class="s1">&#39;source_file&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="c1"># required if source_type=&#39;file&#39;</span>
+        <span class="s1">&#39;source_cm_out_lcfs&#39;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="c1"># source distance in cm from LCFS</span>
         <span class="s1">&#39;lbo_model&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;n_particles&#39;</span><span class="p">:</span> <span class="mf">1e+18</span><span class="p">,</span>
                       <span class="s1">&#39;t_fall&#39;</span><span class="p">:</span> <span class="mf">1.71</span><span class="p">,</span>
                       <span class="s1">&#39;t_rise&#39;</span><span class="p">:</span> <span class="mf">0.181</span><span class="p">,</span>
@@ -198,9 +198,8 @@
         <span class="s1">&#39;clen_limiter&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
         <span class="s1">&#39;dr_0&#39;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
         <span class="s1">&#39;dr_1&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
-        <span class="s1">&#39;eqdist_rK_grid&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
         <span class="s1">&#39;lim_sep&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
-        <span class="s1">&#39;ng&#39;</span><span class="p">:</span> <span class="mi">135</span><span class="p">,</span>
+        <span class="c1">#&#39;ng&#39;: 135,</span>
         <span class="s1">&#39;SOL_decay&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span> 
         <span class="c1"># -------------------</span>
         <span class="s1">&#39;saw_model&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;saw_flag&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
@@ -219,8 +218,8 @@
         <span class="c1"># extras</span>
         <span class="s1">&#39;Raxis&#39;</span><span class="p">:</span> <span class="mf">0.685</span><span class="p">,</span>
         <span class="s1">&#39;SOL_mach&#39;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
-        <span class="s1">&#39;nt&#39;</span><span class="p">:</span> <span class="mi">21</span><span class="p">,</span>
-        <span class="s1">&#39;sheath_voltage&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="c1">#&#39;nt&#39;: 21,</span>
+        <span class="c1">#&#39;sheath_voltage&#39;: 0.0,</span>
         <span class="c1"># --------------------</span>
         <span class="c1"># kinetic profiles</span>
         <span class="s1">&#39;average_kin_profs&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>

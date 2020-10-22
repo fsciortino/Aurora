@@ -639,39 +639,54 @@ class CartesianGrid(object):
 
 def interp_atom_prof(atom_table,x_prof, y_prof,log_val=False, x_multiply=True):
     ''' Fast interpolate atomic data in atom_table onto the x_prof and y_prof profiles.
-    assume that x_prof, y_prof, x,y, table are all decadic logarithms
-    and x_prof, y_prof are equally spaced(always for ADAS data)
-    log_val bool: return natural logarithm of the data
-    x_multiply bool: multiply output by 10**x_prof , it will not not multiplied if x_prof is None
+    This function assume that x_prof, y_prof, x,y, table are all base-10 logarithms,
+    and x_prof, y_prof are equally spaced.
 
-    return data interpolated on shape(nt,nion,nr)
+    Args:
+        atom_table : list
+            List with x,y, table = atom_table, containing atomic data from one of the ADAS files. 
+        x_prof : array (nt,nr)
+            Spatio-temporal profiles of the first coordinate of the ADAS file table (usually 
+            electron density in cm^-3)
+        y_prof : array (nt,nr)
+            Spatio-temporal profiles of the second coordinate of the ADAS file table (usually 
+            electron temperature in eV)
+        log_val : bool
+            If True, return natural logarithm of the data
+        x_multiply : bool
+            If True, multiply output by 10**x_prof. 
+
+    Returns:
+        interp_vals : array (nt,nion,nr)
+            Interpolated atomic data on time,charge state and spatial grid that correspond to the 
+            ion of interest and the spatiotemporal grids of x_prof and y_prof. 
     '''
     x,y, table = atom_table
 
     if (abs(table-table[...,[0]]).all()  < .05) or x_prof is None:
-        #1D interpolaion if independent of the last dimension - like SXR radiation data
+        # 1D interpolaion if independent of the last dimension - like SXR radiation data
 
         reg_interp = CartesianGrid((y, ),table[:,:,0]*np.log(10))
         interp_vals = reg_interp(y_prof) 
 
-        #multipling of logarithms is just adding
+        # multipling of logarithms is just adding
         if x_multiply and x_prof is not None:
             interp_vals += x_prof*np.log(10)
 
-    else:#2D interpolation
+    else: # 2D interpolation
         if x_multiply: #multipling of logarithms is just adding
             table += x
-        #breadcast both variables in the sae shape
+        # broadcast both variables in the sae shape
         x_prof, y_prof = np.broadcast_arrays(x_prof, y_prof)
         #perform fast linear interpolation
         reg_interp = CartesianGrid((x, y),table.swapaxes(1,2)*np.log(10))
         interp_vals = reg_interp(x_prof,y_prof) 
 
-    #reshape to shape(nt,nion,nr)
+    # reshape to shape(nt,nion,nr)
     interp_vals = interp_vals.swapaxes(0,1)
 
     if not log_val:
-        #return actual value, not logarithm
+        # return actual value, not logarithm
         np.exp(interp_vals, out=interp_vals)
 
     return interp_vals

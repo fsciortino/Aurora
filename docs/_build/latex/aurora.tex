@@ -73,7 +73,7 @@
 \hypersetup{bookmarksdepth=3}
 
 \title{aurora Documentation}
-\date{Oct 20, 2020}
+\date{Oct 21, 2020}
 \release{1.0.0}
 \author{Francesco Sciortino}
 \newcommand{\sphinxlogo}{\vbox{}}
@@ -155,6 +155,30 @@ This module includes the core class to set up simulations with \sphinxcode{\sphi
 Bases: \sphinxcode{\sphinxupquote{object}}
 
 Class to setup and run aurora simulations.
+\index{check\_conservation() (aurora.core.aurora\_sim method)@\spxentry{check\_conservation()}\spxextra{aurora.core.aurora\_sim method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{aurora:aurora.core.aurora_sim.check_conservation}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{check\_conservation}}}{\emph{\DUrole{n}{axs}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
+Check particle conservation for an aurora simulation.
+\begin{description}
+\item[{Args}] \leavevmode{[}{]}\begin{description}
+\item[{axs}] \leavevmode{[}matplotlib.Axes instances{]}
+Axes to pass to \sphinxcode{\sphinxupquote{plot\_1d()}}
+These may be the axes returned from a previous call to this function, to overlap 
+results for different runs.
+
+\end{description}
+
+\item[{Returns}] \leavevmode{[}{]}\begin{description}
+\item[{axs}] \leavevmode{[}matplotlib.Axes instances{]}
+New or updated axes returned by \sphinxcode{\sphinxupquote{plot\_1d()}}
+
+\end{description}
+
+\end{description}
+
+\end{fulllineitems}
+
 \index{get\_aurora\_kin\_profs() (aurora.core.aurora\_sim method)@\spxentry{get\_aurora\_kin\_profs()}\spxextra{aurora.core.aurora\_sim method}}
 
 \begin{fulllineitems}
@@ -196,7 +220,7 @@ This function extrapolates in the SOL based on input options using the same meth
 \index{run\_aurora() (aurora.core.aurora\_sim method)@\spxentry{run\_aurora()}\spxextra{aurora.core.aurora\_sim method}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.core.aurora_sim.run_aurora}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{run\_aurora}}}{\emph{\DUrole{n}{times\_DV}}, \emph{\DUrole{n}{D\_z}}, \emph{\DUrole{n}{V\_z}}, \emph{\DUrole{n}{nz\_init}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{method}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}old\textquotesingle{}}}, \emph{\DUrole{n}{evolneut}\DUrole{o}{=}\DUrole{default_value}{False}}}{}
+\phantomsection\label{\detokenize{aurora:aurora.core.aurora_sim.run_aurora}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{run\_aurora}}}{\emph{\DUrole{n}{D\_z}}, \emph{\DUrole{n}{V\_z}}, \emph{\DUrole{n}{times\_DV}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{nz\_init}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{method}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}old\textquotesingle{}}}, \emph{\DUrole{n}{evolneut}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{use\_julia}\DUrole{o}{=}\DUrole{default_value}{False}}}{}
 Run a simulation using inputs in the given dictionary and D,v profiles as a function
 of space, time and potentially also ionization state. Users may give an initial state of each
 ion charge state as an input.
@@ -211,15 +235,18 @@ Results can be conveniently visualized with time\sphinxhyphen{}slider using
 \end{sphinxVerbatim}
 \begin{description}
 \item[{Args:}] \leavevmode\begin{description}
-\item[{times\_DV}] \leavevmode{[}1D array{]}
-Array of times at which D\_z and V\_z profiles are given. (Note that it is assumed that
-D and V profiles are already on the self.rvol\_grid radial grid).
-
-\item[{D\_z, V\_z: arrays, shape of (space, time,nZ) or (space,time)}] \leavevmode
+\item[{D\_z, V\_z: arrays, shape of (space, time,nZ) or (space,time) or (space,)}] \leavevmode
 Diffusion and convection coefficients, in units of cm\textasciicircum{}2/s and cm/s, respectively.
 This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
-the number of charge states. If inputs are found to be have only 2 dimensions, it is
-assumed that all charge states should be set to have the same transport coefficients.
+the number of charge states. If D\_z and V\_z are found to be have only 2 dimensions, 
+it is assumed that all charge states should have the same transport coefficients.
+If they are only 1\sphinxhyphen{}D, it is further assumed that they are time\sphinxhyphen{}independent. 
+Note that it is assumed that D\_z and V\_z profiles are already on the self.rvol\_grid 
+radial grid.
+
+\item[{times\_DV}] \leavevmode{[}1D array, optional{]}
+Array of times at which D\_z and V\_z profiles are given. By Default, this is None, 
+which implies that D\_z and V\_z are time independent.
 
 \item[{nz\_init: array, shape of (space, nZ)}] \leavevmode
 Impurity charge states at the initial time of the simulation. If left to None, this is
@@ -233,48 +260,23 @@ If True, evolve neutral impurities based on their D,V coefficients. Default is F
 which case neutrals are only taken as a source and those that are not ionized immediately after
 injection are neglected.
 
-\end{description}
-
-\item[{Returns:}] \leavevmode\begin{description}
-\item[{out}] \leavevmode{[}list{]}
-List containing each particle reservoir of a simulation, i.e.
-nz, N\_wall, N\_div, N\_pump, N\_ret, N\_tsu, N\_dsu, N\_dsul, rcld\_rate, rclw\_rate = out
+\item[{use\_julia}] \leavevmode{[}bool, optional{]}
+If True, run the Julia pre\sphinxhyphen{}compiled version of the code. Run the julia makefile option to set 
+this up. Default is False (still under development)
 
 \end{description}
 
-\end{description}
-
-\end{fulllineitems}
-
-\index{run\_julia() (aurora.core.aurora\_sim method)@\spxentry{run\_julia()}\spxextra{aurora.core.aurora\_sim method}}
-
-\begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.core.aurora_sim.run_julia}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{run\_julia}}}{\emph{\DUrole{n}{times\_DV}}, \emph{\DUrole{n}{D\_z}}, \emph{\DUrole{n}{V\_z}}, \emph{\DUrole{n}{nz\_init}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
-Run a single simulation using the Julia version.
-\begin{description}
-\item[{Args:}] \leavevmode\begin{description}
-\item[{times\_DV}] \leavevmode{[}1D array{]}
-Array of times at which D\_z and V\_z profiles are given. (Note that it is assumed that
-D and V profiles are already on the self.rvol\_grid radial grid).
-
-\item[{D\_z, V\_z: arrays, shape of (space, nZ, time)}] \leavevmode
-Diffusion and convection coefficients, in units of cm\textasciicircum{}2/s and cm/s, respectively.
-This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
-the number of charge states. If inputs are found to be have only 2 dimensions, it is
-assumed that all charge states should be set to have the same transport coefficients.
-
-\item[{nz\_init: array, shape of (space, nZ)}] \leavevmode
-Impurity charge states at the initial time of the simulation. If left to None, this is
-internally set to an array of 0’s.
-
-\end{description}
-
-\item[{Returns:}] \leavevmode\begin{description}
-\item[{out}] \leavevmode{[}list{]}
-List containing each particle reservoir of a simulation, i.e.
-nz, N\_wall, N\_div, N\_pump, N\_ret, N\_tsu, N\_dsu, N\_dsul, rcld\_rate, rclw\_rate = out
-
-\end{description}
+\item[{Returns:}] \leavevmode
+nz : array, 
+N\_wall : array (nt,)
+N\_div : array (nt,)
+N\_pump : array (nt,)
+N\_ret : array (nt,)
+N\_tsu : array (nt,)
+N\_dsu : array (nt,)
+N\_dsul : array (nt,)
+rcld\_rate : array (nt,)
+rclw\_rate : array (nt,)
 
 \end{description}
 
@@ -596,6 +598,67 @@ Gaunt factors with the correct density dependence.
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{aurora:aurora.atomic.null_space}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{null\_space}}}{\emph{\DUrole{n}{A}}}{}
 Find null space of matrix A
+
+\end{fulllineitems}
+
+\index{plot\_norm\_ion\_freq() (in module aurora.atomic)@\spxentry{plot\_norm\_ion\_freq()}\spxextra{in module aurora.atomic}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{aurora:aurora.atomic.plot_norm_ion_freq}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{plot\_norm\_ion\_freq}}}{\emph{\DUrole{n}{S\_z}}, \emph{\DUrole{n}{q\_prof}}, \emph{\DUrole{n}{R\_prof}}, \emph{\DUrole{n}{imp\_A}}, \emph{\DUrole{n}{Ti\_prof}}, \emph{\DUrole{n}{nz\_profs}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{rhop}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{plot}\DUrole{o}{=}\DUrole{default_value}{True}}, \emph{\DUrole{n}{eps\_prof}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
+Compare effective ionization rate for each charge state with the 
+characteristic transit time that a non\sphinxhyphen{}trapped and trapped impurity ion takes
+to travel a parallel distance L = q R.
+
+If the normalized ionization rate is less than 1, then flux surface averaging of
+background asymmetries (e.g. from edge or beam neutrals) can be considered in a 
+“flux\sphinxhyphen{}surface\sphinxhyphen{}averaged” sense; otherwise, local effects (i.e. not flux\sphinxhyphen{}surface\sphinxhyphen{}averaged)
+may be too important to ignore.
+
+This function is inspired by Dux et al. NF 2020. Note that in this paper the ionization 
+rate averaged over all charge state densities is considered. This function avoids the 
+averaging over charge states, unless these are provided as an input.
+\begin{description}
+\item[{Args:}] \leavevmode\begin{description}
+\item[{S\_z}] \leavevmode{[}array (r,cs) {[}s\textasciicircum{}\sphinxhyphen{}1{]}{]}
+Effective ionization rates for each charge state as a function of radius. 
+Note that, for convenience within aurora, cs includes the neutral stage.
+
+\item[{q\_prof}] \leavevmode{[}array (r,){]}
+Radial profile of safety factor
+
+\item[{R\_prof}] \leavevmode{[}array (r,) or float {[}m{]}{]}
+Radial profile of major radius, either given as an average of HFS and LFS, or also
+simply as a scalar (major radius on axis)
+
+\item[{imp\_A}] \leavevmode{[}float {[}amu{]}{]}
+Atomic mass number, i.e. number of protons + neutrons (e.g. 2 for D)
+
+\item[{Ti\_prof}] \leavevmode{[}array (r,){]}
+Radial profile of ion temperature {[}eV{]}
+
+\item[{nz\_profs}] \leavevmode{[}array (r,cs), optional{]}
+Radial profile for each charge state. If provided, calculate average normalized 
+ionization rate over all charge states.
+
+\item[{rhop}] \leavevmode{[}array (r,), optional{]}
+Sqrt of poloidal flux radial grid. This is used only for (optional) plotting.
+
+\item[{plot}] \leavevmode{[}bool, optional{]}
+If True, plot results.
+
+\item[{eps\_prof}] \leavevmode{[}array (r,), optional{]}
+Radial profile of inverse aspect ratio, i.e. r/R, only used if plotting is requested.
+
+\end{description}
+
+\item[{Returns:}] \leavevmode\begin{description}
+\item[{nu\_ioniz\_star}] \leavevmode{[}array (r,cs) or (r,){]}
+Normalized ionization rate. If nz\_profs is given as an input, this is an average over
+all charge state; otherwise, it is given for each charge state.
+
+\end{description}
+
+\end{description}
 
 \end{fulllineitems}
 
@@ -928,7 +991,7 @@ Unfiltered continuum radiation.
 \index{radiation\_model() (in module aurora.radiation)@\spxentry{radiation\_model()}\spxextra{in module aurora.radiation}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.radiation.radiation_model}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.radiation.}}\sphinxbfcode{\sphinxupquote{radiation\_model}}}{\emph{\DUrole{n}{imp}}, \emph{\DUrole{n}{rhop}}, \emph{\DUrole{n}{ne\_cm3}}, \emph{\DUrole{n}{Te\_eV}}, \emph{\DUrole{n}{gfilepath}}, \emph{\DUrole{n}{n0\_cm3}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{nz\_cm3}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{frac}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{plot}\DUrole{o}{=}\DUrole{default_value}{False}}}{}
+\phantomsection\label{\detokenize{aurora:aurora.radiation.radiation_model}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.radiation.}}\sphinxbfcode{\sphinxupquote{radiation\_model}}}{\emph{\DUrole{n}{imp}}, \emph{\DUrole{n}{rhop}}, \emph{\DUrole{n}{ne\_cm3}}, \emph{\DUrole{n}{Te\_eV}}, \emph{\DUrole{n}{vol}}, \emph{\DUrole{n}{n0\_cm3}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{nz\_cm3}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{frac}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{plot}\DUrole{o}{=}\DUrole{default_value}{False}}}{}
 Model radiation from a fixed\sphinxhyphen{}impurity\sphinxhyphen{}fraction model or from detailed impurity density
 profiles for the chosen ion. This method acts as a wrapper for :py:method:compute\_rad(), 
 calculating radiation terms over the radius and integrated over the plasma cross section.
@@ -941,13 +1004,13 @@ Impurity ion symbol, e.g. W
 Sqrt of normalized poloidal flux array from the axis outwards
 
 \item[{ne\_cm3}] \leavevmode{[}array (nr,){]}
-Electron density in cm\textasciicircum{}\sphinxhyphen{}3 units.
+Electron density in \(cm^-3\) units.
 
 \item[{Te\_eV}] \leavevmode{[}array (nr,){]}
 Electron temperature in eV
 
-\item[{gfilepath}] \leavevmode{[}str{]}
-name of gfile to be loaded for equilibrium.
+\item[{vol}] \leavevmode{[}array (nr,){]}
+Volume of each flux surface in \(m^3\).
 
 \item[{n0\_cm3}] \leavevmode{[}array (nr,), optional{]}
 Background ion density (H,D or T). If provided, charge exchange (CX) 
@@ -1492,67 +1555,6 @@ Content of the source file written to \{imp\}flx\{shot\}.dat
 \phantomsection\label{\detokenize{aurora:aurora.plot_tools.get_ls_cycle}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.plot\_tools.}}\sphinxbfcode{\sphinxupquote{get\_ls\_cycle}}}{}{}
 \end{fulllineitems}
 
-\index{plot\_norm\_ion\_freq() (in module aurora.plot\_tools)@\spxentry{plot\_norm\_ion\_freq()}\spxextra{in module aurora.plot\_tools}}
-
-\begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.plot_tools.plot_norm_ion_freq}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.plot\_tools.}}\sphinxbfcode{\sphinxupquote{plot\_norm\_ion\_freq}}}{\emph{\DUrole{n}{S\_z}}, \emph{\DUrole{n}{q\_prof}}, \emph{\DUrole{n}{R\_prof}}, \emph{\DUrole{n}{m\_imp}}, \emph{\DUrole{n}{Ti\_prof}}, \emph{\DUrole{n}{nz\_profs}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{rhop}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{plot}\DUrole{o}{=}\DUrole{default_value}{True}}, \emph{\DUrole{n}{eps\_prof}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
-Compare effective ionization rate for each charge state with the 
-characteristic transit time that a non\sphinxhyphen{}trapped and trapped impurity ion takes
-to travel a parallel distance L = q R.
-
-If the normalized ionization rate is less than 1, then flux surface averaging of
-background asymmetries (e.g. from edge or beam neutrals) can be considered in a 
-“flux\sphinxhyphen{}surface\sphinxhyphen{}averaged” sense; otherwise, local effects (i.e. not flux\sphinxhyphen{}surface\sphinxhyphen{}averaged)
-may be too important to ignore.
-
-This function is inspired by Dux et al. NF 2020. Note that in this paper the ionization 
-rate averaged over all charge state densities is considered. This function avoids the 
-averaging over charge states, unless these are provided as an input.
-\begin{description}
-\item[{Args:}] \leavevmode\begin{description}
-\item[{S\_z}] \leavevmode{[}array (r,cs) {[}s\textasciicircum{}\sphinxhyphen{}1{]}{]}
-Effective ionization rates for each charge state as a function of radius. 
-Note that, for convenience within aurora, cs includes the neutral stage.
-
-\item[{q\_prof}] \leavevmode{[}array (r,){]}
-Radial profile of safety factor
-
-\item[{R\_prof}] \leavevmode{[}array (r,) or float {[}m{]}{]}
-Radial profile of major radius, either given as an average of HFS and LFS, or also
-simply as a scalar (major radius on axis)
-
-\item[{m\_imp}] \leavevmode{[}float {[}amu{]}{]}
-Mass of impurity of interest in amu units (e.g. 2 for D)
-
-\item[{Ti\_prof}] \leavevmode{[}array (r,){]}
-Radial profile of ion temperature {[}eV{]}
-
-\item[{nz\_profs}] \leavevmode{[}array (r,cs), optional{]}
-Radial profile for each charge state. If provided, calculate average normalized 
-ionization rate over all charge states.
-
-\item[{rhop}] \leavevmode{[}array (r,), optional{]}
-Sqrt of poloidal flux radial grid. This is used only for (optional) plotting.
-
-\item[{plot}] \leavevmode{[}bool, optional{]}
-If True, plot results.
-
-\item[{eps\_prof}] \leavevmode{[}array (r,), optional{]}
-Radial profile of inverse aspect ratio, i.e. r/R, only used if plotting is requested.
-
-\end{description}
-
-\item[{Returns:}] \leavevmode\begin{description}
-\item[{nu\_ioniz\_star}] \leavevmode{[}array (r,cs) or (r,){]}
-Normalized ionization rate. If nz\_profs is given as an input, this is an average over
-all charge state; otherwise, it is given for each charge state.
-
-\end{description}
-
-\end{description}
-
-\end{fulllineitems}
-
 \index{slider\_plot() (in module aurora.plot\_tools)@\spxentry{slider\_plot()}\spxextra{in module aurora.plot\_tools}}
 
 \begin{fulllineitems}
@@ -1636,12 +1638,16 @@ Refer to the STRAHL manual for details.
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{aurora:aurora.interp.funct}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.interp.}}\sphinxbfcode{\sphinxupquote{funct}}}{\emph{\DUrole{n}{params}}, \emph{\DUrole{n}{rLCFS}}, \emph{\DUrole{n}{r}}}{}
 Function ‘funct’ in STRAHL manual
-\# y0 is core offset
-\# y1 is edge offset
-\# y2 (\textgreater{}y0, \textgreater{}y1) sets the gaussian amplification
-\# p0 sets the width of the inner gaussian
-\# P1 sets the width of the outer gaussian
-\# p2 sets the location of the inner and outer peaks
+\begin{description}
+\item[{The “params” input is broken down into 6 arguments:}] \leavevmode
+y0 is core offset
+y1 is edge offset
+y2 (\textgreater{}y0, \textgreater{}y1) sets the gaussian amplification
+p0 sets the width of the inner gaussian
+P1 sets the width of the outer gaussian
+p2 sets the location of the inner and outer peaks
+
+\end{description}
 
 \end{fulllineitems}
 
@@ -1657,18 +1663,24 @@ Function ‘funct2’ in STRAHL manual.
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{aurora:aurora.interp.interp}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.interp.}}\sphinxbfcode{\sphinxupquote{interp}}}{\emph{\DUrole{n}{x}}, \emph{\DUrole{n}{y}}, \emph{\DUrole{n}{rLCFS}}, \emph{\DUrole{n}{r}}}{}
+Function ‘interp’ used in STRAHL for D and V profiles.
+
 \end{fulllineitems}
 
 \index{interp\_quad() (in module aurora.interp)@\spxentry{interp\_quad()}\spxextra{in module aurora.interp}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{aurora:aurora.interp.interp_quad}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.interp.}}\sphinxbfcode{\sphinxupquote{interp\_quad}}}{\emph{\DUrole{n}{x}}, \emph{\DUrole{n}{y}}, \emph{\DUrole{n}{d}}, \emph{\DUrole{n}{rLCFS}}, \emph{\DUrole{n}{r}}}{}
+Function ‘interp’ used for kinetic profiles.
+
 \end{fulllineitems}
 
 \index{interpa\_quad() (in module aurora.interp)@\spxentry{interpa\_quad()}\spxextra{in module aurora.interp}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{aurora:aurora.interp.interpa_quad}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.interp.}}\sphinxbfcode{\sphinxupquote{interpa\_quad}}}{\emph{\DUrole{n}{x}}, \emph{\DUrole{n}{y}}, \emph{\DUrole{n}{rLCFS}}, \emph{\DUrole{n}{r}}}{}
+Function ‘interpa’ used for kinetic profiles
+
 \end{fulllineitems}
 
 \index{ratfun() (in module aurora.interp)@\spxentry{ratfun()}\spxextra{in module aurora.interp}}
