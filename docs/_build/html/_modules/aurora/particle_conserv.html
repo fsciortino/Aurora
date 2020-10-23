@@ -313,15 +313,38 @@
 
 
 
-<div class="viewcode-block" id="plot_1d"><a class="viewcode-back" href="../../aurora.html#aurora.particle_conserv.plot_1d">[docs]</a><span class="k">def</span> <span class="nf">plot_1d</span><span class="p">(</span><span class="n">filepath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">ds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">R_axis</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39; Check time evolution and particle conservation in (py)STRAHL output.</span>
+<div class="viewcode-block" id="check_1d_conserv"><a class="viewcode-back" href="../../aurora.html#aurora.particle_conserv.check_1d_conserv">[docs]</a><span class="k">def</span> <span class="nf">check_1d_conserv</span><span class="p">(</span><span class="n">Raxis</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">filepath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Check time evolution and particle conservation in Aurora or STRAHL output.</span>
 
-<span class="sd">    If filepath is None, load data from output STRAHL file, otherwise use xarray Dataset in ds. </span>
+<span class="sd">    Args:</span>
+<span class="sd">         Raxis : float</span>
+<span class="sd">             Major radius on axis [m], used for volume integrals. </span>
+<span class="sd">         ds : xarray dataset, optional</span>
+<span class="sd">             Dataset containing Aurora results, created using the xarray package. </span>
+<span class="sd">             See :py:meth:`~aurora.core.check_conservation` for an illustration on how</span>
+<span class="sd">             to use this. </span>
+<span class="sd">         filepath : str, optional</span>
+<span class="sd">             If provided, load results from STRAHL output file and check particle</span>
+<span class="sd">             particle conservation as for an Aurora run. </span>
+<span class="sd">         linestyle : str, optional</span>
+<span class="sd">             matplotlib linestyle, default is &#39;-&#39; (continuous lines). Use this to </span>
+<span class="sd">             overplot lines on the same plots using different linestyles, e.g. to check</span>
+<span class="sd">             whether some aurora option makes particle conservation better or worse. </span>
+<span class="sd">         axs : 2-tuple or array</span>
+<span class="sd">             array-like structure containing two matplotlib.Axes instances: the first one </span>
+<span class="sd">             for the separate particle time variation in each reservoir, the second for </span>
+<span class="sd">             the total particle-conservation check. This can be used to plot results </span>
+<span class="sd">             from several aurora runs on the same axes. </span>
 
-<span class="sd">    If axs is passed, it is assumed that this is a tuple of 2 set of axes: the first one for the separate </span>
-<span class="sd">    particle time variation in each reservoir, the second for the total particle-conservation check. </span>
-
-<span class="sd">    R_axis [cm] is the major radius, used for volume integrals. If None, it is set to a C-Mod default. </span>
+<span class="sd">    Returns:</span>
+<span class="sd">         ds : xarray dataset</span>
+<span class="sd">             Dataset containing results in xarray format. </span>
+<span class="sd">         res : dict</span>
+<span class="sd">             Dictionary containing time histories across all reservoirs, useful for </span>
+<span class="sd">             the assessment of particle conservation.</span>
+<span class="sd">         axs : 2-tuple or array</span>
+<span class="sd">             array-like structure containing two matplotlib.Axes instances, (ax1,ax2).</span>
+<span class="sd">             See optional input argument.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">if</span> <span class="n">filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">ds</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>  
@@ -331,8 +354,8 @@
         <span class="c1"># use Aurora notation for source function</span>
         <span class="n">source_lbl</span> <span class="o">=</span> <span class="s1">&#39;source_function&#39;</span>
 
-    <span class="k">if</span> <span class="n">R_axis</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">R_axis</span> <span class="o">=</span> <span class="mf">68.5</span> <span class="c1">#cm </span>
+    <span class="k">if</span> <span class="n">Raxis</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">Raxis</span> <span class="o">=</span> <span class="mf">0.685</span> <span class="c1"># m </span>
     
     <span class="c1"># calculate total impurity density (summed over charge states)</span>
     <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;total_impurity_density&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;impurity_density&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
@@ -365,7 +388,7 @@
     <span class="n">vol_int_rhop</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
     <span class="n">vol_int_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Core Impurity Particles&#39;</span><span class="p">,</span> <span class="s1">&#39;Core Radiation (W)&#39;</span><span class="p">]</span>
 
-    <span class="n">circ</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">R_axis</span> <span class="c1">#cm</span>
+    <span class="n">circ</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">Raxis</span><span class="o">*</span><span class="mi">100</span> <span class="c1"># cm</span>
     <span class="n">nplots</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">k</span> <span class="ow">in</span> <span class="n">ds</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="o">+</span><span class="n">vol_int_keys</span><span class="p">])</span>
     <span class="n">ncol</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="n">nplots</span><span class="p">)</span>
     <span class="n">nrow</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">nplots</span><span class="p">)</span><span class="o">/</span><span class="n">ncol</span><span class="p">))</span>

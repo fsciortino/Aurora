@@ -158,10 +158,47 @@
 <span class="kn">from</span> <span class="nn">scipy.constants</span> <span class="kn">import</span> <span class="n">m_p</span><span class="p">,</span> <span class="n">e</span> <span class="k">as</span> <span class="n">q_electron</span>
 <span class="kn">from</span> <span class="nn">omfit_commonclasses.utils_math</span> <span class="kn">import</span> <span class="n">atomic_element</span>
 
-<div class="viewcode-block" id="get_aurora_source"><a class="viewcode-back" href="../../aurora.html#aurora.source_utils.get_aurora_source">[docs]</a><span class="k">def</span> <span class="nf">get_aurora_source</span><span class="p">(</span><span class="n">namelist</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Load source function based on current state of the namelist.</span>
+<div class="viewcode-block" id="get_source_time_history"><a class="viewcode-back" href="../../aurora.html#aurora.source_utils.get_source_time_history">[docs]</a><span class="k">def</span> <span class="nf">get_source_time_history</span><span class="p">(</span><span class="n">namelist</span><span class="p">,</span> <span class="n">Raxis</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Load source time history based on current state of the namelist.</span>
 
-<span class="sd">    The &quot;time&quot; argument is only needed for time-dependent sources</span>
+<span class="sd">    There are 4 options to describe the time-dependence of the source:</span>
+
+<span class="sd">    (1) namelist[&#39;source_type&#39;] == &#39;file&#39;: in this case, a simply formatted </span>
+<span class="sd">    source file, with one time point and corresponding and source amplitude on each</span>
+<span class="sd">    line, is read in. This can describe an arbitrary time dependence, e.g. </span>
+<span class="sd">    as measured from an experimental diagnostic. </span>
+
+<span class="sd">    (2) namelist[&#39;source_type&#39;] == &#39;const&#39;: in this case, a constant source </span>
+<span class="sd">    (e.g. a gas puff) is simulated. It is recommended to run the simulation for </span>
+<span class="sd">    &gt;100ms in order to see self-similar charge state profiles in time. </span>
+
+<span class="sd">    (3) namelist[&#39;source_type&#39;] == &#39;step&#39;: this allows the creation of a source</span>
+<span class="sd">    that suddenly appears and suddenly stops, i.e. a rectangular &quot;step&quot;. The </span>
+<span class="sd">    duration of this step is given by namelist[&#39;step_source_duration&#39;]. Multiple </span>
+<span class="sd">    step times can be given as a list in namelist[&#39;src_step_times&#39;]; the amplitude</span>
+<span class="sd">    of the source at each step is given in namelist[&#39;src_step_rates&#39;]</span>
+
+<span class="sd">    (4) namelist[&#39;source_type&#39;] == &#39;LBO&#39;: this produces a model source from a LBO</span>
+<span class="sd">    injection, given by a convolution of a gaussian and an exponential. The required </span>
+<span class="sd">    parameters in this case are inside a namelist[&#39;LBO&#39;] dictionary:</span>
+<span class="sd">    namelist[&#39;LBO&#39;][&#39;t_start&#39;], namelist[&#39;LBO&#39;][&#39;t_rise&#39;], namelist[&#39;LBO&#39;][&#39;t_fall&#39;], </span>
+<span class="sd">    namelist[&#39;LBO&#39;][&#39;t_fall&#39;], namelist[&#39;LBO&#39;][&#39;n_particles&#39;]. The &quot;n_particles&quot; parameter</span>
+<span class="sd">    corresponds to the amplitude of the source (the number of particles corresponding</span>
+<span class="sd">    to the integral over the source function. </span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        namelist : dict</span>
+<span class="sd">            Aurora namelist dictionary.</span>
+<span class="sd">        Raxis : float</span>
+<span class="sd">            Major radius at the magnetic axis [m]. This is needed to normalize the </span>
+<span class="sd">            source such that it is treated as toroidally symmetric -- a necessary</span>
+<span class="sd">            idealization for 1.5D simulations. </span>
+<span class="sd">        time : array (nt,), optional</span>
+<span class="sd">            Time array the source should be returned on.</span>
+
+<span class="sd">    Returns: </span>
+<span class="sd">        source_time_history : array (nt,)</span>
+<span class="sd">            The source time history on the input time base.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="n">imp</span> <span class="o">=</span> <span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;imp&#39;</span><span class="p">]</span>
 
@@ -202,12 +239,12 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unspecified source function time history!&#39;</span><span class="p">)</span>
         
     <span class="n">source</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">time</span><span class="p">,</span><span class="n">src_times</span><span class="p">,</span> <span class="n">src_rates</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">right</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">circ</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;Raxis&#39;</span><span class="p">]</span><span class="o">*</span><span class="mi">100</span>   <span class="c1">#cm</span>
+    <span class="n">circ</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">Raxis</span><span class="o">*</span><span class="mi">100</span>   <span class="c1">#cm</span>
 
     <span class="c1"># number of particles per cm and sec</span>
-    <span class="n">source_function</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">source</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">circ</span> <span class="c1">#NOTE source in STRAHL is by one timestep shifted</span>
+    <span class="n">source_time_history</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">source</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">circ</span> <span class="c1">#NOTE source in STRAHL is by one timestep shifted</span>
 
-    <span class="k">return</span> <span class="n">source_function</span></div>
+    <span class="k">return</span> <span class="n">source_time_history</span></div>
 
 
 

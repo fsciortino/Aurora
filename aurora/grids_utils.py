@@ -6,6 +6,7 @@ import numpy as np, sys, os
 from scipy.interpolate import interp1d
 from . import _aurora
 from IPython import embed
+from omfit_mds import OMFITmdsValue
 
 def create_radial_grid(namelist,plot=False):
     r'''Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. 
@@ -54,7 +55,7 @@ def create_radial_grid(namelist,plot=False):
 
     # radial location of wall boundary:
     r_edge = namelist['rvol_lcfs'] + namelist['bound_sep']
-    
+
     try:
         assert dr_0>0.0
         assert dr_1>0.0
@@ -439,6 +440,8 @@ def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
     R0 = geqdsk['RMAXIS']
     Z0 = geqdsk['ZMAXIS']
 
+    #embed()
+    
     V_inner = geqdsk['fluxSurfaces']['geo']['vol']
     rhop_inner = np.sqrt( geqdsk['fluxSurfaces']['geo']['psin'])
 
@@ -568,3 +571,57 @@ def create_aurora_time_grid(timing, plot=False):
         ax.set_xlim(time[0],time[-1])
 
     return time, save
+
+
+
+
+def estimate_clen(geqdsk):
+    '''Estimate average connection length in the open SOL and in the limiter shadow
+    NB: these are just rough numbers!
+
+    Args:
+        geqdsk : dict
+            EFIT g-EQDSK as processed by the omfit_eqdsk package.
+
+    Returns:
+        clen_divertor : float
+            Estimate of the connection length to the divertor
+        clen_limiter : float
+            Estimate of the connection length to the limiter
+    '''
+    # estimate connection legnth in divertor
+    q = geqdsk['QPSI']
+    rhop = np.sqrt(geqdsk['fluxSurfaces']['geo']['psin'])
+
+    # q at the 95% surface (in sqrtpsinorm)
+    q95 = np.abs(interp1d(rhop,q)(0.95))
+    R0 = geqdsk['fluxSurfaces']['R0']
+
+    # estimate for connection length to the divertor
+    clen_divertor = round(np.pi*R0*q95,5)
+
+    # estimate for connection length to limiter
+    zlim = geqdsk['ZLIM']
+    h = np.max(zlim) - np.min(zlim)
+    clen_limiter = round(h/5.,5) # 1/5th of machine height
+    
+    return clen_divertor, clen_limiter
+
+def estimate_boundary_distance(geqdsk, shot=None, device=None, time_ms=None):
+    '''Obtain a simple estimate for the distance between the LCFS and the wall 
+    boundary.
+    '''
+    # estimate separation between LCFS and boundary from the outer gap
+    tmp = OMFITmdsValue(server=device, treename='EFIT01', shot=shot,
+                        TDI='\\ANALYSIS::TOP.EFIT.RESULTS.A_EQDSK.ORIGHT')
+    time_vec = tmp.dim_of(0)
+    data_r = tmp.data()
+    
+    ind = np.argmin(np.abs(time_vec - time_ms))
+    inds = slice(ind-3, ind+3)
+    bound_sep = round(np.mean(data_r[inds]),3)
+
+    # take separation to limiter to be 2/3 of the separation to the wall boundary
+    lim_sep = round(bound_sep*2./3.,3)
+
+    return bound_sep, lim_sep

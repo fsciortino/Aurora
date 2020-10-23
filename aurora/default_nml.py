@@ -50,7 +50,6 @@ def load_default_namelist():
         'dr_0': 0.3,
         'dr_1': 0.05,
         'lim_sep': 1.0,
-        #'ng': 135,
         'SOL_decay': 0.05, 
         # -------------------
         'saw_model': {'saw_flag': False,
@@ -65,12 +64,7 @@ def load_default_namelist():
         'tau_div_SOL' : 50.0,  
         'tau_pump' : 500.0, 
         'tau_rcl_ret' : 50.0, 
-        # ------------------
-        # extras
-        'Raxis': 0.685,
         'SOL_mach': 0.1,
-        #'nt': 21,
-        #'sheath_voltage': 0.0,
         # --------------------
         # kinetic profiles
         'average_kin_profs': True,
@@ -83,8 +77,6 @@ def load_default_namelist():
         # flags
         'cxr_flag' : False,
         'nbi_cxr_flag' : False,
-
-        # radiation flags
         'prad_flag' : False,
         'thermal_cx_rad_flag' : False,
         'spectral_brem_flag' : False,

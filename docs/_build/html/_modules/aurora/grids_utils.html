@@ -155,6 +155,7 @@
 <span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">_aurora</span>
 <span class="kn">from</span> <span class="nn">IPython</span> <span class="kn">import</span> <span class="n">embed</span>
+<span class="kn">from</span> <span class="nn">omfit_mds</span> <span class="kn">import</span> <span class="n">OMFITmdsValue</span>
 
 <div class="viewcode-block" id="create_radial_grid"><a class="viewcode-back" href="../../aurora.html#aurora.grids_utils.create_radial_grid">[docs]</a><span class="k">def</span> <span class="nf">create_radial_grid</span><span class="p">(</span><span class="n">namelist</span><span class="p">,</span><span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sa">r</span><span class="sd">&#39;&#39;&#39;Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. </span>
@@ -203,7 +204,7 @@
 
     <span class="c1"># radial location of wall boundary:</span>
     <span class="n">r_edge</span> <span class="o">=</span> <span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;rvol_lcfs&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;bound_sep&#39;</span><span class="p">]</span>
-    
+
     <span class="k">try</span><span class="p">:</span>
         <span class="k">assert</span> <span class="n">dr_0</span><span class="o">&gt;</span><span class="mf">0.0</span>
         <span class="k">assert</span> <span class="n">dr_1</span><span class="o">&gt;</span><span class="mf">0.0</span>
@@ -588,6 +589,8 @@
     <span class="n">R0</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;RMAXIS&#39;</span><span class="p">]</span>
     <span class="n">Z0</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;ZMAXIS&#39;</span><span class="p">]</span>
 
+    <span class="c1">#embed()</span>
+    
     <span class="n">V_inner</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;geo&#39;</span><span class="p">][</span><span class="s1">&#39;vol&#39;</span><span class="p">]</span>
     <span class="n">rhop_inner</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;geo&#39;</span><span class="p">][</span><span class="s1">&#39;psin&#39;</span><span class="p">])</span>
 
@@ -717,6 +720,60 @@
         <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">time</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="n">time</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
 
     <span class="k">return</span> <span class="n">time</span><span class="p">,</span> <span class="n">save</span></div>
+
+
+
+
+<div class="viewcode-block" id="estimate_clen"><a class="viewcode-back" href="../../aurora.html#aurora.grids_utils.estimate_clen">[docs]</a><span class="k">def</span> <span class="nf">estimate_clen</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Estimate average connection length in the open SOL and in the limiter shadow</span>
+<span class="sd">    NB: these are just rough numbers!</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        geqdsk : dict</span>
+<span class="sd">            EFIT g-EQDSK as processed by the omfit_eqdsk package.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        clen_divertor : float</span>
+<span class="sd">            Estimate of the connection length to the divertor</span>
+<span class="sd">        clen_limiter : float</span>
+<span class="sd">            Estimate of the connection length to the limiter</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c1"># estimate connection legnth in divertor</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;QPSI&#39;</span><span class="p">]</span>
+    <span class="n">rhop</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;geo&#39;</span><span class="p">][</span><span class="s1">&#39;psin&#39;</span><span class="p">])</span>
+
+    <span class="c1"># q at the 95% surface (in sqrtpsinorm)</span>
+    <span class="n">q95</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">interp1d</span><span class="p">(</span><span class="n">rhop</span><span class="p">,</span><span class="n">q</span><span class="p">)(</span><span class="mf">0.95</span><span class="p">))</span>
+    <span class="n">R0</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;R0&#39;</span><span class="p">]</span>
+
+    <span class="c1"># estimate for connection length to the divertor</span>
+    <span class="n">clen_divertor</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">R0</span><span class="o">*</span><span class="n">q95</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>
+
+    <span class="c1"># estimate for connection length to limiter</span>
+    <span class="n">zlim</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;ZLIM&#39;</span><span class="p">]</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">zlim</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">zlim</span><span class="p">)</span>
+    <span class="n">clen_limiter</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">h</span><span class="o">/</span><span class="mf">5.</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span> <span class="c1"># 1/5th of machine height</span>
+    
+    <span class="k">return</span> <span class="n">clen_divertor</span><span class="p">,</span> <span class="n">clen_limiter</span></div>
+
+<div class="viewcode-block" id="estimate_boundary_distance"><a class="viewcode-back" href="../../aurora.html#aurora.grids_utils.estimate_boundary_distance">[docs]</a><span class="k">def</span> <span class="nf">estimate_boundary_distance</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">,</span> <span class="n">shot</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time_ms</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Obtain a simple estimate for the distance between the LCFS and the wall </span>
+<span class="sd">    boundary.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c1"># estimate separation between LCFS and boundary from the outer gap</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">OMFITmdsValue</span><span class="p">(</span><span class="n">server</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">treename</span><span class="o">=</span><span class="s1">&#39;EFIT01&#39;</span><span class="p">,</span> <span class="n">shot</span><span class="o">=</span><span class="n">shot</span><span class="p">,</span>
+                        <span class="n">TDI</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">ANALYSIS::TOP.EFIT.RESULTS.A_EQDSK.ORIGHT&#39;</span><span class="p">)</span>
+    <span class="n">time_vec</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">dim_of</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">data_r</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">data</span><span class="p">()</span>
+    
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">time_vec</span> <span class="o">-</span> <span class="n">time_ms</span><span class="p">))</span>
+    <span class="n">inds</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">ind</span><span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="n">ind</span><span class="o">+</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">bound_sep</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data_r</span><span class="p">[</span><span class="n">inds</span><span class="p">]),</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="c1"># take separation to limiter to be 2/3 of the separation to the wall boundary</span>
+    <span class="n">lim_sep</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">bound_sep</span><span class="o">*</span><span class="mf">2.</span><span class="o">/</span><span class="mf">3.</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">bound_sep</span><span class="p">,</span> <span class="n">lim_sep</span></div>
 </pre></div>
 
            </div>

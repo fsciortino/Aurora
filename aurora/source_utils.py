@@ -9,10 +9,47 @@ import copy
 from scipy.constants import m_p, e as q_electron
 from omfit_commonclasses.utils_math import atomic_element
 
-def get_aurora_source(namelist, time=None):
-    '''Load source function based on current state of the namelist.
+def get_source_time_history(namelist, Raxis, time):
+    '''Load source time history based on current state of the namelist.
 
-    The "time" argument is only needed for time-dependent sources
+    There are 4 options to describe the time-dependence of the source:
+
+    (1) namelist['source_type'] == 'file': in this case, a simply formatted 
+    source file, with one time point and corresponding and source amplitude on each
+    line, is read in. This can describe an arbitrary time dependence, e.g. 
+    as measured from an experimental diagnostic. 
+
+    (2) namelist['source_type'] == 'const': in this case, a constant source 
+    (e.g. a gas puff) is simulated. It is recommended to run the simulation for 
+    >100ms in order to see self-similar charge state profiles in time. 
+
+    (3) namelist['source_type'] == 'step': this allows the creation of a source
+    that suddenly appears and suddenly stops, i.e. a rectangular "step". The 
+    duration of this step is given by namelist['step_source_duration']. Multiple 
+    step times can be given as a list in namelist['src_step_times']; the amplitude
+    of the source at each step is given in namelist['src_step_rates']
+
+    (4) namelist['source_type'] == 'LBO': this produces a model source from a LBO
+    injection, given by a convolution of a gaussian and an exponential. The required 
+    parameters in this case are inside a namelist['LBO'] dictionary:
+    namelist['LBO']['t_start'], namelist['LBO']['t_rise'], namelist['LBO']['t_fall'], 
+    namelist['LBO']['t_fall'], namelist['LBO']['n_particles']. The "n_particles" parameter
+    corresponds to the amplitude of the source (the number of particles corresponding
+    to the integral over the source function. 
+
+    Args:
+        namelist : dict
+            Aurora namelist dictionary.
+        Raxis : float
+            Major radius at the magnetic axis [m]. This is needed to normalize the 
+            source such that it is treated as toroidally symmetric -- a necessary
+            idealization for 1.5D simulations. 
+        time : array (nt,), optional
+            Time array the source should be returned on.
+
+    Returns: 
+        source_time_history : array (nt,)
+            The source time history on the input time base.
     '''
     imp = namelist['imp']
 
@@ -53,12 +90,12 @@ def get_aurora_source(namelist, time=None):
         raise ValueError('Unspecified source function time history!')
         
     source = np.interp(time,src_times, src_rates, left=0,right=0)
-    circ = 2*np.pi*namelist['Raxis']*100   #cm
+    circ = 2*np.pi*Raxis*100   #cm
 
     # number of particles per cm and sec
-    source_function = np.r_[source[1:],0]/circ #NOTE source in STRAHL is by one timestep shifted
+    source_time_history = np.r_[source[1:],0]/circ #NOTE source in STRAHL is by one timestep shifted
 
-    return source_function
+    return source_time_history
 
 
 

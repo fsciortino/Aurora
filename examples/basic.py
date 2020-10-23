@@ -114,27 +114,5 @@ aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, delta_Zeff.transpos
 
 ##############################
 # Check particle conservation
-##############################
-import xarray
-ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','radius_grid'], nz),
-                     'impurity_radiation':  ([ 'time', 'charge_states','radius_grid'], asim.rad['impurity_radiation'][:,:Zmax+1,:]),
-                     'source_function': (['time'], asim.source_time_prof ),
-                     'particles_in_divertor': (['time'], N_div), 
-                     'particles_in_pump': (['time'], N_pump), 
-                     'parallel_loss': (['time'], N_dsu), 
-                     'parallel_loss_to_limiter': (['time'], N_dsul), 
-                     'edge_loss': (['time'], N_tsu), 
-                     'particles_at_wall': (['time'], N_wall), 
-                     'particles_retained_at_wall': (['time'], N_ret), 
-                     'recycling_from_wall':  (['time'], rclw_rate), 
-                     'recycling_from_divertor':  (['time'], rcld_rate), 
-                     'pro': (['radius_grid'], asim.pro_grid), 
-                     'rhop_grid': (['radius_grid'], asim.rhop_grid)
-                     },
-                    coords={'time': asim.time_out, 
-                            'radius_grid': asim.rvol_grid,
-                            'charge_states': np.arange(nz.shape[1])
-                            })
-
-_ = aurora.particle_conserv.plot_1d(ds = ds)
+_ = asim.check_conservation()
 

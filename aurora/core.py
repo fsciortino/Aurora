@@ -99,10 +99,13 @@ class aurora_sim:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
 
         # source function
-        self.source_time_prof = source_utils.get_aurora_source(self.namelist, self.time_grid)
+        self.Raxis = geqdsk['RMAXIS'] # m
+        self.source_time_history = source_utils.get_source_time_history(
+            self.namelist, self.Raxis, self.time_grid
+        )
         
         # get radial profile of source function when the impurity source begins
-        source_tidx = np.min(np.nonzero(self.source_time_prof))
+        source_tidx = np.min(np.nonzero(self.source_time_history))
         self.source_rad_prof = source_utils.get_radial_source(self.namelist,
                                                               self.rvol_grid, self.pro_grid,
                                                               self.S_rates[:,source_tidx],
@@ -383,7 +386,7 @@ class aurora_sim:
                                      self.rvol_grid, self.pro_grid, self.qpr_grid,
                                     self.mixing_radius, self.decay_length_boundary,
                                      self.time_grid, self.saw_on,
-                                     self.source_time_prof, # source profile in time
+                                     self.source_time_history, # source profile in time
                                      self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
                                      self.wall_recycling,
                                      self.source_div_fraction, # divbls [fraction of source into divertor]
@@ -402,7 +405,7 @@ class aurora_sim:
                                     self.rvol_grid, self.pro_grid, self.qpr_grid,
                                     self.mixing_radius, self.decay_length_boundary,
                                     self.time_grid, self.saw_on,
-                                    self.source_time_prof, # source profile in time
+                                    self.source_time_history, # source profile in time
                                     self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
                                     self.wall_recycling,
                                     self.source_div_fraction, # divbls [fraction of source into divertor]
@@ -423,19 +426,19 @@ class aurora_sim:
 
         Args : 
             axs : matplotlib.Axes instances
-                Axes to pass to :py:meth:`~aurora.particle_conver.plot_1d`
+                Axes to pass to :py:meth:`~aurora.particle_conver.check_1d_conserv`
                 These may be the axes returned from a previous call to this function, to overlap 
                 results for different runs. 
         Returns : 
             axs : matplotlib.Axes instances
-                New or updated axes returned by :py:meth:`~aurora.particle_conver.plot_1d`
+                New or updated axes returned by :py:meth:`~aurora.particle_conver.check_1d_conserv`
         '''
         nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         nz = nz.transpose(2,1,0)   # time,nZ,space
 
         # Check particle conservation
         ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','radius_grid'], nz),
-                         'source_function': (['time'], self.source_time_prof ),
+                         'source_function': (['time'], self.source_time_history ),
                          'particles_in_divertor': (['time'], N_div), 
                          'particles_in_pump': (['time'], N_pump), 
                          'parallel_loss': (['time'], N_dsu), 
@@ -453,5 +456,5 @@ class aurora_sim:
                                 'charge_states': np.arange(nz.shape[1])
                                 })
 
-        ds, out, (ax1,ax2) = particle_conserv.plot_1d(ds = ds, axs=axs)
+        ds, out, (ax1,ax2) = particle_conserv.check_1d_conserv(self.Raxis, ds = ds, axs=axs)
         return (ax1,ax2)

@@ -164,15 +164,38 @@ def plot_particle_conserv(res, ax=None):
 
 
 
-def plot_1d(filepath=None,ds=None, linestyle='-', axs = None, R_axis=None):
-    ''' Check time evolution and particle conservation in (py)STRAHL output.
+def check_1d_conserv(Raxis, ds=None, filepath=None, linestyle='-', axs = None):
+    ''' Check time evolution and particle conservation in Aurora or STRAHL output.
 
-    If filepath is None, load data from output STRAHL file, otherwise use xarray Dataset in ds. 
+    Args:
+         Raxis : float
+             Major radius on axis [m], used for volume integrals. 
+         ds : xarray dataset, optional
+             Dataset containing Aurora results, created using the xarray package. 
+             See :py:meth:`~aurora.core.check_conservation` for an illustration on how
+             to use this. 
+         filepath : str, optional
+             If provided, load results from STRAHL output file and check particle
+             particle conservation as for an Aurora run. 
+         linestyle : str, optional
+             matplotlib linestyle, default is '-' (continuous lines). Use this to 
+             overplot lines on the same plots using different linestyles, e.g. to check
+             whether some aurora option makes particle conservation better or worse. 
+         axs : 2-tuple or array
+             array-like structure containing two matplotlib.Axes instances: the first one 
+             for the separate particle time variation in each reservoir, the second for 
+             the total particle-conservation check. This can be used to plot results 
+             from several aurora runs on the same axes. 
 
-    If axs is passed, it is assumed that this is a tuple of 2 set of axes: the first one for the separate 
-    particle time variation in each reservoir, the second for the total particle-conservation check. 
-
-    R_axis [cm] is the major radius, used for volume integrals. If None, it is set to a C-Mod default. 
+    Returns:
+         ds : xarray dataset
+             Dataset containing results in xarray format. 
+         res : dict
+             Dictionary containing time histories across all reservoirs, useful for 
+             the assessment of particle conservation.
+         axs : 2-tuple or array
+             array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
+             See optional input argument.
     '''
     if filepath is not None:
         ds = xarray.open_dataset(filepath)  
@@ -182,8 +205,8 @@ def plot_1d(filepath=None,ds=None, linestyle='-', axs = None, R_axis=None):
         # use Aurora notation for source function
         source_lbl = 'source_function'
 
-    if R_axis is None:
-        R_axis = 68.5 #cm 
+    if Raxis is None:
+        Raxis = 0.685 # m 
     
     # calculate total impurity density (summed over charge states)
     ds['total_impurity_density'] = xarray.DataArray(np.nansum(ds['impurity_density'].data, axis=1),
@@ -216,7 +239,7 @@ def plot_1d(filepath=None,ds=None, linestyle='-', axs = None, R_axis=None):
     vol_int_rhop = [1.0, 1.0]
     vol_int_labels = ['Core Impurity Particles', 'Core Radiation (W)']
 
-    circ = 2*np.pi*R_axis #cm
+    circ = 2*np.pi*Raxis*100 # cm
     nplots = np.sum([k in ds for k in keys+vol_int_keys])
     ncol = min(3,nplots)
     nrow = int(np.ceil(float(nplots)/ncol))

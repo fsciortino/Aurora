@@ -399,11 +399,11 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         atom_data = atomic.get_atom_data(imp,filetypes)
         
         # get_frac_abundances takes inputs in m^-3 and eV
-        logTe, fz, ax = atomic.get_frac_abundances(atom_data, ne_cm3*1e6, Te_eV,rho=rhop, plot=plot)
+        logTe, fz = atomic.get_frac_abundances(atom_data, ne_cm3*1e6, Te_eV,rho=rhop, plot=plot)
         if n0_cm3 is not None:
             # compute result with CX and overplot
-            logTe, fz, ax = atomic.get_frac_abundances(atom_data, ne_cm3*1e6, Te_eV,rho=rhop, plot=plot,ls='--',
-                                                              include_cx=True, n0_by_ne=n0_cm3/ne_cm3,ax=ax)
+            logTe, fz = atomic.get_frac_abundances(atom_data, ne_cm3*1e6, Te_eV,rho=rhop, plot=plot,ls='--',
+                                                              include_cx=True, n0_by_ne=n0_cm3/ne_cm3,ax=plt.gca())
 
         # Impurity densities
         nz_cm3 = frac * ne_cm3[None,:,None] * fz[None,:,:]  # (time,nZ,space)
