@@ -282,11 +282,8 @@
         <span class="n">res</span><span class="p">[</span><span class="s1">&#39;impurity_radiation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">),</span> <span class="n">Z_imp</span><span class="o">+</span><span class="mi">4</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">rhop</span><span class="p">)),</span><span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;single&#39;</span><span class="p">)</span>
 
         <span class="c1">####### Populate radiation arrays for the entire spectrum #######</span>
-        <span class="c1"># line radiation for each charge state (NB: fully stripped has no line radiation)</span>
-        <span class="n">rad</span><span class="p">[:,:</span><span class="n">Z_imp</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">imp_dens</span><span class="p">[:,:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">plt</span><span class="p">,</span> <span class="mf">1e-60</span><span class="p">)</span>
-
-        <span class="c1"># rad[:,Z_imp,:] (bremsstrahlung due to electron scattering at main ion) is filled below</span>
-        <span class="c1"># only if main_ion_brem_flag=True</span>
+        <span class="c1"># line radiation for each charge state</span>
+        <span class="n">rad</span><span class="p">[:,:</span><span class="n">Z_imp</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">imp_dens</span><span class="p">[:,:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">plt</span><span class="p">,</span> <span class="mf">1e-60</span><span class="p">)</span>  <span class="c1"># NB: fully stripped has no line radiation</span>
 
         <span class="n">rad</span><span class="p">[:,</span><span class="n">no</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">rad</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># total line radiation</span>
 
@@ -300,7 +297,7 @@
         <span class="n">rad</span><span class="p">[:,</span><span class="n">nq</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">impurity_brems</span><span class="p">(</span><span class="n">imp_dens</span><span class="p">,</span> <span class="n">ne</span><span class="p">,</span> <span class="n">Te</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
 
-    <span class="k">if</span> <span class="n">spectral_brem_flag</span><span class="p">:</span>  <span class="c1"># this if-statement is missing in STRAHL&#39;s emissiv.f...</span>
+    <span class="k">if</span> <span class="n">spectral_brem_flag</span><span class="p">:</span>  <span class="c1"># this if-statement is missing in STRAHL&#39;s emissiv.f</span>
         <span class="c1"># spectral bremsstrahlung</span>
         <span class="n">res</span><span class="p">[</span><span class="s1">&#39;spectral_bremsstrahlung&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rad_bs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">time</span><span class="p">),</span> <span class="n">Z_imp</span><span class="o">+</span><span class="mi">3</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">rhop</span><span class="p">)),</span><span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;single&#39;</span><span class="p">)</span>
 
@@ -353,8 +350,7 @@
         <span class="n">radsxr</span><span class="p">[:,</span><span class="n">nq</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">impurity_brems</span><span class="p">(</span><span class="n">imp_dens</span><span class="p">,</span><span class="n">ne</span><span class="p">,</span><span class="n">Te</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c1">#BUG this is unfiltered bremstrahlung!! not SXR</span>
 
 
-
-    <span class="c1"># main ion bremsstrahlung (inaccurate Gaunt factor...)</span>
+    <span class="c1"># main ion bremsstrahlung</span>
     <span class="k">if</span> <span class="n">main_ion_brem_flag</span><span class="p">:</span>
 
         <span class="c1"># get main-ion Z</span>
@@ -372,7 +368,7 @@
             <span class="n">rad</span><span class="p">[:,</span><span class="n">Z_imp</span><span class="p">]</span> <span class="o">=</span> <span class="n">main_ion_rad</span><span class="o">/</span><span class="mf">1e6</span>   <span class="c1">#W/cm^3</span>
             <span class="n">rad</span><span class="p">[:,</span><span class="n">no</span><span class="p">,:]</span> <span class="o">+=</span> <span class="n">rad</span><span class="p">[:,</span><span class="n">Z_imp</span><span class="p">]</span> <span class="c1">#add to total</span>
 
-            <span class="c1"># less accurate:</span>
+            <span class="c1"># simpler and less accurate (missing dependencies of Gaunt factor)</span>
             <span class="c1">#rad[:,Z_imp,:] = atomic.main_ion_brems(main_ion_Z, nD, ne, Te)</span>
             <span class="c1">#rad[:,no,:] += rad[:,Z_imp] #add to total</span>
 
@@ -381,8 +377,7 @@
             <span class="n">rad_bs</span><span class="p">[:,</span><span class="n">nq</span><span class="p">,:]</span> <span class="o">+=</span> <span class="n">rad_bs</span><span class="p">[:,</span><span class="n">_np</span><span class="p">,:]</span>  <span class="c1"># total</span>
 
         <span class="k">if</span> <span class="n">sxr_flag</span><span class="p">:</span>
-            <span class="c1"># Bremsstrahlung in the SXR range</span>
-            <span class="c1"># STRAHL uses brs files. Here we use prs files for background species</span>
+            <span class="c1"># Bremsstrahlung in the SXR range. STRAHL uses brs files. Here we use prs files for background species</span>
             <span class="n">bckg_D</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">get_adas_continuum_rad</span><span class="p">(</span><span class="n">bckg_ion_name</span><span class="p">,</span> <span class="n">nD</span><span class="p">,</span> <span class="n">logne</span><span class="p">,</span> <span class="n">logTe</span><span class="p">,</span> <span class="n">sxr</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># W/m^3</span>
 
             <span class="n">radsxr</span><span class="p">[:,</span><span class="n">Z_imp</span><span class="p">]</span> <span class="o">=</span> <span class="n">bckg_D</span> <span class="o">*</span> <span class="n">ne</span>
@@ -542,6 +537,9 @@
     <span class="c1"># create results dictionary</span>
     <span class="n">res</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">res</span><span class="p">[</span><span class="s1">&#39;rhop&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rhop</span>
+    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;ne_cm3&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ne_cm3</span>
+    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;Te_eV&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Te_eV</span>
+    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;vol&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vol</span>
     
     <span class="c1"># load ionization and recombination rates</span>
     <span class="n">filetypes</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;acd&#39;</span><span class="p">,</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span>
@@ -554,38 +552,38 @@
 
         <span class="k">if</span> <span class="n">n0_cm3</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># obtain fractional abundances without CX:</span>
-            <span class="n">logTe</span><span class="p">,</span> <span class="n">fz</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">get_frac_abundances</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span><span class="n">ne_cm3</span><span class="p">,</span><span class="n">Te_eV</span><span class="p">,</span><span class="n">rho</span><span class="o">=</span><span class="n">rhop</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="n">plot</span><span class="p">)</span>
+            <span class="n">logTe</span><span class="p">,</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;fz&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">get_frac_abundances</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span><span class="n">ne_cm3</span><span class="p">,</span><span class="n">Te_eV</span><span class="p">,</span><span class="n">rho</span><span class="o">=</span><span class="n">rhop</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="n">plot</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># include CX for ionization balance:</span>
-            <span class="n">logTe</span><span class="p">,</span> <span class="n">fz</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">get_frac_abundances</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span><span class="n">ne_cm3</span><span class="p">,</span><span class="n">Te_eV</span><span class="p">,</span><span class="n">rho</span><span class="o">=</span><span class="n">rhop</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="n">plot</span><span class="p">,</span>
+            <span class="n">logTe</span><span class="p">,</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;fz&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">get_frac_abundances</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span><span class="n">ne_cm3</span><span class="p">,</span><span class="n">Te_eV</span><span class="p">,</span><span class="n">rho</span><span class="o">=</span><span class="n">rhop</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="n">plot</span><span class="p">,</span>
                                                    <span class="n">include_cx</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">n0_by_ne</span><span class="o">=</span><span class="n">n0_cm3</span><span class="o">/</span><span class="n">ne_cm3</span><span class="p">)</span>
-            
+        <span class="n">res</span><span class="p">[</span><span class="s1">&#39;logTe&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">logTe</span>
+        
         <span class="c1"># Impurity densities</span>
-        <span class="n">nz_cm3</span> <span class="o">=</span> <span class="n">frac</span> <span class="o">*</span> <span class="n">ne_cm3</span><span class="p">[</span><span class="kc">None</span><span class="p">,:,</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">fz</span><span class="p">[</span><span class="kc">None</span><span class="p">,:,:]</span>  <span class="c1"># (time,nZ,space)</span>
+        <span class="n">nz_cm3</span> <span class="o">=</span> <span class="n">frac</span> <span class="o">*</span> <span class="n">ne_cm3</span><span class="p">[</span><span class="kc">None</span><span class="p">,:,</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;fz&#39;</span><span class="p">][</span><span class="kc">None</span><span class="p">,:,:]</span>  <span class="c1"># (time,nZ,space)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># set input nz_cm3 into the right shape for compute_rad: (time,space,nz)</span>
         <span class="n">nz_cm3</span> <span class="o">=</span> <span class="n">nz_cm3</span><span class="p">[</span><span class="kc">None</span><span class="p">,:,:]</span>
 
         <span class="c1"># calculate fractional abundances </span>
         <span class="n">fz</span> <span class="o">=</span> <span class="n">nz_cm3</span><span class="p">[</span><span class="mi">0</span><span class="p">,:,:]</span><span class="o">.</span><span class="n">T</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">nz_cm3</span><span class="p">[</span><span class="mi">0</span><span class="p">,:,:],</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">fz</span> <span class="o">=</span> <span class="n">fz</span><span class="o">.</span><span class="n">T</span>  <span class="c1"># (nz,space)</span>
+        <span class="n">res</span><span class="p">[</span><span class="s1">&#39;fz&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fz</span><span class="o">.</span><span class="n">T</span>  <span class="c1"># (nz,space)</span>
 
     <span class="n">Z_imp</span> <span class="o">=</span> <span class="n">nz_cm3</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span><span class="mi">1</span>  <span class="c1"># don&#39;t include neutral stage</span>
     
     <span class="c1"># Estimate D/T ion density via quasi-neutrality, subtracting impurity density times Z values from ne</span>
-    <span class="n">nD</span> <span class="o">=</span> <span class="n">ne_cm3</span><span class="p">[</span><span class="kc">None</span><span class="p">,:]</span>
+    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;nD&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ne_cm3</span><span class="p">[</span><span class="kc">None</span><span class="p">,:]</span>
     <span class="n">Z_n_imp</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">Z_imp</span><span class="o">+</span><span class="mi">1</span><span class="p">)[</span><span class="kc">None</span><span class="p">,:,</span><span class="kc">None</span><span class="p">]</span><span class="o">*</span><span class="n">nz_cm3</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">nD</span> <span class="o">-=</span> <span class="n">Z_n_imp</span>
+    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;nD&#39;</span><span class="p">]</span> <span class="o">-=</span> <span class="n">Z_n_imp</span>
     
     <span class="c1"># basic total radiated power</span>
     <span class="n">rad</span> <span class="o">=</span> <span class="n">compute_rad</span><span class="p">(</span><span class="n">imp</span><span class="p">,</span> <span class="n">rhop</span><span class="p">,</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="n">nz_cm3</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="n">ne_cm3</span><span class="p">[</span><span class="kc">None</span><span class="p">,:],</span> <span class="n">Te_eV</span><span class="p">[</span><span class="kc">None</span><span class="p">,:],</span>
-                                         <span class="n">n0</span><span class="o">=</span><span class="n">n0_cm3</span><span class="p">,</span> <span class="n">nD</span><span class="o">=</span><span class="n">nD</span><span class="p">,</span>
+                                         <span class="n">n0</span><span class="o">=</span><span class="n">n0_cm3</span><span class="p">,</span> <span class="n">nD</span><span class="o">=</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;nD&#39;</span><span class="p">],</span>
                                          <span class="n">prad_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">thermal_cx_rad_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> 
                                          <span class="n">spectral_brem_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sxr_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> 
                                          <span class="n">main_ion_brem_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     
     <span class="c1"># radiation terms -- converted from W/cm^3 to W/m^3</span>
-    <span class="c1"># res[&#39;line_rad_dens&#39;] = rad[&#39;impurity_radiation&#39;][0,:Z_imp-1,:]*1e6  # no line radiation from fully-stripped impurity</span>
     <span class="n">res</span><span class="p">[</span><span class="s1">&#39;line_rad_dens&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rad</span><span class="p">[</span><span class="s1">&#39;impurity_radiation&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">,:</span><span class="n">Z_imp</span><span class="p">,:]</span><span class="o">*</span><span class="mf">1e6</span>  <span class="c1"># no line radiation from fully-stripped impurity</span>
     <span class="n">res</span><span class="p">[</span><span class="s1">&#39;brems_dens&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rad</span><span class="p">[</span><span class="s1">&#39;impurity_radiation&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span><span class="n">Z_imp</span><span class="p">,:]</span><span class="o">*</span><span class="mf">1e6</span>
     <span class="n">res</span><span class="p">[</span><span class="s1">&#39;cont_rad_dens&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rad</span><span class="p">[</span><span class="s1">&#39;impurity_radiation&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span><span class="n">Z_imp</span><span class="o">+</span><span class="mi">1</span><span class="p">,:]</span><span class="o">*</span><span class="mf">1e6</span>
@@ -603,7 +601,7 @@
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Total </span><span class="si">{</span><span class="n">imp</span><span class="si">}</span><span class="s1"> radiated power: </span><span class="si">{</span><span class="n">res</span><span class="p">[</span><span class="s2">&quot;Prad&quot;</span><span class="p">]</span><span class="o">/</span><span class="mf">1e6</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> MW&#39;</span><span class="p">)</span>
 
     <span class="c1"># calculate average charge state Z across radius</span>
-    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;Z_avg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">fz</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])[:,</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">fz</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;Z_avg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;fz&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])[:,</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;fz&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
     
     <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
         <span class="c1"># plot power in MW/m^3</span>

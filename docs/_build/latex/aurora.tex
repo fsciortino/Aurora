@@ -73,7 +73,7 @@
 \hypersetup{bookmarksdepth=3}
 
 \title{aurora Documentation}
-\date{Oct 21, 2020}
+\date{Oct 24, 2020}
 \release{1.0.0}
 \author{Francesco Sciortino}
 \newcommand{\sphinxlogo}{\vbox{}}
@@ -163,7 +163,7 @@ Check particle conservation for an aurora simulation.
 \begin{description}
 \item[{Args}] \leavevmode{[}{]}\begin{description}
 \item[{axs}] \leavevmode{[}matplotlib.Axes instances{]}
-Axes to pass to \sphinxcode{\sphinxupquote{plot\_1d()}}
+Axes to pass to \sphinxcode{\sphinxupquote{check\_1d\_conserv()}}
 These may be the axes returned from a previous call to this function, to overlap 
 results for different runs.
 
@@ -171,7 +171,7 @@ results for different runs.
 
 \item[{Returns}] \leavevmode{[}{]}\begin{description}
 \item[{axs}] \leavevmode{[}matplotlib.Axes instances{]}
-New or updated axes returned by \sphinxcode{\sphinxupquote{plot\_1d()}}
+New or updated axes returned by \sphinxcode{\sphinxupquote{check\_1d\_conserv()}}
 
 \end{description}
 
@@ -420,13 +420,42 @@ and to obtain the list of file\_types of interest.
 \index{get\_cooling\_factors() (in module aurora.atomic)@\spxentry{get\_cooling\_factors()}\spxextra{in module aurora.atomic}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.atomic.get_cooling_factors}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{get\_cooling\_factors}}}{\emph{\DUrole{n}{atom\_data}}, \emph{\DUrole{n}{logTe\_prof}}, \emph{\DUrole{n}{fz}}, \emph{\DUrole{n}{ion\_resolved}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{plot}\DUrole{o}{=}\DUrole{default_value}{True}}, \emph{\DUrole{n}{ax}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
+\phantomsection\label{\detokenize{aurora:aurora.atomic.get_cooling_factors}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{get\_cooling\_factors}}}{\emph{\DUrole{n}{atom\_data}}, \emph{\DUrole{n}{logTe\_prof}}, \emph{\DUrole{n}{fz}}, \emph{\DUrole{n}{plot}\DUrole{o}{=}\DUrole{default_value}{True}}, \emph{\DUrole{n}{ax}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
 Calculate cooling coefficients for the given fractional abundances and kinetic profiles.
 \begin{description}
 \item[{Args:}] \leavevmode\begin{description}
 \item[{atom\_data}] \leavevmode{[}dict{]}
 Dictionary containing atomic data as output by {\hyperref[\detokenize{aurora:aurora.atomic.get_atom_data}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{get\_atom\_data()}}}}}
 for the atomic processes of interest. “prs”,”pls”,”plt” and “prb” are required by this function.
+
+\item[{logTe\_prof}] \leavevmode{[}array (nt,nr){]}
+Log\sphinxhyphen{}10 of electron temperature profile (in eV)
+
+\item[{fz}] \leavevmode{[}array (nt,nr){]}
+Fractional abundances for all charge states of the ion of “atom\_data”
+
+\item[{plot}] \leavevmode{[}bool{]}
+If True, plot all radiation components, summed over charge states.
+
+\item[{ax}] \leavevmode{[}matplotlib.Axes instance{]}
+If provided, plot results on these axes.
+
+\end{description}
+
+\item[{Returns:}] \leavevmode\begin{description}
+\item[{pls}] \leavevmode{[}array (nt,nr){]}
+Line radiation in the SXR range for each charge state
+
+\item[{prs}] \leavevmode{[}array (nt,nr){]}
+Continuum radiation in the SXR range for each charge state
+
+\item[{pltt}] \leavevmode{[}array (nt,nr){]}
+Line radiation (unfiltered) for each charge state.
+NB: this corresponds to the ADAS “plt” files. An additional “t” is added to the name to avoid
+conflict with the common matplotlib.pyplot short form “plt”
+
+\item[{prb}] \leavevmode{[}array (nt,nr){]}
+Continuum radiation (unfiltered) for each charge state
 
 \end{description}
 
@@ -437,17 +466,17 @@ for the atomic processes of interest. “prs”,”pls”,”plt” and “prb�
 \index{get\_cs\_balance\_terms() (in module aurora.atomic)@\spxentry{get\_cs\_balance\_terms()}\spxextra{in module aurora.atomic}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.atomic.get_cs_balance_terms}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{get\_cs\_balance\_terms}}}{\emph{\DUrole{n}{atom\_data}}, \emph{\DUrole{n}{ne}\DUrole{o}{=}\DUrole{default_value}{5e+19}}, \emph{\DUrole{n}{Te}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{maxTe}\DUrole{o}{=}\DUrole{default_value}{10000.0}}, \emph{\DUrole{n}{include\_cx}\DUrole{o}{=}\DUrole{default_value}{True}}}{}
+\phantomsection\label{\detokenize{aurora:aurora.atomic.get_cs_balance_terms}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{get\_cs\_balance\_terms}}}{\emph{\DUrole{n}{atom\_data}}, \emph{\DUrole{n}{ne\_cm3}\DUrole{o}{=}\DUrole{default_value}{50000000000000.0}}, \emph{\DUrole{n}{Te\_eV}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{maxTe}\DUrole{o}{=}\DUrole{default_value}{10000.0}}, \emph{\DUrole{n}{include\_cx}\DUrole{o}{=}\DUrole{default_value}{True}}}{}
 Get S, R and cx on the same logTe grid.
 \begin{description}
 \item[{Args:}] \leavevmode\begin{description}
 \item[{atom\_data}] \leavevmode{[}dictionary of atomic ADAS files (only acd, scd are required; ccd is {]}
 necessary only if include\_cx=True
 
-\item[{ne}] \leavevmode{[}float or array{]}
-Electron density in units of m\textasciicircum{}\sphinxhyphen{}3
+\item[{ne\_cm3}] \leavevmode{[}float or array{]}
+Electron density in units of cm\textasciicircum{}\sphinxhyphen{}3
 
-\item[{Te}] \leavevmode{[}float or array{]}
+\item[{Te\_eV}] \leavevmode{[}float or array{]}
 Electron temperature in units of eV. If left to None, the Te grid
 given in the atomic data is used.
 
@@ -485,7 +514,7 @@ Returns main types of ADAS atomic data of interest
 \index{get\_frac\_abundances() (in module aurora.atomic)@\spxentry{get\_frac\_abundances()}\spxextra{in module aurora.atomic}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.atomic.get_frac_abundances}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{get\_frac\_abundances}}}{\emph{\DUrole{n}{atom\_data}}, \emph{\DUrole{n}{ne}}, \emph{\DUrole{n}{Te}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{n0\_by\_ne}\DUrole{o}{=}\DUrole{default_value}{1e\sphinxhyphen{}05}}, \emph{\DUrole{n}{include\_cx}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{plot}\DUrole{o}{=}\DUrole{default_value}{True}}, \emph{\DUrole{n}{ax}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{rho}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{rho\_lbl}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{ls}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}\sphinxhyphen{}\textquotesingle{}}}, \emph{\DUrole{n}{compute\_rates}\DUrole{o}{=}\DUrole{default_value}{False}}}{}
+\phantomsection\label{\detokenize{aurora:aurora.atomic.get_frac_abundances}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{get\_frac\_abundances}}}{\emph{\DUrole{n}{atom\_data}}, \emph{\DUrole{n}{ne\_cm3}}, \emph{\DUrole{n}{Te\_eV}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{n0\_by\_ne}\DUrole{o}{=}\DUrole{default_value}{1e\sphinxhyphen{}05}}, \emph{\DUrole{n}{include\_cx}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{plot}\DUrole{o}{=}\DUrole{default_value}{True}}, \emph{\DUrole{n}{ax}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{rho}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{rho\_lbl}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{ls}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}\sphinxhyphen{}\textquotesingle{}}}, \emph{\DUrole{n}{compute\_rates}\DUrole{o}{=}\DUrole{default_value}{False}}}{}
 Calculate fractional abundances from ionization and recombination equilibrium.
 If include\_cx=True, radiative recombination and thermal charge exchange are summed.
 \begin{description}
@@ -493,10 +522,10 @@ If include\_cx=True, radiative recombination and thermal charge exchange are sum
 \item[{atom\_data}] \leavevmode{[}dictionary of atomic ADAS files (only acd, scd are required; ccd is {]}
 necessary only if include\_cx=True
 
-\item[{ne}] \leavevmode{[}float or array{]}
-Electron density in units of m\textasciicircum{}\sphinxhyphen{}3
+\item[{ne\_cm3}] \leavevmode{[}float or array{]}
+Electron density in units of cm\textasciicircum{}\sphinxhyphen{}3
 
-\item[{Te}] \leavevmode{[}float or array, optional{]}
+\item[{Te\_eV}] \leavevmode{[}float or array, optional{]}
 Electron temperature in units of eV. If left to None, the Te grid given in the 
 atomic data is used.
 
@@ -573,12 +602,37 @@ This estimate does not have the correct ne\sphinxhyphen{}dependence of the Gaunt
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{aurora:aurora.atomic.interp_atom_prof}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{interp\_atom\_prof}}}{\emph{\DUrole{n}{atom\_table}}, \emph{\DUrole{n}{x\_prof}}, \emph{\DUrole{n}{y\_prof}}, \emph{\DUrole{n}{log\_val}\DUrole{o}{=}\DUrole{default_value}{False}}, \emph{\DUrole{n}{x\_multiply}\DUrole{o}{=}\DUrole{default_value}{True}}}{}
 Fast interpolate atomic data in atom\_table onto the x\_prof and y\_prof profiles.
-assume that x\_prof, y\_prof, x,y, table are all decadic logarithms
-and x\_prof, y\_prof are equally spaced(always for ADAS data)
-log\_val bool: return natural logarithm of the data
-x\_multiply bool: multiply output by 10**x\_prof , it will not not multiplied if x\_prof is None
+This function assume that x\_prof, y\_prof, x,y, table are all base\sphinxhyphen{}10 logarithms,
+and x\_prof, y\_prof are equally spaced.
+\begin{description}
+\item[{Args:}] \leavevmode\begin{description}
+\item[{atom\_table}] \leavevmode{[}list{]}
+List with x,y, table = atom\_table, containing atomic data from one of the ADAS files.
 
-return data interpolated on shape(nt,nion,nr)
+\item[{x\_prof}] \leavevmode{[}array (nt,nr){]}
+Spatio\sphinxhyphen{}temporal profiles of the first coordinate of the ADAS file table (usually 
+electron density in cm\textasciicircum{}\sphinxhyphen{}3)
+
+\item[{y\_prof}] \leavevmode{[}array (nt,nr){]}
+Spatio\sphinxhyphen{}temporal profiles of the second coordinate of the ADAS file table (usually 
+electron temperature in eV)
+
+\item[{log\_val}] \leavevmode{[}bool{]}
+If True, return natural logarithm of the data
+
+\item[{x\_multiply}] \leavevmode{[}bool{]}
+If True, multiply output by 10**x\_prof.
+
+\end{description}
+
+\item[{Returns:}] \leavevmode\begin{description}
+\item[{interp\_vals}] \leavevmode{[}array (nt,nion,nr){]}
+Interpolated atomic data on time,charge state and spatial grid that correspond to the 
+ion of interest and the spatiotemporal grids of x\_prof and y\_prof.
+
+\end{description}
+
+\end{description}
 
 \end{fulllineitems}
 
@@ -665,9 +719,27 @@ all charge state; otherwise, it is given for each charge state.
 \index{plot\_relax\_time() (in module aurora.atomic)@\spxentry{plot\_relax\_time()}\spxextra{in module aurora.atomic}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.atomic.plot_relax_time}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{plot\_relax\_time}}}{\emph{\DUrole{n}{logTe}}, \emph{\DUrole{n}{rate\_coeff}}, \emph{\DUrole{n}{ne\_mean}}, \emph{\DUrole{n}{ax}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
+\phantomsection\label{\detokenize{aurora:aurora.atomic.plot_relax_time}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.atomic.}}\sphinxbfcode{\sphinxupquote{plot\_relax\_time}}}{\emph{\DUrole{n}{logTe}}, \emph{\DUrole{n}{rate\_coeff}}, \emph{\DUrole{n}{ax}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
 Plot relaxation time of the ionization equilibrium corresponding
-to the inverse of the given rate coefficients
+to the inverse of the given rate coefficients.
+\begin{description}
+\item[{Args:}] \leavevmode\begin{description}
+\item[{logTe}] \leavevmode{[}array (nr,){]}
+log\sphinxhyphen{}10 of Te {[}eV{]}, on an arbitrary grid (same as other arguments, but not
+necessarily radial)
+
+\item[{rate\_coeff}] \leavevmode{[}array (nr,){]}
+Rate coefficients from ionization balance. See {\hyperref[\detokenize{aurora:aurora.atomic.get_frac_abundances}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{get\_frac\_abundances()}}}}}
+to obtain these via the “compute\_rates” argument. 
+N.B.: these rate coefficients will depend also on electron density, which does affect 
+relaxation times.
+
+\item[{ax}] \leavevmode{[}matplotlib axes instance, optional{]}
+If provided, plot relaxation times on these axes.
+
+\end{description}
+
+\end{description}
 
 \end{fulllineitems}
 
@@ -1206,12 +1278,47 @@ Array of 0,1 values indicating at which times internal arrays should be stored/r
 
 \end{fulllineitems}
 
+\index{estimate\_boundary\_distance() (in module aurora.grids\_utils)@\spxentry{estimate\_boundary\_distance()}\spxextra{in module aurora.grids\_utils}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{aurora:aurora.grids_utils.estimate_boundary_distance}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.grids\_utils.}}\sphinxbfcode{\sphinxupquote{estimate\_boundary\_distance}}}{\emph{\DUrole{n}{geqdsk}}, \emph{\DUrole{n}{shot}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{device}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{time\_ms}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
+Obtain a simple estimate for the distance between the LCFS and the wall 
+boundary.
+
+\end{fulllineitems}
+
+\index{estimate\_clen() (in module aurora.grids\_utils)@\spxentry{estimate\_clen()}\spxextra{in module aurora.grids\_utils}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{aurora:aurora.grids_utils.estimate_clen}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.grids\_utils.}}\sphinxbfcode{\sphinxupquote{estimate\_clen}}}{\emph{\DUrole{n}{geqdsk}}}{}
+Estimate average connection length in the open SOL and in the limiter shadow
+NB: these are just rough numbers!
+\begin{description}
+\item[{Args:}] \leavevmode\begin{description}
+\item[{geqdsk}] \leavevmode{[}dict{]}
+EFIT g\sphinxhyphen{}EQDSK as processed by the omfit\_eqdsk package.
+
+\end{description}
+
+\item[{Returns:}] \leavevmode\begin{description}
+\item[{clen\_divertor}] \leavevmode{[}float{]}
+Estimate of the connection length to the divertor
+
+\item[{clen\_limiter}] \leavevmode{[}float{]}
+Estimate of the connection length to the limiter
+
+\end{description}
+
+\end{description}
+
+\end{fulllineitems}
+
 \index{get\_HFS\_LFS() (in module aurora.grids\_utils)@\spxentry{get\_HFS\_LFS()}\spxextra{in module aurora.grids\_utils}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{aurora:aurora.grids_utils.get_HFS_LFS}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.grids\_utils.}}\sphinxbfcode{\sphinxupquote{get\_HFS\_LFS}}}{\emph{\DUrole{n}{geqdsk}}, \emph{\DUrole{n}{rho\_pol}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
 Get high\sphinxhyphen{}field\sphinxhyphen{}side (HFS) and low\sphinxhyphen{}field\sphinxhyphen{}side (LFS) major radii from the g\sphinxhyphen{}EQDSK data. 
-This is useful to define the r\_V grid outside of the LCFS. 
+This is useful to define the rvol grid outside of the LCFS. 
 See the \sphinxcode{\sphinxupquote{get\_rhopol\_rV\_mapping()}} for an application.
 \begin{description}
 \item[{Args:}] \leavevmode\begin{description}
@@ -1221,7 +1328,7 @@ package.
 
 \item[{rho\_pol}] \leavevmode{[}array, optional{]}
 Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
-corresponding r\_V grid should be found. If left to None, an arbitrary grid will be 
+corresponding rvol grid should be found. If left to None, an arbitrary grid will be 
 created internally.
 
 \end{description}
@@ -1239,14 +1346,14 @@ Major radius {[}m{]} on the LFS
 
 \end{fulllineitems}
 
-\index{get\_rhopol\_rV\_mapping() (in module aurora.grids\_utils)@\spxentry{get\_rhopol\_rV\_mapping()}\spxextra{in module aurora.grids\_utils}}
+\index{get\_rhopol\_rvol\_mapping() (in module aurora.grids\_utils)@\spxentry{get\_rhopol\_rvol\_mapping()}\spxextra{in module aurora.grids\_utils}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.grids_utils.get_rhopol_rV_mapping}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.grids\_utils.}}\sphinxbfcode{\sphinxupquote{get\_rhopol\_rV\_mapping}}}{\emph{\DUrole{n}{geqdsk}}, \emph{\DUrole{n}{rho\_pol}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
-Compute arrays allowing 1\sphinxhyphen{}to\sphinxhyphen{}1 mapping of rho\_pol and r\_V, both inside and
+\phantomsection\label{\detokenize{aurora:aurora.grids_utils.get_rhopol_rvol_mapping}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.grids\_utils.}}\sphinxbfcode{\sphinxupquote{get\_rhopol\_rvol\_mapping}}}{\emph{\DUrole{n}{geqdsk}}, \emph{\DUrole{n}{rho\_pol}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
+Compute arrays allowing 1\sphinxhyphen{}to\sphinxhyphen{}1 mapping of rho\_pol and rvol, both inside and
 outside the LCFS.
 
-r\_V is defined as \(\sqrt{V/(2 \pi^2 R_{axis}}\) inside the LCFS. Outside of it,
+rvol is defined as \(\sqrt{V/(2 \pi^2 R_{axis}}\) inside the LCFS. Outside of it,
 we artificially expand the LCFS to fit true equilibrium at the midplane based
 on the rho\_pol grid (sqrt of normalized poloidal flux).
 
@@ -1258,8 +1365,8 @@ z(\rho,\theta) = z_0      +  (z_{lcfs}(\theta) - z_0     ) \times \mathcal{f} \\
 r_{0,lcfs} = \frac{1}{2} (r_{lcfs}(\theta=0)+ r_{lcfs}(\theta=180)) \\
 r_0(\rho) = \frac{1}{2} (r(\rho,\theta=0) + r(\rho,\theta=180))\end{split}
 \end{equation*}
-The mapping between rho\_pol and r\_V allows one to interpolate inputs on a
-rho\_pol grid onto the r\_V grid (in cm) used internally by the code.
+The mapping between rho\_pol and rvol allows one to interpolate inputs on a
+rho\_pol grid onto the rvol grid (in cm) used internally by the code.
 \begin{description}
 \item[{Args:}] \leavevmode\begin{description}
 \item[{geqdsk}] \leavevmode{[}dict{]}
@@ -1268,7 +1375,7 @@ package.
 
 \item[{rho\_pol}] \leavevmode{[}array, optional{]}
 Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
-corresponding r\_V grid should be found. If left to None, an arbitrary grid will be 
+corresponding rvol grid should be found. If left to None, an arbitrary grid will be 
 created internally.
 
 \end{description}
@@ -1277,7 +1384,7 @@ created internally.
 \item[{rho\_pol}] \leavevmode{[}array{]}
 Sqrt of normalized poloidal flux grid
 
-\item[{r\_V}] \leavevmode{[}array{]}
+\item[{rvol}] \leavevmode{[}array{]}
 Mapping of rho\_pol to a radial grid defined in terms of normalized flux surface volume.
 
 \end{description}
@@ -1420,30 +1527,102 @@ Only returned if return\_geqdsk=True.
 Methods related to impurity source functions.
 
 sciortino, 2020
-\index{get\_aurora\_source() (in module aurora.source\_utils)@\spxentry{get\_aurora\_source()}\spxextra{in module aurora.source\_utils}}
-
-\begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.source_utils.get_aurora_source}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.source\_utils.}}\sphinxbfcode{\sphinxupquote{get\_aurora\_source}}}{\emph{\DUrole{n}{namelist}}, \emph{\DUrole{n}{time}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
-Load source function based on current state of the namelist.
-
-The “time” argument is only needed for time\sphinxhyphen{}dependent sources
-
-\end{fulllineitems}
-
 \index{get\_radial\_source() (in module aurora.source\_utils)@\spxentry{get\_radial\_source()}\spxextra{in module aurora.source\_utils}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.source_utils.get_radial_source}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.source\_utils.}}\sphinxbfcode{\sphinxupquote{get\_radial\_source}}}{\emph{\DUrole{n}{namelist}}, \emph{\DUrole{n}{radius\_grid}}, \emph{\DUrole{n}{S}}, \emph{\DUrole{n}{pro}}, \emph{\DUrole{n}{Ti}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
+\phantomsection\label{\detokenize{aurora:aurora.source_utils.get_radial_source}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.source\_utils.}}\sphinxbfcode{\sphinxupquote{get\_radial\_source}}}{\emph{\DUrole{n}{namelist}}, \emph{\DUrole{n}{rvol\_grid}}, \emph{\DUrole{n}{pro\_grid}}, \emph{\DUrole{n}{S\_rates}}, \emph{\DUrole{n}{Ti\_eV}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
 Obtain spatial dependence of source function.
 
 If namelist{[}‘source\_width\_in’{]}==0 and namelist{[}‘source\_width\_out’{]}==0, the source
 radial profile is defined as an exponential decay due to ionization of neutrals. This requires
-S, the ionization rate of neutral impurities, to be given with S.shape=(len(radius\_grid),)
+S\_rates, the ionization rate of neutral impurities, to be given with S\_rates.shape=(len(rvol\_grid),)
 
-If axkopt=True, the neutrals speed is taken as the thermal speed based on Ti, otherwise
-the value corresponding to the namelist{[}‘imp\_energy’{]} energy is used.
+If namelist{[}‘imp\_source\_energy\_eV’{]}\textless{}0, the neutrals speed is taken as the thermal speed based
+on Ti\_eV, otherwise the value corresponding to namelist{[}‘imp\_source\_energy\_eV’{]} is used.
+\begin{description}
+\item[{Args:}] \leavevmode\begin{description}
+\item[{namelist}] \leavevmode{[}dict{]}
+Aurora namelist. Only elements referring to the spatial distribution and energy of 
+source atoms are accessed.
 
-This funtion reproduces the functionality of neutrals.f of STRAHL.
+\item[{rvol\_grid}] \leavevmode{[}array (nr,){]}
+Radial grid in volume\sphinxhyphen{}normalized coordinates {[}cm{]}
+
+\item[{S\_rates}] \leavevmode{[}array (nr,){]}
+Ionization rate of neutral impurity at initial time step.
+
+\item[{pro\_grid}] \leavevmode{[}array (nr,){]}
+Normalized first derivatives of the radial grid in volume\sphinxhyphen{}normalized coordinates.
+
+\item[{Ti\_eV}] \leavevmode{[}array, optional (nr){]}
+Background ion temperature, only used if source\_width\_in=source\_width\_out=0.0 and 
+imp\_source\_energy\_eV\textless{}=0, in which case the source impurity neutrals are taken to 
+have energy equal to the local Ti {[}eV{]}.
+
+\end{description}
+
+\item[{Returns:}] \leavevmode\begin{description}
+\item[{source\_rad\_prof}] \leavevmode{[}array (nr,){]}
+Radial profile of the impurity neutral source.
+
+\end{description}
+
+\end{description}
+
+\end{fulllineitems}
+
+\index{get\_source\_time\_history() (in module aurora.source\_utils)@\spxentry{get\_source\_time\_history()}\spxextra{in module aurora.source\_utils}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{aurora:aurora.source_utils.get_source_time_history}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.source\_utils.}}\sphinxbfcode{\sphinxupquote{get\_source\_time\_history}}}{\emph{\DUrole{n}{namelist}}, \emph{\DUrole{n}{Raxis}}, \emph{\DUrole{n}{time}}}{}
+Load source time history based on current state of the namelist.
+
+There are 4 options to describe the time\sphinxhyphen{}dependence of the source:
+
+(1) namelist{[}‘source\_type’{]} == ‘file’: in this case, a simply formatted 
+source file, with one time point and corresponding and source amplitude on each
+line, is read in. This can describe an arbitrary time dependence, e.g. 
+as measured from an experimental diagnostic.
+
+(2) namelist{[}‘source\_type’{]} == ‘const’: in this case, a constant source 
+(e.g. a gas puff) is simulated. It is recommended to run the simulation for 
+\textgreater{}100ms in order to see self\sphinxhyphen{}similar charge state profiles in time.
+
+(3) namelist{[}‘source\_type’{]} == ‘step’: this allows the creation of a source
+that suddenly appears and suddenly stops, i.e. a rectangular “step”. The 
+duration of this step is given by namelist{[}‘step\_source\_duration’{]}. Multiple 
+step times can be given as a list in namelist{[}‘src\_step\_times’{]}; the amplitude
+of the source at each step is given in namelist{[}‘src\_step\_rates’{]}
+
+(4) namelist{[}‘source\_type’{]} == ‘LBO’: this produces a model source from a LBO
+injection, given by a convolution of a gaussian and an exponential. The required 
+parameters in this case are inside a namelist{[}‘LBO’{]} dictionary:
+namelist{[}‘LBO’{]}{[}‘t\_start’{]}, namelist{[}‘LBO’{]}{[}‘t\_rise’{]}, namelist{[}‘LBO’{]}{[}‘t\_fall’{]}, 
+namelist{[}‘LBO’{]}{[}‘t\_fall’{]}, namelist{[}‘LBO’{]}{[}‘n\_particles’{]}. The “n\_particles” parameter
+corresponds to the amplitude of the source (the number of particles corresponding
+to the integral over the source function.
+\begin{description}
+\item[{Args:}] \leavevmode\begin{description}
+\item[{namelist}] \leavevmode{[}dict{]}
+Aurora namelist dictionary.
+
+\item[{Raxis}] \leavevmode{[}float{]}
+Major radius at the magnetic axis {[}m{]}. This is needed to normalize the 
+source such that it is treated as toroidally symmetric \textendash{} a necessary
+idealization for 1.5D simulations.
+
+\item[{time}] \leavevmode{[}array (nt,), optional{]}
+Time array the source should be returned on.
+
+\end{description}
+
+\item[{Returns: }] \leavevmode\begin{description}
+\item[{source\_time\_history}] \leavevmode{[}array (nt,){]}
+The source time history on the input time base.
+
+\end{description}
+
+\end{description}
 
 \end{fulllineitems}
 
@@ -1739,7 +1918,57 @@ If a valid path/filename is provided, the animation will be saved here in mp4 fo
 
 
 \subsection{aurora.particle\_conserv module}
-\label{\detokenize{aurora:module-aurora.particle_conserv}}\label{\detokenize{aurora:aurora-particle-conserv-module}}\index{module@\spxentry{module}!aurora.particle\_conserv@\spxentry{aurora.particle\_conserv}}\index{aurora.particle\_conserv@\spxentry{aurora.particle\_conserv}!module@\spxentry{module}}\index{get\_particle\_nums() (in module aurora.particle\_conserv)@\spxentry{get\_particle\_nums()}\spxextra{in module aurora.particle\_conserv}}
+\label{\detokenize{aurora:module-aurora.particle_conserv}}\label{\detokenize{aurora:aurora-particle-conserv-module}}\index{module@\spxentry{module}!aurora.particle\_conserv@\spxentry{aurora.particle\_conserv}}\index{aurora.particle\_conserv@\spxentry{aurora.particle\_conserv}!module@\spxentry{module}}\index{check\_1d\_conserv() (in module aurora.particle\_conserv)@\spxentry{check\_1d\_conserv()}\spxextra{in module aurora.particle\_conserv}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{aurora:aurora.particle_conserv.check_1d_conserv}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.particle\_conserv.}}\sphinxbfcode{\sphinxupquote{check\_1d\_conserv}}}{\emph{\DUrole{n}{Raxis}}, \emph{\DUrole{n}{ds}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{filepath}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{linestyle}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}\sphinxhyphen{}\textquotesingle{}}}, \emph{\DUrole{n}{axs}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
+Check time evolution and particle conservation in Aurora or STRAHL output.
+\begin{description}
+\item[{Args:}] \leavevmode\begin{description}
+\item[{Raxis}] \leavevmode{[}float{]}
+Major radius on axis {[}m{]}, used for volume integrals.
+
+\item[{ds}] \leavevmode{[}xarray dataset, optional{]}
+Dataset containing Aurora results, created using the xarray package. 
+See \sphinxcode{\sphinxupquote{check\_conservation()}} for an illustration on how
+to use this.
+
+\item[{filepath}] \leavevmode{[}str, optional{]}
+If provided, load results from STRAHL output file and check particle
+particle conservation as for an Aurora run.
+
+\item[{linestyle}] \leavevmode{[}str, optional{]}
+matplotlib linestyle, default is ‘\sphinxhyphen{}‘ (continuous lines). Use this to 
+overplot lines on the same plots using different linestyles, e.g. to check
+whether some aurora option makes particle conservation better or worse.
+
+\item[{axs}] \leavevmode{[}2\sphinxhyphen{}tuple or array{]}
+array\sphinxhyphen{}like structure containing two matplotlib.Axes instances: the first one 
+for the separate particle time variation in each reservoir, the second for 
+the total particle\sphinxhyphen{}conservation check. This can be used to plot results 
+from several aurora runs on the same axes.
+
+\end{description}
+
+\item[{Returns:}] \leavevmode\begin{description}
+\item[{ds}] \leavevmode{[}xarray dataset{]}
+Dataset containing results in xarray format.
+
+\item[{res}] \leavevmode{[}dict{]}
+Dictionary containing time histories across all reservoirs, useful for 
+the assessment of particle conservation.
+
+\item[{axs}] \leavevmode{[}2\sphinxhyphen{}tuple or array{]}
+array\sphinxhyphen{}like structure containing two matplotlib.Axes instances, (ax1,ax2).
+See optional input argument.
+
+\end{description}
+
+\end{description}
+
+\end{fulllineitems}
+
+\index{get\_particle\_nums() (in module aurora.particle\_conserv)@\spxentry{get\_particle\_nums()}\spxextra{in module aurora.particle\_conserv}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{aurora:aurora.particle_conserv.get_particle_nums}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.particle\_conserv.}}\sphinxbfcode{\sphinxupquote{get\_particle\_nums}}}{\emph{\DUrole{n}{filepath}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{ds}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{R\_axis}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
@@ -1747,21 +1976,6 @@ Check time evolution and particle conservation in (py)STRAHL output.
 If filepath is None, load data from output STRAHL file, otherwise use xarray Dataset in ds.
 
 R\_axis {[}cm{]} is needed for volume integrals. If None, it is set to a C\sphinxhyphen{}Mod default.
-
-\end{fulllineitems}
-
-\index{plot\_1d() (in module aurora.particle\_conserv)@\spxentry{plot\_1d()}\spxextra{in module aurora.particle\_conserv}}
-
-\begin{fulllineitems}
-\phantomsection\label{\detokenize{aurora:aurora.particle_conserv.plot_1d}}\pysiglinewithargsret{\sphinxcode{\sphinxupquote{aurora.particle\_conserv.}}\sphinxbfcode{\sphinxupquote{plot\_1d}}}{\emph{\DUrole{n}{filepath}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{ds}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{linestyle}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}\sphinxhyphen{}\textquotesingle{}}}, \emph{\DUrole{n}{axs}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{R\_axis}\DUrole{o}{=}\DUrole{default_value}{None}}}{}
-Check time evolution and particle conservation in (py)STRAHL output.
-
-If filepath is None, load data from output STRAHL file, otherwise use xarray Dataset in ds.
-
-If axs is passed, it is assumed that this is a tuple of 2 set of axes: the first one for the separate 
-particle time variation in each reservoir, the second for the total particle\sphinxhyphen{}conservation check.
-
-R\_axis {[}cm{]} is the major radius, used for volume integrals. If None, it is set to a C\sphinxhyphen{}Mod default.
 
 \end{fulllineitems}
 

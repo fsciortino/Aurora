@@ -1,5 +1,5 @@
 # Fdb version 3
-["pdflatex"] 1603323305 "aurora.tex" "aurora.pdf" "aurora" 1603323305
+["pdflatex"] 1603578501 "aurora.tex" "aurora.pdf" "aurora" 1603578501
   "/home/sciortino/usr/lib/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1500756517 3287 e6b82fe08f5336d4d5ebc73fb1152e87 ""
   "/home/sciortino/usr/lib/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecrm1000.tfm" 1500756701 3584 adb004a0c8e7c46ee66cad73671f37b4 ""
   "/home/sciortino/usr/lib/texlive/texmf-dist/tex/generic/babel-english/english.ldf" 1500757022 7008 fd11ed3b832df052a4adb2c56e472748 ""
@@ -26,14 +26,14 @@
   "/home/sciortino/usr/lib/texlive/texmf-var/web2c/pdftex/pdflatex.fmt" 1500756438 3749879 828173566cb0eb4122a3b30b487e98ab ""
   "/home/sciortino/usr/lib/texlive/texmf.cnf" 1500757349 496 01ab80fa0036a81d2df86fb0ac70c709 ""
   "aurora.aux" 1603215388 16561 9d2350b71f1f177c1d90dc6f05337999 ""
-  "aurora.tex" 1603323305 127082 b774c662593b702e51526ff2940590fc ""
+  "aurora.tex" 1603578501 136147 73407ca4d1dfa80d764f79df13cf3a84 ""
   "cmap.sty" 0 -1 0 ""
   "fncychap.sty" 0 -1 0 ""
   "sphinxmanual.cls" 1603138094 4236 124cd90deb92742b5d3922bfc2cd70c0 ""
   (generated)
+  "aurora.toc"
+  "aurora.pdf"
+  "aurora.aux"
+  "aurora.log"
   "aurora.out"
   "aurora.idx"
-  "aurora.pdf"
-  "aurora.log"
-  "aurora.aux"
-  "aurora.toc"

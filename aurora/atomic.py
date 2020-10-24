@@ -541,7 +541,7 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, maxTe=10e3, include
             recombination (+ charge exchange, if requested). After exponentiation, all terms
             will be in units of s^-1. 
     '''
-    if Te is None:
+    if Te_eV is None:
         # find smallest Te grid from all files
         logne1, logTe1,_ = atom_data['scd']  # ionization
         logne2, logTe2,_ = atom_data['acd']  # radiative recombination
