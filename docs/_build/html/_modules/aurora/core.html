@@ -207,7 +207,7 @@
                                                               <span class="n">time_diff_warning_threshold</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 
         <span class="c1"># Get r_V to rho_pol mapping</span>
-        <span class="n">rho_pol</span><span class="p">,</span> <span class="n">_rvol</span> <span class="o">=</span> <span class="n">grids_utils</span><span class="o">.</span><span class="n">get_rhopol_rV_mapping</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">)</span>
+        <span class="n">rho_pol</span><span class="p">,</span> <span class="n">_rvol</span> <span class="o">=</span> <span class="n">grids_utils</span><span class="o">.</span><span class="n">get_rhopol_rvol_mapping</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">)</span>
         <span class="n">rvol_lcfs</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">rho_pol</span><span class="p">,</span><span class="n">_rvol</span><span class="p">)(</span><span class="mf">1.0</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rvol_lcfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;rvol_lcfs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">rvol_lcfs</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span>  <span class="c1"># set limit on accuracy</span>
 
@@ -264,6 +264,7 @@
         <span class="n">out</span> <span class="o">=</span> <span class="n">atomic_element</span><span class="p">(</span><span class="n">symbol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">imp</span><span class="p">)</span>
         <span class="n">spec</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">Z_imp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">spec</span><span class="p">][</span><span class="s1">&#39;Z&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">A_imp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">spec</span><span class="p">][</span><span class="s1">&#39;A&#39;</span><span class="p">])</span>
         
         <span class="c1"># Extract other inputs from namelist:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mixing_radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;saw_model&#39;</span><span class="p">][</span><span class="s1">&#39;rmix&#39;</span><span class="p">]</span>
@@ -282,8 +283,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">bound_sep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;bound_sep&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">lim_sep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;lim_sep&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sawtooth_erfc_width</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;saw_model&#39;</span><span class="p">][</span><span class="s1">&#39;sawtooth_erfc_width&#39;</span><span class="p">]</span>
-        <span class="c1">#self.main_ion_Z = self.namelist[&#39;Z&#39;]</span>
-        <span class="c1">#self.main_ion_A = self.namelist[&#39;a&#39;]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cxr_flag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;cxr_flag&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nbi_cxr_flag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;nbi_cxr_flag&#39;</span><span class="p">]</span>
 
@@ -315,18 +314,20 @@
         <span class="c1"># linear interpolation in time</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># time-dept</span>
             <span class="n">data</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">times</span><span class="p">,</span><span class="n">data</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">,</span><span class="o">*</span><span class="n">times</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]]))</span>
-
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># time-indpt: same kin profs at every time point</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">),</span><span class="mi">1</span><span class="p">))</span>
+            
         <span class="k">return</span> <span class="n">data</span></div>
 
 
 <div class="viewcode-block" id="aurora_sim.get_aurora_kin_profs"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.get_aurora_kin_profs">[docs]</a>    <span class="k">def</span> <span class="nf">get_aurora_kin_profs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_T</span><span class="o">=</span><span class="mf">1.01</span><span class="p">,</span> <span class="n">min_ne</span><span class="o">=</span><span class="mf">1e10</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;Get kinetic profiles on radial and time grids.</span>
 <span class="sd">        &#39;&#39;&#39;</span>
-
         <span class="n">Te</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_kin_prof</span><span class="p">(</span><span class="s1">&#39;Te&#39;</span><span class="p">)</span>
         <span class="n">ne</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_kin_prof</span><span class="p">(</span><span class="s1">&#39;ne&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="s1">&#39;Ti&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">:</span>
-            <span class="n">Ti</span> <span class="o">=</span> <span class="n">interp_kin_prof</span><span class="p">(</span><span class="s1">&#39;Ti&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;Ti&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span> <span class="ow">and</span> <span class="s1">&#39;vals&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="s1">&#39;Ti&#39;</span><span class="p">]:</span>
+            <span class="n">Ti</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_kin_prof</span><span class="p">(</span><span class="s1">&#39;Ti&#39;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">Ti</span> <span class="o">=</span> <span class="n">Te</span>
 
@@ -368,7 +369,7 @@
             <span class="c1"># include thermal charge exchange recombination</span>
             <span class="n">atom_data</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">get_atom_data</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">imp</span><span class="p">,[</span><span class="s1">&#39;ccd&#39;</span><span class="p">])</span>
 
-            <span class="n">lTi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">Ti</span><span class="p">)</span>
+            <span class="n">lTi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_Ti</span><span class="p">)</span>
             <span class="n">alpha_CX_rates</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;ccd&#39;</span><span class="p">],</span> <span class="n">lne</span><span class="p">,</span> <span class="n">lTi</span><span class="p">,</span> <span class="n">x_multiply</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
             <span class="c1"># change rates from units of [1/s/cm^3] to [1/s] ---&gt; this is the result of STRAHL&#39;s `sas&#39; subroutine</span>

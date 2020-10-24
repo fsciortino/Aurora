@@ -68,8 +68,8 @@ atom_data = aurora.atomic.get_atom_data(imp,['acd','scd'])
 ne_avg = np.mean(kin_profs['ne']['vals'],axis=0) # average over time
 Te_avg = np.mean(kin_profs['Te']['vals'],axis=0)  # must be on the same radial basis as ne_avg
 
-# get_frac_abundances takes inputs in m^-3 and eV
-logTe, fz_Ca = aurora.atomic.get_frac_abundances(atom_data, ne_avg*1e6, Te_avg, rho=rhop)
+# get fractional abundances on ne (cm^-3) and Te (eV) grid
+logTe, fz_Ca = aurora.atomic.get_frac_abundances(atom_data, ne_avg, Te_avg, rho=rhop)
 
 imp = namelist['imp'] = 'Ar' 
 
@@ -80,8 +80,8 @@ atom_data = aurora.atomic.get_atom_data(imp,['acd','scd'])
 ne_avg = np.mean(kin_profs['ne']['vals'],axis=0) # average over time
 Te_avg = np.mean(kin_profs['Te']['vals'],axis=0)  # must be on the same radial basis as ne_avg
 
-# get_frac_abundances takes inputs in m^-3 and eV
-logTe, fz_Ar = aurora.atomic.get_frac_abundances(atom_data, ne_avg*1e6, Te_avg, rho=rhop)
+# get fractional abundances on ne (cm^-3) and Te (eV) grid
+logTe, fz_Ar = aurora.atomic.get_frac_abundances(atom_data, ne_avg, Te_avg, rho=rhop)
 
 ############################################################
 

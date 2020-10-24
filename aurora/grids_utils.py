@@ -351,7 +351,7 @@ def create_time_grid_new(timing, verbose=False, plot=False):
 
 def get_HFS_LFS(geqdsk, rho_pol=None):
     '''Get high-field-side (HFS) and low-field-side (LFS) major radii from the g-EQDSK data. 
-    This is useful to define the r_V grid outside of the LCFS. 
+    This is useful to define the rvol grid outside of the LCFS. 
     See the :py:func:`~aurora.get_rhopol_rV_mapping` for an application. 
 
     Args:
@@ -360,7 +360,7 @@ def get_HFS_LFS(geqdsk, rho_pol=None):
             package. 
         rho_pol : array, optional
             Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
-            corresponding r_V grid should be found. If left to None, an arbitrary grid will be 
+            corresponding rvol grid should be found. If left to None, an arbitrary grid will be 
             created internally. 
 
     Returns:
@@ -395,11 +395,11 @@ def get_HFS_LFS(geqdsk, rho_pol=None):
 
 
 
-def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
-    r'''Compute arrays allowing 1-to-1 mapping of rho_pol and r_V, both inside and
+def get_rhopol_rvol_mapping(geqdsk, rho_pol=None):
+    r'''Compute arrays allowing 1-to-1 mapping of rho_pol and rvol, both inside and
     outside the LCFS.
 
-    r_V is defined as :math:`\sqrt{V/(2 \pi^2 R_{axis}}` inside the LCFS. Outside of it,
+    rvol is defined as :math:`\sqrt{V/(2 \pi^2 R_{axis}}` inside the LCFS. Outside of it,
     we artificially expand the LCFS to fit true equilibrium at the midplane based
     on the rho_pol grid (sqrt of normalized poloidal flux).
 
@@ -413,8 +413,8 @@ def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
         r_{0,lcfs} = \frac{1}{2} (r_{lcfs}(\theta=0)+ r_{lcfs}(\theta=180)) \\
         r_0(\rho) = \frac{1}{2} (r(\rho,\theta=0) + r(\rho,\theta=180))
 
-    The mapping between rho_pol and r_V allows one to interpolate inputs on a
-    rho_pol grid onto the r_V grid (in cm) used internally by the code.
+    The mapping between rho_pol and rvol allows one to interpolate inputs on a
+    rho_pol grid onto the rvol grid (in cm) used internally by the code.
 
     Args:
         geqdsk : dict
@@ -422,13 +422,13 @@ def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
             package. 
         rho_pol : array, optional
             Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
-            corresponding r_V grid should be found. If left to None, an arbitrary grid will be 
+            corresponding rvol grid should be found. If left to None, an arbitrary grid will be 
             created internally. 
 
     Returns:
          rho_pol : array
              Sqrt of normalized poloidal flux grid
-         r_V : array
+         rvol : array
              Mapping of rho_pol to a radial grid defined in terms of normalized flux surface volume.
     '''
 
@@ -439,8 +439,6 @@ def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
     # volumes calculated by EFIT
     R0 = geqdsk['RMAXIS']
     Z0 = geqdsk['ZMAXIS']
-
-    #embed()
     
     V_inner = geqdsk['fluxSurfaces']['geo']['vol']
     rhop_inner = np.sqrt( geqdsk['fluxSurfaces']['geo']['psin'])
@@ -459,20 +457,21 @@ def get_rhopol_rV_mapping(geqdsk, rho_pol=None):
     R_outer = r0 + np.outer(R_lcfs - r0_lcfs,scale)
     Z_outer = Z0 + np.outer(Z_lcfs - Z0     ,scale)
 
-    # calculate volume enclosed by these flux surfaces
-    V_outer = -sum(2*np.pi*((R_outer+np.roll(R_outer,1,0))/2.)**2*(Z_outer-np.roll(Z_outer,1,0)),0)/2.0
-
+    # calculate volume enclosed by these "flux surfaces" outside of the LCFS
+    #V_outer = -sum(2*np.pi*((R_outer+np.roll(R_outer,1,0))/2.)**2*(Z_outer-np.roll(Z_outer,1,0)),0)/2.0
+    V_outer = np.abs(sum(2*np.pi*((R_outer+np.roll(R_outer,1,0))/2.)**2*(Z_outer-np.roll(Z_outer,1,0)),0)/2.0)
+    
     V = np.interp(rho_pol,rhop_inner, V_inner)
     V[rho_pol > 1] = V_outer[rho_pol > 1]
 
     # correct errors in V close to magnetic axis inside of rho = .2
     V[rho_pol <.2] = V_outer[rho_pol <.2]/V_outer[rho_pol <.2][-1]*V[rho_pol <.2][-1]
 
-    # compute r_V
-    r_V = np.sqrt(V/(2*np.pi**2 * R0)) * 100 # m --> cm
-    r_V[0] = 0.0 # enforce 0 on axis
+    # compute rvol
+    rvol = np.sqrt(V/(2*np.pi**2 * R0)) * 100 # m --> cm
+    rvol[0] = 0.0 # enforce 0 on axis
 
-    return rho_pol, r_V
+    return rho_pol, rvol
 
 
 

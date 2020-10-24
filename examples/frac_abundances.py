@@ -31,5 +31,5 @@ Te_avg = np.mean(Te_vals,axis=0)  # assume on the same radial basis as ne_avg
 # get charge state distributions from ionization equilibrium for Ca
 atom_data = aurora.atomic.get_all_atom_data('Ca',['acd','scd'])
 
-# get_frac_abundances takes inputs in m^-3 and eV
-logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_avg*1e6, Te_avg, rho=rhop)
+# get fractional abundances on ne (cm^-3) and Te (eV) grid
+logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_avg, Te_avg, rho=rhop)

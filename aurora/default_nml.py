@@ -71,6 +71,10 @@ def load_default_namelist():
         'kin_profs' : {'ne': {'fun': 'interpa',
                               'times': [1.]}, 
                        'Te': {'fun':'interp',
+                              'times': [1.]},
+                       'Ti': {'fun':'interp',
+                              'times': [1.]},
+                       'n0': {'fun':'interpa',
                               'times': [1.]}
                    },
         # ----------------

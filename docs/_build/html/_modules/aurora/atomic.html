@@ -157,6 +157,7 @@
 <span class="kn">import</span> <span class="nn">scipy.ndimage</span>
 <span class="kn">from</span> <span class="nn">scipy.linalg</span> <span class="kn">import</span> <span class="n">svd</span>
 <span class="kn">from</span> <span class="nn">IPython</span> <span class="kn">import</span> <span class="n">embed</span>
+<span class="kn">from</span> <span class="nn">scipy.constants</span> <span class="kn">import</span> <span class="n">m_p</span><span class="p">,</span> <span class="n">e</span> <span class="k">as</span> <span class="n">q_electron</span>
 
 
 <div class="viewcode-block" id="get_file_types"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_file_types">[docs]</a><span class="k">def</span> <span class="nf">get_file_types</span><span class="p">():</span>
@@ -541,18 +542,12 @@
                         <span class="n">ax1</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="n">ax1</span><span class="o">.</span><span class="n">get_ylim</span><span class="p">()[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pec_plot_max</span> <span class="p">])</span>
 
                     <span class="n">ax1</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;best&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">set_draggable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-                    <span class="c1">#ax1.legend(loc=&#39;best&#39;).draggable(True)</span>
                     <span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">cs</span> <span class="o">+</span> <span class="sa">r</span><span class="s1">&#39; --- $\lambda$ = &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">lam</span><span class="p">)</span> <span class="o">+</span><span class="s1">&#39; A&#39;</span><span class="p">)</span>
 
 
     <span class="k">return</span> <span class="n">pec_dict</span></div>
 
 
-<span class="c1"># -------------------------------------------------------------------------------</span>
-<span class="c1">#</span>
-<span class="c1">#   Routines to examine ionization equilibrium</span>
-<span class="c1">#</span>
-<span class="c1"># -------------------------------------------------------------------------------</span>
 
 <div class="viewcode-block" id="null_space"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.null_space">[docs]</a><span class="k">def</span> <span class="nf">null_space</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39; Find null space of matrix A &#39;&#39;&#39;</span>
@@ -562,18 +557,17 @@
     <span class="k">return</span> <span class="n">Q</span><span class="p">,</span> <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>  <span class="c1"># matrix is singular, so last index is ~0</span></div>
 
 
-<div class="viewcode-block" id="get_frac_abundances"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_frac_abundances">[docs]</a><span class="k">def</span> <span class="nf">get_frac_abundances</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span> <span class="n">ne</span><span class="p">,</span><span class="n">Te</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">n0_by_ne</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">include_cx</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                        <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">rho</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">rho_lbl</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">ls</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span>
-                        <span class="n">compute_rates</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="get_frac_abundances"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_frac_abundances">[docs]</a><span class="k">def</span> <span class="nf">get_frac_abundances</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span> <span class="n">ne_cm3</span><span class="p">,</span><span class="n">Te_eV</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">n0_by_ne</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">include_cx</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">rho</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">rho_lbl</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">ls</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span><span class="n">compute_rates</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Calculate fractional abundances from ionization and recombination equilibrium.</span>
 <span class="sd">    If include_cx=True, radiative recombination and thermal charge exchange are summed.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is </span>
 <span class="sd">            necessary only if include_cx=True</span>
-<span class="sd">        ne : float or array</span>
-<span class="sd">            Electron density in units of m^-3</span>
-<span class="sd">        Te : float or array, optional</span>
+<span class="sd">        ne_cm3 : float or array</span>
+<span class="sd">            Electron density in units of cm^-3</span>
+<span class="sd">        Te_eV : float or array, optional</span>
 <span class="sd">            Electron temperature in units of eV. If left to None, the Te grid given in the </span>
 <span class="sd">            atomic data is used.</span>
 <span class="sd">        n0_by_ne: float or array, optional</span>
@@ -606,7 +600,8 @@
 
 <span class="sd">    &#39;&#39;&#39;</span>
 
-    <span class="n">logTe</span><span class="p">,</span> <span class="n">logS</span><span class="p">,</span><span class="n">logR</span><span class="p">,</span><span class="n">logcx</span> <span class="o">=</span> <span class="n">get_cs_balance_terms</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span> <span class="n">ne</span><span class="p">,</span><span class="n">Te</span><span class="p">,</span> <span class="n">maxTe</span><span class="o">=</span><span class="mf">10e3</span><span class="p">,</span> <span class="n">include_cx</span><span class="o">=</span><span class="n">include_cx</span><span class="p">)</span>
+    <span class="n">logTe</span><span class="p">,</span> <span class="n">logS</span><span class="p">,</span><span class="n">logR</span><span class="p">,</span><span class="n">logcx</span> <span class="o">=</span> <span class="n">get_cs_balance_terms</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span><span class="n">ne_cm3</span><span class="p">,</span><span class="n">Te_eV</span><span class="p">,</span><span class="n">maxTe</span><span class="o">=</span><span class="mf">10e3</span><span class="p">,</span><span class="n">include_cx</span><span class="o">=</span><span class="n">include_cx</span><span class="p">)</span>
+    
     <span class="k">if</span> <span class="n">include_cx</span><span class="p">:</span>
         <span class="c1"># Get an effective recombination rate by summing radiative &amp; CX recombination rates</span>
         <span class="n">logR</span><span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logaddexp</span><span class="p">(</span><span class="n">logR</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">n0_by_ne</span><span class="p">)[:,</span><span class="kc">None</span><span class="p">]</span> <span class="o">+</span><span class="n">logcx</span><span class="p">)</span>
@@ -630,7 +625,7 @@
             <span class="n">N</span><span class="p">,</span><span class="n">rate_coeff</span><span class="p">[</span><span class="n">it</span><span class="p">]</span> <span class="o">=</span> <span class="n">null_space</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
             <span class="n">fz</span><span class="p">[</span><span class="n">it</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>
 
-        <span class="n">rate_coeff</span><span class="o">*=</span><span class="n">ne</span>
+        <span class="n">rate_coeff</span><span class="o">*=</span><span class="p">(</span><span class="n">ne_cm3</span> <span class="o">*</span> <span class="mf">1e-6</span><span class="p">)</span>
     
     <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
         <span class="c1"># plot fractional abundances</span>
@@ -671,15 +666,15 @@
 
 
 
-<div class="viewcode-block" id="get_cs_balance_terms"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_cs_balance_terms">[docs]</a><span class="k">def</span> <span class="nf">get_cs_balance_terms</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span> <span class="n">ne</span><span class="o">=</span><span class="mf">5e19</span><span class="p">,</span><span class="n">Te</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">maxTe</span><span class="o">=</span><span class="mf">10e3</span><span class="p">,</span> <span class="n">include_cx</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<div class="viewcode-block" id="get_cs_balance_terms"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_cs_balance_terms">[docs]</a><span class="k">def</span> <span class="nf">get_cs_balance_terms</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span> <span class="n">ne_cm3</span><span class="o">=</span><span class="mf">5e13</span><span class="p">,</span> <span class="n">Te_eV</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">maxTe</span><span class="o">=</span><span class="mf">10e3</span><span class="p">,</span> <span class="n">include_cx</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Get S, R and cx on the same logTe grid. </span>
 <span class="sd">    </span>
 <span class="sd">    Args:</span>
 <span class="sd">        atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is </span>
 <span class="sd">            necessary only if include_cx=True</span>
-<span class="sd">        ne : float or array</span>
-<span class="sd">            Electron density in units of m^-3</span>
-<span class="sd">        Te : float or array</span>
+<span class="sd">        ne_cm3 : float or array</span>
+<span class="sd">            Electron density in units of cm^-3</span>
+<span class="sd">        Te_eV : float or array</span>
 <span class="sd">            Electron temperature in units of eV. If left to None, the Te grid</span>
 <span class="sd">            given in the atomic data is used.</span>
 <span class="sd">        maxTe : float</span>
@@ -696,7 +691,7 @@
 <span class="sd">            will be in units of s^-1. </span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">if</span> <span class="n">Te</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1">#find smallest Te grid from all files</span>
+        <span class="c1"># find smallest Te grid from all files</span>
         <span class="n">logne1</span><span class="p">,</span> <span class="n">logTe1</span><span class="p">,</span><span class="n">_</span> <span class="o">=</span> <span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span>  <span class="c1"># ionization</span>
         <span class="n">logne2</span><span class="p">,</span> <span class="n">logTe2</span><span class="p">,</span><span class="n">_</span> <span class="o">=</span> <span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span>  <span class="c1"># radiative recombination</span>
 
@@ -712,10 +707,9 @@
         <span class="n">logTe</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">minTe</span><span class="p">,</span><span class="n">maxTe</span><span class="p">,</span><span class="mi">200</span><span class="p">)</span>
 
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">logTe</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">Te</span><span class="p">)</span>
+        <span class="n">logTe</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">Te_eV</span><span class="p">)</span>
 
-
-    <span class="n">logne</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">ne</span><span class="p">)</span><span class="o">-</span><span class="mi">6</span>
+    <span class="n">logne</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">ne_cm3</span><span class="p">)</span>
 
     <span class="n">logS</span> <span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;scd&#39;</span><span class="p">],</span><span class="n">logne</span><span class="p">,</span> <span class="n">logTe</span><span class="p">,</span><span class="n">log_val</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">x_multiply</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">logR</span> <span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;acd&#39;</span><span class="p">],</span><span class="n">logne</span><span class="p">,</span> <span class="n">logTe</span><span class="p">,</span><span class="n">log_val</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">x_multiply</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -728,10 +722,22 @@
 
 
 
-<div class="viewcode-block" id="plot_relax_time"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.plot_relax_time">[docs]</a><span class="k">def</span> <span class="nf">plot_relax_time</span><span class="p">(</span><span class="n">logTe</span><span class="p">,</span> <span class="n">rate_coeff</span><span class="p">,</span> <span class="n">ne_mean</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="plot_relax_time"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.plot_relax_time">[docs]</a><span class="k">def</span> <span class="nf">plot_relax_time</span><span class="p">(</span><span class="n">logTe</span><span class="p">,</span> <span class="n">rate_coeff</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39; Plot relaxation time of the ionization equilibrium corresponding</span>
-<span class="sd">    to the inverse of the given rate coefficients &#39;&#39;&#39;</span>
+<span class="sd">    to the inverse of the given rate coefficients.</span>
 
+<span class="sd">    Args:</span>
+<span class="sd">        logTe : array (nr,)</span>
+<span class="sd">            log-10 of Te [eV], on an arbitrary grid (same as other arguments, but not</span>
+<span class="sd">            necessarily radial)</span>
+<span class="sd">        rate_coeff : array (nr,)</span>
+<span class="sd">            Rate coefficients from ionization balance. See :py:meth:`~aurora.atomic.get_frac_abundances`</span>
+<span class="sd">            to obtain these via the &quot;compute_rates&quot; argument. </span>
+<span class="sd">            N.B.: these rate coefficients will depend also on electron density, which does affect </span>
+<span class="sd">            relaxation times. </span>
+<span class="sd">        ax : matplotlib axes instance, optional</span>
+<span class="sd">            If provided, plot relaxation times on these axes.    </span>
+<span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
 
@@ -739,8 +745,8 @@
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="s1">&#39;on&#39;</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;T$_e$ [eV]&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$\tau_\mathrm</span><span class="si">{relax}</span><span class="s1">$ [ms]&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;n$_e$ = </span><span class="si">%.2g</span><span class="s1"> m$^{-3}$&#39;</span><span class="o">%</span><span class="n">ne_mean</span><span class="p">)</span></div>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$\tau_\mathrm</span><span class="si">{relax}</span><span class="s1">$ [ms]&#39;</span><span class="p">)</span></div>
+
 
 
 
@@ -939,14 +945,33 @@
     <span class="k">return</span> <span class="n">cont_rad</span></div>
 
 
-<div class="viewcode-block" id="get_cooling_factors"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_cooling_factors">[docs]</a><span class="k">def</span> <span class="nf">get_cooling_factors</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span> <span class="n">logTe_prof</span><span class="p">,</span> <span class="n">fz</span><span class="p">,</span> <span class="n">ion_resolved</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="get_cooling_factors"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_cooling_factors">[docs]</a><span class="k">def</span> <span class="nf">get_cooling_factors</span><span class="p">(</span><span class="n">atom_data</span><span class="p">,</span> <span class="n">logTe_prof</span><span class="p">,</span> <span class="n">fz</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Calculate cooling coefficients for the given fractional abundances and kinetic profiles.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        atom_data : dict</span>
 <span class="sd">            Dictionary containing atomic data as output by :py:meth:`~aurora.atomic.get_atom_data`</span>
 <span class="sd">            for the atomic processes of interest. &quot;prs&quot;,&quot;pls&quot;,&quot;plt&quot; and &quot;prb&quot; are required by this function.</span>
-<span class="sd">        </span>
+<span class="sd">        logTe_prof : array (nt,nr)</span>
+<span class="sd">            Log-10 of electron temperature profile (in eV)</span>
+<span class="sd">        fz : array (nt,nr)</span>
+<span class="sd">            Fractional abundances for all charge states of the ion of &quot;atom_data&quot;</span>
+<span class="sd">        plot : bool</span>
+<span class="sd">            If True, plot all radiation components, summed over charge states.</span>
+<span class="sd">        ax : matplotlib.Axes instance</span>
+<span class="sd">            If provided, plot results on these axes. </span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        pls : array (nt,nr)</span>
+<span class="sd">            Line radiation in the SXR range for each charge state</span>
+<span class="sd">        prs : array (nt,nr)</span>
+<span class="sd">            Continuum radiation in the SXR range for each charge state</span>
+<span class="sd">        pltt : array (nt,nr)</span>
+<span class="sd">            Line radiation (unfiltered) for each charge state.</span>
+<span class="sd">            NB: this corresponds to the ADAS &quot;plt&quot; files. An additional &quot;t&quot; is added to the name to avoid</span>
+<span class="sd">            conflict with the common matplotlib.pyplot short form &quot;plt&quot;</span>
+<span class="sd">        prb : array (nt,nr)</span>
+<span class="sd">            Continuum radiation (unfiltered) for each charge state</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span>
@@ -955,7 +980,6 @@
         <span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span>
     <span class="k">except</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;prs, plt and/or prb files not available!&#39;</span><span class="p">)</span>
-
 
     <span class="n">prs</span> <span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;prs&#39;</span><span class="p">],</span><span class="kc">None</span><span class="p">,</span><span class="n">logTe_prof</span><span class="p">)</span><span class="c1">#continuum radiation in SXR range</span>
     <span class="n">pls</span> <span class="o">=</span> <span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;pls&#39;</span><span class="p">],</span><span class="kc">None</span><span class="p">,</span><span class="n">logTe_prof</span><span class="p">)</span><span class="c1">#line radiation in SXR range</span>
@@ -991,20 +1015,18 @@
         
         <span class="c1"># Set xlims to visualize scales better</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_prof</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span> <span class="n">line_rad_sxr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_prof</span> <span class="o">-</span> <span class="mi">50</span><span class="p">))],</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span> <span class="n">line_rad_tot</span><span class="p">)</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">line_rad_sxr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="n">logTe_prof</span> <span class="o">-</span> <span class="mi">50</span><span class="p">))],</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span> <span class="n">line_rad_tot</span><span class="p">)</span><span class="o">*</span><span class="mi">10</span><span class="p">)</span>
 
         <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="s1">&#39;on&#39;</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;T$_e$ [eV]&#39;</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;L$_z$ [Wm$^3$]&#39;</span><span class="p">)</span>
         <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Cooling factors&#39;</span><span class="p">)</span>
 
-    <span class="k">elif</span> <span class="n">ion_resolved</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">pls</span><span class="p">,</span> <span class="n">prs</span><span class="p">,</span> <span class="n">pltt</span><span class="p">,</span><span class="n">prb</span>
+    <span class="c1"># ion-resolved radiation terms:</span>
+    <span class="k">return</span> <span class="n">pls</span><span class="p">,</span> <span class="n">prs</span><span class="p">,</span> <span class="n">pltt</span><span class="p">,</span><span class="n">prb</span></div>
 
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">line_rad_sxr</span><span class="p">,</span> <span class="n">brems_rad_sxr</span><span class="p">,</span> <span class="n">line_rad_tot</span><span class="p">,</span> <span class="n">brems_rad_tot</span></div>
-
-
+        
+        
 
 <div class="viewcode-block" id="balance"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.balance">[docs]</a><span class="k">def</span> <span class="nf">balance</span><span class="p">(</span><span class="n">logTe_val</span><span class="p">,</span> <span class="n">cs</span><span class="p">,</span> <span class="n">n0_by_ne</span><span class="p">,</span> <span class="n">logTe_</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span><span class="n">R</span><span class="p">,</span><span class="n">cx</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Evaluate balance of effective ionization, recombination and charge exchange at a given temperature. &#39;&#39;&#39;</span>

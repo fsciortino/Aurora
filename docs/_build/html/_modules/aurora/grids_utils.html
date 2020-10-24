@@ -500,7 +500,7 @@
 
 <div class="viewcode-block" id="get_HFS_LFS"><a class="viewcode-back" href="../../aurora.html#aurora.grids_utils.get_HFS_LFS">[docs]</a><span class="k">def</span> <span class="nf">get_HFS_LFS</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">,</span> <span class="n">rho_pol</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Get high-field-side (HFS) and low-field-side (LFS) major radii from the g-EQDSK data. </span>
-<span class="sd">    This is useful to define the r_V grid outside of the LCFS. </span>
+<span class="sd">    This is useful to define the rvol grid outside of the LCFS. </span>
 <span class="sd">    See the :py:func:`~aurora.get_rhopol_rV_mapping` for an application. </span>
 
 <span class="sd">    Args:</span>
@@ -509,7 +509,7 @@
 <span class="sd">            package. </span>
 <span class="sd">        rho_pol : array, optional</span>
 <span class="sd">            Array corresponding to a grid in sqrt of normalized poloidal flux for which a </span>
-<span class="sd">            corresponding r_V grid should be found. If left to None, an arbitrary grid will be </span>
+<span class="sd">            corresponding rvol grid should be found. If left to None, an arbitrary grid will be </span>
 <span class="sd">            created internally. </span>
 
 <span class="sd">    Returns:</span>
@@ -544,11 +544,11 @@
 
 
 
-<div class="viewcode-block" id="get_rhopol_rV_mapping"><a class="viewcode-back" href="../../aurora.html#aurora.grids_utils.get_rhopol_rV_mapping">[docs]</a><span class="k">def</span> <span class="nf">get_rhopol_rV_mapping</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">,</span> <span class="n">rho_pol</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sa">r</span><span class="sd">&#39;&#39;&#39;Compute arrays allowing 1-to-1 mapping of rho_pol and r_V, both inside and</span>
+<div class="viewcode-block" id="get_rhopol_rvol_mapping"><a class="viewcode-back" href="../../aurora.html#aurora.grids_utils.get_rhopol_rvol_mapping">[docs]</a><span class="k">def</span> <span class="nf">get_rhopol_rvol_mapping</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">,</span> <span class="n">rho_pol</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&#39;&#39;&#39;Compute arrays allowing 1-to-1 mapping of rho_pol and rvol, both inside and</span>
 <span class="sd">    outside the LCFS.</span>
 
-<span class="sd">    r_V is defined as :math:`\sqrt{V/(2 \pi^2 R_{axis}}` inside the LCFS. Outside of it,</span>
+<span class="sd">    rvol is defined as :math:`\sqrt{V/(2 \pi^2 R_{axis}}` inside the LCFS. Outside of it,</span>
 <span class="sd">    we artificially expand the LCFS to fit true equilibrium at the midplane based</span>
 <span class="sd">    on the rho_pol grid (sqrt of normalized poloidal flux).</span>
 
@@ -562,8 +562,8 @@
 <span class="sd">        r_{0,lcfs} = \frac{1}{2} (r_{lcfs}(\theta=0)+ r_{lcfs}(\theta=180)) \\</span>
 <span class="sd">        r_0(\rho) = \frac{1}{2} (r(\rho,\theta=0) + r(\rho,\theta=180))</span>
 
-<span class="sd">    The mapping between rho_pol and r_V allows one to interpolate inputs on a</span>
-<span class="sd">    rho_pol grid onto the r_V grid (in cm) used internally by the code.</span>
+<span class="sd">    The mapping between rho_pol and rvol allows one to interpolate inputs on a</span>
+<span class="sd">    rho_pol grid onto the rvol grid (in cm) used internally by the code.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        geqdsk : dict</span>
@@ -571,13 +571,13 @@
 <span class="sd">            package. </span>
 <span class="sd">        rho_pol : array, optional</span>
 <span class="sd">            Array corresponding to a grid in sqrt of normalized poloidal flux for which a </span>
-<span class="sd">            corresponding r_V grid should be found. If left to None, an arbitrary grid will be </span>
+<span class="sd">            corresponding rvol grid should be found. If left to None, an arbitrary grid will be </span>
 <span class="sd">            created internally. </span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">         rho_pol : array</span>
 <span class="sd">             Sqrt of normalized poloidal flux grid</span>
-<span class="sd">         r_V : array</span>
+<span class="sd">         rvol : array</span>
 <span class="sd">             Mapping of rho_pol to a radial grid defined in terms of normalized flux surface volume.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
 
@@ -588,8 +588,6 @@
     <span class="c1"># volumes calculated by EFIT</span>
     <span class="n">R0</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;RMAXIS&#39;</span><span class="p">]</span>
     <span class="n">Z0</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;ZMAXIS&#39;</span><span class="p">]</span>
-
-    <span class="c1">#embed()</span>
     
     <span class="n">V_inner</span> <span class="o">=</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;geo&#39;</span><span class="p">][</span><span class="s1">&#39;vol&#39;</span><span class="p">]</span>
     <span class="n">rhop_inner</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span> <span class="n">geqdsk</span><span class="p">[</span><span class="s1">&#39;fluxSurfaces&#39;</span><span class="p">][</span><span class="s1">&#39;geo&#39;</span><span class="p">][</span><span class="s1">&#39;psin&#39;</span><span class="p">])</span>
@@ -608,20 +606,21 @@
     <span class="n">R_outer</span> <span class="o">=</span> <span class="n">r0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">R_lcfs</span> <span class="o">-</span> <span class="n">r0_lcfs</span><span class="p">,</span><span class="n">scale</span><span class="p">)</span>
     <span class="n">Z_outer</span> <span class="o">=</span> <span class="n">Z0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">Z_lcfs</span> <span class="o">-</span> <span class="n">Z0</span>     <span class="p">,</span><span class="n">scale</span><span class="p">)</span>
 
-    <span class="c1"># calculate volume enclosed by these flux surfaces</span>
-    <span class="n">V_outer</span> <span class="o">=</span> <span class="o">-</span><span class="nb">sum</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="p">((</span><span class="n">R_outer</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">R_outer</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">Z_outer</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">Z_outer</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">)),</span><span class="mi">0</span><span class="p">)</span><span class="o">/</span><span class="mf">2.0</span>
-
+    <span class="c1"># calculate volume enclosed by these &quot;flux surfaces&quot; outside of the LCFS</span>
+    <span class="c1">#V_outer = -sum(2*np.pi*((R_outer+np.roll(R_outer,1,0))/2.)**2*(Z_outer-np.roll(Z_outer,1,0)),0)/2.0</span>
+    <span class="n">V_outer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="p">((</span><span class="n">R_outer</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">R_outer</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">Z_outer</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">Z_outer</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">)),</span><span class="mi">0</span><span class="p">)</span><span class="o">/</span><span class="mf">2.0</span><span class="p">)</span>
+    
     <span class="n">V</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">rho_pol</span><span class="p">,</span><span class="n">rhop_inner</span><span class="p">,</span> <span class="n">V_inner</span><span class="p">)</span>
     <span class="n">V</span><span class="p">[</span><span class="n">rho_pol</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">V_outer</span><span class="p">[</span><span class="n">rho_pol</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]</span>
 
     <span class="c1"># correct errors in V close to magnetic axis inside of rho = .2</span>
     <span class="n">V</span><span class="p">[</span><span class="n">rho_pol</span> <span class="o">&lt;.</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">V_outer</span><span class="p">[</span><span class="n">rho_pol</span> <span class="o">&lt;.</span><span class="mi">2</span><span class="p">]</span><span class="o">/</span><span class="n">V_outer</span><span class="p">[</span><span class="n">rho_pol</span> <span class="o">&lt;.</span><span class="mi">2</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">V</span><span class="p">[</span><span class="n">rho_pol</span> <span class="o">&lt;.</span><span class="mi">2</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 
-    <span class="c1"># compute r_V</span>
-    <span class="n">r_V</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">V</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">R0</span><span class="p">))</span> <span class="o">*</span> <span class="mi">100</span> <span class="c1"># m --&gt; cm</span>
-    <span class="n">r_V</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="c1"># enforce 0 on axis</span>
+    <span class="c1"># compute rvol</span>
+    <span class="n">rvol</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">V</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">R0</span><span class="p">))</span> <span class="o">*</span> <span class="mi">100</span> <span class="c1"># m --&gt; cm</span>
+    <span class="n">rvol</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="c1"># enforce 0 on axis</span>
 
-    <span class="k">return</span> <span class="n">rho_pol</span><span class="p">,</span> <span class="n">r_V</span></div>
+    <span class="k">return</span> <span class="n">rho_pol</span><span class="p">,</span> <span class="n">rvol</span></div>
 
 
 

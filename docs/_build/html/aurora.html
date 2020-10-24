@@ -390,12 +390,33 @@ and to obtain the list of file_types of interest.</p>
 
 <dl class="py function">
 <dt id="aurora.atomic.get_cooling_factors">
-<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_cooling_factors</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">atom_data</span></em>, <em class="sig-param"><span class="n">logTe_prof</span></em>, <em class="sig-param"><span class="n">fz</span></em>, <em class="sig-param"><span class="n">ion_resolved</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_cooling_factors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_cooling_factors" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_cooling_factors</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">atom_data</span></em>, <em class="sig-param"><span class="n">logTe_prof</span></em>, <em class="sig-param"><span class="n">fz</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_cooling_factors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_cooling_factors" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate cooling coefficients for the given fractional abundances and kinetic profiles.</p>
 <dl class="simple">
 <dt>Args:</dt><dd><dl class="simple">
 <dt>atom_data<span class="classifier">dict</span></dt><dd><p>Dictionary containing atomic data as output by <a class="reference internal" href="#aurora.atomic.get_atom_data" title="aurora.atomic.get_atom_data"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_atom_data()</span></code></a>
 for the atomic processes of interest. “prs”,”pls”,”plt” and “prb” are required by this function.</p>
+</dd>
+<dt>logTe_prof<span class="classifier">array (nt,nr)</span></dt><dd><p>Log-10 of electron temperature profile (in eV)</p>
+</dd>
+<dt>fz<span class="classifier">array (nt,nr)</span></dt><dd><p>Fractional abundances for all charge states of the ion of “atom_data”</p>
+</dd>
+<dt>plot<span class="classifier">bool</span></dt><dd><p>If True, plot all radiation components, summed over charge states.</p>
+</dd>
+<dt>ax<span class="classifier">matplotlib.Axes instance</span></dt><dd><p>If provided, plot results on these axes.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>pls<span class="classifier">array (nt,nr)</span></dt><dd><p>Line radiation in the SXR range for each charge state</p>
+</dd>
+<dt>prs<span class="classifier">array (nt,nr)</span></dt><dd><p>Continuum radiation in the SXR range for each charge state</p>
+</dd>
+<dt>pltt<span class="classifier">array (nt,nr)</span></dt><dd><p>Line radiation (unfiltered) for each charge state.
+NB: this corresponds to the ADAS “plt” files. An additional “t” is added to the name to avoid
+conflict with the common matplotlib.pyplot short form “plt”</p>
+</dd>
+<dt>prb<span class="classifier">array (nt,nr)</span></dt><dd><p>Continuum radiation (unfiltered) for each charge state</p>
 </dd>
 </dl>
 </dd>
@@ -404,15 +425,15 @@ for the atomic processes of interest. “prs”,”pls”,”plt” and “prb�
 
 <dl class="py function">
 <dt id="aurora.atomic.get_cs_balance_terms">
-<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_cs_balance_terms</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">atom_data</span></em>, <em class="sig-param"><span class="n">ne</span><span class="o">=</span><span class="default_value">5e+19</span></em>, <em class="sig-param"><span class="n">Te</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">maxTe</span><span class="o">=</span><span class="default_value">10000.0</span></em>, <em class="sig-param"><span class="n">include_cx</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_cs_balance_terms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_cs_balance_terms" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_cs_balance_terms</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">atom_data</span></em>, <em class="sig-param"><span class="n">ne_cm3</span><span class="o">=</span><span class="default_value">50000000000000.0</span></em>, <em class="sig-param"><span class="n">Te_eV</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">maxTe</span><span class="o">=</span><span class="default_value">10000.0</span></em>, <em class="sig-param"><span class="n">include_cx</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_cs_balance_terms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_cs_balance_terms" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get S, R and cx on the same logTe grid.</p>
 <dl class="simple">
 <dt>Args:</dt><dd><dl class="simple">
 <dt>atom_data<span class="classifier">dictionary of atomic ADAS files (only acd, scd are required; ccd is </span></dt><dd><p>necessary only if include_cx=True</p>
 </dd>
-<dt>ne<span class="classifier">float or array</span></dt><dd><p>Electron density in units of m^-3</p>
+<dt>ne_cm3<span class="classifier">float or array</span></dt><dd><p>Electron density in units of cm^-3</p>
 </dd>
-<dt>Te<span class="classifier">float or array</span></dt><dd><p>Electron temperature in units of eV. If left to None, the Te grid
+<dt>Te_eV<span class="classifier">float or array</span></dt><dd><p>Electron temperature in units of eV. If left to None, the Te grid
 given in the atomic data is used.</p>
 </dd>
 <dt>maxTe<span class="classifier">float</span></dt><dd><p>Maximum temperature of interest; only used if Te is left to None.</p>
@@ -441,16 +462,16 @@ will be in units of s^-1.</p>
 
 <dl class="py function">
 <dt id="aurora.atomic.get_frac_abundances">
-<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_frac_abundances</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">atom_data</span></em>, <em class="sig-param"><span class="n">ne</span></em>, <em class="sig-param"><span class="n">Te</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">n0_by_ne</span><span class="o">=</span><span class="default_value">1e-05</span></em>, <em class="sig-param"><span class="n">include_cx</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rho</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rho_lbl</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ls</span><span class="o">=</span><span class="default_value">'-'</span></em>, <em class="sig-param"><span class="n">compute_rates</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_frac_abundances"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_frac_abundances" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_frac_abundances</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">atom_data</span></em>, <em class="sig-param"><span class="n">ne_cm3</span></em>, <em class="sig-param"><span class="n">Te_eV</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">n0_by_ne</span><span class="o">=</span><span class="default_value">1e-05</span></em>, <em class="sig-param"><span class="n">include_cx</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rho</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rho_lbl</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ls</span><span class="o">=</span><span class="default_value">'-'</span></em>, <em class="sig-param"><span class="n">compute_rates</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_frac_abundances"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_frac_abundances" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate fractional abundances from ionization and recombination equilibrium.
 If include_cx=True, radiative recombination and thermal charge exchange are summed.</p>
 <dl class="simple">
 <dt>Args:</dt><dd><dl class="simple">
 <dt>atom_data<span class="classifier">dictionary of atomic ADAS files (only acd, scd are required; ccd is </span></dt><dd><p>necessary only if include_cx=True</p>
 </dd>
-<dt>ne<span class="classifier">float or array</span></dt><dd><p>Electron density in units of m^-3</p>
+<dt>ne_cm3<span class="classifier">float or array</span></dt><dd><p>Electron density in units of cm^-3</p>
 </dd>
-<dt>Te<span class="classifier">float or array, optional</span></dt><dd><p>Electron temperature in units of eV. If left to None, the Te grid given in the 
+<dt>Te_eV<span class="classifier">float or array, optional</span></dt><dd><p>Electron temperature in units of eV. If left to None, the Te grid given in the 
 atomic data is used.</p>
 </dd>
 <dt>n0_by_ne: float or array, optional</dt><dd><p>Ratio of background neutral hydrogen to electron density, used if include_cx=True.</p>
@@ -597,9 +618,24 @@ all charge state; otherwise, it is given for each charge state.</p>
 
 <dl class="py function">
 <dt id="aurora.atomic.plot_relax_time">
-<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">plot_relax_time</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logTe</span></em>, <em class="sig-param"><span class="n">rate_coeff</span></em>, <em class="sig-param"><span class="n">ne_mean</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#plot_relax_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.plot_relax_time" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">plot_relax_time</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logTe</span></em>, <em class="sig-param"><span class="n">rate_coeff</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#plot_relax_time"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.plot_relax_time" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plot relaxation time of the ionization equilibrium corresponding
-to the inverse of the given rate coefficients</p>
+to the inverse of the given rate coefficients.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>logTe<span class="classifier">array (nr,)</span></dt><dd><p>log-10 of Te [eV], on an arbitrary grid (same as other arguments, but not
+necessarily radial)</p>
+</dd>
+<dt>rate_coeff<span class="classifier">array (nr,)</span></dt><dd><p>Rate coefficients from ionization balance. See <a class="reference internal" href="#aurora.atomic.get_frac_abundances" title="aurora.atomic.get_frac_abundances"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_frac_abundances()</span></code></a>
+to obtain these via the “compute_rates” argument. 
+N.B.: these rate coefficients will depend also on electron density, which does affect 
+relaxation times.</p>
+</dd>
+<dt>ax<span class="classifier">matplotlib axes instance, optional</span></dt><dd><p>If provided, plot relaxation times on these axes.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -1046,7 +1082,7 @@ NB: these are just rough numbers!</p>
 <dt id="aurora.grids_utils.get_HFS_LFS">
 <code class="sig-prename descclassname">aurora.grids_utils.</code><code class="sig-name descname">get_HFS_LFS</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">geqdsk</span></em>, <em class="sig-param"><span class="n">rho_pol</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/grids_utils.html#get_HFS_LFS"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.grids_utils.get_HFS_LFS" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get high-field-side (HFS) and low-field-side (LFS) major radii from the g-EQDSK data. 
-This is useful to define the r_V grid outside of the LCFS. 
+This is useful to define the rvol grid outside of the LCFS. 
 See the <code class="xref py py-func docutils literal notranslate"><span class="pre">get_rhopol_rV_mapping()</span></code> for an application.</p>
 <dl class="simple">
 <dt>Args:</dt><dd><dl class="simple">
@@ -1054,7 +1090,7 @@ See the <code class="xref py py-func docutils literal notranslate"><span class="
 package.</p>
 </dd>
 <dt>rho_pol<span class="classifier">array, optional</span></dt><dd><p>Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
-corresponding r_V grid should be found. If left to None, an arbitrary grid will be 
+corresponding rvol grid should be found. If left to None, an arbitrary grid will be 
 created internally.</p>
 </dd>
 </dl>
@@ -1070,11 +1106,11 @@ created internally.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="aurora.grids_utils.get_rhopol_rV_mapping">
-<code class="sig-prename descclassname">aurora.grids_utils.</code><code class="sig-name descname">get_rhopol_rV_mapping</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">geqdsk</span></em>, <em class="sig-param"><span class="n">rho_pol</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/grids_utils.html#get_rhopol_rV_mapping"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.grids_utils.get_rhopol_rV_mapping" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute arrays allowing 1-to-1 mapping of rho_pol and r_V, both inside and
+<dt id="aurora.grids_utils.get_rhopol_rvol_mapping">
+<code class="sig-prename descclassname">aurora.grids_utils.</code><code class="sig-name descname">get_rhopol_rvol_mapping</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">geqdsk</span></em>, <em class="sig-param"><span class="n">rho_pol</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/grids_utils.html#get_rhopol_rvol_mapping"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.grids_utils.get_rhopol_rvol_mapping" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute arrays allowing 1-to-1 mapping of rho_pol and rvol, both inside and
 outside the LCFS.</p>
-<p>r_V is defined as <span class="math notranslate nohighlight">\(\sqrt{V/(2 \pi^2 R_{axis}}\)</span> inside the LCFS. Outside of it,
+<p>rvol is defined as <span class="math notranslate nohighlight">\(\sqrt{V/(2 \pi^2 R_{axis}}\)</span> inside the LCFS. Outside of it,
 we artificially expand the LCFS to fit true equilibrium at the midplane based
 on the rho_pol grid (sqrt of normalized poloidal flux).</p>
 <p>Method:</p>
@@ -1084,15 +1120,15 @@ z(\rho,\theta) = z_0      +  (z_{lcfs}(\theta) - z_0     ) \times \mathcal{f} \\
 \mathcal{f} = \frac{ r(\rho,\theta=0) - r(\rho,\theta=180)}{r_{lcfs}(\theta=0)- r_{lcfs}(\theta=180)} \\
 r_{0,lcfs} = \frac{1}{2} (r_{lcfs}(\theta=0)+ r_{lcfs}(\theta=180)) \\
 r_0(\rho) = \frac{1}{2} (r(\rho,\theta=0) + r(\rho,\theta=180))\end{split}\]</div>
-<p>The mapping between rho_pol and r_V allows one to interpolate inputs on a
-rho_pol grid onto the r_V grid (in cm) used internally by the code.</p>
+<p>The mapping between rho_pol and rvol allows one to interpolate inputs on a
+rho_pol grid onto the rvol grid (in cm) used internally by the code.</p>
 <dl class="simple">
 <dt>Args:</dt><dd><dl class="simple">
 <dt>geqdsk<span class="classifier">dict</span></dt><dd><p>Dictionary containing the g-EQDSK file as processed by the <em>omfit_eqdsk</em>
 package.</p>
 </dd>
 <dt>rho_pol<span class="classifier">array, optional</span></dt><dd><p>Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
-corresponding r_V grid should be found. If left to None, an arbitrary grid will be 
+corresponding rvol grid should be found. If left to None, an arbitrary grid will be 
 created internally.</p>
 </dd>
 </dl>
@@ -1100,7 +1136,7 @@ created internally.</p>
 <dt>Returns:</dt><dd><dl class="simple">
 <dt>rho_pol<span class="classifier">array</span></dt><dd><p>Sqrt of normalized poloidal flux grid</p>
 </dd>
-<dt>r_V<span class="classifier">array</span></dt><dd><p>Mapping of rho_pol to a radial grid defined in terms of normalized flux surface volume.</p>
+<dt>rvol<span class="classifier">array</span></dt><dd><p>Mapping of rho_pol to a radial grid defined in terms of normalized flux surface volume.</p>
 </dd>
 </dl>
 </dd>

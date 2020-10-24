@@ -58,7 +58,7 @@ class aurora_sim:
                                                               time_diff_warning_threshold=20)
 
         # Get r_V to rho_pol mapping
-        rho_pol, _rvol = grids_utils.get_rhopol_rV_mapping(geqdsk)
+        rho_pol, _rvol = grids_utils.get_rhopol_rvol_mapping(geqdsk)
         rvol_lcfs = interp1d(rho_pol,_rvol)(1.0)
         self.rvol_lcfs = self.namelist['rvol_lcfs'] = np.round(rvol_lcfs,3)  # set limit on accuracy
 
@@ -115,6 +115,7 @@ class aurora_sim:
         out = atomic_element(symbol=self.imp)
         spec = list(out.keys())[0]
         self.Z_imp = int(out[spec]['Z'])
+        self.A_imp = int(out[spec]['A'])
         
         # Extract other inputs from namelist:
         self.mixing_radius = self.namelist['saw_model']['rmix']
@@ -133,8 +134,6 @@ class aurora_sim:
         self.bound_sep = self.namelist['bound_sep']
         self.lim_sep = self.namelist['lim_sep']
         self.sawtooth_erfc_width = self.namelist['saw_model']['sawtooth_erfc_width']
-        #self.main_ion_Z = self.namelist['Z']
-        #self.main_ion_A = self.namelist['a']
         self.cxr_flag = self.namelist['cxr_flag']
         self.nbi_cxr_flag = self.namelist['nbi_cxr_flag']
 
@@ -166,18 +165,20 @@ class aurora_sim:
         # linear interpolation in time
         if len(times) > 1:  # time-dept
             data = interp1d(times,data,axis=0)(np.clip(self.time_grid,*times[[0,-1]]))
-
+        else:  # time-indpt: same kin profs at every time point
+            data = np.tile(data, (len(self.time_grid),1))
+            
         return data
 
 
     def get_aurora_kin_profs(self, min_T=1.01, min_ne=1e10):
         '''Get kinetic profiles on radial and time grids.
         '''
-
         Te = self.interp_kin_prof('Te')
         ne = self.interp_kin_prof('ne')
-        if 'Ti' in self.kin_profs:
-            Ti = interp_kin_prof('Ti')
+
+        if 'Ti' in self.kin_profs and 'vals' in self.kin_profs['Ti']:
+            Ti = self.interp_kin_prof('Ti')
         else:
             Ti = Te
 
@@ -219,7 +220,7 @@ class aurora_sim:
             # include thermal charge exchange recombination
             atom_data = atomic.get_atom_data(self.imp,['ccd'])
 
-            lTi = np.log10(Ti)
+            lTi = np.log10(self._Ti)
             alpha_CX_rates = atomic.interp_atom_prof(atom_data['ccd'], lne, lTi, x_multiply=False)
 
             # change rates from units of [1/s/cm^3] to [1/s] ---> this is the result of STRAHL's `sas' subroutine

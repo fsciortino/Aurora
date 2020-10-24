@@ -3,6 +3,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from omfit_commonclasses.utils_math import atomic_element
 from . import atomic
+from . import plot_tools
 from scipy.integrate import cumtrapz
 import matplotlib.pyplot as plt
 from colradpy import colradpy
@@ -389,6 +390,10 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     if n0_cm3 is not None: n0_cm3 = n0_cm3[rhop<=1.]
     rhop = rhop[rhop<=1.]
 
+    # create results dictionary
+    res = {}
+    res['rhop'] = rhop
+    
     # load ionization and recombination rates
     filetypes = ['acd','scd']
     if n0_cm3 is not None:
@@ -397,19 +402,24 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     if nz_cm3 is None:
         # obtain fractional abundances via a constant-fraction model 
         atom_data = atomic.get_atom_data(imp,filetypes)
-        
-        # get_frac_abundances takes inputs in m^-3 and eV
-        logTe, fz = atomic.get_frac_abundances(atom_data, ne_cm3*1e6, Te_eV,rho=rhop, plot=plot)
-        if n0_cm3 is not None:
-            # compute result with CX and overplot
-            logTe, fz = atomic.get_frac_abundances(atom_data, ne_cm3*1e6, Te_eV,rho=rhop, plot=plot,ls='--',
-                                                              include_cx=True, n0_by_ne=n0_cm3/ne_cm3,ax=plt.gca())
 
+        if n0_cm3 is None:
+            # obtain fractional abundances without CX:
+            logTe, fz = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot)
+        else:
+            # include CX for ionization balance:
+            logTe, fz = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot,
+                                                   include_cx=True, n0_by_ne=n0_cm3/ne_cm3)
+            
         # Impurity densities
         nz_cm3 = frac * ne_cm3[None,:,None] * fz[None,:,:]  # (time,nZ,space)
     else:
         # set input nz_cm3 into the right shape for compute_rad: (time,space,nz)
         nz_cm3 = nz_cm3[None,:,:]
+
+        # calculate fractional abundances 
+        fz = nz_cm3[0,:,:].T/np.sum(nz_cm3[0,:,:],axis=1)
+        fz = fz.T  # (nz,space)
 
     Z_imp = nz_cm3.shape[-1] -1  # don't include neutral stage
     
@@ -424,13 +434,10 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
                                          prad_flag=True, thermal_cx_rad_flag=False, 
                                          spectral_brem_flag=False, sxr_flag=False, 
                                          main_ion_brem_flag=True)
-
-    # create results dictionary
-    res = {}
-    res['rhop'] = rhop
     
     # radiation terms -- converted from W/cm^3 to W/m^3
-    res['line_rad_dens'] = rad['impurity_radiation'][0,:Z_imp-1,:]*1e6  # no line radiation from fully-stripped impurity
+    # res['line_rad_dens'] = rad['impurity_radiation'][0,:Z_imp-1,:]*1e6  # no line radiation from fully-stripped impurity
+    res['line_rad_dens'] = rad['impurity_radiation'][0,:Z_imp,:]*1e6  # no line radiation from fully-stripped impurity
     res['brems_dens'] = rad['impurity_radiation'][0,Z_imp,:]*1e6
     res['cont_rad_dens'] = rad['impurity_radiation'][0,Z_imp+1,:]*1e6
     res['rad_tot_dens'] = rad['impurity_radiation'][0,Z_imp+3,:]*1e6
@@ -466,26 +473,35 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         ax.plot(rhop, res['brems']/1e6, label=r'$P_{brems}$')
         ax.plot(rhop, res['cont_rad']/1e6, label=r'$P_{cont}$')
         ax.plot(rhop, res['rad_tot']/1e6, label=r'$P_{rad,tot}$')
-        
         ax.set_xlabel(r'$\rho_p$')
         ax.set_ylabel(fr'{imp} $P_{{rad}}$ [MW]')
         fig.suptitle('Cumulative power')
         ax.legend().set_draggable(True)
-
-        # power per charge state
-        fig,ax = plt.subplots()
+        plt.tight_layout()
+        
+        # plot line radiation for each charge state
+        fig = plt.figure(figsize=(10,7))
+        colspan = 8 if res['line_rad_dens'].shape[0]<50 else 7
+        a_plot = plt.subplot2grid((10,10),(0,0),rowspan = 10, colspan = colspan, fig=fig) 
+        a_legend = plt.subplot2grid((10,10),(0,8),rowspan = 10, colspan = 10-colspan, fig=fig) 
+        ls_cycle = plot_tools.get_ls_cycle()
         for cs in np.arange(res['line_rad_dens'].shape[0]):
-            ax.plot(rhop, res['line_rad_dens'][cs,:]/1e6, label=imp+fr'$^{{{cs+1}+}}$')
-        ax.set_xlabel(r'$\rho_p$')
-        ax.set_ylabel(fr'{imp} $P_{{rad}}$ [MW]')
-        ax.legend().set_draggable(True)
-
+            ls = next(ls_cycle)
+            a_plot.plot(rhop, res['line_rad_dens'][cs,:]/1e6, ls)
+            a_legend.plot([], [], ls, label=imp+fr'$^{{{cs}+}}$')
+        a_plot.set_xlabel(r'$\rho_p$')
+        a_plot.set_ylabel(fr'{imp} $P_{{rad}}$ [$MW/m^3$]')
+        ncol_leg = 2 if res['line_rad_dens'].shape[0]<25 else 3
+        leg=a_legend.legend(loc='center right', fontsize=11, ncol=ncol_leg).set_draggable(True)
+        a_legend.axis('off')
+        
         # plot average Z over radius
         fig,ax = plt.subplots()
         ax.plot(rhop, res['Z_avg'])
         ax.set_xlabel(r'$\rho_p$')
         ax.set_ylabel(fr'{imp} $\langle Z \rangle$')
-    
+        plt.tight_layout()
+        
     return res
 
 

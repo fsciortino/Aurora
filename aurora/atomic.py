@@ -8,6 +8,7 @@ import os
 import scipy.ndimage
 from scipy.linalg import svd
 from IPython import embed
+from scipy.constants import m_p, e as q_electron
 
 
 def get_file_types():
@@ -392,18 +393,12 @@ def read_adf15(path, order=1, Te_max = None, ne_max = None,
                         ax1.set_ylim([ax1.get_ylim()[0], pec_plot_max ])
 
                     ax1.legend(loc='best').set_draggable(True)
-                    #ax1.legend(loc='best').draggable(True)
                     ax1.set_title(cs + r' --- $\lambda$ = '+str(lam) +' A')
 
 
     return pec_dict
 
 
-# -------------------------------------------------------------------------------
-#
-#   Routines to examine ionization equilibrium
-#
-# -------------------------------------------------------------------------------
 
 def null_space(A):
     ''' Find null space of matrix A '''
@@ -413,18 +408,17 @@ def null_space(A):
     return Q, s[-2]  # matrix is singular, so last index is ~0
 
 
-def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
-                        plot=True, ax = None, rho = None, rho_lbl=None,ls='-',
-                        compute_rates=False):
+def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=False,
+                        plot=True, ax = None, rho = None, rho_lbl=None,ls='-',compute_rates=False):
     '''Calculate fractional abundances from ionization and recombination equilibrium.
     If include_cx=True, radiative recombination and thermal charge exchange are summed.
 
     Args:
         atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
             necessary only if include_cx=True
-        ne : float or array
-            Electron density in units of m^-3
-        Te : float or array, optional
+        ne_cm3 : float or array
+            Electron density in units of cm^-3
+        Te_eV : float or array, optional
             Electron temperature in units of eV. If left to None, the Te grid given in the 
             atomic data is used.
         n0_by_ne: float or array, optional
@@ -457,7 +451,8 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
 
     '''
 
-    logTe, logS,logR,logcx = get_cs_balance_terms(atom_data, ne,Te, maxTe=10e3, include_cx=include_cx)
+    logTe, logS,logR,logcx = get_cs_balance_terms(atom_data,ne_cm3,Te_eV,maxTe=10e3,include_cx=include_cx)
+    
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
         logR= np.logaddexp(logR,np.log(n0_by_ne)[:,None] +logcx)
@@ -481,7 +476,7 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
             N,rate_coeff[it] = null_space(A)
             fz[it] = N/np.sum(N)
 
-        rate_coeff*=ne
+        rate_coeff*=(ne_cm3 * 1e-6)
     
     if plot:
         # plot fractional abundances
@@ -522,15 +517,15 @@ def get_frac_abundances(atom_data, ne,Te=None, n0_by_ne=1e-5, include_cx=False,
 
 
 
-def get_cs_balance_terms(atom_data, ne=5e19,Te = None, maxTe=10e3, include_cx=True):
+def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, maxTe=10e3, include_cx=True):
     '''Get S, R and cx on the same logTe grid. 
     
     Args:
         atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
             necessary only if include_cx=True
-        ne : float or array
-            Electron density in units of m^-3
-        Te : float or array
+        ne_cm3 : float or array
+            Electron density in units of cm^-3
+        Te_eV : float or array
             Electron temperature in units of eV. If left to None, the Te grid
             given in the atomic data is used.
         maxTe : float
@@ -547,7 +542,7 @@ def get_cs_balance_terms(atom_data, ne=5e19,Te = None, maxTe=10e3, include_cx=Tr
             will be in units of s^-1. 
     '''
     if Te is None:
-        #find smallest Te grid from all files
+        # find smallest Te grid from all files
         logne1, logTe1,_ = atom_data['scd']  # ionization
         logne2, logTe2,_ = atom_data['acd']  # radiative recombination
 
@@ -563,10 +558,9 @@ def get_cs_balance_terms(atom_data, ne=5e19,Te = None, maxTe=10e3, include_cx=Tr
         logTe = np.linspace(minTe,maxTe,200)
 
     else:
-        logTe = np.log10(Te)
+        logTe = np.log10(Te_eV)
 
-
-    logne = np.log10(ne)-6
+    logne = np.log10(ne_cm3)
 
     logS = interp_atom_prof(atom_data['scd'],logne, logTe,log_val=True, x_multiply=False)
     logR = interp_atom_prof(atom_data['acd'],logne, logTe,log_val=True, x_multiply=False)
@@ -579,10 +573,22 @@ def get_cs_balance_terms(atom_data, ne=5e19,Te = None, maxTe=10e3, include_cx=Tr
 
 
 
-def plot_relax_time(logTe, rate_coeff, ne_mean, ax = None):
+def plot_relax_time(logTe, rate_coeff, ax = None):
     ''' Plot relaxation time of the ionization equilibrium corresponding
-    to the inverse of the given rate coefficients '''
+    to the inverse of the given rate coefficients.
 
+    Args:
+        logTe : array (nr,)
+            log-10 of Te [eV], on an arbitrary grid (same as other arguments, but not
+            necessarily radial)
+        rate_coeff : array (nr,)
+            Rate coefficients from ionization balance. See :py:meth:`~aurora.atomic.get_frac_abundances`
+            to obtain these via the "compute_rates" argument. 
+            N.B.: these rate coefficients will depend also on electron density, which does affect 
+            relaxation times. 
+        ax : matplotlib axes instance, optional
+            If provided, plot relaxation times on these axes.    
+    '''
     if ax is None:
         ax = plt.subplot(111)
 
@@ -591,7 +597,7 @@ def plot_relax_time(logTe, rate_coeff, ne_mean, ax = None):
     ax.grid('on')
     ax.set_xlabel('T$_e$ [eV]')
     ax.set_ylabel(r'$\tau_\mathrm{relax}$ [ms]')
-    ax.set_title(r'n$_e$ = %.2g m$^{-3}$'%ne_mean)
+
 
 
 
@@ -790,14 +796,33 @@ def get_adas_continuum_rad(ion_name, n_ion, logne_prof, logTe_prof, sxr=False):
     return cont_rad
 
 
-def get_cooling_factors(atom_data, logTe_prof, fz, ion_resolved = False, plot=True,ax=None):
+def get_cooling_factors(atom_data, logTe_prof, fz, plot=True,ax=None):
     '''Calculate cooling coefficients for the given fractional abundances and kinetic profiles.
 
     Args:
         atom_data : dict
             Dictionary containing atomic data as output by :py:meth:`~aurora.atomic.get_atom_data`
             for the atomic processes of interest. "prs","pls","plt" and "prb" are required by this function.
-        
+        logTe_prof : array (nt,nr)
+            Log-10 of electron temperature profile (in eV)
+        fz : array (nt,nr)
+            Fractional abundances for all charge states of the ion of "atom_data"
+        plot : bool
+            If True, plot all radiation components, summed over charge states.
+        ax : matplotlib.Axes instance
+            If provided, plot results on these axes. 
+    
+    Returns:
+        pls : array (nt,nr)
+            Line radiation in the SXR range for each charge state
+        prs : array (nt,nr)
+            Continuum radiation in the SXR range for each charge state
+        pltt : array (nt,nr)
+            Line radiation (unfiltered) for each charge state.
+            NB: this corresponds to the ADAS "plt" files. An additional "t" is added to the name to avoid
+            conflict with the common matplotlib.pyplot short form "plt"
+        prb : array (nt,nr)
+            Continuum radiation (unfiltered) for each charge state
     '''
     try:
         atom_data['prs']
@@ -806,7 +831,6 @@ def get_cooling_factors(atom_data, logTe_prof, fz, ion_resolved = False, plot=Tr
         atom_data['prb']
     except:
         raise ValueError('prs, plt and/or prb files not available!')
-
 
     prs = interp_atom_prof(atom_data['prs'],None,logTe_prof)#continuum radiation in SXR range
     pls = interp_atom_prof(atom_data['pls'],None,logTe_prof)#line radiation in SXR range
@@ -842,20 +866,18 @@ def get_cooling_factors(atom_data, logTe_prof, fz, ion_resolved = False, plot=Tr
         
         # Set xlims to visualize scales better
         ax.set_xlim(50,10**logTe_prof[-1])
-        ax.set_ylim( line_rad_sxr[np.argmin(np.abs(10**logTe_prof - 50))], np.nanmax( line_rad_tot)*10)
+        ax.set_ylim(line_rad_sxr[np.argmin(np.abs(10**logTe_prof - 50))], np.nanmax( line_rad_tot)*10)
 
         ax.grid('on')
         ax.set_xlabel('T$_e$ [eV]')
         ax.set_ylabel('L$_z$ [Wm$^3$]')
         ax.set_title('Cooling factors')
 
-    elif ion_resolved:
-        return pls, prs, pltt,prb
+    # ion-resolved radiation terms:
+    return pls, prs, pltt,prb
 
-    else:
-        return line_rad_sxr, brems_rad_sxr, line_rad_tot, brems_rad_tot
-
-
+        
+        
 
 def balance(logTe_val, cs, n0_by_ne, logTe_, S,R,cx):
     '''Evaluate balance of effective ionization, recombination and charge exchange at a given temperature. '''

@@ -3,7 +3,7 @@ import numpy as np, copy
 import matplotlib.gridspec as mplgs
 import matplotlib.widgets as mplw
 import itertools
-from scipy.constants import m_p, e as q_electron
+
 
 def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=False,
                 x_line=None, y_line=None, **kwargs):
