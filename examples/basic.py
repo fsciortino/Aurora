@@ -62,7 +62,7 @@ namelist['source_type'] = 'const'
 namelist['Phi0'] = 1e24 #1.0
 
 # Set up for 1 ion:
-imp = namelist['imp'] = 'Ca' #'Ar' #'Ca'
+imp = namelist['imp'] = 'Ar'
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -72,8 +72,6 @@ D_eff = 1e4 #cm^2/s
 v_eff = -2e2 #cm/s
 
 # # set transport coefficients to the right format
-#D_z = np.ones((len(asim.rvol_grid),1)) * D_eff
-#V_z = np.ones((len(asim.rvol_grid),1)) * v_eff
 D_z = np.ones(len(asim.rvol_grid)) * D_eff
 V_z = np.ones(len(asim.rvol_grid)) * v_eff
 
@@ -89,9 +87,9 @@ nz = nz.transpose(2,1,0)
 
 # add radiation
 asim.rad = aurora.radiation.compute_rad(imp, asim.rhop_grid, asim.time_out, nz, 
-                                            asim.ne, asim.Te, prad_flag=True, thermal_cx_rad_flag=False, 
-                                            spectral_brem_flag=False, sxr_flag=False, 
-                                            main_ion_brem_flag=False)
+                                        asim.ne, asim.Te, prad_flag=True, thermal_cx_rad_flag=False, 
+                                        spectral_brem_flag=False, sxr_flag=False, 
+                                        main_ion_brem_flag=False)
 
 # Calculate Delta-Z_eff
 Zmax = nz.shape[1]-1

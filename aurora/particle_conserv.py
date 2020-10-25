@@ -8,10 +8,11 @@ from scipy.integrate import cumtrapz
 
 def vol_int(ds, var,rhop_max=None, R_axis=68.5):
     """
-    Perform a volume integral of an input variable. If the variable is f(t,x) then the result is f(t).
-    If the variable is f(t,*,x) then the result is f(t,charge) when "*" represents charge, line index, etc...
+    Perform a volume integral of an input variable. If the variable is f(t,x) 
+    then the result is f(t). If the variable is f(t,*,x) then the result is f(t,charge)
+    when "*" represents charge, line index, etc...
 
-    :param ds: xarray dataset containing STRAHL result
+    :param ds: xarray dataset containing Aurora or STRAHL result
     :param var: Name of the variable in the strahl_result.cdf file
     :params rhop_max: Maximum normalized poloidal flux for integral
     :params R_axis: major radius on axis [cm]
@@ -20,7 +21,7 @@ def vol_int(ds, var,rhop_max=None, R_axis=68.5):
     """
 
     # Coordinates
-    pro = ds['pro'].data #2x radial step
+    pro = ds['pro'].data # 2x radial step
     radius_grid = ds['radius_grid'].data
     rhop_grid = ds['rhop_grid'].data
 
@@ -43,8 +44,8 @@ def vol_int(ds, var,rhop_max=None, R_axis=68.5):
 
 
 def get_particle_nums(filepath=None, ds=None, R_axis=None):
-    ''' Check time evolution and particle conservation in (py)STRAHL output.
-    If filepath is None, load data from output STRAHL file, otherwise use xarray Dataset in ds. 
+    ''' Check time evolution and particle conservation in Aurora or STRAHL output.
+    If filepath is not None, load data from file, otherwise use xarray Dataset in ds. 
 
     R_axis [cm] is needed for volume integrals. If None, it is set to a C-Mod default. 
     '''
@@ -252,7 +253,7 @@ def check_1d_conserv(Raxis, ds=None, filepath=None, linestyle='-', axs = None):
     axf = ax1.flatten()
     iplot = 0
 
-    for  key,label in zip(keys,labels):
+    for key,label in zip(keys,labels):
         if key in ds:
             y = ds[key].data
             if key != 'particles_in_pump':
@@ -274,7 +275,7 @@ def check_1d_conserv(Raxis, ds=None, filepath=None, linestyle='-', axs = None):
         axxx.set_xlabel('Time (s)')
     axxx.set_xlim(time[[0,-1]])
 
-    for aaa in axf:
+    for aaa in axf[:iplot]:
         aaa.legend(loc='best').set_draggable(True)
 
     # ---------------------------------------------
