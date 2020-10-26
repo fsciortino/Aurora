@@ -137,40 +137,46 @@ class adas_file():
                 ax.set_ylabel('$\log('+self.file_type+')\ \mathrm{[W\cdot cm^3]}$')
 
 
-def get_atom_data(imp, files = None):
+def get_atom_data(imp, filetypes=['acd','scd'], filenames=[]):
     ''' Collect atomic data for a given impurity from all types of ADAS files available or
     for only those requested. 
 
     Args:
         imp : str
             Atomic symbol of impurity ion.
-        files : list or array-like
-            ADAS file names to be fetched. 
+        filetypes : list or array-like 
+            ADAS file types to be fetched. Default is ["acd","scd"] for effective ionization 
+            and recombination rates (excluding CX).
+        filenames : list or array-like, optional
+            ADAS file names to be used in place of the defaults given by 
+            :py:meth:`~aurora.atomic.adas_file_dict`.
+            If left empty, such defaults are used. Note that the order of filenames must be 
+            the same as the one in the "filetypes" list.
     
     Returns:
         atom_data : dict
-           Dictionary containing data for each of the requested files (or all files returned by
-           :py:meth:`~aurora.atomic.adas_files_dict` for the impurity ion of interest). 
+           Dictionary containing data for each of the requested files. 
            Each entry of the dictionary gives log-10 of ne, log-10 of Te and log-10 of the data
            as attributes atom_data[key].logNe, atom_data[key].logT, atom_data[key].data
     '''
-    atomdat_dir = get_atomdat_info()
-
     atom_data = {}
+    
+    if filenames:
+        files = {}
+        for ii,typ in enumerate(filetypes):
+            files[typ] = filenames[ii]
+    else:
+        # get dictionary containing default list of ADAS atomic files
+        def_adas_files_dict = adas_files_dict()
+        files = def_adas_files_dict[imp]
 
-    if files is None:
-        # fetch all file types
-        files = get_file_types().keys()
-
-    # get dictionary containing default list of ADAS atomic files
-    files_dict =  adas_files_dict()
-
-    for key in files:
-        file = files_dict[imp][key]
+    atomdat_dir = get_atomdat_info()
+    for filetype in filetypes:
+        filename = files[filetype]
 
         # load specific file and add it to output dictionary
-        res = adas_file(atomdat_dir+file)
-        atom_data[key] = res.logNe, res.logT, res.data
+        res = adas_file(atomdat_dir+filename)
+        atom_data[filetype] = res.logNe, res.logT, res.data
 
     return atom_data
 

@@ -144,7 +144,3 @@ asim_Ar.rad = aurora.radiation.compute_rad('Ar', asim_Ar.rhop_grid, asim_Ar.time
 aurora.plot_tools.slider_plot(asim_Ar.rvol_grid, asim_Ar.time_out, nz_Ar.transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]', labels=[fr'Ar$^{{{i}}}$$^+$' for i in np.arange(0,nz_Ar.shape[1])], plot_sum=True, x_line=asim_Ca.rvol_lcfs)
 
 aurora.plot_tools.slider_plot(asim_Ca.rvol_grid, asim_Ca.time_out, nz_Ca.transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]', labels=[fr'Ca$^{{{i}}}$$^+$' for i in np.arange(0,nz_Ca.shape[1])], plot_sum=True)
-
-
-# plot radiation profiles over radius and time
-aurora.plot_tools.slider_plot(asim_Ca.rvol_grid, asim_Ca.time_out, asim_Ca.rad['impurity_radiation'].transpose(1,2,0)[:nz_Ca.shape[1],:,:], xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]', labels=['Ca'+str(i) for i in np.arange(0,nz_Ca.shape[1])], plot_sum=True, x_line=asim_Ca.rvol_lcfs)
