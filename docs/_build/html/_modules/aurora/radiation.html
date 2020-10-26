@@ -533,7 +533,7 @@
 
 
 <div class="viewcode-block" id="radiation_model"><a class="viewcode-back" href="../../aurora.html#aurora.radiation.radiation_model">[docs]</a><span class="k">def</span> <span class="nf">radiation_model</span><span class="p">(</span><span class="n">imp</span><span class="p">,</span><span class="n">rhop</span><span class="p">,</span> <span class="n">ne_cm3</span><span class="p">,</span> <span class="n">Te_eV</span><span class="p">,</span> <span class="n">vol</span><span class="p">,</span>
-                    <span class="n">n0_cm3</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nz_cm3</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">frac</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+                    <span class="n">adas_files</span><span class="o">=</span><span class="p">{},</span> <span class="n">n0_cm3</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nz_cm3</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">frac</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Model radiation from a fixed-impurity-fraction model or from detailed impurity density</span>
 <span class="sd">    profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), </span>
 <span class="sd">    calculating radiation terms over the radius and integrated over the plasma cross section. </span>
@@ -551,6 +551,14 @@
 <span class="sd">            Volume of each flux surface in :math:`m^3`. Note the units! We use :math:`m^3` here</span>
 <span class="sd">            rather than :math:`cm^3` because it is more common to work with :math:`m^3` for </span>
 <span class="sd">            flux surface volumes of fusion devices.</span>
+
+<span class="sd">    Keyword Args:</span>
+<span class="sd">        adas_files : dict</span>
+<span class="sd">            Dictionary containing ADAS file names for forward modeling and/or radiation calculations.</span>
+<span class="sd">            Possibly useful keys include</span>
+<span class="sd">            &quot;scd&quot;,&quot;acd&quot;,&quot;ccd&quot;,&quot;plt&quot;,&quot;prb&quot;,&quot;prc&quot;,&quot;pls&quot;,&quot;prs&quot;,&quot;pbs&quot;,&quot;brs&quot;</span>
+<span class="sd">            Any file names that are needed and not provided will be searched in the </span>
+<span class="sd">            :py:meth:`~aurora.atomic.adas_files_dict` dictionary. </span>
 <span class="sd">        n0_cm3 : array (nr,), optional</span>
 <span class="sd">            Background ion density (H,D or T). If provided, charge exchange (CX) </span>
 <span class="sd">            recombination is included in the calculation of charge state fractional </span>

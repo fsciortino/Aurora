@@ -384,7 +384,7 @@ def plot_radiation_profs(imp, nz_prof, logne_prof, logTe_prof, xvar_prof,
 
 
 def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
-                    n0_cm3=None, nz_cm3=None, frac=None, plot=False):
+                    adas_files={}, n0_cm3=None, nz_cm3=None, frac=None, plot=False):
     '''Model radiation from a fixed-impurity-fraction model or from detailed impurity density
     profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), 
     calculating radiation terms over the radius and integrated over the plasma cross section. 
@@ -402,6 +402,14 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
             Volume of each flux surface in :math:`m^3`. Note the units! We use :math:`m^3` here
             rather than :math:`cm^3` because it is more common to work with :math:`m^3` for 
             flux surface volumes of fusion devices.
+
+    Keyword Args:
+        adas_files : dict
+            Dictionary containing ADAS file names for forward modeling and/or radiation calculations.
+            Possibly useful keys include
+            "scd","acd","ccd","plt","prb","prc","pls","prs","pbs","brs"
+            Any file names that are needed and not provided will be searched in the 
+            :py:meth:`~aurora.atomic.adas_files_dict` dictionary. 
         n0_cm3 : array (nr,), optional
             Background ion density (H,D or T). If provided, charge exchange (CX) 
             recombination is included in the calculation of charge state fractional 

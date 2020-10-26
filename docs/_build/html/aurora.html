@@ -887,7 +887,7 @@ If not provided, this function loads these files internally.</p>
 
 <dl class="py function">
 <dt id="aurora.radiation.radiation_model">
-<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">radiation_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">ne_cm3</span></em>, <em class="sig-param"><span class="n">Te_eV</span></em>, <em class="sig-param"><span class="n">vol</span></em>, <em class="sig-param"><span class="n">n0_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nz_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">frac</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#radiation_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.radiation_model" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">radiation_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">ne_cm3</span></em>, <em class="sig-param"><span class="n">Te_eV</span></em>, <em class="sig-param"><span class="n">vol</span></em>, <em class="sig-param"><span class="n">adas_files</span><span class="o">=</span><span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">n0_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nz_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">frac</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#radiation_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.radiation_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Model radiation from a fixed-impurity-fraction model or from detailed impurity density
 profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), 
 calculating radiation terms over the radius and integrated over the plasma cross section.</p>
@@ -904,6 +904,15 @@ calculating radiation terms over the radius and integrated over the plasma cross
 <dt>vol<span class="classifier">array (nr,)</span></dt><dd><p>Volume of each flux surface in <span class="math notranslate nohighlight">\(m^3\)</span>. Note the units! We use <span class="math notranslate nohighlight">\(m^3\)</span> here
 rather than <span class="math notranslate nohighlight">\(cm^3\)</span> because it is more common to work with <span class="math notranslate nohighlight">\(m^3\)</span> for 
 flux surface volumes of fusion devices.</p>
+</dd>
+</dl>
+</dd>
+<dt>Keyword Args:</dt><dd><dl class="simple">
+<dt>adas_files<span class="classifier">dict</span></dt><dd><p>Dictionary containing ADAS file names for forward modeling and/or radiation calculations.
+Possibly useful keys include
+“scd”,”acd”,”ccd”,”plt”,”prb”,”prc”,”pls”,”prs”,”pbs”,”brs”
+Any file names that are needed and not provided will be searched in the 
+<a class="reference internal" href="#aurora.atomic.adas_files_dict" title="aurora.atomic.adas_files_dict"><code class="xref py py-meth docutils literal notranslate"><span class="pre">adas_files_dict()</span></code></a> dictionary.</p>
 </dd>
 <dt>n0_cm3<span class="classifier">array (nr,), optional</span></dt><dd><p>Background ion density (H,D or T). If provided, charge exchange (CX) 
 recombination is included in the calculation of charge state fractional 
