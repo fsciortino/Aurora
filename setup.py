@@ -3,9 +3,6 @@ from numpy.distutils.core import setup, Extension
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-with open('VERSION') as version_file:
-    version = version_file.read().strip()
-
 
 wrapper = Extension(name='aurora', 
                     sources=['aurora/main.f90',
@@ -14,14 +11,14 @@ wrapper = Extension(name='aurora',
                              'aurora/math.f90'])
 
 setup(name='aurora',
-      version=version,
+      version='1.3.1',
       description=long_description,
       url='https://github.com/fsciortino/aurora',
       author='F. Sciortino',
       author_email='sciortino@psfc.mit.edu',
       license='MIT',
       packages=['aurora'],
-      install_requires=['numpy','scipy','matplotlib','omfit_eqdsk']
+      install_requires=['numpy','scipy','matplotlib','omfit_eqdsk'],
       ext_modules=[wrapper]
   )
 
