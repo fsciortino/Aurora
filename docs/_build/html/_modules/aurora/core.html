@@ -165,6 +165,7 @@
 <span class="kn">from</span> <span class="nn">scipy.constants</span> <span class="kn">import</span> <span class="n">e</span> <span class="k">as</span> <span class="n">q_electron</span><span class="p">,</span> <span class="n">m_p</span>
 <span class="kn">import</span> <span class="nn">xarray</span>
 
+
 <div class="viewcode-block" id="aurora_sim"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim">[docs]</a><span class="k">class</span> <span class="nc">aurora_sim</span><span class="p">:</span>
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Class to setup and run aurora simulations.</span>
@@ -534,14 +535,13 @@
                                      <span class="bp">self</span><span class="o">.</span><span class="n">S_rates</span><span class="p">,</span> <span class="c1"># ioniz_rate,</span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">R_rates</span><span class="p">,</span> <span class="c1"># recomb_rate,</span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pro_grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">qpr_grid</span><span class="p">,</span>
-                                    <span class="bp">self</span><span class="o">.</span><span class="n">mixing_radius</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">decay_length_boundary</span><span class="p">,</span>
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">mixing_radius</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">decay_length_boundary</span><span class="p">,</span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">time_grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">saw_on</span><span class="p">,</span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">source_time_history</span><span class="p">,</span> <span class="c1"># source profile in time</span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">save_time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sawtooth_erfc_width</span><span class="p">,</span> <span class="c1"># dsaw width  [cm, circ geometry]</span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">wall_recycling</span><span class="p">,</span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">source_div_fraction</span><span class="p">,</span> <span class="c1"># divbls [fraction of source into divertor]</span>
-                                     <span class="c1"># timescales in [s]:</span>
-                                     <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span>  
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span>  <span class="c1">#[s] </span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">rvol_lcfs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bound_sep</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lim_sep</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prox_param</span><span class="p">,</span>
                                      <span class="n">nz_init</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
@@ -559,13 +559,13 @@
                                     <span class="bp">self</span><span class="o">.</span><span class="n">save_time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sawtooth_erfc_width</span><span class="p">,</span> <span class="c1"># dsaw width  [cm, circ geometry]</span>
                                     <span class="bp">self</span><span class="o">.</span><span class="n">wall_recycling</span><span class="p">,</span>
                                     <span class="bp">self</span><span class="o">.</span><span class="n">source_div_fraction</span><span class="p">,</span> <span class="c1"># divbls [fraction of source into divertor]</span>
-                                    <span class="c1"># timescales in [s]:</span>
-                                    <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span>  
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span>  <span class="c1"># [s]  </span>
                                     <span class="bp">self</span><span class="o">.</span><span class="n">rvol_lcfs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bound_sep</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lim_sep</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prox_param</span><span class="p">,</span>
                                     <span class="n">rn_t0</span> <span class="o">=</span> <span class="n">nz_init</span><span class="p">,</span>  <span class="c1"># if omitted, internally set to 0&#39;s</span>
                                     <span class="n">linder</span><span class="o">=</span><span class="kc">True</span> <span class="k">if</span> <span class="n">method</span><span class="o">==</span><span class="s1">&#39;linder&#39;</span> <span class="k">else</span> <span class="kc">False</span><span class="p">,</span>
                                     <span class="n">evolneut</span><span class="o">=</span><span class="n">evolneut</span><span class="p">)</span>
-            
+
+        
         <span class="c1"># nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">res</span></div>
     

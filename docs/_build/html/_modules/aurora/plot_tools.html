@@ -277,6 +277,14 @@
         <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">color_vals</span><span class="p">:</span>
             <span class="n">ls_vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span> <span class="o">+</span> <span class="n">s</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">itertools</span><span class="o">.</span><span class="n">cycle</span><span class="p">(</span><span class="n">ls_vals</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="get_color_cycle"><a class="viewcode-back" href="../../aurora.html#aurora.plot_tools.get_color_cycle">[docs]</a><span class="k">def</span> <span class="nf">get_color_cycle</span><span class="p">():</span>
+    <span class="n">color_vals</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;g&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;c&#39;</span><span class="p">,</span> <span class="s1">&#39;m&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;k&#39;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">itertools</span><span class="o">.</span><span class="n">cycle</span><span class="p">(</span><span class="n">color_vals</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="get_line_cycle"><a class="viewcode-back" href="../../aurora.html#aurora.plot_tools.get_line_cycle">[docs]</a><span class="k">def</span> <span class="nf">get_line_cycle</span><span class="p">():</span>
+    <span class="n">style_vals</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="s1">&#39;-.&#39;</span><span class="p">,</span> <span class="s1">&#39;:&#39;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">itertools</span><span class="o">.</span><span class="n">cycle</span><span class="p">(</span><span class="n">style_vals</span><span class="p">)</span></div>
 </pre></div>
 
            </div>

@@ -155,7 +155,6 @@
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">plot_tools</span>
 <span class="kn">from</span> <span class="nn">scipy.integrate</span> <span class="kn">import</span> <span class="n">cumtrapz</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="kn">from</span> <span class="nn">colradpy</span> <span class="kn">import</span> <span class="n">colradpy</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>
 <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">constants</span>
 <span class="kn">from</span> <span class="nn">IPython</span> <span class="kn">import</span> <span class="n">embed</span>
@@ -585,8 +584,8 @@
     <span class="n">ne_cm3</span> <span class="o">=</span> <span class="n">ne_cm3</span><span class="p">[</span><span class="n">rhop</span><span class="o">&lt;=</span><span class="mf">1.</span><span class="p">]</span>
     <span class="n">Te_eV</span> <span class="o">=</span> <span class="n">Te_eV</span><span class="p">[</span><span class="n">rhop</span><span class="o">&lt;=</span><span class="mf">1.</span><span class="p">]</span>
     <span class="n">vol</span> <span class="o">=</span> <span class="n">vol</span><span class="p">[</span><span class="n">rhop</span><span class="o">&lt;=</span><span class="mf">1.</span><span class="p">]</span>
-    
-    <span class="k">if</span> <span class="n">n0_cm3</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span> <span class="n">n0_cm3</span> <span class="o">=</span> <span class="n">n0_cm3</span><span class="p">[</span><span class="n">rhop</span><span class="o">&lt;=</span><span class="mf">1.</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">n0_cm3</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">n0_cm3</span> <span class="o">=</span> <span class="n">n0_cm3</span><span class="p">[</span><span class="n">rhop</span><span class="o">&lt;=</span><span class="mf">1.</span><span class="p">]</span>
     <span class="n">rhop</span> <span class="o">=</span> <span class="n">rhop</span><span class="p">[</span><span class="n">rhop</span><span class="o">&lt;=</span><span class="mf">1.</span><span class="p">]</span>
 
     <span class="c1"># create results dictionary</span>
@@ -595,7 +594,9 @@
     <span class="n">out</span><span class="p">[</span><span class="s1">&#39;ne_cm3&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ne_cm3</span>
     <span class="n">out</span><span class="p">[</span><span class="s1">&#39;Te_eV&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Te_eV</span>
     <span class="n">out</span><span class="p">[</span><span class="s1">&#39;vol&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vol</span>
-    
+    <span class="k">if</span> <span class="n">n0_cm3</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">out</span><span class="p">[</span><span class="s1">&#39;n0_cm3&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">n0_cm3</span>
+        
     <span class="c1"># load ionization and recombination rates</span>
     <span class="n">filetypes</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;acd&#39;</span><span class="p">,</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span>
     <span class="n">filenames</span> <span class="o">=</span> <span class="p">[]</span>
@@ -783,6 +784,9 @@
 <span class="sd">            Radial profile of PEC intensity, in units of :math:`photons cm^3/s` (if phot2energy=False) or </span>
 <span class="sd">            :math:`W \cdot cm^3` depending (if phot2energy=True). </span>
 <span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c1"># temporarily import this here:</span>
+    <span class="kn">from</span> <span class="nn">colradpy</span> <span class="kn">import</span> <span class="n">colradpy</span>
+    
     <span class="n">files</span> <span class="o">=</span> <span class="n">adf04_files</span><span class="p">()</span>
 
     <span class="n">filepath</span> <span class="o">=</span> <span class="n">adf04_repo</span><span class="o">+</span><span class="n">files</span><span class="p">[</span><span class="n">ion</span><span class="p">][</span><span class="n">cs</span><span class="p">]</span>
