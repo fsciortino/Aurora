@@ -317,6 +317,7 @@ subroutine run(  &
      dv = dv_t(:,it)
      sint = sint_t(:,it)
 
+     ! evolve impurity density with current transport coeffs
      if (algorithm) then
         call impden1(nion, ir, ra, rn,&
              diff, conv, dv, sint, s, al,  &
@@ -329,10 +330,8 @@ subroutine run(  &
              !ioniz_loss_tmp & ! extra not computed by default to speed up things
         
      else
-    
-        ! evolve impurity density with current transport coeffs
         call impden0( nion, ir, ra, rn,  &   !OUT: rn
-             diff, conv, dv, sint, s, al,  &    !OUT: diff, conv
+             diff, conv, dv, sint, s, al,  &
              rr, pro, qpr, flx(it-1), dlen,  &
              dt, &   ! full time step
              rcl, tsu, dsul, divold, & ! tsu,dsul,divnew from previous recycling step

@@ -16,6 +16,7 @@ import omfit_eqdsk
 from scipy.constants import e as q_electron, m_p
 import xarray
 
+
 class aurora_sim:
     '''
     Class to setup and run aurora simulations.
@@ -385,14 +386,13 @@ class aurora_sim:
                                      self.S_rates, # ioniz_rate,
                                      self.R_rates, # recomb_rate,
                                      self.rvol_grid, self.pro_grid, self.qpr_grid,
-                                    self.mixing_radius, self.decay_length_boundary,
+                                     self.mixing_radius, self.decay_length_boundary,
                                      self.time_grid, self.saw_on,
                                      self.source_time_history, # source profile in time
                                      self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
                                      self.wall_recycling,
                                      self.source_div_fraction, # divbls [fraction of source into divertor]
-                                     # timescales in [s]:
-                                     self.tau_div_SOL * 1e-3, self.tau_pump *1e-3, self.tau_rcl_ret *1e-3,  
+                                     self.tau_div_SOL * 1e-3, self.tau_pump *1e-3, self.tau_rcl_ret *1e-3,  #[s] 
                                      self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                      nz_init)
         else:
@@ -410,13 +410,13 @@ class aurora_sim:
                                     self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
                                     self.wall_recycling,
                                     self.source_div_fraction, # divbls [fraction of source into divertor]
-                                    # timescales in [s]:
-                                    self.tau_div_SOL * 1e-3, self.tau_pump *1e-3, self.tau_rcl_ret *1e-3,  
+                                    self.tau_div_SOL * 1e-3, self.tau_pump *1e-3, self.tau_rcl_ret *1e-3,  # [s]  
                                     self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                     rn_t0 = nz_init,  # if omitted, internally set to 0's
                                     linder=True if method=='linder' else False,
                                     evolneut=evolneut)
-            
+
+        
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         return self.res
     

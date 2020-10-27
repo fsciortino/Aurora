@@ -509,8 +509,7 @@ def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=
         axx.set_ylim(0,1.05)
         axx.set_xlim(x[0],x[-1])
         axx.set_title(r'Fractional abundances')
-        if ax is None:
-            axx.legend()
+
     else:
         axx = None    
 

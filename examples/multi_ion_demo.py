@@ -53,7 +53,7 @@ rhop = kin_profs['ne']['rhop'] = ne_profs['rhop']
 kin_profs['Te']['vals'] = Te_profs['Te']*1e3  # keV --> eV
 kin_profs['Te']['times'] = Te_profs['t']
 kin_profs['Te']['rhop'] = Te_profs['rhop']
-kin_profs['Te']['decay'] = np.ones(len(Te_profs['Te']))*1.0
+kin_profs['Te']['decay'] = np.ones(len(Te_profs['Te']))
 
 # set no sources of impurities
 namelist['source_type'] = 'const'
