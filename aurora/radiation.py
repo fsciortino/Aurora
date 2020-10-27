@@ -6,7 +6,6 @@ from . import atomic
 from . import plot_tools
 from scipy.integrate import cumtrapz
 import matplotlib.pyplot as plt
-from colradpy import colradpy
 plt.ion()
 from scipy import constants
 from IPython import embed
@@ -436,8 +435,8 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     ne_cm3 = ne_cm3[rhop<=1.]
     Te_eV = Te_eV[rhop<=1.]
     vol = vol[rhop<=1.]
-    
-    if n0_cm3 is not None: n0_cm3 = n0_cm3[rhop<=1.]
+    if n0_cm3 is not None:
+        n0_cm3 = n0_cm3[rhop<=1.]
     rhop = rhop[rhop<=1.]
 
     # create results dictionary
@@ -446,7 +445,9 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     out['ne_cm3'] = ne_cm3
     out['Te_eV'] = Te_eV
     out['vol'] = vol
-    
+    if n0_cm3 is not None:
+        out['n0_cm3'] = n0_cm3
+        
     # load ionization and recombination rates
     filetypes = ['acd','scd']
     filenames = []
@@ -634,6 +635,9 @@ def get_pec_prof(ion, cs, rhop, ne_cm3, Te_eV, lam_nm=1.8705, lam_width_nm=0.002
             Radial profile of PEC intensity, in units of :math:`photons cm^3/s` (if phot2energy=False) or 
             :math:`W \cdot cm^3` depending (if phot2energy=True). 
     '''
+    # temporarily import this here:
+    from colradpy import colradpy
+    
     files = adf04_files()
 
     filepath = adf04_repo+files[ion][cs]

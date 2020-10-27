@@ -128,3 +128,11 @@ def get_ls_cycle():
         for c in color_vals:
             ls_vals.append(c + s)
     return itertools.cycle(ls_vals)
+
+def get_color_cycle():
+    color_vals = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+    return itertools.cycle(color_vals)
+
+def get_line_cycle():
+    style_vals = ['-', '--', '-.', ':']
+    return itertools.cycle(style_vals)
