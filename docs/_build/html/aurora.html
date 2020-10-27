@@ -327,52 +327,26 @@ use a new file for a specific SXR filter) before running a calculation.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="aurora.atomic.get_adas_continuum_rad">
-<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_adas_continuum_rad</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ion_name</span></em>, <em class="sig-param"><span class="n">n_ion</span></em>, <em class="sig-param"><span class="n">logne_prof</span></em>, <em class="sig-param"><span class="n">logTe_prof</span></em>, <em class="sig-param"><span class="n">sxr</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_adas_continuum_rad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_adas_continuum_rad" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convenience function to get ADAS estimate for continuum radiation in [M/m^3] for a 
-given background ion at given (log) density and temperature profiles.</p>
-<p>If sxr=True, ‘prs’ files are used instead of ‘prb’ ones, thus giving SXR-filtered
-continuum radiation for the SXR filter indicated by the atomic data dictionary.</p>
-<dl class="simple">
-<dt>Args:</dt><dd><dl class="simple">
-<dt>ion_name<span class="classifier">str</span></dt><dd><p>Atomic symbol of ion.</p>
-</dd>
-<dt>n_ion<span class="classifier">array (nt,nr,nz)</span></dt><dd><p>Density of each charge state of the ion of interest</p>
-</dd>
-<dt>logne_prof<span class="classifier">array (nt,nr)</span></dt><dd><p>Log-10 of electron density profile (in cm^-3)</p>
-</dd>
-<dt>logTe_prof<span class="classifier">array (nt,nr)</span></dt><dd><p>Log-10 of electron temperature profile (in eV)</p>
-</dd>
-<dt>sxr<span class="classifier">bool, optional</span></dt><dd><p>If True, compute continuum radiation in the SXR range rather than the total 
-continuum radiation.</p>
-</dd>
-</dl>
-</dd>
-<dt>Returns:</dt><dd><dl class="simple">
-<dt>cont_rad<span class="classifier">array (nt,nr)</span></dt><dd><p>Continuum radiation, either total or in the SXR-range, depending on the 
-‘sxr’ input variable.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
 <dt id="aurora.atomic.get_atom_data">
-<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_atom_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">files</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_atom_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_atom_data" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_atom_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">filetypes</span><span class="o">=</span><span class="default_value">['acd', 'scd']</span></em>, <em class="sig-param"><span class="n">filenames</span><span class="o">=</span><span class="default_value">[]</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_atom_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_atom_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Collect atomic data for a given impurity from all types of ADAS files available or
 for only those requested.</p>
 <dl class="simple">
 <dt>Args:</dt><dd><dl class="simple">
 <dt>imp<span class="classifier">str</span></dt><dd><p>Atomic symbol of impurity ion.</p>
 </dd>
-<dt>files<span class="classifier">list or array-like</span></dt><dd><p>ADAS file names to be fetched.</p>
+<dt>filetypes<span class="classifier">list or array-like </span></dt><dd><p>ADAS file types to be fetched. Default is [“acd”,”scd”] for effective ionization 
+and recombination rates (excluding CX).</p>
+</dd>
+<dt>filenames<span class="classifier">list or array-like, optional</span></dt><dd><p>ADAS file names to be used in place of the defaults given by 
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">adas_file_dict()</span></code>.
+If left empty, such defaults are used. Note that the order of filenames must be 
+the same as the one in the “filetypes” list.</p>
 </dd>
 </dl>
 </dd>
 <dt>Returns:</dt><dd><dl class="simple">
-<dt>atom_data<span class="classifier">dict</span></dt><dd><p>Dictionary containing data for each of the requested files (or all files returned by
-<a class="reference internal" href="#aurora.atomic.adas_files_dict" title="aurora.atomic.adas_files_dict"><code class="xref py py-meth docutils literal notranslate"><span class="pre">adas_files_dict()</span></code></a> for the impurity ion of interest). 
+<dt>atom_data<span class="classifier">dict</span></dt><dd><p>Dictionary containing data for each of the requested files. 
 Each entry of the dictionary gives log-10 of ne, log-10 of Te and log-10 of the data
 as attributes atom_data[key].logNe, atom_data[key].logT, atom_data[key].data</p>
 </dd>
@@ -518,9 +492,9 @@ Data originally from Karzas &amp; Latter, extracted from STRAHL’s atomic_data.
 <dl class="py function">
 <dt id="aurora.atomic.impurity_brems">
 <code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">impurity_brems</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">nz</span></em>, <em class="sig-param"><span class="n">ne</span></em>, <em class="sig-param"><span class="n">Te</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#impurity_brems"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.impurity_brems" title="Permalink to this definition">¶</a></dt>
-<dd><p>Impurity bremsstrahlung in units of mW/nm/sr/m^3.cm^3.</p>
-<p>This is only approximate and may not be very useful, since this contribution
-is already included in the continuum in x2.</p>
+<dd><p>Approximate impurity bremsstrahlung in units of mW/nm/sr/m^3.cm^3.</p>
+<p>This may not be very useful, since this contribution is already included in the 
+continuum radiation component in ADAS files.</p>
 <p>This estimate does not have the correct ne-dependence of the Gaunt factor… use with care!</p>
 </dd></dl>
 
@@ -558,7 +532,7 @@ ion of interest and the spatiotemporal grids of x_prof and y_prof.</p>
 <dl class="py function">
 <dt id="aurora.atomic.main_ion_brems">
 <code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">main_ion_brems</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">Zi</span></em>, <em class="sig-param"><span class="n">ni</span></em>, <em class="sig-param"><span class="n">ne</span></em>, <em class="sig-param"><span class="n">Te</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#main_ion_brems"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.main_ion_brems" title="Permalink to this definition">¶</a></dt>
-<dd><p>Main-ion bremsstrahlung in units of  mW/nm/sr/m^3.cm^3.</p>
+<dd><p>Approximate main-ion bremsstrahlung in units of  mW/nm/sr/m^3.cm^3.</p>
 <p>It is likely better to calculate this from H/D/T plt files, which will have more accurate 
 Gaunt factors with the correct density dependence.</p>
 </dd></dl>
@@ -705,11 +679,10 @@ This function will be moved and expanded in ColRadPy in the near future.</p>
 
 <dl class="py function">
 <dt id="aurora.radiation.compute_rad">
-<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">compute_rad</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">time</span></em>, <em class="sig-param"><span class="n">imp_dens</span></em>, <em class="sig-param"><span class="n">ne</span></em>, <em class="sig-param"><span class="n">Te</span></em>, <em class="sig-param"><span class="n">n0</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nD</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">main_ion_name</span><span class="o">=</span><span class="default_value">'D'</span></em>, <em class="sig-param"><span class="n">sxr_pls_file</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">sxr_prs_file</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">prad_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">thermal_cx_rad_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">spectral_brem_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">sxr_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">main_ion_brem_flag</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#compute_rad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.compute_rad" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate radiation terms corresponding to a simulation result. 
-Results are in SI units (NB: inputs are not).</p>
+<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">compute_rad</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">time</span></em>, <em class="sig-param"><span class="n">nz</span></em>, <em class="sig-param"><span class="n">ne</span></em>, <em class="sig-param"><span class="n">Te</span></em>, <em class="sig-param"><span class="n">n0</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ni</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">main_ion_name</span><span class="o">=</span><span class="default_value">'D'</span></em>, <em class="sig-param"><span class="n">adas_files</span><span class="o">=</span><span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">prad_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">thermal_cx_rad_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">spectral_brem_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">sxr_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">main_ion_brem_flag</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#compute_rad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.compute_rad" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate radiation terms corresponding to a simulation result.</p>
 <p>Result can be conveniently plotted with a time-slider using, for example</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">zmax</span> <span class="o">=</span> <span class="n">imp_dens</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># number of charge states (including neutrals)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">zmax</span> <span class="o">=</span> <span class="n">nz</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># number of charge states (including neutrals)</span>
 <span class="n">rad</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;impurity_radiation&#39;</span><span class="p">][:,:</span><span class="n">zmax</span><span class="p">,:]</span>   <span class="c1"># no fully-stripped line radiation</span>
 <span class="n">aurora</span><span class="o">.</span><span class="n">slider_plot</span><span class="p">(</span><span class="n">rhop</span><span class="p">,</span><span class="n">time</span><span class="p">,</span> <span class="n">rad</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">/</span><span class="mf">1e6</span><span class="p">,</span>
     <span class="n">xlabel</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;$\rho_p$&#39;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;time [s]&#39;</span><span class="p">,</span> 
@@ -718,37 +691,37 @@ Results are in SI units (NB: inputs are not).</p>
     <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;Ca$^</span><span class="se">{{</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="se">}}</span><span class="s1">$&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nz_w</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)])</span>
 </pre></div>
 </div>
-<p>Note that, when sxr_flag=True, SXR radiation will be computed using the default ADAS ‘pls’ and ‘prs’ files
-(line and continuum radiation) given by the atomic.adas_files_dict() unless the sxr_pls_file and sxr_prs_file
-parameters are provided.</p>
-<p>All radiation outputs are given in <span class="math notranslate nohighlight">\(W cm^-3\)</span>, consistently with units of <span class="math notranslate nohighlight">\(cm^-3\)</span> given for inputs.</p>
+<p>All radiation outputs are given in <span class="math notranslate nohighlight">\(W cm^-3\)</span>, consistently with units of <span class="math notranslate nohighlight">\(cm^-3\)</span>
+given for inputs.</p>
 <dl>
 <dt>Args:</dt><dd><dl class="simple">
 <dt>imp<span class="classifier">str</span></dt><dd><p>Impurity symbol, e.g. Ca, F, W</p>
 </dd>
 <dt>rhop<span class="classifier">array (space,)</span></dt><dd><p>Sqrt of poloidal flux radial grid of simulation output.</p>
 </dd>
-<dt>time<span class="classifier">array (time,)</span></dt><dd><p>Time array of simulation output.</p>
+<dt>time<span class="classifier">array (time,) [s]</span></dt><dd><p>Time array of simulation output.</p>
 </dd>
-<dt>imp_dens<span class="classifier">array (time, nZ, space)</span></dt><dd><p>Dictionary with impurity density result, as given by <code class="xref py py-func docutils literal notranslate"><span class="pre">run_aurora()</span></code> method.</p>
+<dt>nz<span class="classifier">array (time, nZ, space) [cm^-3]</span></dt><dd><p>Dictionary with impurity density result, as given by <code class="xref py py-func docutils literal notranslate"><span class="pre">run_aurora()</span></code> method.</p>
 </dd>
 <dt>ne<span class="classifier">array (time,space) [cm^-3]</span></dt><dd><p>Electron density on the output grids.</p>
 </dd>
 <dt>Te<span class="classifier">array (time,space) [eV]</span></dt><dd><p>Electron temperature on the output grids.</p>
 </dd>
+</dl>
+</dd>
+<dt>Keyword Args:</dt><dd><dl class="simple">
 <dt>n0<span class="classifier">array(time,space), optional [cm^-3]</span></dt><dd><p>Background neutral density (assumed of hydrogen-isotopes). 
 This is only used if thermal_cx_rad_flag=True.</p>
 </dd>
-<dt>nD<span class="classifier">array (time,space), optional [cm^-3]</span></dt><dd><p>Main ion density. This is only used if main_ion_brem_flag=True.</p>
+<dt>ni<span class="classifier">array (time,space), optional [cm^-3]</span></dt><dd><p>Main ion density. This is only used if main_ion_brem_flag=True.</p>
 </dd>
 <dt>main_ion_name<span class="classifier">str, optional</span></dt><dd><p>Atomic symbol of main ion species. Default is ‘D’.
 This is only used if main_ion_brem_flag=True.</p>
 </dd>
-<dt>sxr_pls_file<span class="classifier">str</span></dt><dd><p>ADAS file used for SXR line radiation calculation if sxr_flag=True. If left to None, the 
-default in <a class="reference internal" href="#aurora.atomic.adas_files_dict" title="aurora.atomic.adas_files_dict"><code class="xref py py-func docutils literal notranslate"><span class="pre">adas_files_dict()</span></code></a> is used.</p>
-</dd>
-<dt>sxr_prs_file<span class="classifier">str</span></dt><dd><p>ADAS file used for SXR continuum radiation calculation if sxr_flag=True. If left to None, 
-the default in <a class="reference internal" href="#aurora.atomic.adas_files_dict" title="aurora.atomic.adas_files_dict"><code class="xref py py-func docutils literal notranslate"><span class="pre">adas_files_dict()</span></code></a> is used.</p>
+<dt>adas_files<span class="classifier">dict</span></dt><dd><p>Dictionary containing ADAS file names for radiation calculations, possibly including keys
+“plt”,”prb”,”prc”,”pls”,”prs”,”pbs”,”brs”
+Any file names that are needed and not provided will be searched in the 
+<a class="reference internal" href="#aurora.atomic.adas_files_dict" title="aurora.atomic.adas_files_dict"><code class="xref py py-meth docutils literal notranslate"><span class="pre">adas_files_dict()</span></code></a> dictionary.</p>
 </dd>
 <dt>prad_flag<span class="classifier">bool, optional</span></dt><dd><p>If True, total radiation is computed (for each charge state and their sum)</p>
 </dd>
@@ -758,32 +731,65 @@ the default in <a class="reference internal" href="#aurora.atomic.adas_files_dic
 </dd>
 <dt>sxr_flag<span class="classifier">bool, optional</span></dt><dd><p>If True, soft x-ray radiation is computed (for the given ‘pls’,’prs’ ADAS files)</p>
 </dd>
-<dt>main_ion_brem_flag<span class="classifier">bool, optional</span></dt><dd><p>If True, main ion bremstrahlung (all contributions) is computed.</p>
+<dt>main_ion_brem_flag<span class="classifier">bool, optional</span></dt><dd><p>If True, main ion bremstrahlung is computed.</p>
 </dd>
 </dl>
 </dd>
-<dt>Returns:</dt><dd><dl>
-<dt>res<span class="classifier">dict</span></dt><dd><p>Dictionary containing the radiation terms, depending on the activated flags.
-The structure of this output is intentionally left to be the same as in STRAHL
-for convenience.</p>
-<p>If all flags were on, the dictionary would include
-{‘impurity_radiation’,’spectral_bremsstrahlung’,’sxr_radiation’}</p>
-<p>Impurity_radiation and sxr_radiation:
-index 0: total line radiation of neutral impurity
-index 1: total line radiation of singly ionised impurity
-….
-index n-1: total line radiation of hydrogen-like ion
-index n: bremsstrahlung due to electron scattering at main ion (if requested)
-index n+1: total continuum radiation of impurity (bremsstrahlung and recombination continua)
-index n+2: bremsstrahlung due to electron scattering at impurity
-index n+3: total radiation of impurity (and main ion, if set in Xx.atomdat)</p>
-<p>Spectral_bremsstrahlung:
-index 0: = 0
-index 1: bremsstrahlung due to electron scattering at singly ionised impurity
-….
-index n: bremsstrahlung due to electron scattering at fully ionised impurity
-index n+1: bremsstrahlung due to electron scattering at main ion
-index n+2: total bremsstrahlung of impurity (and main ion, if set in Xx.atomdat)</p>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>res<span class="classifier">dict</span></dt><dd><p>Dictionary containing radiation terms, depending on the activated flags. 
+The structure of the “res” dictionary is as follows.</p>
+</dd>
+</dl>
+<p>If prad_flag=True,</p>
+<dl class="simple">
+<dt>res[‘line_rad’]<span class="classifier">array (nt,nZ,nr)- from ADAS “plt” files</span></dt><dd><p>Excitation-driven line radiation for each impurity charge state.</p>
+</dd>
+<dt>res[‘cont_rad’]<span class="classifier">array (nt,nZ,nr)- from ADAS “prb” files</span></dt><dd><p>Continuum and line power driven by recombination and bremsstrahlung for impurity ions.</p>
+</dd>
+<dt>res[‘imp_brems’]<span class="classifier">array (nt,nr)- analytic formula. </span></dt><dd><p>Bremsstrahlung produced by electron scarrering at fully ionized impurity 
+This is only an approximate calculation and is more accurately accounted for in the 
+‘cont_rad’ component.</p>
+</dd>
+<dt>res[‘thermal_cx_cont_rad’]<span class="classifier">array (nt,nZ,nr)- from ADAS “prc” files</span></dt><dd><p>Radiation deriving from charge transfer from thermal neutral hydrogen to impurity ions.
+Returned only if thermal_cx_rad_flag=True.</p>
+</dd>
+<dt>res[‘tot’]<span class="classifier">array (nt,nZ,nr)</span></dt><dd><p>Total unfilted radiation, summed over all charge states, given by the sum of all known 
+radiation components.</p>
+</dd>
+</dl>
+<p>If main_ion_brem_flag=True, res[‘main_ion_brems’] is additionally computed and added to 
+res[‘tot’] (see below).</p>
+<p>If sxr_flag=True,</p>
+<dl class="simple">
+<dt>res[‘sxr_line_rad’]<span class="classifier">array (nt,nZ,nr)- from ADAS “pls” files</span></dt><dd><p>Excitation-driven line radiation for each impurity charge state in the SXR range.</p>
+</dd>
+<dt>res[‘sxr_cont_rad’]<span class="classifier">array (nt,nZ,nr)- from ADAS “prs” files</span></dt><dd><p>Continuum and line power driven by recombination and bremsstrahlung for impurity ions
+in the SXR range.</p>
+</dd>
+<dt>res[‘sxr_imp_brems’]<span class="classifier">array (nt,nZ,nr)- from ADAS “pbs” files</span></dt><dd><p>Bremsstrahlung produced by electron scarrering at fully ionized impurity in the SXR range.</p>
+</dd>
+<dt>res[‘sxr_tot’]<span class="classifier">array (nt,nZ,nr)</span></dt><dd><p>Total radiation in the SXR range, summed over all charge states, given by the sum of all known 
+radiation components in the SXR range.</p>
+</dd>
+</dl>
+<p>If main_ion_brem_flag=True, res[‘sxr_main_ion_brems’] is additionally computed and added to 
+res[‘sxr_tot’] (see below).</p>
+<p>If spectral_brem_flag,</p>
+<dl class="simple">
+<dt>res[‘spectral_imp_brems’]<span class="classifier">array (nt,nZ,nr) – from ADAS “brs” files</span></dt><dd><p>Bremsstrahlung at a specific wavelength, depending on provided “brs” file.</p>
+</dd>
+</dl>
+<p>If main_ion_brem_flag=True, res[‘main_ion_spectral_brems’] is also computed (see below).</p>
+<p>If main_ion_brem_flag,</p>
+<dl class="simple">
+<dt>res[‘main_ion_brems’]<span class="classifier">array (nt,nr)</span></dt><dd><p>Bremsstrahlung from main (background) ions. This is only computed if prad_flag=True and 
+is automatically added to the res[‘tot’] array to account for all terms.</p>
+</dd>
+<dt>res[‘main_ion_spectral_brems’]<span class="classifier">array (nt,nr)</span></dt><dd><p>Bremsstrahlung from main (background) ions at a specific wavelength. This is only computed 
+if spectral_brem_flag=True too.</p>
+</dd>
+<dt>res[‘sxr_main_ion_brems’]<span class="classifier">array (nt,nZ,nr)</span></dt><dd><p>Bremsstrahlung from main (background) ions in the SXR range. This is only computed if 
+sxr_flag=True and is automatically added to res[‘sxr_tot’].</p>
 </dd>
 </dl>
 </dd>
@@ -881,7 +887,7 @@ If not provided, this function loads these files internally.</p>
 
 <dl class="py function">
 <dt id="aurora.radiation.radiation_model">
-<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">radiation_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">ne_cm3</span></em>, <em class="sig-param"><span class="n">Te_eV</span></em>, <em class="sig-param"><span class="n">vol</span></em>, <em class="sig-param"><span class="n">n0_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nz_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">frac</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#radiation_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.radiation_model" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">radiation_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">ne_cm3</span></em>, <em class="sig-param"><span class="n">Te_eV</span></em>, <em class="sig-param"><span class="n">vol</span></em>, <em class="sig-param"><span class="n">adas_files</span><span class="o">=</span><span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">n0_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nz_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">frac</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#radiation_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.radiation_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Model radiation from a fixed-impurity-fraction model or from detailed impurity density
 profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), 
 calculating radiation terms over the radius and integrated over the plasma cross section.</p>
@@ -895,7 +901,18 @@ calculating radiation terms over the radius and integrated over the plasma cross
 </dd>
 <dt>Te_eV<span class="classifier">array (nr,)</span></dt><dd><p>Electron temperature in eV</p>
 </dd>
-<dt>vol<span class="classifier">array (nr,)</span></dt><dd><p>Volume of each flux surface in <span class="math notranslate nohighlight">\(m^3\)</span>.</p>
+<dt>vol<span class="classifier">array (nr,)</span></dt><dd><p>Volume of each flux surface in <span class="math notranslate nohighlight">\(m^3\)</span>. Note the units! We use <span class="math notranslate nohighlight">\(m^3\)</span> here
+rather than <span class="math notranslate nohighlight">\(cm^3\)</span> because it is more common to work with <span class="math notranslate nohighlight">\(m^3\)</span> for 
+flux surface volumes of fusion devices.</p>
+</dd>
+</dl>
+</dd>
+<dt>Keyword Args:</dt><dd><dl class="simple">
+<dt>adas_files<span class="classifier">dict</span></dt><dd><p>Dictionary containing ADAS file names for forward modeling and/or radiation calculations.
+Possibly useful keys include
+“scd”,”acd”,”ccd”,”plt”,”prb”,”prc”,”pls”,”prs”,”pbs”,”brs”
+Any file names that are needed and not provided will be searched in the 
+<a class="reference internal" href="#aurora.atomic.adas_files_dict" title="aurora.atomic.adas_files_dict"><code class="xref py py-meth docutils literal notranslate"><span class="pre">adas_files_dict()</span></code></a> dictionary.</p>
 </dd>
 <dt>n0_cm3<span class="classifier">array (nr,), optional</span></dt><dd><p>Background ion density (H,D or T). If provided, charge exchange (CX) 
 recombination is included in the calculation of charge state fractional 
@@ -1596,8 +1613,8 @@ See optional input argument.</p>
 <dl class="py function">
 <dt id="aurora.particle_conserv.get_particle_nums">
 <code class="sig-prename descclassname">aurora.particle_conserv.</code><code class="sig-name descname">get_particle_nums</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filepath</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ds</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">R_axis</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/particle_conserv.html#get_particle_nums"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.particle_conserv.get_particle_nums" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check time evolution and particle conservation in (py)STRAHL output.
-If filepath is None, load data from output STRAHL file, otherwise use xarray Dataset in ds.</p>
+<dd><p>Check time evolution and particle conservation in Aurora or STRAHL output.
+If filepath is not None, load data from file, otherwise use xarray Dataset in ds.</p>
 <p>R_axis [cm] is needed for volume integrals. If None, it is set to a C-Mod default.</p>
 </dd></dl>
 
@@ -1610,12 +1627,13 @@ If filepath is None, load data from output STRAHL file, otherwise use xarray Dat
 <dl class="py function">
 <dt id="aurora.particle_conserv.vol_int">
 <code class="sig-prename descclassname">aurora.particle_conserv.</code><code class="sig-name descname">vol_int</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ds</span></em>, <em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">rhop_max</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">R_axis</span><span class="o">=</span><span class="default_value">68.5</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/particle_conserv.html#vol_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.particle_conserv.vol_int" title="Permalink to this definition">¶</a></dt>
-<dd><p>Perform a volume integral of an input variable. If the variable is f(t,x) then the result is f(t).
-If the variable is f(t,*,x) then the result is f(t,charge) when “*” represents charge, line index, etc…</p>
+<dd><p>Perform a volume integral of an input variable. If the variable is f(t,x) 
+then the result is f(t). If the variable is f(t,*,x) then the result is f(t,charge)
+when “*” represents charge, line index, etc…</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ds</strong> – xarray dataset containing STRAHL result</p></li>
+<li><p><strong>ds</strong> – xarray dataset containing Aurora or STRAHL result</p></li>
 <li><p><strong>var</strong> – Name of the variable in the strahl_result.cdf file</p></li>
 </ul>
 </dd>

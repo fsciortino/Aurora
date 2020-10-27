@@ -137,40 +137,46 @@ class adas_file():
                 ax.set_ylabel('$\log('+self.file_type+')\ \mathrm{[W\cdot cm^3]}$')
 
 
-def get_atom_data(imp, files = None):
+def get_atom_data(imp, filetypes=['acd','scd'], filenames=[]):
     ''' Collect atomic data for a given impurity from all types of ADAS files available or
     for only those requested. 
 
     Args:
         imp : str
             Atomic symbol of impurity ion.
-        files : list or array-like
-            ADAS file names to be fetched. 
+        filetypes : list or array-like 
+            ADAS file types to be fetched. Default is ["acd","scd"] for effective ionization 
+            and recombination rates (excluding CX).
+        filenames : list or array-like, optional
+            ADAS file names to be used in place of the defaults given by 
+            :py:meth:`~aurora.atomic.adas_file_dict`.
+            If left empty, such defaults are used. Note that the order of filenames must be 
+            the same as the one in the "filetypes" list.
     
     Returns:
         atom_data : dict
-           Dictionary containing data for each of the requested files (or all files returned by
-           :py:meth:`~aurora.atomic.adas_files_dict` for the impurity ion of interest). 
+           Dictionary containing data for each of the requested files. 
            Each entry of the dictionary gives log-10 of ne, log-10 of Te and log-10 of the data
            as attributes atom_data[key].logNe, atom_data[key].logT, atom_data[key].data
     '''
-    atomdat_dir = get_atomdat_info()
-
     atom_data = {}
+    
+    if filenames:
+        files = {}
+        for ii,typ in enumerate(filetypes):
+            files[typ] = filenames[ii]
+    else:
+        # get dictionary containing default list of ADAS atomic files
+        def_adas_files_dict = adas_files_dict()
+        files = def_adas_files_dict[imp]
 
-    if files is None:
-        # fetch all file types
-        files = get_file_types().keys()
-
-    # get dictionary containing default list of ADAS atomic files
-    files_dict =  adas_files_dict()
-
-    for key in files:
-        file = files_dict[imp][key]
+    atomdat_dir = get_atomdat_info()
+    for filetype in filetypes:
+        filename = files[filetype]
 
         # load specific file and add it to output dictionary
-        res = adas_file(atomdat_dir+file)
-        atom_data[key] = res.logNe, res.logT, res.data
+        res = adas_file(atomdat_dir+filename)
+        atom_data[filetype] = res.logNe, res.logT, res.data
 
     return atom_data
 
@@ -718,25 +724,24 @@ def gff_mean(Z,Te):
                      1.318, 1.344, 1.370, 1.394, 1.416, 1.434, 1.445, 1.448, 1.440, 1.418,
                      1.389, 1.360, 1.336, 1.317, 1.300]
 
-    # set min Te here to 10 eV (as in STRAHL), because the grid above does not extend to lower temperatures
+    # set min Te here to 10 eV, because the grid above does not extend to lower temperatures
     Te = np.maximum(Te, 10.0)
 
     log_gamma2 = np.log10(Z**2*thirteenpointsix/Te)
 
-    # dangerous/inaccurate extrapolation...??
+    # dangerous/inaccurate extrapolation...
     return np.interp(log_gamma2, log_gamma2_grid,gff_mean_grid)
 
 
 
 def impurity_brems(nz, ne, Te):
-    '''Impurity bremsstrahlung in units of mW/nm/sr/m^3.cm^3.
+    '''Approximate impurity bremsstrahlung in units of mW/nm/sr/m^3.cm^3.
 
-    This is only approximate and may not be very useful, since this contribution
-    is already included in the continuum in x2.
+    This may not be very useful, since this contribution is already included in the 
+    continuum radiation component in ADAS files. 
 
     This estimate does not have the correct ne-dependence of the Gaunt factor... use with care!
     '''
-
     # neutral stage doesn't produce brems
     Z_imp = nz.shape[1]-1
     Z = np.arange(Z_imp)[None,:,None]+1
@@ -748,52 +753,13 @@ def impurity_brems(nz, ne, Te):
 
 
 def main_ion_brems(Zi, ni, ne, Te):
-    '''Main-ion bremsstrahlung in units of  mW/nm/sr/m^3.cm^3.
+    '''Approximate main-ion bremsstrahlung in units of  mW/nm/sr/m^3.cm^3.
 
     It is likely better to calculate this from H/D/T plt files, which will have more accurate 
     Gaunt factors with the correct density dependence.
     '''
     return 1.69e-32 * ni * Zi**2. * ne * np.sqrt(Te) * gff_mean(Zi,Te)
 
-
-
-
-def get_adas_continuum_rad(ion_name, n_ion, logne_prof, logTe_prof, sxr=False):
-    '''Convenience function to get ADAS estimate for continuum radiation in [M/m^3] for a 
-    given background ion at given (log) density and temperature profiles. 
-
-    If sxr=True, 'prs' files are used instead of 'prb' ones, thus giving SXR-filtered
-    continuum radiation for the SXR filter indicated by the atomic data dictionary.
-
-    Args:
-        ion_name : str
-            Atomic symbol of ion.
-        n_ion : array (nt,nr,nz)
-            Density of each charge state of the ion of interest
-        logne_prof : array (nt,nr)
-            Log-10 of electron density profile (in cm^-3)
-        logTe_prof : array (nt,nr)
-            Log-10 of electron temperature profile (in eV)
-        sxr : bool, optional
-            If True, compute continuum radiation in the SXR range rather than the total 
-            continuum radiation.
-
-    Returns:
-        cont_rad : array (nt,nr)
-            Continuum radiation, either total or in the SXR-range, depending on the 
-            'sxr' input variable.    
-    '''        
-    # get continuum radiation data for chosen ion (either total or SXR-filtered)
-    atom_data = get_atom_data(ion_name,['prs' if sxr else 'prb'])
-    x,y,tab = atom_data['prs' if sxr else 'prb']
-
-    # recombination and bremstrahlung of fully stripped ion
-    atom_rates = interp_atom_prof((x,y,tab[[-1]]),logne_prof,logTe_prof,x_multiply=False)
-    
-    # Now compute expected continuum radiation from this ion:
-    cont_rad = atom_rates[:,0] * n_ion * 1e6 # bulk fully-stripped ion radiation [W/m^3]
-
-    return cont_rad
 
 
 def get_cooling_factors(atom_data, logTe_prof, fz, plot=True,ax=None):
@@ -860,7 +826,8 @@ def get_cooling_factors(atom_data, logTe_prof, fz, plot=True,ax=None):
         # total radiation (includes hard X-ray, visible, UV, etc.)
         ax.loglog(10**logTe_prof, line_rad_tot,'g--',label='Unfiltered line radiation')
         ax.loglog(10**logTe_prof, brems_rad_tot,'y--',label='Unfiltered continuum radiation')
-        ax.loglog(10**logTe_prof, brems_rad_tot+line_rad_tot,'y--',label='Unfiltered total continuum radiation')
+        ax.loglog(10**logTe_prof, brems_rad_tot+line_rad_tot,'y--',
+                  label='Unfiltered total continuum radiation')
 
         ax.legend(loc='best')
         
@@ -989,6 +956,7 @@ def adas_files_dict():
     files["H"]['prs'] = "prs_H_14.dat"
     files["H"]['fis'] = "sxrfil14.dat"
     files["H"]['brs'] = "brs05360.dat"
+    files["H"]["pbs"] = "pbsx7_h.dat"
     files["He"] = {}   #2
     files["He"]['acd'] = "acd96_he.dat"
     files["He"]['scd'] = "scd96_he.dat"
@@ -1000,6 +968,7 @@ def adas_files_dict():
     files["He"]['prs'] = "prs_He_14.dat"
     files["He"]['fis'] = "sxrfil14.dat"
     files["He"]['brs'] = "brs05360.dat"
+    files["He"]["pbs"] = "pbsx5_he.dat"
     files["Li"] = {}   #3
     files["Li"]['acd'] = "acd96_li.dat"
     files["Li"]['scd'] = "scd96_li.dat"
@@ -1008,6 +977,7 @@ def adas_files_dict():
     files["Li"]['plt'] = "plt96_li.dat"
     files["Li"]['prc'] = "prc89_li.dat"
     files["Li"]['pls'] = "pls89_li.dat"
+    files["Li"]["pbs"] = ''
     files["Be"] = {}   #4
     files["Be"]['acd'] = "acd96_be.dat"
     files["Be"]['scd'] = "scd96_be.dat"
@@ -1017,6 +987,7 @@ def adas_files_dict():
     files["Be"]['prc'] = "prc89_be.dat"
     files["Be"]['pls'] = "plsx5_be.dat"
     files["Be"]['prs'] = "prsx5_be.dat"
+    files["Be"]["pbs"] = "pbsx5_be.dat"
     files["B"] = {}   #5
     files["B"]['acd'] = "acd89_b.dat"
     files["B"]['scd'] = "scd89_b.dat"
@@ -1026,6 +997,7 @@ def adas_files_dict():
     files["B"]['prc'] = "prc89_b.dat"
     files["B"]['pls'] = "plsx5_b.dat"
     files["B"]['prs'] = "prsx5_b.dat"
+    files["B"]["pbs"] = "pbsx5_b.dat"
     files["C"] = {}    #6
     files["C"]['acd'] = "acd96_c.dat"
     files["C"]['scd'] = "scd96_c.dat"
@@ -1037,6 +1009,7 @@ def adas_files_dict():
     files["C"]['prs'] = "prs_C_14.dat"
     files["C"]['fis'] = "sxrfil14.dat"
     files["C"]['brs'] = "brs05360.dat"
+    files["C"]["pbs"] = "pbsx5_c.dat"
     files["N"] = {}    #7
     files["N"]['acd'] = "acd96_n.dat"
     files["N"]['scd'] = "scd96_n.dat"
@@ -1048,6 +1021,7 @@ def adas_files_dict():
     files["N"]['fis'] = "sxrfilD1.dat"
     files["N"]['brs'] = "brs05360.dat"
     files["N"]['ccd'] = "ccd96_n.dat"
+    files["N"]["pbs"] = "pbsx5_n.dat"
     files["O"] = {}    #8
     files["O"]['acd'] = "acd96_o.dat"
     files["O"]['scd'] = "scd96_o.dat"
@@ -1056,6 +1030,7 @@ def adas_files_dict():
     files["O"]['plt'] = "plt96_o.dat"
     files["O"]['pls'] = "plsx5_o.dat"
     files["O"]['prs'] = "prsx5_o.dat"
+    files["O"]["pbs"] = "pbsx5_o.dat"
     files["F"] = {}    #9
     files["F"]['acd'] = "acd89_f.dat"
     files["F"]['scd'] = "scd89_f.dat"
@@ -1067,6 +1042,7 @@ def adas_files_dict():
     files["F"]['pls'] = "pls_F_14.dat"
     files["F"]['prs'] = "prs_F_14.dat"
     files["F"]['prc'] = "prc89_f.dat"
+    files["F"]["pbs"] = "pbsx5_f.dat"
     files["Ne"] = {}   #10
     files["Ne"]['acd'] = "acd96_ne.dat"
     files["Ne"]['scd'] = "scd96_ne.dat"
@@ -1078,6 +1054,7 @@ def adas_files_dict():
     files["Ne"]['prs'] = "prsx8_ne.dat"
     files["Ne"]['fis'] = "sxrfilD1.dat"
     files["Ne"]['brs'] = "brs05360.dat"
+    files["Ne"]["pbs"] = "pbsx5_ne.dat"
     files["Al"] = {}    #13
     files["Al"]['acd'] = "acd00_al.dat"
     files["Al"]['scd'] = "scd00_al.dat"
@@ -1089,6 +1066,7 @@ def adas_files_dict():
     files["Al"]['prs'] = "prs_Al_14.dat"
     files["Al"]['fis'] = "sxrfil14.dat"
     files["Al"]['brs'] = "brs05360.dat"
+    files["Al"]['pbs'] = "pbsx5_al.dat"
     files["Si"] = {}     #14
     files["Si"]['acd'] = "acd00_si.dat"
     files["Si"]['scd'] = "scd00_si.dat"
@@ -1099,6 +1077,7 @@ def adas_files_dict():
     files["Si"]['fis'] = "sxrfil14.dat"
     files["Si"]['brs'] = "brs05360.dat"
     files["Si"]['ccd'] = "ccd89_si.dat"
+    files["Si"]["pbs"] = "pbsx5_si.dat"
     files["Ar"] = {}     #18
     files["Ar"]['acd'] = "acd00_ar.dat"
     files["Ar"]['scd'] = "scd00_ar.dat"
@@ -1110,6 +1089,7 @@ def adas_files_dict():
     files["Ar"]['prs'] = "prs_Ar_14.dat"
     files["Ar"]['fis'] = "sxrfil14.dat"
     files["Ar"]['brs'] = "brs05360.dat"
+    files["Ar"]["pbs"] = "pbsx5_ar.dat"
     files["Ca"] = {}     #20
     files["Ca"]['acd'] = "acd85_ca.dat"
     files["Ca"]['scd'] = "scd85_ca.dat"
@@ -1120,6 +1100,7 @@ def adas_files_dict():
     files["Ca"]['prs'] = "prs_Ca_14.dat"
     files["Ca"]['fis'] = "sxrfil14.dat"
     files["Ca"]['brs'] = "brs05360.dat"
+    files["Ca"]["pbs"] = ""
     files["Fe"] = {}     #26
     files["Fe"]['acd'] = "acd89_fe.dat"
     files["Fe"]['scd'] = "scd89_fe.dat"
@@ -1130,6 +1111,7 @@ def adas_files_dict():
     files["Fe"]['fis'] = "sxrfil14.dat"
     files["Fe"]['brs'] = "brs05360.dat"
     files["Fe"]['ccd'] = "ccd89_fe.dat"
+    files["Fe"]["pbs"] = "pbsx5_fe.dat"
     files["Ni"] = {}     #28
     files["Ni"]['acd'] = "acd00_ni.dat"
     files["Ni"]['scd'] = "scd00_ni.dat"
@@ -1140,6 +1122,7 @@ def adas_files_dict():
     files["Ni"]['fis'] = "sxrfil14.dat"
     files["Ni"]['brs'] = "brs05360.dat"
     files["Ni"]['ccd'] = "ccd89_ni.dat"
+    files["Ni"]["pbs"] = "pbsx5_ni.dat"
     files["Kr"] = {}     #36
     files["Kr"]['acd'] = "acd89_kr.dat"
     files["Kr"]['scd'] = "scd89_kr.dat"
@@ -1148,6 +1131,7 @@ def adas_files_dict():
     files["Kr"]['plt'] = "plt89_kr.dat"
     files["Kr"]['pls'] = "plsx5_kr.dat"
     files["Kr"]['prs'] = "prsx5_kr.dat"
+    files["Kr"]["pbs"] = ""
     files["Mo"] = {}     #42
     files["Mo"]['acd'] = "acd89_mo.dat"
     files["Mo"]['scd'] = "scd89_mo.dat"
@@ -1155,6 +1139,7 @@ def adas_files_dict():
     files["Mo"]['plt'] = "plt89_mo.dat"
     files["Mo"]['prb'] = "prb89_mo.dat"
     files["Mo"]['prc'] = "prc89_mo.dat"
+    files["Mo"]["pbs"] = ""
     files["Xe"] = {}     #56
     files["Xe"]['acd'] = "acd89_xe.dat"
     files["Xe"]['scd'] = "scd89_xe.dat"
@@ -1164,6 +1149,7 @@ def adas_files_dict():
     files["Xe"]['prs'] = "prsx1_xe.dat"
     files["Xe"]['pls'] = "prsx1_xe.dat"
     files["Xe"]['prc'] = "prc89_xe.dat"
+    files["Xe"]["pbs"] = ""
     files["W"] = {}     #74
     files["W"]['acd'] = "acd89_w.dat"
     files["W"]['scd'] = "scd89_w.dat"
@@ -1174,5 +1160,6 @@ def adas_files_dict():
     files["W"]['pls'] = "pls_W_14.dat"
     files["W"]['prs'] = "prs_W_14.dat"
     files["W"]['ccd'] = "ccd89_w.dat"
+    files["W"]["pbs"] = "pbsx5_w.dat"
 
     return files

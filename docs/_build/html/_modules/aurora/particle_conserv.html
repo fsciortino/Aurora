@@ -157,10 +157,11 @@
 
 <div class="viewcode-block" id="vol_int"><a class="viewcode-back" href="../../aurora.html#aurora.particle_conserv.vol_int">[docs]</a><span class="k">def</span> <span class="nf">vol_int</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span><span class="n">rhop_max</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">R_axis</span><span class="o">=</span><span class="mf">68.5</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Perform a volume integral of an input variable. If the variable is f(t,x) then the result is f(t).</span>
-<span class="sd">    If the variable is f(t,*,x) then the result is f(t,charge) when &quot;*&quot; represents charge, line index, etc...</span>
+<span class="sd">    Perform a volume integral of an input variable. If the variable is f(t,x) </span>
+<span class="sd">    then the result is f(t). If the variable is f(t,*,x) then the result is f(t,charge)</span>
+<span class="sd">    when &quot;*&quot; represents charge, line index, etc...</span>
 
-<span class="sd">    :param ds: xarray dataset containing STRAHL result</span>
+<span class="sd">    :param ds: xarray dataset containing Aurora or STRAHL result</span>
 <span class="sd">    :param var: Name of the variable in the strahl_result.cdf file</span>
 <span class="sd">    :params rhop_max: Maximum normalized poloidal flux for integral</span>
 <span class="sd">    :params R_axis: major radius on axis [cm]</span>
@@ -169,7 +170,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># Coordinates</span>
-    <span class="n">pro</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;pro&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="c1">#2x radial step</span>
+    <span class="n">pro</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;pro&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="c1"># 2x radial step</span>
     <span class="n">radius_grid</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;radius_grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
     <span class="n">rhop_grid</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;rhop_grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
 
@@ -192,8 +193,8 @@
 
 
 <div class="viewcode-block" id="get_particle_nums"><a class="viewcode-back" href="../../aurora.html#aurora.particle_conserv.get_particle_nums">[docs]</a><span class="k">def</span> <span class="nf">get_particle_nums</span><span class="p">(</span><span class="n">filepath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">R_axis</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39; Check time evolution and particle conservation in (py)STRAHL output.</span>
-<span class="sd">    If filepath is None, load data from output STRAHL file, otherwise use xarray Dataset in ds. </span>
+    <span class="sd">&#39;&#39;&#39; Check time evolution and particle conservation in Aurora or STRAHL output.</span>
+<span class="sd">    If filepath is not None, load data from file, otherwise use xarray Dataset in ds. </span>
 
 <span class="sd">    R_axis [cm] is needed for volume integrals. If None, it is set to a C-Mod default. </span>
 <span class="sd">    &#39;&#39;&#39;</span>
@@ -401,7 +402,7 @@
     <span class="n">axf</span> <span class="o">=</span> <span class="n">ax1</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
     <span class="n">iplot</span> <span class="o">=</span> <span class="mi">0</span>
 
-    <span class="k">for</span>  <span class="n">key</span><span class="p">,</span><span class="n">label</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span><span class="n">labels</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">label</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span><span class="n">labels</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
             <span class="n">y</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
             <span class="k">if</span> <span class="n">key</span> <span class="o">!=</span> <span class="s1">&#39;particles_in_pump&#39;</span><span class="p">:</span>
@@ -423,7 +424,7 @@
         <span class="n">axxx</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time (s)&#39;</span><span class="p">)</span>
     <span class="n">axxx</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">time</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
 
-    <span class="k">for</span> <span class="n">aaa</span> <span class="ow">in</span> <span class="n">axf</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">aaa</span> <span class="ow">in</span> <span class="n">axf</span><span class="p">[:</span><span class="n">iplot</span><span class="p">]:</span>
         <span class="n">aaa</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;best&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">set_draggable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="c1"># ---------------------------------------------</span>

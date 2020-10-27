@@ -17,5 +17,5 @@ agrees:
 4. To include in published results or presentations the code name
    and appropriate references for both aurora [1] and STRAHL [2].
 
-[1] Sciortino et al 2020 Nucl. Fusion https://doi.org/10.1088/1741-4326/abae85
+[1] F. Sciortino et al 2020 Nucl. Fusion 60 126014, https://doi.org/10.1088/1741-4326/abae85
 [2] R. Dux, IPP Report, 2004, https://pure.mpg.de/rest/items/item_2136655/component/file_2136654/content 

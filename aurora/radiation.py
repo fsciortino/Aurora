@@ -10,20 +10,19 @@ from colradpy import colradpy
 plt.ion()
 from scipy import constants
 from IPython import embed
+import warnings, copy
 
-def compute_rad(imp, rhop, time, imp_dens, ne, Te,
-                n0 = None, nD = None, main_ion_name='D',
-                sxr_pls_file=None, sxr_prs_file=None, 
+def compute_rad(imp, rhop, time, nz, ne, Te,
+                n0 = None, ni = None, main_ion_name='D', adas_files = {},
                 prad_flag=False,thermal_cx_rad_flag=False, spectral_brem_flag=False,
                 sxr_flag=False, main_ion_brem_flag=False):
     '''Calculate radiation terms corresponding to a simulation result. 
-    Results are in SI units (NB: inputs are not).
     
     Result can be conveniently plotted with a time-slider using, for example
 
     .. code-block:: python
 
-        zmax = imp_dens.shape[1]  # number of charge states (including neutrals)
+        zmax = nz.shape[1]  # number of charge states (including neutrals)
         rad = res['impurity_radiation'][:,:zmax,:]   # no fully-stripped line radiation
         aurora.slider_plot(rhop,time, rad.transpose(1,2,0)/1e6,
             xlabel=r'$\\rho_p$', ylabel='time [s]', 
@@ -31,39 +30,37 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
             plot_sum=True,
             labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]-1)])
 
-    Note that, when sxr_flag=True, SXR radiation will be computed using the default ADAS 'pls' and 'prs' files
-    (line and continuum radiation) given by the atomic.adas_files_dict() unless the sxr_pls_file and sxr_prs_file
-    parameters are provided. 
-
-    All radiation outputs are given in :math:`W cm^-3`, consistently with units of :math:`cm^-3` given for inputs.
+    All radiation outputs are given in :math:`W cm^-3`, consistently with units of :math:`cm^-3`
+    given for inputs.
 
     Args:
         imp : str
              Impurity symbol, e.g. Ca, F, W
         rhop : array (space,)
              Sqrt of poloidal flux radial grid of simulation output. 
-        time : array (time,)
+        time : array (time,) [s]
              Time array of simulation output.
-        imp_dens : array (time, nZ, space)
+        nz : array (time, nZ, space) [cm^-3]
             Dictionary with impurity density result, as given by :py:func:`~aurora.core.run_aurora` method.
         ne : array (time,space) [cm^-3]
             Electron density on the output grids.
         Te : array (time,space) [eV]
             Electron temperature on the output grids.
+
+    Keyword Args:
         n0 : array(time,space), optional [cm^-3]
              Background neutral density (assumed of hydrogen-isotopes). 
              This is only used if thermal_cx_rad_flag=True.
-        nD : array (time,space), optional [cm^-3]
+        ni : array (time,space), optional [cm^-3]
              Main ion density. This is only used if main_ion_brem_flag=True.
         main_ion_name : str, optional
             Atomic symbol of main ion species. Default is 'D'.
             This is only used if main_ion_brem_flag=True.
-        sxr_pls_file : str
-            ADAS file used for SXR line radiation calculation if sxr_flag=True. If left to None, the 
-            default in :py:func:`~aurora.atomic.adas_files_dict` is used. 
-        sxr_prs_file : str
-            ADAS file used for SXR continuum radiation calculation if sxr_flag=True. If left to None, 
-            the default in :py:func:`~aurora.atomic.adas_files_dict` is used. 
+        adas_files : dict
+            Dictionary containing ADAS file names for radiation calculations, possibly including keys
+            "plt","prb","prc","pls","prs","pbs","brs"
+            Any file names that are needed and not provided will be searched in the 
+            :py:meth:`~aurora.atomic.adas_files_dict` dictionary. 
         prad_flag : bool, optional
             If True, total radiation is computed (for each charge state and their sum)
         thermal_cx_rad_flag : bool, optional
@@ -73,137 +70,181 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
         sxr_flag : bool, optional
             If True, soft x-ray radiation is computed (for the given 'pls','prs' ADAS files)
         main_ion_brem_flag : bool, optional
-            If True, main ion bremstrahlung (all contributions) is computed. 
+            If True, main ion bremstrahlung is computed. 
 
     Returns:
         res : dict
-            Dictionary containing the radiation terms, depending on the activated flags.
-            The structure of this output is intentionally left to be the same as in STRAHL
-            for convenience. 
-    
-            If all flags were on, the dictionary would include
-            {'impurity_radiation','spectral_bremsstrahlung','sxr_radiation'}
+            Dictionary containing radiation terms, depending on the activated flags. 
+            The structure of the "res" dictionary is as follows.
 
-            Impurity_radiation and sxr_radiation:
-            index 0: total line radiation of neutral impurity
-            index 1: total line radiation of singly ionised impurity
-            ....
-            index n-1: total line radiation of hydrogen-like ion
-            index n: bremsstrahlung due to electron scattering at main ion (if requested)
-            index n+1: total continuum radiation of impurity (bremsstrahlung and recombination continua)
-            index n+2: bremsstrahlung due to electron scattering at impurity
-            index n+3: total radiation of impurity (and main ion, if set in Xx.atomdat)
+        If prad_flag=True,
 
-            Spectral_bremsstrahlung:
-            index 0: = 0
-            index 1: bremsstrahlung due to electron scattering at singly ionised impurity
-            ....
-            index n: bremsstrahlung due to electron scattering at fully ionised impurity
-            index n+1: bremsstrahlung due to electron scattering at main ion
-            index n+2: total bremsstrahlung of impurity (and main ion, if set in Xx.atomdat)
+        res['line_rad'] : array (nt,nZ,nr)- from ADAS "plt" files
+            Excitation-driven line radiation for each impurity charge state.
+        res['cont_rad'] : array (nt,nZ,nr)- from ADAS "prb" files
+            Continuum and line power driven by recombination and bremsstrahlung for impurity ions.
+        res['imp_brems'] : array (nt,nr)- analytic formula. 
+            Bremsstrahlung produced by electron scarrering at fully ionized impurity 
+            This is only an approximate calculation and is more accurately accounted for in the 
+            'cont_rad' component.
+        res['thermal_cx_cont_rad'] : array (nt,nZ,nr)- from ADAS "prc" files
+            Radiation deriving from charge transfer from thermal neutral hydrogen to impurity ions.
+            Returned only if thermal_cx_rad_flag=True.
+        res['tot'] : array (nt,nZ,nr)
+            Total unfilted radiation, summed over all charge states, given by the sum of all known 
+            radiation components.
 
+        If main_ion_brem_flag=True, res['main_ion_brems'] is additionally computed and added to 
+        res['tot'] (see below). 
+
+        If sxr_flag=True,
+
+        res['sxr_line_rad'] : array (nt,nZ,nr)- from ADAS "pls" files
+            Excitation-driven line radiation for each impurity charge state in the SXR range.
+        res['sxr_cont_rad'] : array (nt,nZ,nr)- from ADAS "prs" files
+            Continuum and line power driven by recombination and bremsstrahlung for impurity ions
+            in the SXR range. 
+        res['sxr_imp_brems'] : array (nt,nZ,nr)- from ADAS "pbs" files
+            Bremsstrahlung produced by electron scarrering at fully ionized impurity in the SXR range.
+        res['sxr_tot'] : array (nt,nZ,nr)
+            Total radiation in the SXR range, summed over all charge states, given by the sum of all known 
+            radiation components in the SXR range. 
+
+        If main_ion_brem_flag=True, res['sxr_main_ion_brems'] is additionally computed and added to 
+        res['sxr_tot'] (see below).
+
+        If spectral_brem_flag,
+
+        res['spectral_imp_brems'] : array (nt,nZ,nr) -- from ADAS "brs" files
+            Bremsstrahlung at a specific wavelength, depending on provided "brs" file. 
+        
+        If main_ion_brem_flag=True, res['main_ion_spectral_brems'] is also computed (see below).
+
+        If main_ion_brem_flag,
+
+        res['main_ion_brems'] : array (nt,nr)
+            Bremsstrahlung from main (background) ions. This is only computed if prad_flag=True and 
+            is automatically added to the res['tot'] array to account for all terms. 
+        res['main_ion_spectral_brems'] : array (nt,nr)
+            Bremsstrahlung from main (background) ions at a specific wavelength. This is only computed 
+            if spectral_brem_flag=True too. 
+        res['sxr_main_ion_brems'] : array (nt,nZ,nr)
+            Bremsstrahlung from main (background) ions in the SXR range. This is only computed if 
+            sxr_flag=True and is automatically added to res['sxr_tot']. 
     '''
     res = {}
 
-    Z_imp = imp_dens.shape[1] - 1
+    Z_imp = nz.shape[1] - 1
     logTe = np.log10(Te)
     logne = np.log10(ne)
-
-    # now, calculate radiation components as in emissiv.f:
-    # nion = Z_imp    #bremsstrahlung due to electron scattering at main ion
-    _np = Z_imp+1# total continuum radiation of impurity (bremsstrahlung and recombination continua)
-    nq = Z_imp+2  #  bremsstrahlung due to electron scattering at impurity
-    no = Z_imp+3  #   index n+4: total radiation of impurity (and main ion, if set in Xx.atomdat)
 
     # calculate total radiation
     if prad_flag:
 
-        atom_data = atomic.get_atom_data(imp,['plt','prb'])
-
-        # get radial profiles of all radiation terms
+        if 'plt' in adas_files:  # check if user requested use of a specific file
+            atom_data = atomic.get_atom_data(imp, ['plt'],[adas_files['plt']])
+        else:  # use default file from atomic.adas_files_dict()
+            atom_data = atomic.get_atom_data(imp, ['plt'])
         plt = atomic.interp_atom_prof(atom_data['plt'],logne,logTe) # W
+
+        if 'prb' in adas_files:
+            atom_data = atomic.get_atom_data(imp, ['prb'],[adas_files['prb']])
+        else:
+            atom_data = atomic.get_atom_data(imp, ['prb'])
         prb = atomic.interp_atom_prof(atom_data['prb'],logne,logTe) # W
 
-        if thermal_cx_rad_flag:
-            atom_data = atomic.get_atom_data(imp,['prc'])
-            # add to total recombination and cont rad terms:
-            logn0 = np.log10(n0)
-            prb += atomic.interp_atom_prof(atom_data['prc'],logn0,logTe) # W
-
-        res['impurity_radiation'] = rad = np.zeros((len(time), Z_imp+4, len(rhop)),dtype='single')
-
-        ####### Populate radiation arrays for the entire spectrum #######
         # line radiation for each charge state
-        rad[:,:Z_imp,:] = np.maximum(imp_dens[:,:-1] * plt, 1e-60)  # NB: fully stripped has no line radiation
-
-        rad[:,no,:] = rad.sum(1) # total line radiation
+        res['line_rad'] = np.maximum(nz[:,:-1] * plt, 1e-60) # no line rad for fully stripped ion       
 
         # total continuum radiation (NB: neutrals do not have continuum radiation)
-        rad[:,_np,:] = (imp_dens[:,1:] * prb).sum(1)
+        res['cont_rad'] = nz[:,1:] * prb
 
-        # add continuum radiation to total
-        rad[:,no,:] += rad[:,_np,:]
+        # impurity brems (inaccurate Gaunt factor!) -- already included in 'cont_rad'
+        res['imp_brems'] = atomic.impurity_brems(nz, ne, Te)
 
-        # impurity brems (inaccurate Gaunt factor!)
-        rad[:,nq,:] = atomic.impurity_brems(imp_dens, ne, Te).sum(1)
+        # Total unfiltered radiation: 
+        res['tot'] = res['line_rad'].sum(1) + res['cont_rad'].sum(1) 
 
-
-    if spectral_brem_flag:  # this if-statement is missing in STRAHL's emissiv.f
-        # spectral bremsstrahlung
-        res['spectral_bremsstrahlung'] = rad_bs = np.zeros((len(time), Z_imp+3, len(rhop)),dtype='single')
-
-        logZ_rep = np.log10(np.arange(Z_imp)+1)
-        atom_data = atomic.get_atom_data(imp,['brs'])
-        x,y,tab = atom_data['brs']
-        brs = atomic.interp_atom_prof((x,y,tab.T),None,logTe) # W
-        brs = interp1d(x, brs,axis=1,copy=False,assume_sorted=True)(logZ_rep)
-
-        rad_bs[:,1:Z_imp+1,:] = imp_dens[:,1:] * brs
-        rad_bs[:,nq,:] = rad_bs[:,1:Z_imp,:].sum(1)
-
-
-    if sxr_flag:
-
-        atom_data = {}
-        if sxr_pls_file is not None:
-            # load SXR line radiation file requested by user
-            atomdat_dir = atomic.get_atomdat_info()
-            res = atomic.adas_file(atomdat_dir+sxr_pls_file)
-            atom_data['pls'] = res.logNe, res.logT, res.data
-        else:
-            # default SXR line radiation file
-            atom_data['pls'] = atomic.get_atom_data(imp,['pls'])['pls']
-
-        if sxr_prs_file is not None:
-            atomdat_dir = atomic.get_atomdat_info()
-            res = atomic.adas_file(atomdat_dir+sxr_prs_file)
-            atom_data['prs'] = res.logNe, res.logT, res.data
-        else:
-            # default SXR continuum radiation file 
-            atom_data['prs'] = atomic.get_atom_data(imp,['prs'])['prs']
+        if thermal_cx_rad_flag:
+            if n0 is None:
+                raise ValueError(
+                    'Requested thermal CX emission to be computed, '
+                    'but no background neutral density was provided!')
+            logn0 = np.log10(n0)
             
+            # thermal CX radiation to total recombination and continuum radiation terms:
+            if 'prc' in adas_files:
+                atom_data = atomic.get_atom_data(imp, ['prc'],[adas_files['prc']])
+            else:
+                atom_data = atomic.get_atom_data(imp, ['prc'])
+            prc = atomic.interp_atom_prof(atom_data['prc'],logn0,logTe) # W
+
+            res['thermal_cx_cont_rad'] = nz[:,1:] * prc
+
+            # add to total unfiltered radiation:
+            res['tot'] += res['thermal_cx_cont_rad']
+                       
+    if sxr_flag: # SXR-filtered radiation (spectral range depends on filter used for files)
+
+        if 'pls' in adas_files:
+            atom_data = atomic.get_atom_data(imp, ['pls'],[adas_files['pls']])
+        else:
+            atom_data = atomic.get_atom_data(imp, ['pls'])
         pls = atomic.interp_atom_prof(atom_data['pls'],logne,logTe) # W
+
+        if 'prs' in adas_files:
+            atom_data = atomic.get_atom_data(imp, ['prs'],[adas_files['prs']])
+        else:
+            atom_data = atomic.get_atom_data(imp, ['prs'])
         prs = atomic.interp_atom_prof(atom_data['prs'],logne,logTe) # W
 
-        res['sxr_radiation'] = radsxr = np.zeros((len(time), Z_imp+4, len(rhop)),dtype='single')
+        # SXR line radiation for each charge state
+        res['sxr_line_rad'] = np.maximum(nz[:,:-1] * pls, 1e-60)
 
-        # line radiation for each charge state
-        radsxr[:,:Z_imp] = np.maximum(imp_dens[:,:-1] * pls, 1e-60)
-        radsxr[:,no,:] = radsxr[:,:Z_imp].sum(1) # total line radiation
+        # SXR continuum radiation for each charge state
+        res['sxr_cont_rad'] = nz[:,1:] * prs
+    
+        # impurity bremsstrahlung in SXR range -- already included in 'sxr_cont_rad'
+        if 'pbs' in adas_files:
+            atom_data = atomic.get_atom_data(imp, ['pbs'],[adas_files['pbs']])
+        else:
+            atom_data = atomic.get_atom_data(imp, ['pbs'])
+        pbs = atomic.interp_atom_prof(atom_data['pbs'],logne,logTe) # W
+        res['sxr_imp_brems'] = nz[:,1:] * pbs 
 
-        # total continuum radiation
-        radsxr[:,_np] = (imp_dens[:,1:] * prs).sum(1)
+        # SXR total radiation
+        res['sxr_tot'] = res['sxr_line_rad'].sum(1) + res['sxr_cont_rad'].sum(1)
 
-        # add continuum radiation to total
-        radsxr[:,no,:] += radsxr[:,_np,:]
+        
+    if spectral_brem_flag:  # spectral bremsstrahlung (i.e. brems at a specific wavelength)
 
-        # impurity brems (inaccurate Gaunt factor!)
-        radsxr[:,nq,:] = atomic.impurity_brems(imp_dens,ne,Te).sum(1) #BUG this is unfiltered bremstrahlung!! not SXR
+        if 'brs' in adas_files:
+            atom_data = atomic.get_atom_data(imp, ['brs'],[adas_files['brs']])
+        else:
+            atom_data = atomic.get_atom_data(imp, ['brs'])
+        x,y,tab = atom_data['brs']
+        brs = atomic.interp_atom_prof((x,y,tab.T),None,logTe) # W
+
+        # interpolate on Z grid of impurity of interest
+        logZ_rep = np.log10(np.arange(Z_imp)+1)
+        brs = interp1d(x, brs,axis=1,copy=False,assume_sorted=True)(logZ_rep)
+
+        # Note: no spectral bremsstrahlung from neutral stage
+        res['spectral_imp_brems'] = nz[:,1:] * brs
 
 
-    # main ion bremsstrahlung
-    if main_ion_brem_flag:
+    if main_ion_brem_flag: # main ion bremsstrahlung
 
+        if ni is None:
+            warnings.warn(
+                "No background ion density provided! "
+                "Subtracting impurity from electron density. This may not accurately represent ni!",
+                RuntimeWarning
+            )
+            ni = copy.deepcopy(ne)
+            Z_n_imp = (np.arange(Z_imp+1)[None,:,None]*nz).sum(1)
+            ni -= Z_n_imp
+            
         # get main-ion Z
         elem = atomic_element(symbol=main_ion_name)
         main_ion_Z = elem[list(elem.keys())[0]]['Z']
@@ -212,27 +253,31 @@ def compute_rad(imp, rhop, time, imp_dens, ne, Te,
             main_ion_name='H' # same atomic data
 
         if prad_flag:
-            
-            # get total radiation for main ion:
-            main_ion_rad = atomic.get_adas_continuum_rad(main_ion_name, nD, logne, logTe) # W/m^3
+            # recombination and bremstrahlung of fully stripped main ion
+            if 'prb' in adas_files:
+                atom_data = atomic.get_atom_data(main_ion_name, ['prb'],[adas_files['prb']])
+            else:
+                atom_data = atomic.get_atom_data(main_ion_name, ['prb'])
+            x,y,tab = atom_data['prb']
+            atom_rates = atomic.interp_atom_prof((x,y,tab[[-1]]),logne,logTe)
 
-            rad[:,Z_imp] = main_ion_rad/1e6   #W/cm^3
-            rad[:,no,:] += rad[:,Z_imp] #add to total
+            res['main_ion_brems'] = atom_rates[:,0] * ni # W/cm^3
+            res['tot'] += res['main_ion_brems']  # add to total
 
-            # simpler and less accurate (missing dependencies of Gaunt factor)
-            #rad[:,Z_imp,:] = atomic.main_ion_brems(main_ion_Z, nD, ne, Te)
-            #rad[:,no,:] += rad[:,Z_imp] #add to total
-
-        if spectral_brem_flag:            
-            rad_bs[:,_np,:] = nD * brs[:,main_ion_Z-1,:]   # only main ion brems
-            rad_bs[:,nq,:] += rad_bs[:,_np,:]  # total
+        if spectral_brem_flag:
+            res['main_ion_spectral_brems'] = ni * brs[:,main_ion_Z-1,:]   # only main ion brems
 
         if sxr_flag:
-            # Bremsstrahlung in the SXR range. STRAHL uses brs files. Here we use prs files for background species
-            bckg_D = atomic.get_adas_continuum_rad(bckg_ion_name, nD, logne, logTe, sxr=True)  # W/m^3
+            # SXR-filtered recombination and bremstrahlung of fully stripped ion
+            if 'prs' in adas_files:
+                atom_data = atomic.get_atom_data(main_ion_name, ['prs'],[adas_files['prs']])
+            else:
+                atom_data = atomic.get_atom_data(main_ion_name, ['prs'])
+            x,y,tab = atom_data['prs']
+            atom_rates = atomic.interp_atom_prof((x,y,tab[[-1]]),logne,logTe) # W
 
-            radsxr[:,Z_imp] = bckg_D * ne
-            radsxr[:,no] += radsxr[:,Z_imp]
+            res['sxr_main_ion_brems'] = atom_rates[:,0] * ni # W/cm^3
+            re['sxr_tot'] += res['sxr_main_ion_brems'] # add to total
 
     return res
 
@@ -280,7 +325,7 @@ def plot_radiation_profs(imp, nz_prof, logne_prof, logTe_prof, xvar_prof,
             Unfiltered continuum radiation.        
     '''
     if atom_data is None:
-        # if atom_data dictionary was not given, load appropriate files
+        # if atom_data dictionary was not given, load appropriate default files
         atom_data = atomic.get_atom_data(imp,['pls','prs','plt','prb'])
 
     # use "pltt" nomenclature rather than "plt" to avoid issues with matplotlib.pyplot imported as plt
@@ -339,7 +384,7 @@ def plot_radiation_profs(imp, nz_prof, logne_prof, logTe_prof, xvar_prof,
 
 
 def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
-                    n0_cm3=None, nz_cm3=None, frac=None, plot=False):
+                    adas_files={}, n0_cm3=None, nz_cm3=None, frac=None, plot=False):
     '''Model radiation from a fixed-impurity-fraction model or from detailed impurity density
     profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), 
     calculating radiation terms over the radius and integrated over the plasma cross section. 
@@ -354,11 +399,21 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         Te_eV : array (nr,)
             Electron temperature in eV
         vol : array (nr,)
-            Volume of each flux surface in :math:`m^3`.
+            Volume of each flux surface in :math:`m^3`. Note the units! We use :math:`m^3` here
+            rather than :math:`cm^3` because it is more common to work with :math:`m^3` for 
+            flux surface volumes of fusion devices.
+
+    Keyword Args:
+        adas_files : dict
+            Dictionary containing ADAS file names for forward modeling and/or radiation calculations.
+            Possibly useful keys include
+            "scd","acd","ccd","plt","prb","prc","pls","prs","pbs","brs"
+            Any file names that are needed and not provided will be searched in the 
+            :py:meth:`~aurora.atomic.adas_files_dict` dictionary. 
         n0_cm3 : array (nr,), optional
             Background ion density (H,D or T). If provided, charge exchange (CX) 
             recombination is included in the calculation of charge state fractional 
-            abundances. 
+            abundances.
         nz_cm3 : array (nr,nz), optional
             Impurity charge state densities in cm^-3 units. Fractional abundancies can 
             alternatively be specified via the :param:frac parameter for a constant-fraction
@@ -386,91 +441,103 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     rhop = rhop[rhop<=1.]
 
     # create results dictionary
-    res = {}
-    res['rhop'] = rhop
-    res['ne_cm3'] = ne_cm3
-    res['Te_eV'] = Te_eV
-    res['vol'] = vol
+    out = {}
+    out['rhop'] = rhop
+    out['ne_cm3'] = ne_cm3
+    out['Te_eV'] = Te_eV
+    out['vol'] = vol
     
     # load ionization and recombination rates
     filetypes = ['acd','scd']
+    filenames = []
+    def_adas_files_dict = atomic.adas_files_dict()
+    for filetype in filetypes:
+        if filetype in adas_files:
+            filenames.append(adas_files[filetype])
+        else:
+            filenames.append(def_adas_files_dict[imp][filetype])
+
+    # if background neutral density was given, load thermal CX rates too
     if n0_cm3 is not None:
         filetypes.append('ccd')
-    
+        if 'ccd' in adas_files:
+            filenames.append(adas_files['ccd'])
+        else:
+            filenames.append(def_adas_files_dict[imp]['ccd']) 
+
     if nz_cm3 is None:
         # obtain fractional abundances via a constant-fraction model 
-        atom_data = atomic.get_atom_data(imp,filetypes)
+        atom_data = atomic.get_atom_data(imp,filetypes,filenames)
 
         if n0_cm3 is None:
             # obtain fractional abundances without CX:
-            logTe, res['fz'] = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot)
+            logTe, out['fz'] = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot)
         else:
             # include CX for ionization balance:
-            logTe, res['fz'] = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot,
+            logTe, out['fz'] = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot,
                                                    include_cx=True, n0_by_ne=n0_cm3/ne_cm3)
-        res['logTe'] = logTe
+        out['logTe'] = logTe
         
         # Impurity densities
-        nz_cm3 = frac * ne_cm3[None,:,None] * res['fz'][None,:,:]  # (time,nZ,space)
+        nz_cm3 = frac * ne_cm3[None,:,None] * out['fz'][None,:,:]  # (time,nZ,space)
     else:
         # set input nz_cm3 into the right shape for compute_rad: (time,space,nz)
         nz_cm3 = nz_cm3[None,:,:]
 
         # calculate fractional abundances 
         fz = nz_cm3[0,:,:].T/np.sum(nz_cm3[0,:,:],axis=1)
-        res['fz'] = fz.T  # (nz,space)
+        out['fz'] = fz.T  # (nz,space)
 
     Z_imp = nz_cm3.shape[-1] -1  # don't include neutral stage
     
     # Estimate D/T ion density via quasi-neutrality, subtracting impurity density times Z values from ne
-    res['nD'] = ne_cm3[None,:]
+    out['ni'] = ne_cm3[None,:]
     Z_n_imp = (np.arange(Z_imp+1)[None,:,None]*nz_cm3.transpose(0,2,1)).sum(1)
-    res['nD'] -= Z_n_imp
+    out['ni'] -= Z_n_imp
     
-    # basic total radiated power
+    # compute radiated power components
     rad = compute_rad(imp, rhop, [1.0], nz_cm3.transpose(0,2,1), ne_cm3[None,:], Te_eV[None,:],
-                                         n0=n0_cm3, nD=res['nD'],
-                                         prad_flag=True, thermal_cx_rad_flag=False, 
-                                         spectral_brem_flag=False, sxr_flag=False, 
-                                         main_ion_brem_flag=True)
-    
+                      n0=n0_cm3, ni=out['ni'], adas_files=adas_files, 
+                      prad_flag=True, thermal_cx_rad_flag=False, spectral_brem_flag=False,
+                      sxr_flag=False, main_ion_brem_flag=True)
+
     # radiation terms -- converted from W/cm^3 to W/m^3
-    res['line_rad_dens'] = rad['impurity_radiation'][0,:Z_imp,:]*1e6  # no line radiation from fully-stripped impurity
-    res['brems_dens'] = rad['impurity_radiation'][0,Z_imp,:]*1e6
-    res['cont_rad_dens'] = rad['impurity_radiation'][0,Z_imp+1,:]*1e6
-    res['rad_tot_dens'] = rad['impurity_radiation'][0,Z_imp+3,:]*1e6
+    out['line_rad_dens'] = rad['line_rad'][0,:,:]*1e6
+    out['main_ion_brems_dens'] = rad['main_ion_brems'][0,:]*1e6
+    out['cont_rad_dens'] = rad['cont_rad'][0,:,:]*1e6
+    out['rad_tot_dens'] = rad['tot'][0,:]*1e6
     
     # cumulative integral over all volume
-    res['line_rad'] = cumtrapz(res['line_rad_dens'], vol, initial=0.)
-    res['line_rad_tot'] = cumtrapz(res['line_rad_dens'].sum(0), vol, initial=0.)
-    res['brems'] = cumtrapz(res['brems_dens'], vol, initial=0.)
-    res['cont_rad'] = cumtrapz(res['cont_rad_dens'], vol, initial=0.)
-    res['rad_tot'] = cumtrapz(res['rad_tot_dens'], vol, initial=0.)
+    out['line_rad'] = cumtrapz(out['line_rad_dens'], vol, initial=0.)
+    out['line_rad_tot'] = cumtrapz(out['line_rad_dens'].sum(0), vol, initial=0.)
+    out['main_ion_brems'] = cumtrapz(out['main_ion_brems_dens'], vol, initial=0.)
+    out['cont_rad'] = cumtrapz(out['cont_rad_dens'], vol, initial=0.)
+    out['rad_tot'] = cumtrapz(out['rad_tot_dens'], vol, initial=0.)
 
     # total power is the last element of the cumulative integral
-    res['Prad'] = res['rad_tot'][-1]
-    print(f'Total {imp} radiated power: {res["Prad"]/1e6:.3f} MW')
+    out['Prad'] = out['rad_tot'][-1]
+    print(f'Total {imp} radiated power: {out["Prad"]/1e6:.3f} MW')
 
     # calculate average charge state Z across radius
-    res['Z_avg'] = np.sum(np.arange(res['fz'].shape[1])[:,None] * res['fz'].T, axis=0)
+    out['Z_avg'] = np.sum(np.arange(out['fz'].shape[1])[:,None] * out['fz'].T, axis=0)
     
     if plot:
         # plot power in MW/m^3
         fig,ax = plt.subplots()
-        ax.plot(rhop, res['line_rad_dens'].sum(0)/1e6, label=r'$P_{rad,line}$')
-        ax.plot(rhop, res['brems_dens']/1e6, label=r'$P_{brems}$')
-        ax.plot(rhop, res['cont_rad_dens']/1e6, label=r'$P_{cont}$')
-        ax.plot(rhop, res['rad_tot_dens']/1e6, label=r'$P_{rad,tot}$')
+        ax.plot(rhop, out['line_rad_dens'].sum(0)/1e6, label=r'$P_{rad,line}$')
+        ax.plot(rhop, out['brems_dens']/1e6, label=r'$P_{brems}$')
+        ax.plot(rhop, out['cont_rad_dens']/1e6, label=r'$P_{cont}$')
+        ax.plot(rhop, out['rad_tot_dens']/1e6, label=r'$P_{rad,tot}$')
         ax.set_xlabel(r'$\rho_p$')
         ax.set_ylabel(fr'{imp} $P_{{rad}}$ [$MW/m^3$]')
         ax.legend().set_draggable(True)
         
         # plot power in MW 
         fig,ax = plt.subplots()
-        ax.plot(rhop, res['line_rad'].sum(0)/1e6, label=r'$P_{rad,line}$')
-        ax.plot(rhop, res['brems']/1e6, label=r'$P_{brems}$')
-        ax.plot(rhop, res['cont_rad']/1e6, label=r'$P_{cont}$')
-        ax.plot(rhop, res['rad_tot']/1e6, label=r'$P_{rad,tot}$')
+        ax.plot(rhop, out['line_rad'].sum(0)/1e6, label=r'$P_{rad,line}$')
+        ax.plot(rhop, out['brems']/1e6, label=r'$P_{brems}$')
+        ax.plot(rhop, out['cont_rad']/1e6, label=r'$P_{cont}$')
+        ax.plot(rhop, out['rad_tot']/1e6, label=r'$P_{rad,tot}$')
         ax.set_xlabel(r'$\rho_p$')
         ax.set_ylabel(fr'{imp} $P_{{rad}}$ [MW]')
         fig.suptitle('Cumulative power')
@@ -479,28 +546,28 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         
         # plot line radiation for each charge state
         fig = plt.figure(figsize=(10,7))
-        colspan = 8 if res['line_rad_dens'].shape[0]<50 else 7
+        colspan = 8 if out['line_rad_dens'].shape[0]<50 else 7
         a_plot = plt.subplot2grid((10,10),(0,0),rowspan = 10, colspan = colspan, fig=fig) 
         a_legend = plt.subplot2grid((10,10),(0,8),rowspan = 10, colspan = 10-colspan, fig=fig) 
         ls_cycle = plot_tools.get_ls_cycle()
-        for cs in np.arange(res['line_rad_dens'].shape[0]):
+        for cs in np.arange(out['line_rad_dens'].shape[0]):
             ls = next(ls_cycle)
-            a_plot.plot(rhop, res['line_rad_dens'][cs,:]/1e6, ls)
+            a_plot.plot(rhop, out['line_rad_dens'][cs,:]/1e6, ls)
             a_legend.plot([], [], ls, label=imp+fr'$^{{{cs}+}}$')
         a_plot.set_xlabel(r'$\rho_p$')
         a_plot.set_ylabel(fr'{imp} $P_{{rad}}$ [$MW/m^3$]')
-        ncol_leg = 2 if res['line_rad_dens'].shape[0]<25 else 3
+        ncol_leg = 2 if out['line_rad_dens'].shape[0]<25 else 3
         leg=a_legend.legend(loc='center right', fontsize=11, ncol=ncol_leg).set_draggable(True)
         a_legend.axis('off')
         
         # plot average Z over radius
         fig,ax = plt.subplots()
-        ax.plot(rhop, res['Z_avg'])
+        ax.plot(rhop, out['Z_avg'])
         ax.set_xlabel(r'$\rho_p$')
         ax.set_ylabel(fr'{imp} $\langle Z \rangle$')
         plt.tight_layout()
         
-    return res
+    return out
 
 
 
