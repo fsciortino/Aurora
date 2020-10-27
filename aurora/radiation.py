@@ -46,6 +46,7 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
         Te : array (time,space) [eV]
             Electron temperature on the output grids.
 
+
     Keyword Args:
         n0 : array(time,space), optional [cm^-3]
              Background neutral density (assumed of hydrogen-isotopes). 
@@ -181,7 +182,7 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
             res['thermal_cx_cont_rad'] = nz[:,1:] * prc
 
             # add to total unfiltered radiation:
-            res['tot'] += res['thermal_cx_cont_rad']
+            res['tot'] += res['thermal_cx_cont_rad'].sum(1)
                        
     if sxr_flag: # SXR-filtered radiation (spectral range depends on filter used for files)
 
@@ -498,8 +499,9 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     
     # compute radiated power components
     rad = compute_rad(imp, rhop, [1.0], nz_cm3.transpose(0,2,1), ne_cm3[None,:], Te_eV[None,:],
-                      n0=n0_cm3, ni=out['ni'], adas_files=adas_files, 
-                      prad_flag=True, thermal_cx_rad_flag=False, spectral_brem_flag=False,
+                      n0=n0_cm3, ni=out['ni'], adas_files=adas_files,
+                      prad_flag=True, thermal_cx_rad_flag=False if n0_cm3 is None else True,
+                      spectral_brem_flag=False,
                       sxr_flag=False, main_ion_brem_flag=True)
 
     # radiation terms -- converted from W/cm^3 to W/m^3
@@ -515,9 +517,20 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     out['cont_rad'] = cumtrapz(out['cont_rad_dens'], vol, initial=0.)
     out['rad_tot'] = cumtrapz(out['rad_tot_dens'], vol, initial=0.)
 
+    if n0_cm3 is not None:
+        out['thermal_cx_rad_dens'] = rad['thermal_cx_cont_rad'][0,:,:]*1e6
+        out['thermal_cx_rad'] = cumtrapz(out['thermal_cx_rad_dens'].sum(0), vol, initial=0.)
+        
     # total power is the last element of the cumulative integral
     out['Prad'] = out['rad_tot'][-1]
-    print(f'Total {imp} radiated power: {out["Prad"]/1e6:.3f} MW')
+
+    print('------------------------------------')
+    print(f'Total {imp} line radiation power: {out["line_rad_tot"][-1]/1e6:.3f} MW')
+    print(f'Total {imp} continuum radiation power: {out["cont_rad"].sum(0)[-1]/1e6:.3f} MW')
+    print(f'Main ion brems power: {out["main_ion_brems"][-1]/1e6:.3f} MW')
+    if n0_cm3 is not None:
+        print(f'Thermal CX power: {out["thermal_cx_rad"][-1]/1e6:.3f} MW')
+    print(f'Total radiated power: {out["Prad"]/1e6:.3f} MW')
 
     # calculate average charge state Z across radius
     out['Z_avg'] = np.sum(np.arange(out['fz'].shape[1])[:,None] * out['fz'].T, axis=0)
