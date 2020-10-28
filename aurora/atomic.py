@@ -2,7 +2,7 @@
 # Created by sciortinof at 05 Feb 2020  14:59
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline, interp1d
 from matplotlib import cm
 import os
 import scipy.ndimage
@@ -483,7 +483,7 @@ def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=
             fz[it] = N/np.sum(N)
 
         rate_coeff*=(ne_cm3 * 1e-6)
-    
+
     if plot:
         # plot fractional abundances
         if ax is None:
@@ -501,10 +501,15 @@ def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=
             axx.set_xlabel(rho_lbl)
 
         axx.set_prop_cycle('color',cm.plasma(np.linspace(0,1,fz.shape[1])))
-        axx.plot(x,fz,ls=ls)
-        for i in range(len(fz.T)):
-            imax = np.argmax(fz[:,i])
-            axx.text(np.max([0.05,x[imax]]), fz[imax,i], i, horizontalalignment='center', clip_on=True)
+
+        # cubic interpolation for smoother visualization:
+        x_fine = np.linspace(np.min(x), np.max(x),10000)
+        for cs in range(fz.shape[1]):
+            fz_i = interp1d(x, fz[:,cs], kind='cubic')(x_fine)
+
+            imax = np.argmax(fz_i)
+            axx.text(np.max([0.05,x_fine[imax]]), fz_i[imax], cs,
+                     horizontalalignment='center', clip_on=True)
         axx.grid('on')
         axx.set_ylim(0,1.05)
         axx.set_xlim(x[0],x[-1])
@@ -635,7 +640,7 @@ class CartesianGrid(object):
 
         #clip dimension - it will extrapolation by a nearest value
         for coord, n in zip(coords, self.N):
-            np.clip(coord,0,n,coord)
+            np.clip(coord,0,n-1,coord)
 
         #prepare output array
         inter_out = np.empty((self.values.shape[0],)+out_shape, dtype=self.values.dtype)
@@ -674,8 +679,8 @@ def interp_atom_prof(atom_table,x_prof, y_prof,log_val=False, x_multiply=True):
     '''
     x,y, table = atom_table
 
-    if (abs(table-table[...,[0]]).all()  < .05) or x_prof is None:
-        # 1D interpolaion if independent of the last dimension - like SXR radiation data
+    if (abs(table-table[...,[0]]).all()  < 0.05) or x_prof is None:
+        # 1D interpolation if independent of the last dimension - like SXR radiation data
 
         reg_interp = CartesianGrid((y, ),table[:,:,0]*np.log(10))
         interp_vals = reg_interp(y_prof) 
@@ -692,7 +697,7 @@ def interp_atom_prof(atom_table,x_prof, y_prof,log_val=False, x_multiply=True):
         #perform fast linear interpolation
         reg_interp = CartesianGrid((x, y),table.swapaxes(1,2)*np.log(10))
         interp_vals = reg_interp(x_prof,y_prof) 
-
+    
     # reshape to shape(nt,nion,nr)
     interp_vals = interp_vals.swapaxes(0,1)
 

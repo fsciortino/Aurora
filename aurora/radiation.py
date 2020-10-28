@@ -12,7 +12,7 @@ from IPython import embed
 import warnings, copy
 
 def compute_rad(imp, rhop, time, nz, ne, Te,
-                n0 = None, ni = None, main_ion_name='D', adas_files = {},
+                n0 = None, Ti = None, ni = None, main_ion_name='D', adas_files = {},
                 prad_flag=False,thermal_cx_rad_flag=False, spectral_brem_flag=False,
                 sxr_flag=False, main_ion_brem_flag=False):
     '''Calculate radiation terms corresponding to a simulation result. 
@@ -49,10 +49,14 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
 
     Keyword Args:
         n0 : array(time,space), optional [cm^-3]
-             Background neutral density (assumed of hydrogen-isotopes). 
+             Background neutral density (assumed of hydrogen-isotopes).
              This is only used if thermal_cx_rad_flag=True.
+        Ti : array (time,space) [eV]
+            Main ion temperature (assumed of hydrogen-isotopes). This is only used
+            if thermal_cx_rad_flag=True. If not set, Ti is taken equal to Te. 
         ni : array (time,space), optional [cm^-3]
-             Main ion density. This is only used if main_ion_brem_flag=True.
+             Main ion density. This is used if thermal_cx_rad_flag=True and/or
+             main_ion_brem_flag=True. If not set, ni is taken to be equal to ne.
         main_ion_name : str, optional
             Atomic symbol of main ion species. Default is 'D'.
             This is only used if main_ion_brem_flag=True.
@@ -138,6 +142,16 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
     logTe = np.log10(Te)
     logne = np.log10(ne)
 
+    if (thermal_cx_rad_flag or main_ion_brem_flag) and (ni is None):
+        warnings.warn(
+            "No background ion density provided! "
+            "Subtracting impurity density x Z for each charge state from electron density.",
+            RuntimeWarning
+        )
+        ni = copy.deepcopy(ne)
+        Z_n_imp = (np.arange(Z_imp+1)[None,:,None]*nz).sum(1)
+        ni -= Z_n_imp
+
     # calculate total radiation
     if prad_flag:
 
@@ -145,7 +159,7 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
             atom_data = atomic.get_atom_data(imp, ['plt'],[adas_files['plt']])
         else:  # use default file from atomic.adas_files_dict()
             atom_data = atomic.get_atom_data(imp, ['plt'])
-        plt = atomic.interp_atom_prof(atom_data['plt'],logne,logTe) # W
+        pltt = atomic.interp_atom_prof(atom_data['plt'],logne,logTe) # W
 
         if 'prb' in adas_files:
             atom_data = atomic.get_atom_data(imp, ['prb'],[adas_files['prb']])
@@ -154,7 +168,7 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
         prb = atomic.interp_atom_prof(atom_data['prb'],logne,logTe) # W
 
         # line radiation for each charge state
-        res['line_rad'] = np.maximum(nz[:,:-1] * plt, 1e-60) # no line rad for fully stripped ion       
+        res['line_rad'] = np.maximum(nz[:,:-1] * pltt, 1e-60) # no line rad for fully stripped ion       
 
         # total continuum radiation (NB: neutrals do not have continuum radiation)
         res['cont_rad'] = nz[:,1:] * prb
@@ -170,16 +184,23 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
                 raise ValueError(
                     'Requested thermal CX emission to be computed, '
                     'but no background neutral density was provided!')
-            logn0 = np.log10(n0)
+            if Ti is None:
+                warnings.warn('Requested thermal CX emission to be computed '
+                              'but no Ti values were provided! Setting Ti=Te',
+                              RuntimeWarning)
+                Ti = copy.deepcopy(Te)
+
+            logni = np.log10(ni)
+            logTi = np.log10(Ti)
             
             # thermal CX radiation to total recombination and continuum radiation terms:
             if 'prc' in adas_files:
                 atom_data = atomic.get_atom_data(imp, ['prc'],[adas_files['prc']])
             else:
                 atom_data = atomic.get_atom_data(imp, ['prc'])
-            prc = atomic.interp_atom_prof(atom_data['prc'],logn0,logTe) # W
+            prc = atomic.interp_atom_prof(atom_data['prc'],logni,logTi,x_multiply=False) # W
 
-            res['thermal_cx_cont_rad'] = nz[:,1:] * prc
+            res['thermal_cx_cont_rad'] = nz[:,1:] * n0 * prc
 
             # add to total unfiltered radiation:
             res['tot'] += res['thermal_cx_cont_rad'].sum(1)
@@ -234,16 +255,6 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
 
 
     if main_ion_brem_flag: # main ion bremsstrahlung
-
-        if ni is None:
-            warnings.warn(
-                "No background ion density provided! "
-                "Subtracting impurity from electron density. This may not accurately represent ni!",
-                RuntimeWarning
-            )
-            ni = copy.deepcopy(ne)
-            Z_n_imp = (np.arange(Z_imp+1)[None,:,None]*nz).sum(1)
-            ni -= Z_n_imp
             
         # get main-ion Z
         elem = atomic_element(symbol=main_ion_name)
@@ -539,8 +550,8 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         # plot power in MW/m^3
         fig,ax = plt.subplots()
         ax.plot(rhop, out['line_rad_dens'].sum(0)/1e6, label=r'$P_{rad,line}$')
-        ax.plot(rhop, out['brems_dens']/1e6, label=r'$P_{brems}$')
-        ax.plot(rhop, out['cont_rad_dens']/1e6, label=r'$P_{cont}$')
+        ax.plot(rhop, out['cont_rad_dens'].sum(0)/1e6, label=r'$P_{cont}$')
+        ax.plot(rhop, out['main_ion_brems_dens']/1e6, label=r'$P_{D,brems}$')
         ax.plot(rhop, out['rad_tot_dens']/1e6, label=r'$P_{rad,tot}$')
         ax.set_xlabel(r'$\rho_p$')
         ax.set_ylabel(fr'{imp} $P_{{rad}}$ [$MW/m^3$]')
@@ -549,8 +560,8 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         # plot power in MW 
         fig,ax = plt.subplots()
         ax.plot(rhop, out['line_rad'].sum(0)/1e6, label=r'$P_{rad,line}$')
-        ax.plot(rhop, out['brems']/1e6, label=r'$P_{brems}$')
-        ax.plot(rhop, out['cont_rad']/1e6, label=r'$P_{cont}$')
+        ax.plot(rhop, out['cont_rad'].sum(0)/1e6, label=r'$P_{cont}$')
+        ax.plot(rhop, out['main_ion_brems']/1e6, label=r'$P_{D,brems}$')
         ax.plot(rhop, out['rad_tot']/1e6, label=r'$P_{rad,tot}$')
         ax.set_xlabel(r'$\rho_p$')
         ax.set_ylabel(fr'{imp} $P_{{rad}}$ [MW]')
@@ -648,8 +659,11 @@ def get_pec_prof(ion, cs, rhop, ne_cm3, Te_eV, lam_nm=1.8705, lam_width_nm=0.002
             Radial profile of PEC intensity, in units of :math:`photons cm^3/s` (if phot2energy=False) or 
             :math:`W \cdot cm^3` depending (if phot2energy=True). 
     '''
-    # temporarily import this here:
-    from colradpy import colradpy
+    try:
+        # temporarily import this here, until ColRadPy dependency can be set up properly
+        from colradpy import colradpy
+    except ImportError:
+        raise ValueError('Could not import colradpy. Install this from the Github repo!')
     
     files = adf04_files()
 
