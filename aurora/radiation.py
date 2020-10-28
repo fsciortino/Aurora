@@ -56,7 +56,8 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
             if thermal_cx_rad_flag=True. If not set, Ti is taken equal to Te. 
         ni : array (time,space), optional [cm^-3]
              Main ion density. This is used if thermal_cx_rad_flag=True and/or
-             main_ion_brem_flag=True. If not set, ni is taken to be equal to ne.
+             main_ion_brem_flag=True. If not set, ni is taken to be equal to ne, subtracting
+             the impurity density x Z for each charge state. 
         main_ion_name : str, optional
             Atomic symbol of main ion species. Default is 'D'.
             This is only used if main_ion_brem_flag=True.
