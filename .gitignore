@@ -6,4 +6,9 @@ __pycache__
 .nfs*
 */#*
 */.#*
+
+# Aurora animations
 *.mp4
+
+# Sphinx documentation
+docs/_build/
