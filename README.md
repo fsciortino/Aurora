@@ -22,7 +22,15 @@ Generally, we would appreciate if you could work with us to merge your features 
 
 # Installation
 
-We recommend installing from source, by git-cloning [this repo](https://github.com/fsciortino/aurora) from Github. This will ensure that you can access the latest version of the tools. Make sure to use the `master` branch to use a stable version. 
+We recommend installing from source, by git-cloning [this repo](https://github.com/fsciortino/aurora) from Github. This will ensure that you can access the latest version of the tools. Make sure to use the `master` branch to use a stable version. *Make use of the Makefile in the package directory to build the Fortran or Julia code* using 
+```
+make clean; make
+```
+Note that the Julia version of the code is not built by default. If you have Julia installed on your system, you can do  
+```
+make julia
+```
+from the main package directory. See the documentation to read about interfacing Python3 and Julia. 
 
 The latest release of the package is also available on the Anaconda Cloud:
 
