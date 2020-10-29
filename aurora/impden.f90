@@ -1,10 +1,10 @@
 ! Subroutines to forward model impurity transport. 
 !
 ! impden0 uses the standard finite-difference scheme used in STRAHL.
-! impden1 uses the finite-volumes scheme by Linder NF 2020. 
+! impden1 uses the finite-volumes scheme described in Linder NF 2020. 
 !
 
-subroutine impden0(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
+subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rates, r_rates,  &
     rr, pro, qpr, flx, dlen, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
     rcl,tsuold, dsulold, divold, divbls, taudiv,tauwret, &
     a, b, c, d1, bet, gam, &
@@ -23,10 +23,10 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   REAL*8, INTENT(OUT)       :: rn(ir,nion)   ! neu = new
   REAL*8, INTENT(IN)        :: diff(ir, nion)
   REAL*8, INTENT(IN)        :: conv(ir, nion)
-  REAL*8, INTENT(IN)        :: dv(ir)
-  REAL*8, INTENT(IN)        :: sint(ir)
-  REAL*8, INTENT(IN)        :: s(ir,nion)
-  REAL*8, INTENT(IN)        :: al(ir,nion)
+  REAL*8, INTENT(IN)        :: par_loss_rate(ir)
+  REAL*8, INTENT(IN)        :: src_prof(ir)
+  REAL*8, INTENT(IN)        :: s_rates(ir,nion)
+  REAL*8, INTENT(IN)        :: r_rates(ir,nion)
   REAL*8, INTENT(IN)        :: rr(ir)
   REAL*8, INTENT(IN)        :: pro(ir)
   REAL*8, INTENT(IN)        :: qpr(ir)
@@ -68,7 +68,7 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
 
   ! ------ Recycling ------  ! impden.f  L328-L345
   ! Part of the particles that hit the wall are taken to be fully-stuck. Another part is only temporarily retained at the wall.
-  ! Particles FULLY STUCK to the wall will never leave, i.e. tve can only increase over time (see above).
+  ! Particles FULLY STUCK at the wall will never leave, i.e. tve can only increase over time (see above).
   ! Particles that are only temporarily retained at the wall (given by the recycling fraction) come back
   ! (recycle) according to the tauwret time scale.
 
@@ -88,9 +88,10 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
         rclw = 0.d0
   endif
 
-  ! NB: we apply the sint radial source profile also to recycling neutrals... seems a bad (STRAHL) idea?
+  ! NB: apply the src_prof radial source profile also to recycling neutrals... seems a bad idea?
+  ! That's what STRAHL does...
   do i=1,ir
-     rn(i,1) =flxtot*sint(i) ! index of 1 stands for neutral stage
+     rn(i,1) =flxtot*src_prof(i) ! index of 1 stands for neutral stage
   end do
 
 
@@ -109,16 +110,16 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
      if (dlen > 0.d0) then
         temp1=4.*dt*pro(ir)**2*diff(ir,nz)
         temp2=.5*dt*(qpr(ir)*diff(ir,nz)-pro(ir)*conv(ir,nz))
-        temp3=.5*dt*(dv(ir)+conv(ir,nz)/rr(ir))
+        temp3=.5*dt*(par_loss_rate(ir)+conv(ir,nz)/rr(ir))
         temp4=1./pro(ir)/dlen
 
         a(ir,nz)=-temp1
         b(ir,nz)=1.+(1.+.5*temp4)*temp1+temp4*temp2+temp3
         c(ir,nz)=0.d0
         d1(ir)=-ra(ir-1,nz)*a(ir,nz)+ra(ir,nz)*(2.-b(ir,nz))
-        b(ir,nz)=b(ir,nz)+dt*s(ir,nz)
-        d1(ir)=d1(ir)-dt*( ra(ir,nz)*al(ir,nz-1) -rn(ir,nz-1)*s(ir,nz-1))
-        if (nz < nion) d1(ir)=d1(ir)+dt*ra(ir,nz+1)*al(ir,nz)
+        b(ir,nz)=b(ir,nz)+dt*s_rates(ir,nz)
+        d1(ir)=d1(ir)-dt*( ra(ir,nz)*r_rates(ir,nz-1) -rn(ir,nz-1)*s_rates(ir,nz-1))
+        if (nz < nion) d1(ir)=d1(ir)+dt*ra(ir,nz+1)*r_rates(ir,nz)
      end if
      if (dlen <= 0.d0) then !Edge Conditions for rn(ir)=0.
         a(ir,nz)=0
@@ -133,7 +134,7 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
 
         temp1=dt*pro(i)**2
         temp2=4.*temp1*diff(i,nz)
-        temp3=dt/2.*(dv(i)+pro(i)*(conv(i+1,nz)-conv(i-1,nz))+ conv(i,nz)/rr(i))
+        temp3=dt/2.*(par_loss_rate(i)+pro(i)*(conv(i+1,nz)-conv(i-1,nz))+ conv(i,nz)/rr(i))
         a(i,nz)=.5*dt*qpr(i)*diff(i,nz)+temp1* (.5*(diff(i+1,nz)-diff(i-1,nz)  &
              -conv(i,nz)/pro(i))-2.*diff(i,nz))
         b(i,nz)=1.+temp2+temp3
@@ -142,9 +143,9 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
      end do
 
      do i=1,ir-1
-        b(i,nz)=b(i,nz)+dt*s(i,nz)
-        d1(i)=d1(i)-dt*(ra(i,nz)*al(i,nz-1) -rn(i,nz-1)*s(i,nz-1))   !ra --> "alt" (i-1) density; rn --> "current" (i) density
-        if (nz < nion) d1(i)=d1(i)+dt*ra(i,nz+1)*al(i,nz)   !al --> recomb; s --> ioniz
+        b(i,nz)=b(i,nz)+dt*s_rates(i,nz)
+        d1(i)=d1(i)-dt*(ra(i,nz)*r_rates(i,nz-1) -rn(i,nz-1)*s_rates(i,nz-1))   !ra --> "alt" (i-1) density; rn --> "current" (i) density
+        if (nz < nion) d1(i)=d1(i)+dt*ra(i,nz+1)*r_rates(i,nz)   !r_rates --> recomb; s_rates --> ioniz
      end do
 
      !     solution of tridiagonal equation system
@@ -177,16 +178,16 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
      if (dlen > 0.d0) then
         temp1=4.*dt*pro(ir)**2*diff(ir,nz)
         temp2=.5*dt*(qpr(ir)*diff(ir,nz)-pro(ir)*conv(ir,nz))
-        temp3=.5*dt*(dv(ir)+conv(ir,nz)/rr(ir))
+        temp3=.5*dt*(par_loss_rate(ir)+conv(ir,nz)/rr(ir))
         temp4=1./pro(ir)/dlen
 
         a(ir,nz)=-temp1
         b(ir,nz)=1.+(1.+.5*temp4)*temp1+temp4*temp2+temp3
         c(ir,nz)=0.d0
         d1(ir)=-rn(ir-1,nz)*a(ir,nz)+rn(ir,nz)*(2.-b(ir,nz))
-        b(ir,nz)=b(ir,nz)+dt*al(ir,nz-1)
-        d1(ir)=d1(ir)-dt*(rn(ir,nz)*s(ir,nz) -rn(ir,nz-1)*s(ir,nz-1))
-        if (nz < nion) d1(ir)=d1(ir)+dt*rn(ir,nz+1)*al(ir,nz)  !!!!
+        b(ir,nz)=b(ir,nz)+dt*r_rates(ir,nz-1)
+        d1(ir)=d1(ir)-dt*(rn(ir,nz)*s_rates(ir,nz) -rn(ir,nz-1)*s_rates(ir,nz-1))
+        if (nz < nion) d1(ir)=d1(ir)+dt*rn(ir,nz+1)*r_rates(ir,nz)  !!!!
      end if
      if (dlen <= 0.d0) then !Edge Conditions for rn(ir)=0.
         a(ir,nz)=0
@@ -200,7 +201,7 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
      do i=2,ir-1
         temp1=dt*pro(i)**2
         temp2=4.*temp1*diff(i,nz)
-        temp3=dt/2.*(dv(i)+pro(i)*(conv(i+1,nz)-conv(i-1,nz))+ conv(i,nz)/rr(i))
+        temp3=dt/2.*(par_loss_rate(i)+pro(i)*(conv(i+1,nz)-conv(i-1,nz))+ conv(i,nz)/rr(i))
 
         a(i,nz)=.5*dt*qpr(i)*diff(i,nz)+temp1* (.5*(diff(i+1,nz)-diff(i-1,nz)  &
              -conv(i,nz)/pro(i))-2.*diff(i,nz))
@@ -210,9 +211,9 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
      end do
 
      do i=1,ir-1
-        b(i,nz)=b(i,nz)+dt*al(i,nz-1)
-        d1(i)=d1(i)-dt*(rn(i,nz)*s(i,nz)- rn(i,nz-1)*s(i,nz-1))
-        if (nz < nion) d1(i)=d1(i)+dt*rn(i,nz+1)*al(i,nz)   !!!!!
+        b(i,nz)=b(i,nz)+dt*r_rates(i,nz-1)
+        d1(i)=d1(i)-dt*(rn(i,nz)*s_rates(i,nz)- rn(i,nz-1)*s_rates(i,nz-1))
+        if (nz < nion) d1(i)=d1(i)+dt*rn(i,nz+1)*r_rates(i,nz)   !!!!!
      end do
 
      !     solution of tridiagonal equation system
@@ -238,7 +239,7 @@ end subroutine impden0
 
 
 
-subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
+subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rates, r_rates,  &
      rr, flx, fall_outsol, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
      rcl,tsuold, dsulold, divold, divbls, taudiv,tauwret, &
      evolveneut, &   ! extras!!
@@ -258,10 +259,10 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   REAL*8, INTENT(OUT)       :: rn(ir,nion)   ! new imp density
   REAL*8, INTENT(IN)        :: diff(ir, nion)
   REAL*8, INTENT(IN)        :: conv(ir, nion)
-  REAL*8, INTENT(IN)        :: dv(ir)
-  REAL*8, INTENT(IN)        :: sint(ir)
-  REAL*8, INTENT(IN)        :: s(ir,nion)    ! ionization
-  REAL*8, INTENT(IN)        :: al(ir,nion)   ! recombination
+  REAL*8, INTENT(IN)        :: par_loss_rate(ir)
+  REAL*8, INTENT(IN)        :: src_prof(ir)
+  REAL*8, INTENT(IN)        :: s_rates(ir,nion)    ! ionization
+  REAL*8, INTENT(IN)        :: r_rates(ir,nion)   ! recombination
   REAL*8, INTENT(IN)        :: rr(ir)
   REAL*8, INTENT(IN)        :: flx
   REAL*8, INTENT(IN)        :: fall_outsol  !dlen ! decay length at last radial grid point
@@ -327,7 +328,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
 
   ! Radial profile of recycling source should be close to the wall
   ! Set it to be the same as the input (valve) source -- this may need revision:
-  srcl = sint
+  srcl = src_prof
   
   ! select whether neutrals should be evolved
   ns = 2
@@ -338,18 +339,18 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   ! Externally provided neutrals
   if (ns.eq.1) then
      call impden_constTranspMatrix(ra(:,1), diff(:,1), conv(:,1),&    !na(1), nd(1), nv(1),&
-          ir, dt, fall_outsol, dv, rr, a, b, c, d)
+          ir, dt, fall_outsol, par_loss_rate, rr, a, b, c, d)
 
      do i=1,ir
-        b(i)    = b(i) + dt*s(i,1)
-        d(i)    = d(i) + dt*(flxtot*sint(i) + flx_rcl*srcl(i)) 
+        b(i)    = b(i) + dt*s_rates(i,1)
+        d(i)    = d(i) + dt*(flxtot*src_prof(i) + flx_rcl*srcl(i)) 
      enddo
      call TDMA(a, b, c, d, ir, nt)
   else
      nt = 0.d0
      ! radial profile of neutrals (given as input)
      do i=1,ir
-        rn(i,1) = flxtot*sint(i) + flx_rcl* srcl(i)
+        rn(i,1) = flxtot*src_prof(i) + flx_rcl* srcl(i)
      end do
   endif
   
@@ -357,17 +358,17 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   do nz=ns,nion             
      ! Construct transport matrix
      call impden_constTranspMatrix(ra(:,nz), diff(:,nz),&
-          conv(:,nz), ir, dt, fall_outsol, dv, rr, a, b, c, d)
+          conv(:,nz), ir, dt, fall_outsol, par_loss_rate, rr, a, b, c, d)
      
      ! Add ionization and recombination
      do i=1,ir
-        b(i)    = b(i) + dt*s(i,nz)
+        b(i)    = b(i) + dt*s_rates(i,nz)
         if (nz.gt.1)&
-             d(i)    = d(i) + dt*(rn(i,nz-1)*s(i,nz-1) - ra(i,nz)*al(i,nz-1))
+             d(i)    = d(i) + dt*(rn(i,nz-1)*s_rates(i,nz-1) - ra(i,nz)*r_rates(i,nz-1))
         if (nz.lt.nion)&
-             d(i)    = d(i) + dt*ra(i,nz+1)*al(i,nz)
+             d(i)    = d(i) + dt*ra(i,nz+1)*r_rates(i,nz)
         if (nz.eq.2)&
-             d(i)    = d(i) + dt*nt(i)*s(i,1)
+             d(i)    = d(i) + dt*nt(i)*s_rates(i,1)
      enddo
      
      ! Solve tridiagonal system of equations
@@ -379,19 +380,19 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   do nz=nion,ns,-1
      ! Construct transport matrix
      call impden_constTranspMatrix(rn(:,nz), diff(:,nz),&
-          conv(:,nz), ir, dt, fall_outsol, dv, rr, a, b, c, d)
+          conv(:,nz), ir, dt, fall_outsol, par_loss_rate, rr, a, b, c, d)
      
      ! Add ionization and recombination
      do i=1,ir
-        d(i)    = d(i) - dt*rn(i,nz)*s(i,nz)
+        d(i)    = d(i) - dt*rn(i,nz)*s_rates(i,nz)
         if (nz.gt.1) then
-           b(i)    = b(i) + dt*al(i,nz-1)
-           d(i)    = d(i) + dt*rn(i,nz-1)*s(i,nz-1)
+           b(i)    = b(i) + dt*r_rates(i,nz-1)
+           d(i)    = d(i) + dt*rn(i,nz-1)*s_rates(i,nz-1)
         endif
         if (nz.lt.nion) &
-             d(i)    = d(i) + dt*rn(i,nz+1)*al(i,nz) 
+             d(i)    = d(i) + dt*rn(i,nz+1)*r_rates(i,nz) 
         if (nz.eq.2) &
-             d(i)    = d(i) + dt*nt(i)*s(i,1)
+             d(i)    = d(i) + dt*nt(i)*s_rates(i,1)
      enddo
      
      ! Solve tridiagonal equation system
@@ -401,10 +402,10 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   ! Externally provided neutrals
   if (ns.eq.1) then
      call impden_constTranspMatrix(nt, diff(:,1), conv(:,1), ir,&
-          dt, fall_outsol, dv, rr, a, b, c, d)
+          dt, fall_outsol, par_loss_rate, rr, a, b, c, d)
           
      do i=1,ir
-        d(i)    = d(i) - dt*nt(i)*s(i,1) + dt*(flxtot*sint(i) + flx_rcl* srcl(i))
+        d(i)    = d(i) - dt*nt(i)*s_rates(i,1) + dt*(flxtot*src_prof(i) + flx_rcl* srcl(i))
      enddo
      call TDMA(a, b, c, d, ir, rn(:,1))
   endif
@@ -418,7 +419,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, dv, sint, s, al,  &
   ! enddo
   ! ! External neutrals
   ! do i=1,ir
-  !    ioniz_loss(i,1) = ioniz_loss(i,1) + nt(i)*s(i,1)
+  !    ioniz_loss(i,1) = ioniz_loss(i,1) + nt(i)*s_rates(i,1)
   ! enddo
   
   return
@@ -431,7 +432,7 @@ end subroutine impden1
 
 !======================================================================|
 subroutine impden_constTranspMatrix(rnt, dimp, vimp, ir, dt, &
-     fall_outsol, dv, rr, a, b, c, d)
+     fall_outsol, par_loss_rate, rr, a, b, c, d)
   ! ----------------------------------------------------------------------|
   !     Construct transport matrix for charge state IZ of impurity 
   !     species IM.
@@ -442,7 +443,7 @@ subroutine impden_constTranspMatrix(rnt, dimp, vimp, ir, dt, &
   integer, intent(in) ::  ir
   
   real*8, intent(in) :: rnt(ir), dt, fall_outsol, dimp(ir), vimp(ir),&
-       dv(ir), rr(ir)
+       par_loss_rate(ir), rr(ir)
   
   real*8, intent(out) ::  a(ir), b(ir), c(ir), d(ir)
   
@@ -586,7 +587,7 @@ subroutine impden_constTranspMatrix(rnt, dimp, vimp, ir, dt, &
   !----------------------------------------------------------------------|
   ! ----- Interior points ---------------------------------------|
   do i=2,ir-1
-     coefm   = .5*dt*dv(i)
+     coefm   = .5*dt*par_loss_rate(i)
      
      b(i)    = b(i) +  coefm
      d(i)    = d(i) -  coefm*rnt(i)
@@ -594,7 +595,7 @@ subroutine impden_constTranspMatrix(rnt, dimp, vimp, ir, dt, &
   
   ! ----- Outer point (r = r) -----------------------------------|
   if (fall_outsol.gt.0.d0) then
-     coefm   = .5*dt*dv(ir)
+     coefm   = .5*dt*par_loss_rate(ir)
      
      b(i)    = b(i) +  coefm
      d(i)    = d(i) -  coefm*rnt(ir)

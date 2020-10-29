@@ -191,6 +191,9 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
                               RuntimeWarning)
                 Ti = copy.deepcopy(Te)
 
+            # make sure that n0 and Ti are given as a function of time and space:
+            assert n0.ndim==2 and Ti.ndim==2
+            
             logni = np.log10(ni)
             logTi = np.log10(Ti)
             
@@ -201,7 +204,8 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
                 atom_data = atomic.get_atom_data(imp, ['prc'])
             prc = atomic.interp_atom_prof(atom_data['prc'],logni,logTi,x_multiply=False) # W
 
-            res['thermal_cx_cont_rad'] = nz[:,1:] * n0 * prc
+            # broadcast n0 to dimensions (nt,nZ,nr):
+            res['thermal_cx_cont_rad'] = nz[:,1:] * n0[None,:] * prc
 
             # add to total unfiltered radiation:
             res['tot'] += res['thermal_cx_cont_rad'].sum(1)
@@ -396,7 +400,7 @@ def plot_radiation_profs(imp, nz_prof, logne_prof, logTe_prof, xvar_prof,
 
 
 def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
-                    adas_files={}, n0_cm3=None, nz_cm3=None, frac=None, plot=False):
+                    adas_files={}, n0_cm3=None, Ti_eV=None, nz_cm3=None, frac=None, plot=False):
     '''Model radiation from a fixed-impurity-fraction model or from detailed impurity density
     profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), 
     calculating radiation terms over the radius and integrated over the plasma cross section. 
@@ -426,6 +430,9 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
             Background ion density (H,D or T). If provided, charge exchange (CX) 
             recombination is included in the calculation of charge state fractional 
             abundances.
+        Ti_eV : array (nr,), optional
+            Background ion density (H,D or T). This is only used if CX recombination is 
+            requested, i.e. if n0_cm3 is not None. If not given, Ti is set equal to Te. 
         nz_cm3 : array (nr,nz), optional
             Impurity charge state densities in cm^-3 units. Fractional abundancies can 
             alternatively be specified via the :param:frac parameter for a constant-fraction
@@ -508,10 +515,12 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     out['ni'] = ne_cm3[None,:]
     Z_n_imp = (np.arange(Z_imp+1)[None,:,None]*nz_cm3.transpose(0,2,1)).sum(1)
     out['ni'] -= Z_n_imp
-    
+
     # compute radiated power components
     rad = compute_rad(imp, rhop, [1.0], nz_cm3.transpose(0,2,1), ne_cm3[None,:], Te_eV[None,:],
-                      n0=n0_cm3, ni=out['ni'], adas_files=adas_files,
+                      n0=n0_cm3[None,:] if n0_cm3 is not None else None,
+                      Ti=Te_eV[None,:] if Ti_eV is None else Ti_eV[None,:],
+                      ni=out['ni'], adas_files=adas_files,
                       prad_flag=True, thermal_cx_rad_flag=False if n0_cm3 is None else True,
                       spectral_brem_flag=False,
                       sxr_flag=False, main_ion_brem_flag=True)

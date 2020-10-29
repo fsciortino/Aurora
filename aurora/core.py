@@ -292,7 +292,7 @@ class aurora_sim:
 
 
     def run_aurora(self, D_z, V_z,
-                   times_DV=None, nz_init=None, method='old',evolneut=False,
+                   times_DV=None, nz_init=None, alg_opt=1, evolneut=False,
                    use_julia=False):
         '''Run a simulation using inputs in the given dictionary and D,v profiles as a function
         of space, time and potentially also ionization state. Users may give an initial state of each
@@ -322,28 +322,40 @@ class aurora_sim:
             nz_init: array, shape of (space, nZ)
                 Impurity charge states at the initial time of the simulation. If left to None, this is
                 internally set to an array of 0's.
-            method : str, optional
-                If method='linder', use the Linder algorithm for increased stability and accuracy.
+            alg_opt : int, optional
+                If alg_opt=1, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
+                If alg_opt=1, use the older finite-differences algorithm in the 2018 version of STRAHL.
             evolneut : bool, optional
                 If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
                 which case neutrals are only taken as a source and those that are not ionized immediately after
                 injection are neglected.
+                This option is NOT CURRENTLY RECOMMENDED, because this method is still under development/
+                examination. 
             use_julia : bool, optional
                 If True, run the Julia pre-compiled version of the code. Run the julia makefile option to set 
                 this up. Default is False (still under development)
 
         Returns:
-            nz : array, 
+            nz : array, (nr,nZ,nt)
+                Charge state densities [:py:math:`cm^{-3}`] over the space and time grids.
             N_wall : array (nt,)
+                Number of particles at the wall reservoir over time.
             N_div : array (nt,)
+                Number of particles in the divertor reservoir over time.
             N_pump : array (nt,)
+                Number of particles in the pump reservoir over time.
             N_ret : array (nt,)
+                 Number of particles temporarily held in the wall reservoirs. 
             N_tsu : array (nt,)
+                 Edge particle loss [:py:math:`cm^{-3}`]
             N_dsu : array (nt,)
+                 Parallel particle loss [:py:math:`cm^{-3}`]
             N_dsul : array (nt,)
+                 Parallel particle loss at the limiter [:py:math:`cm^{-3}`]
             rcld_rate : array (nt,)
+                 Recycling from the divertor [:py:math:`s^{-1} cm^{-3}`]
             rclw_rate : array (nt,)
-
+                 Recycling from the wall [:py:math:`s^{-1} cm^{-3}`]
         '''
         # D_z and V_z must have the same shape
         assert np.array(D_z).shape == np.array(V_z).shape
@@ -413,10 +425,9 @@ class aurora_sim:
                                     self.tau_div_SOL * 1e-3, self.tau_pump *1e-3, self.tau_rcl_ret *1e-3,  # [s]  
                                     self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                     rn_t0 = nz_init,  # if omitted, internally set to 0's
-                                    linder=True if method=='linder' else False,
+                                    alg_opt=alg_opt,
                                     evolneut=evolneut)
 
-        
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         return self.res
     

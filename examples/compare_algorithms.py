@@ -109,7 +109,7 @@ V_z = asim.rhop_grid**4 * v_eff  # increasing towards edge
 
 start = time.time()
 for n in np.arange(num):
-    out = asim.run_aurora(D_z, V_z)
+    out = asim.run_aurora(D_z, V_z, alg_opt=0)
 print('Average time per run: ', (time.time() - start)/num)
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 nz = nz.transpose(2,1,0)   # time,nZ,space
@@ -132,7 +132,7 @@ axs = asim.check_conservation()
 ####### Linder method #########
 start = time.time()
 for n in np.arange(num):
-    out_2 = asim.run_aurora(D_z, V_z, method='linder', evolneut=False) 
+    out_2 = asim.run_aurora(D_z, V_z, alg_opt=1, evolneut=False) 
 print('Average time per run: ', (time.time() - start)/num)
 nz_2, N_wall_2, N_div_2, N_pump_2, N_ret_2, N_tsu_2, N_dsu_2, N_dsul_2, rcld_rate_2, rclw_rate_2 = out_2
 nz_2 = nz_2.transpose(2,1,0)   # time,nZ,space
@@ -163,7 +163,7 @@ axs = asim.check_conservation()
 # ####### Linder method evoling neutrals #########
 start = time.time()
 for n in np.arange(num):
-    out_3 = asim.run_aurora(D_z, V_z, method='linder', evolneut=True) 
+    out_3 = asim.run_aurora(D_z, V_z, alg_opt=1, evolneut=True) 
 print('Average time per run: ', (time.time() - start)/num)
 nz_3, N_wall_3, N_div_3, N_pump_3, N_ret_3, N_tsu_3, N_dsu_3, N_dsul_3, rcld_rate_3, rclw_rate_3 = out_3
 nz_3 = nz_3.transpose(2,1,0)   # time,nZ,space
@@ -196,7 +196,7 @@ for ii,cc in zip(np.arange(nz.shape[1]),colors):
 
     #########
     factor = np.max(nz_2)/np.max(nz_3)   # why do we need this factor?
-    print(f'Factor: {factor}')
+    #print(f'Factor: {factor}')
     a_plot.plot(asim.rhop_grid, factor* nz_3[-1,ii,:].T, c=cc, ls=':')
     #a_plot.plot(asim.rhop_grid, nz_3[-1,ii,:].T, c=cc, ls=':')
     ########
