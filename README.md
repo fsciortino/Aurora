@@ -36,7 +36,7 @@ The latest release of the package is also available on the Anaconda Cloud:
 
 [![Anaconda-Server Badge](https://anaconda.org/sciortino/aurora/badges/latest_release_date.svg)](https://anaconda.org/sciortino/aurora)
 
-and from PyPi using 
+and from PyPI using 
 ```
 pip install aurora
 ```
