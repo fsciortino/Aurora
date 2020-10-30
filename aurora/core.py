@@ -433,24 +433,28 @@ class aurora_sim:
     
         
 
-    def check_conservation(self, axs=None):
+    def check_conservation(self, plot=True, axs=None):
         '''Check particle conservation for an aurora simulation.
 
         Args : 
-            axs : matplotlib.Axes instances
-                Axes to pass to :py:meth:`~aurora.particle_conver.check_1d_conserv`
+            plot : bool, optional
+                If True, plot time histories in each particle reservoir and display quality of particle conservation.
+            axs : matplotlib.Axes instances, optional 
+                Axes to pass to :py:meth:`~aurora.particle_conserv.check_particle_conserv`
                 These may be the axes returned from a previous call to this function, to overlap 
                 results for different runs. 
         Returns : 
-            axs : matplotlib.Axes instances
-                New or updated axes returned by :py:meth:`~aurora.particle_conver.check_1d_conserv`
+            out : dict
+                Dictionary containing density of particles in each reservoir.
+            axs : matplotlib.Axes instances , only returned if plot=True
+                New or updated axes returned by :py:meth:`~aurora.particle_conserv.check_particle_conserv`
         '''
         nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         nz = nz.transpose(2,1,0)   # time,nZ,space
 
         # Check particle conservation
-        ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','radius_grid'], nz),
-                         'source_function': (['time'], self.source_time_history ),
+        ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','rvol_grid'], nz),
+                         'source_time_history': (['time'], self.source_time_history ),
                          'particles_in_divertor': (['time'], N_div), 
                          'particles_in_pump': (['time'], N_pump), 
                          'parallel_loss': (['time'], N_dsu), 
@@ -460,13 +464,12 @@ class aurora_sim:
                          'particles_retained_at_wall': (['time'], N_ret), 
                          'recycling_from_wall':  (['time'], rclw_rate), 
                          'recycling_from_divertor':  (['time'], rcld_rate), 
-                         'pro': (['radius_grid'], self.pro_grid), 
-                         'rhop_grid': (['radius_grid'], self.rhop_grid)
+                         'pro': (['rvol_grid'], self.pro_grid), 
+                         'rhop_grid': (['rvol_grid'], self.rhop_grid)
                          },
                         coords={'time': self.time_out, 
-                                'radius_grid': self.rvol_grid,
+                                'rvol_grid': self.rvol_grid,
                                 'charge_states': np.arange(nz.shape[1])
                                 })
 
-        #ds, out, axs = particle_conserv.check_1d_conserv(self.Raxis, ds = ds, axs=axs)
-        return particle_conserv.check_1d_conserv(self.Raxis, ds = ds, axs=axs)
+        return particle_conserv.check_particle_conserv(self.Raxis, ds = ds, plot=plot, axs=axs)

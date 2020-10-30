@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 from scipy.interpolate import RectBivariateSpline
-import copy
+import copy, itertools
 
 from .janev_smith_rates import js_sigma
 
