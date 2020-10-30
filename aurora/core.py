@@ -387,7 +387,7 @@ class aurora_sim:
             # run Julia version of the code
             from julia.api import Julia
             jl = Julia(compiled_modules=False,
-                       sysimage=os.path.dirname(os.path.realpath(__file__)) + "/jlib/aurora.so")
+                       sysimage=os.path.dirname(os.path.realpath(__file__)) + "/../aurora.jl/sysimage.so")
             from julia import aurora as aurora_jl
 
             self.res = aurora_jl.run(len(self.time_out),  # number of times at which simulation outputs results
@@ -406,7 +406,7 @@ class aurora_sim:
                                      self.source_div_fraction, # divbls [fraction of source into divertor]
                                      self.tau_div_SOL * 1e-3, self.tau_pump *1e-3, self.tau_rcl_ret *1e-3,  #[s] 
                                      self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
-                                     nz_init)
+                                     nz_init, alg_opt, evolneut)
         else:
             self.res =  _aurora.run(len(self.time_out),  # number of times at which simulation outputs results
                                     times_DV,
