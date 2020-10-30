@@ -1,6 +1,6 @@
 Aurora User Agreement (2020.11.01) 
 
-By cloning, downloading or otherwise using aurora sources, the recipient
+By cloning, downloading or otherwise using Aurora sources, the recipient
 agrees:
 
 1. To compile/use the Software source code AS IS for publication
