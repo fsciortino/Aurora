@@ -14,7 +14,7 @@ fcompiler=intelem
 
 ############
 
-all: aurora jlib
+all: aurora
 
 aurora :
 	@echo "Generating aurora shared-object library"
@@ -22,13 +22,14 @@ aurora :
 	f2py3 -c --fcompiler=${fcompiler} -m _aurora aurora/main.f90 aurora/impden.f90 aurora/math.f90 aurora/grids.f90 --opt=${flags}
 	mv _aurora.cpython*.so aurora/
 
-jlib :
-	julia -e 'import Pkg; Pkg.develop(path="aurora/jlib/"); Pkg.add("PackageCompiler"); Pkg.add("PyCall"); Pkg.build("PyCall")'
+julia :
+	julia -e 'import Pkg; Pkg.develop(path="aurora.jl/"); Pkg.add("PackageCompiler"); Pkg.add("PyCall"); Pkg.build("PyCall")'
 	python3 -m pip install --user julia
 	python3 -c "import julia; julia.install()"
-	python3 -m julia.sysimage aurora/jlib/aurora.so
+	python3 -m julia.sysimage aurora.jl/sysimage.so
 
 
 clean :
 	@echo "Eliminating aurora shared-object library"
 	rm aurora/_aurora*.so
+	rm aurora.jl/sysimage.so
