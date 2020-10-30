@@ -606,13 +606,36 @@ def estimate_clen(geqdsk):
     
     return clen_divertor, clen_limiter
 
-def estimate_boundary_distance(geqdsk, shot=None, device=None, time_ms=None):
-    '''Obtain a simple estimate for the distance between the LCFS and the wall 
-    boundary.
+
+
+
+def estimate_boundary_distance(shot, device, time_ms):
+    '''Obtain a simple estimate for the distance between the LCFS and the wall boundary.
+    This requires access to the A_EQDSK on the EFIT01 tree on MDS+. Users who may find that this call
+    does not work for their device may try to adapt the OMFITmdsValue TDI string.
+
+    Args: 
+        shot : int
+             Discharge/experiment number
+        device : str
+             Name of device, e.g. 'C-Mod', 'DIII-D', etc.
+        time_ms : int or float
+            Time at which results for the outer gap should be taken.
+
+    Returns:
+        bound_sep : float
+            Estimate for the distance between the wall boundary and the separatrix [cm]
+        lim_sep : float
+            Estimate for the distance between the limiter and the separatrix [cm]. This is (quite arbitrarily)
+            taken to be 2/3 of the bound_sep distance.    
     '''
-    # estimate separation between LCFS and boundary from the outer gap
-    tmp = OMFITmdsValue(server=device, treename='EFIT01', shot=shot,
-                        TDI='\\ANALYSIS::TOP.EFIT.RESULTS.A_EQDSK.ORIGHT')
+    try:
+        tmp = OMFITmdsValue(server=device, treename='EFIT01', shot=shot,
+                            TDI='\\EFIT01::TOP.RESULTS.A_EQDSK.ORIGHT')  # CMOD format, take ORIGHT
+    except Exception:
+        tmp = OMFITmdsValue(server=device, treename='EFIT01', shot=shot,
+                            TDI='\\EFIT01::TOP.RESULTS.AEQDSK.GAPOUT') # useful variable for many other devices
+
     time_vec = tmp.dim_of(0)
     data_r = tmp.data()
     

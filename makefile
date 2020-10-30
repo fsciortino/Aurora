@@ -6,10 +6,10 @@
 
 .PHONY: all aurora clean
 
-flags=
-fcompiler=gnu95
-#flags="-fast"
-#fcompiler=intelem
+#flags=
+#fcompiler=gnu95
+flags="-fast"
+fcompiler=intelem
 
 
 ############

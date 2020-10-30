@@ -6,34 +6,34 @@ from netCDF4 import Dataset
 import copy
 from scipy.integrate import cumtrapz
 
-def vol_int(ds, var,rhop_max=None, R_axis=68.5):
+def vol_int(ds, var, rhop_max=None, R_axis=68.5):
     """
     Perform a volume integral of an input variable. If the variable is f(t,x) 
     then the result is f(t). If the variable is f(t,*,x) then the result is f(t,charge)
     when "*" represents charge, line index, etc...
 
-    :param ds: xarray dataset containing Aurora or STRAHL result
-    :param var: Name of the variable in the strahl_result.cdf file
-    :params rhop_max: Maximum normalized poloidal flux for integral
-    :params R_axis: major radius on axis [cm]
+    Args:
+         ds: xarray dataset 
+             Dataset containing aurora or STRAHL result
+        var: str
+             Name of the variable in the strahl_result.cdf file
+        rhop_max : float
+             Maximum normalized poloidal flux for integral. If not provided, integrate
+             over the entire simulation grid. 
+        R_axis : float 
+             Major radius on axis [cm]
 
     :return: Time history of volume integrated variable
     """
-
-    # Coordinates
-    pro = ds['pro'].data # 2x radial step
-    radius_grid = ds['radius_grid'].data
-    rhop_grid = ds['rhop_grid'].data
-
     C = 2.0 * np.pi * R_axis
-    zvol = C * np.pi * radius_grid / pro
+    zvol = C * np.pi * ds['rvol_grid'].data / ds['pro'].data 
 
     # Get our variable
     f = ds[var].data
 
     # Determine range
     if rhop_max is not None:
-        wh = (rhop_grid <= rhop_max)
+        wh = ( ds['rhop_grid'].data <= rhop_max)
         zvol = zvol[wh]
         f  = f[...,wh]
 
@@ -63,7 +63,7 @@ def get_particle_nums(filepath=None, ds=None, R_axis=None):
 
     # calculate total impurity density (summed over charge states)
     ds['total_impurity_density'] = xarray.DataArray(np.nansum(ds['impurity_density'].data, axis=1),
-                                                    coords=[ds['time'].data, ds['radius_grid'].data], 
+                                                    coords=[ds['time'].data, ds['rvol_grid'].data], 
                                                     dims=['time', 'space'])
     
     keys = [source_lbl,'particles_in_divertor','particles_in_pump',
@@ -191,7 +191,7 @@ def check_1d_conserv(Raxis, ds=None, filepath=None, linestyle='-', axs = None):
     Returns:
          ds : xarray dataset
              Dataset containing results in xarray format. 
-         res : dict
+         out : dict
              Dictionary containing time histories across all reservoirs, useful for 
              the assessment of particle conservation.
          axs : 2-tuple or array
@@ -211,7 +211,7 @@ def check_1d_conserv(Raxis, ds=None, filepath=None, linestyle='-', axs = None):
     
     # calculate total impurity density (summed over charge states)
     ds['total_impurity_density'] = xarray.DataArray(np.nansum(ds['impurity_density'].data, axis=1),
-                                                    coords=[ds['time'].data, ds['radius_grid'].data], 
+                                                    coords=[ds['time'].data, ds['rvol_grid'].data], 
                                                     dims=['time', 'space'])
     
     keys = [source_lbl,'particles_in_divertor','particles_in_pump',
@@ -241,6 +241,14 @@ def check_1d_conserv(Raxis, ds=None, filepath=None, linestyle='-', axs = None):
     vol_int_labels = ['Core Impurity Particles', 'Core Radiation (W)']
 
     circ = 2*np.pi*Raxis*100 # cm
+
+
+
+
+
+
+
+
     nplots = np.sum([k in ds for k in keys+vol_int_keys])
     ncol = min(3,nplots)
     nrow = int(np.ceil(float(nplots)/ncol))
@@ -321,16 +329,16 @@ def check_1d_conserv(Raxis, ds=None, filepath=None, linestyle='-', axs = None):
         plt.tight_layout()
 
     # return the relevant quantities for particle conservation
-    res = {}
-    res['total'] = total
-    res['plasma_particles'] = vol_int(ds, 'total_impurity_density')
-    res['particles_at_wall'] = ds['particles_at_wall'].data*circ,
-    res['particles_in_divertor'] = ds['particles_in_divertor'].data*circ
+    out = {}
+    out['total'] = total
+    out['plasma_particles'] = vol_int(ds, 'total_impurity_density')
+    out['particles_at_wall'] = ds['particles_at_wall'].data*circ,
+    out['particles_in_divertor'] = ds['particles_in_divertor'].data*circ
     if 'recycling_from_wall' in ds:
-        res['particles_in_pump'] = ds['particles_in_pump'].data*circ
+        out['particles_in_pump'] = ds['particles_in_pump'].data*circ
     if 'recycling_from_wall' in ds and 'particles_retained_at_wall' in ds:
-        res['particles_retained_at_wall'] = ds['particles_retained_at_wall'].data*circ
-    res['integ_source'] = integ_source
+        out['particles_retained_at_wall'] = ds['particles_retained_at_wall'].data*circ
+    out['integ_source'] = integ_source
     
     # close dataset
     try:
@@ -338,5 +346,5 @@ def check_1d_conserv(Raxis, ds=None, filepath=None, linestyle='-', axs = None):
     except:
         pass
 
-    return ds, res, (ax1,ax2)
+    return ds, out, (ax1,ax2)
 

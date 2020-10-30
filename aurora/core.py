@@ -1,4 +1,4 @@
-'''This module includes the core class to set up simulations with :py:mod:`eqtools`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.
+'''This module includes the core class to set up simulations with :py:mod:`aurora`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.
 '''
 import scipy.io
 import copy,os,sys
@@ -123,9 +123,9 @@ class aurora_sim:
         self.decay_length_boundary = self.namelist['SOL_decay']
         self.wall_recycling = self.namelist['wall_recycling']
         self.source_div_fraction = self.namelist['divbls']   # change of nomenclature
-        self.tau_div_SOL = self.namelist['tau_div_SOL']
-        self.tau_pump = self.namelist['tau_pump']
-        self.tau_rcl_ret = self.namelist['tau_rcl_ret']
+        self.tau_div_SOL_ms = self.namelist['tau_div_SOL_ms']
+        self.tau_pump_ms = self.namelist['tau_pump_ms']
+        self.tau_rcl_ret_ms = self.namelist['tau_rcl_ret_ms']
         
         # if recycling flag is set to False, then prevent any divertor return flows
         # To include divertor return flows but no recycling, user should use wall_recycling=0
@@ -308,7 +308,7 @@ class aurora_sim:
                                labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]])
 
         Args:
-            D_z, V_z: arrays, shape of (space, time,nZ) or (space,time) or (space,)
+            D_z, V_z: arrays, shape of (space,time,nZ) or (space,time) or (space,)
                 Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
                 This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
                 the number of charge states. If D_z and V_z are found to be have only 2 dimensions, 
@@ -404,7 +404,7 @@ class aurora_sim:
                                      self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
                                      self.wall_recycling,
                                      self.source_div_fraction, # divbls [fraction of source into divertor]
-                                     self.tau_div_SOL * 1e-3, self.tau_pump *1e-3, self.tau_rcl_ret *1e-3,  #[s] 
+                                     self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3,  #[s] 
                                      self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                      nz_init)
         else:
@@ -422,7 +422,7 @@ class aurora_sim:
                                     self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
                                     self.wall_recycling,
                                     self.source_div_fraction, # divbls [fraction of source into divertor]
-                                    self.tau_div_SOL * 1e-3, self.tau_pump *1e-3, self.tau_rcl_ret *1e-3,  # [s]  
+                                    self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3,  # [s]  
                                     self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                     rn_t0 = nz_init,  # if omitted, internally set to 0's
                                     alg_opt=alg_opt,
@@ -468,5 +468,5 @@ class aurora_sim:
                                 'charge_states': np.arange(nz.shape[1])
                                 })
 
-        ds, out, (ax1,ax2) = particle_conserv.check_1d_conserv(self.Raxis, ds = ds, axs=axs)
-        return (ax1,ax2)
+        #ds, out, axs = particle_conserv.check_1d_conserv(self.Raxis, ds = ds, axs=axs)
+        return particle_conserv.check_1d_conserv(self.Raxis, ds = ds, axs=axs)

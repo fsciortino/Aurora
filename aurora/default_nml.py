@@ -61,9 +61,9 @@ def load_default_namelist():
         'recycling_flag' : False,
         'wall_recycling' : 0.0, 
         'divbls' : 0.0,
-        'tau_div_SOL' : 50.0,  
-        'tau_pump' : 500.0, 
-        'tau_rcl_ret' : 50.0, 
+        'tau_div_SOL_ms' : 50.0,  # ms
+        'tau_pump_ms' : 500.0,  # ms
+        'tau_rcl_ret_ms' : 50.0,   # ms
         'SOL_mach': 0.1,
         # --------------------
         # kinetic profiles
