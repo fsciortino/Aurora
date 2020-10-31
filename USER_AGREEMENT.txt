@@ -1,4 +1,4 @@
-Aurora User Agreement (2020.11.01) 
+Aurora User Agreement (2020.10.31) 
 
 By cloning, downloading or otherwise using Aurora sources, the recipient
 agrees:

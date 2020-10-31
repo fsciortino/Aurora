@@ -173,7 +173,7 @@
 </div>
 <div class="section" id="module-aurora.core">
 <span id="aurora-core-module"></span><h2>aurora.core module<a class="headerlink" href="#module-aurora.core" title="Permalink to this headline">¶</a></h2>
-<p>This module includes the core class to set up simulations with <code class="xref py py-mod docutils literal notranslate"><span class="pre">eqtools</span></code>. The <a class="reference internal" href="#aurora.core.aurora_sim" title="aurora.core.aurora_sim"><code class="xref py py-class docutils literal notranslate"><span class="pre">aurora_sim</span></code></a> takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.</p>
+<p>This module includes the core class to set up simulations with <a class="reference internal" href="#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a>. The <a class="reference internal" href="#aurora.core.aurora_sim" title="aurora.core.aurora_sim"><code class="xref py py-class docutils literal notranslate"><span class="pre">aurora_sim</span></code></a> takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.</p>
 <dl class="py class">
 <dt id="aurora.core.aurora_sim">
 <em class="property">class </em><code class="sig-prename descclassname">aurora.core.</code><code class="sig-name descname">aurora_sim</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">namelist</span></em>, <em class="sig-param"><span class="n">geqdsk</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nbi_cxr</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim" title="Permalink to this definition">¶</a></dt>
@@ -181,18 +181,22 @@
 <p>Class to setup and run aurora simulations.</p>
 <dl class="py method">
 <dt id="aurora.core.aurora_sim.check_conservation">
-<code class="sig-name descname">check_conservation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">axs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.check_conservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.check_conservation" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">check_conservation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">axs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.check_conservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.check_conservation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Check particle conservation for an aurora simulation.</p>
 <dl class="simple">
 <dt>Args<span class="classifier"></span></dt><dd><dl class="simple">
-<dt>axs<span class="classifier">matplotlib.Axes instances</span></dt><dd><p>Axes to pass to <code class="xref py py-meth docutils literal notranslate"><span class="pre">check_1d_conserv()</span></code>
+<dt>plot<span class="classifier">bool, optional</span></dt><dd><p>If True, plot time histories in each particle reservoir and display quality of particle conservation.</p>
+</dd>
+<dt>axs<span class="classifier">matplotlib.Axes instances, optional </span></dt><dd><p>Axes to pass to <a class="reference internal" href="#aurora.particle_conserv.check_particle_conserv" title="aurora.particle_conserv.check_particle_conserv"><code class="xref py py-meth docutils literal notranslate"><span class="pre">check_particle_conserv()</span></code></a>
 These may be the axes returned from a previous call to this function, to overlap 
 results for different runs.</p>
 </dd>
 </dl>
 </dd>
 <dt>Returns<span class="classifier"></span></dt><dd><dl class="simple">
-<dt>axs<span class="classifier">matplotlib.Axes instances</span></dt><dd><p>New or updated axes returned by <code class="xref py py-meth docutils literal notranslate"><span class="pre">check_1d_conserv()</span></code></p>
+<dt>out<span class="classifier">dict</span></dt><dd><p>Dictionary containing density of particles in each reservoir.</p>
+</dd>
+<dt>axs<span class="classifier">matplotlib.Axes instances , only returned if plot=True</span></dt><dd><p>New or updated axes returned by <a class="reference internal" href="#aurora.particle_conserv.check_particle_conserv" title="aurora.particle_conserv.check_particle_conserv"><code class="xref py py-meth docutils literal notranslate"><span class="pre">check_particle_conserv()</span></code></a></p>
 </dd>
 </dl>
 </dd>
@@ -230,7 +234,7 @@ This function extrapolates in the SOL based on input options using the same meth
 
 <dl class="py method">
 <dt id="aurora.core.aurora_sim.run_aurora">
-<code class="sig-name descname">run_aurora</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">D_z</span></em>, <em class="sig-param"><span class="n">V_z</span></em>, <em class="sig-param"><span class="n">times_DV</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nz_init</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">method</span><span class="o">=</span><span class="default_value">'old'</span></em>, <em class="sig-param"><span class="n">evolneut</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">use_julia</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.run_aurora"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.run_aurora" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">run_aurora</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">D_z</span></em>, <em class="sig-param"><span class="n">V_z</span></em>, <em class="sig-param"><span class="n">times_DV</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nz_init</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">alg_opt</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">evolneut</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">use_julia</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.run_aurora"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.run_aurora" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a simulation using inputs in the given dictionary and D,v profiles as a function
 of space, time and potentially also ionization state. Users may give an initial state of each
 ion charge state as an input.</p>
@@ -243,7 +247,7 @@ ion charge state as an input.</p>
 </div>
 <dl class="simple">
 <dt>Args:</dt><dd><dl class="simple">
-<dt>D_z, V_z: arrays, shape of (space, time,nZ) or (space,time) or (space,)</dt><dd><p>Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
+<dt>D_z, V_z: arrays, shape of (space,time,nZ) or (space,time) or (space,)</dt><dd><p>Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
 This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
 the number of charge states. If D_z and V_z are found to be have only 2 dimensions, 
 it is assumed that all charge states should have the same transport coefficients.
@@ -257,27 +261,42 @@ which implies that D_z and V_z are time independent.</p>
 <dt>nz_init: array, shape of (space, nZ)</dt><dd><p>Impurity charge states at the initial time of the simulation. If left to None, this is
 internally set to an array of 0’s.</p>
 </dd>
-<dt>method<span class="classifier">str, optional</span></dt><dd><p>If method=’linder’, use the Linder algorithm for increased stability and accuracy.</p>
+<dt>alg_opt<span class="classifier">int, optional</span></dt><dd><p>If alg_opt=1, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
+If alg_opt=1, use the older finite-differences algorithm in the 2018 version of STRAHL.</p>
 </dd>
 <dt>evolneut<span class="classifier">bool, optional</span></dt><dd><p>If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
 which case neutrals are only taken as a source and those that are not ionized immediately after
-injection are neglected.</p>
+injection are neglected.
+This option is NOT CURRENTLY RECOMMENDED, because this method is still under development/
+examination.</p>
 </dd>
 <dt>use_julia<span class="classifier">bool, optional</span></dt><dd><p>If True, run the Julia pre-compiled version of the code. Run the julia makefile option to set 
 this up. Default is False (still under development)</p>
 </dd>
 </dl>
 </dd>
-<dt>Returns:</dt><dd><p>nz : array, 
-N_wall : array (nt,)
-N_div : array (nt,)
-N_pump : array (nt,)
-N_ret : array (nt,)
-N_tsu : array (nt,)
-N_dsu : array (nt,)
-N_dsul : array (nt,)
-rcld_rate : array (nt,)
-rclw_rate : array (nt,)</p>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>nz<span class="classifier">array, (nr,nZ,nt)</span></dt><dd><p>Charge state densities [<a href="#id1"><span class="problematic" id="id2">:py:math:`cm^{-3}`</span></a>] over the space and time grids.</p>
+</dd>
+<dt>N_wall<span class="classifier">array (nt,)</span></dt><dd><p>Number of particles at the wall reservoir over time.</p>
+</dd>
+<dt>N_div<span class="classifier">array (nt,)</span></dt><dd><p>Number of particles in the divertor reservoir over time.</p>
+</dd>
+<dt>N_pump<span class="classifier">array (nt,)</span></dt><dd><p>Number of particles in the pump reservoir over time.</p>
+</dd>
+<dt>N_ret<span class="classifier">array (nt,)</span></dt><dd><p>Number of particles temporarily held in the wall reservoirs.</p>
+</dd>
+<dt>N_tsu<span class="classifier">array (nt,)</span></dt><dd><p>Edge particle loss [<a href="#id3"><span class="problematic" id="id4">:py:math:`cm^{-3}`</span></a>]</p>
+</dd>
+<dt>N_dsu<span class="classifier">array (nt,)</span></dt><dd><p>Parallel particle loss [<a href="#id5"><span class="problematic" id="id6">:py:math:`cm^{-3}`</span></a>]</p>
+</dd>
+<dt>N_dsul<span class="classifier">array (nt,)</span></dt><dd><p>Parallel particle loss at the limiter [<a href="#id7"><span class="problematic" id="id8">:py:math:`cm^{-3}`</span></a>]</p>
+</dd>
+<dt>rcld_rate<span class="classifier">array (nt,)</span></dt><dd><p>Recycling from the divertor [<a href="#id9"><span class="problematic" id="id10">:py:math:`s^{-1} cm^{-3}`</span></a>]</p>
+</dd>
+<dt>rclw_rate<span class="classifier">array (nt,)</span></dt><dd><p>Recycling from the wall [<a href="#id11"><span class="problematic" id="id12">:py:math:`s^{-1} cm^{-3}`</span></a>]</p>
+</dd>
+</dl>
 </dd>
 </dl>
 </dd></dl>
@@ -892,7 +911,7 @@ If not provided, this function loads these files internally.</p>
 
 <dl class="py function">
 <dt id="aurora.radiation.radiation_model">
-<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">radiation_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">ne_cm3</span></em>, <em class="sig-param"><span class="n">Te_eV</span></em>, <em class="sig-param"><span class="n">vol</span></em>, <em class="sig-param"><span class="n">adas_files</span><span class="o">=</span><span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">n0_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nz_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">frac</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#radiation_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.radiation_model" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">radiation_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">ne_cm3</span></em>, <em class="sig-param"><span class="n">Te_eV</span></em>, <em class="sig-param"><span class="n">vol</span></em>, <em class="sig-param"><span class="n">adas_files</span><span class="o">=</span><span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">n0_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">Ti_eV</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nz_cm3</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">frac</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#radiation_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.radiation_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>Model radiation from a fixed-impurity-fraction model or from detailed impurity density
 profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), 
 calculating radiation terms over the radius and integrated over the plasma cross section.</p>
@@ -922,6 +941,9 @@ Any file names that are needed and not provided will be searched in the
 <dt>n0_cm3<span class="classifier">array (nr,), optional</span></dt><dd><p>Background ion density (H,D or T). If provided, charge exchange (CX) 
 recombination is included in the calculation of charge state fractional 
 abundances.</p>
+</dd>
+<dt>Ti_eV<span class="classifier">array (nr,), optional</span></dt><dd><p>Background ion density (H,D or T). This is only used if CX recombination is 
+requested, i.e. if n0_cm3 is not None. If not given, Ti is set equal to Te.</p>
 </dd>
 <dt>nz_cm3<span class="classifier">array (nr,nz), optional</span></dt><dd><p>Impurity charge state densities in cm^-3 units. Fractional abundancies can 
 alternatively be specified via the :param:frac parameter for a constant-fraction
@@ -1074,9 +1096,29 @@ Refer to the STRAHL manual for definitions of the time grid</p>
 
 <dl class="py function">
 <dt id="aurora.grids_utils.estimate_boundary_distance">
-<code class="sig-prename descclassname">aurora.grids_utils.</code><code class="sig-name descname">estimate_boundary_distance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">geqdsk</span></em>, <em class="sig-param"><span class="n">shot</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">device</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">time_ms</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/grids_utils.html#estimate_boundary_distance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.grids_utils.estimate_boundary_distance" title="Permalink to this definition">¶</a></dt>
-<dd><p>Obtain a simple estimate for the distance between the LCFS and the wall 
-boundary.</p>
+<code class="sig-prename descclassname">aurora.grids_utils.</code><code class="sig-name descname">estimate_boundary_distance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shot</span></em>, <em class="sig-param"><span class="n">device</span></em>, <em class="sig-param"><span class="n">time_ms</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/grids_utils.html#estimate_boundary_distance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.grids_utils.estimate_boundary_distance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain a simple estimate for the distance between the LCFS and the wall boundary.
+This requires access to the A_EQDSK on the EFIT01 tree on MDS+. Users who may find that this call
+does not work for their device may try to adapt the OMFITmdsValue TDI string.</p>
+<dl class="simple">
+<dt>Args: </dt><dd><dl class="simple">
+<dt>shot<span class="classifier">int</span></dt><dd><p>Discharge/experiment number</p>
+</dd>
+<dt>device<span class="classifier">str</span></dt><dd><p>Name of device, e.g. ‘C-Mod’, ‘DIII-D’, etc.</p>
+</dd>
+<dt>time_ms<span class="classifier">int or float</span></dt><dd><p>Time at which results for the outer gap should be taken.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>bound_sep<span class="classifier">float</span></dt><dd><p>Estimate for the distance between the wall boundary and the separatrix [cm]</p>
+</dd>
+<dt>lim_sep<span class="classifier">float</span></dt><dd><p>Estimate for the distance between the limiter and the separatrix [cm]. This is (quite arbitrarily)
+taken to be 2/3 of the bound_sep distance.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -1586,8 +1628,8 @@ will display a good moving label, e.g. ylabel=’t={:.4f} s’.</p>
 <div class="section" id="module-aurora.particle_conserv">
 <span id="aurora-particle-conserv-module"></span><h2>aurora.particle_conserv module<a class="headerlink" href="#module-aurora.particle_conserv" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
-<dt id="aurora.particle_conserv.check_1d_conserv">
-<code class="sig-prename descclassname">aurora.particle_conserv.</code><code class="sig-name descname">check_1d_conserv</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">Raxis</span></em>, <em class="sig-param"><span class="n">ds</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filepath</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">linestyle</span><span class="o">=</span><span class="default_value">'-'</span></em>, <em class="sig-param"><span class="n">axs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/particle_conserv.html#check_1d_conserv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.particle_conserv.check_1d_conserv" title="Permalink to this definition">¶</a></dt>
+<dt id="aurora.particle_conserv.check_particle_conserv">
+<code class="sig-prename descclassname">aurora.particle_conserv.</code><code class="sig-name descname">check_particle_conserv</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">Raxis</span></em>, <em class="sig-param"><span class="n">ds</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filepath</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">linestyle</span><span class="o">=</span><span class="default_value">'-'</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">axs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/particle_conserv.html#check_particle_conserv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.particle_conserv.check_particle_conserv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Check time evolution and particle conservation in Aurora or STRAHL output.</p>
 <dl class="simple">
 <dt>Args:</dt><dd><dl class="simple">
@@ -1604,6 +1646,8 @@ particle conservation as for an Aurora run.</p>
 overplot lines on the same plots using different linestyles, e.g. to check
 whether some aurora option makes particle conservation better or worse.</p>
 </dd>
+<dt>plot<span class="classifier">bool, optional</span></dt><dd><p>If True, plot time histories of particle densities in each simulation reservoir.</p>
+</dd>
 <dt>axs<span class="classifier">2-tuple or array</span></dt><dd><p>array-like structure containing two matplotlib.Axes instances: the first one 
 for the separate particle time variation in each reservoir, the second for 
 the total particle-conservation check. This can be used to plot results 
@@ -1612,12 +1656,10 @@ from several aurora runs on the same axes.</p>
 </dl>
 </dd>
 <dt>Returns:</dt><dd><dl class="simple">
-<dt>ds<span class="classifier">xarray dataset</span></dt><dd><p>Dataset containing results in xarray format.</p>
-</dd>
-<dt>res<span class="classifier">dict</span></dt><dd><p>Dictionary containing time histories across all reservoirs, useful for 
+<dt>out<span class="classifier">dict</span></dt><dd><p>Dictionary containing time histories across all reservoirs, useful for 
 the assessment of particle conservation.</p>
 </dd>
-<dt>axs<span class="classifier">2-tuple or array</span></dt><dd><p>array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
+<dt>axs<span class="classifier">2-tuple or array, only returned if plot=True</span></dt><dd><p>array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
 See optional input argument.</p>
 </dd>
 </dl>
@@ -1626,40 +1668,32 @@ See optional input argument.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="aurora.particle_conserv.get_particle_nums">
-<code class="sig-prename descclassname">aurora.particle_conserv.</code><code class="sig-name descname">get_particle_nums</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filepath</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ds</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">R_axis</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/particle_conserv.html#get_particle_nums"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.particle_conserv.get_particle_nums" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check time evolution and particle conservation in Aurora or STRAHL output.
-If filepath is not None, load data from file, otherwise use xarray Dataset in ds.</p>
-<p>R_axis [cm] is needed for volume integrals. If None, it is set to a C-Mod default.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt id="aurora.particle_conserv.plot_particle_conserv">
-<code class="sig-prename descclassname">aurora.particle_conserv.</code><code class="sig-name descname">plot_particle_conserv</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">res</span></em>, <em class="sig-param"><span class="n">ax</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/particle_conserv.html#plot_particle_conserv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.particle_conserv.plot_particle_conserv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plot number of particles in each Aurora simulation reservoir.</p>
-</dd></dl>
-
-<dl class="py function">
 <dt id="aurora.particle_conserv.vol_int">
-<code class="sig-prename descclassname">aurora.particle_conserv.</code><code class="sig-name descname">vol_int</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ds</span></em>, <em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">rhop_max</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">R_axis</span><span class="o">=</span><span class="default_value">68.5</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/particle_conserv.html#vol_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.particle_conserv.vol_int" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">aurora.particle_conserv.</code><code class="sig-name descname">vol_int</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">Raxis</span></em>, <em class="sig-param"><span class="n">ds</span></em>, <em class="sig-param"><span class="n">var</span></em>, <em class="sig-param"><span class="n">rhop_max</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/particle_conserv.html#vol_int"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.particle_conserv.vol_int" title="Permalink to this definition">¶</a></dt>
 <dd><p>Perform a volume integral of an input variable. If the variable is f(t,x) 
 then the result is f(t). If the variable is f(t,*,x) then the result is f(t,charge)
 when “*” represents charge, line index, etc…</p>
+<dl>
+<dt>Args:</dt><dd><dl>
+<dt>Raxis<span class="classifier">float </span></dt><dd><blockquote>
+<div><p>Major radius on axis [cm]</p>
+</div></blockquote>
+<dl class="simple">
+<dt>ds: xarray dataset </dt><dd><p>Dataset containing Aurora or STRAHL result</p>
+</dd>
+</dl>
+</dd>
+<dt>var: str</dt><dd><p>Name of the variable in the strahl_result.cdf file</p>
+</dd>
+<dt>rhop_max<span class="classifier">float</span></dt><dd><p>Maximum normalized poloidal flux for integral. If not provided, integrate
+over the entire simulation grid.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ds</strong> – xarray dataset containing Aurora or STRAHL result</p></li>
-<li><p><strong>var</strong> – Name of the variable in the strahl_result.cdf file</p></li>
-</ul>
-</dd>
-<dt class="field-even">Params rhop_max</dt>
-<dd class="field-even"><p>Maximum normalized poloidal flux for integral</p>
-</dd>
-<dt class="field-odd">Params R_axis</dt>
-<dd class="field-odd"><p>major radius on axis [cm]</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Time history of volume integrated variable</p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Time history of volume integrated variable</p>
 </dd>
 </dl>
 </dd></dl>

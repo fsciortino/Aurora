@@ -147,7 +147,7 @@
            <div itemprop="articleBody">
             
   <h1>Source code for aurora.core</h1><div class="highlight"><pre>
-<span></span><span class="sd">&#39;&#39;&#39;This module includes the core class to set up simulations with :py:mod:`eqtools`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.</span>
+<span></span><span class="sd">&#39;&#39;&#39;This module includes the core class to set up simulations with :py:mod:`aurora`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.</span>
 <span class="sd">&#39;&#39;&#39;</span>
 <span class="kn">import</span> <span class="nn">scipy.io</span>
 <span class="kn">import</span> <span class="nn">copy</span><span class="o">,</span><span class="nn">os</span><span class="o">,</span><span class="nn">sys</span>
@@ -272,9 +272,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">decay_length_boundary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;SOL_decay&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">wall_recycling</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;wall_recycling&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">source_div_fraction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;divbls&#39;</span><span class="p">]</span>   <span class="c1"># change of nomenclature</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;tau_div_SOL&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;tau_pump&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;tau_rcl_ret&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL_ms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;tau_div_SOL_ms&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump_ms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;tau_pump_ms&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret_ms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;tau_rcl_ret_ms&#39;</span><span class="p">]</span>
         
         <span class="c1"># if recycling flag is set to False, then prevent any divertor return flows</span>
         <span class="c1"># To include divertor return flows but no recycling, user should use wall_recycling=0</span>
@@ -441,7 +441,7 @@
 
 
 <div class="viewcode-block" id="aurora_sim.run_aurora"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.run_aurora">[docs]</a>    <span class="k">def</span> <span class="nf">run_aurora</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">D_z</span><span class="p">,</span> <span class="n">V_z</span><span class="p">,</span>
-                   <span class="n">times_DV</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nz_init</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;old&#39;</span><span class="p">,</span><span class="n">evolneut</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                   <span class="n">times_DV</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nz_init</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alg_opt</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">evolneut</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                    <span class="n">use_julia</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;Run a simulation using inputs in the given dictionary and D,v profiles as a function</span>
 <span class="sd">        of space, time and potentially also ionization state. Users may give an initial state of each</span>
@@ -457,7 +457,7 @@
 <span class="sd">                               labels=[f&#39;Ca$^{{{str(i)}}}$&#39; for i in np.arange(nz_w.shape[1]])</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            D_z, V_z: arrays, shape of (space, time,nZ) or (space,time) or (space,)</span>
+<span class="sd">            D_z, V_z: arrays, shape of (space,time,nZ) or (space,time) or (space,)</span>
 <span class="sd">                Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.</span>
 <span class="sd">                This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates</span>
 <span class="sd">                the number of charge states. If D_z and V_z are found to be have only 2 dimensions, </span>
@@ -471,28 +471,40 @@
 <span class="sd">            nz_init: array, shape of (space, nZ)</span>
 <span class="sd">                Impurity charge states at the initial time of the simulation. If left to None, this is</span>
 <span class="sd">                internally set to an array of 0&#39;s.</span>
-<span class="sd">            method : str, optional</span>
-<span class="sd">                If method=&#39;linder&#39;, use the Linder algorithm for increased stability and accuracy.</span>
+<span class="sd">            alg_opt : int, optional</span>
+<span class="sd">                If alg_opt=1, use the finite-volume algorithm proposed by Linder et al. NF 2020. </span>
+<span class="sd">                If alg_opt=1, use the older finite-differences algorithm in the 2018 version of STRAHL.</span>
 <span class="sd">            evolneut : bool, optional</span>
 <span class="sd">                If True, evolve neutral impurities based on their D,V coefficients. Default is False, in</span>
 <span class="sd">                which case neutrals are only taken as a source and those that are not ionized immediately after</span>
 <span class="sd">                injection are neglected.</span>
+<span class="sd">                This option is NOT CURRENTLY RECOMMENDED, because this method is still under development/</span>
+<span class="sd">                examination. </span>
 <span class="sd">            use_julia : bool, optional</span>
 <span class="sd">                If True, run the Julia pre-compiled version of the code. Run the julia makefile option to set </span>
 <span class="sd">                this up. Default is False (still under development)</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            nz : array, </span>
+<span class="sd">            nz : array, (nr,nZ,nt)</span>
+<span class="sd">                Charge state densities [:py:math:`cm^{-3}`] over the space and time grids.</span>
 <span class="sd">            N_wall : array (nt,)</span>
+<span class="sd">                Number of particles at the wall reservoir over time.</span>
 <span class="sd">            N_div : array (nt,)</span>
+<span class="sd">                Number of particles in the divertor reservoir over time.</span>
 <span class="sd">            N_pump : array (nt,)</span>
+<span class="sd">                Number of particles in the pump reservoir over time.</span>
 <span class="sd">            N_ret : array (nt,)</span>
+<span class="sd">                 Number of particles temporarily held in the wall reservoirs. </span>
 <span class="sd">            N_tsu : array (nt,)</span>
+<span class="sd">                 Edge particle loss [:py:math:`cm^{-3}`]</span>
 <span class="sd">            N_dsu : array (nt,)</span>
+<span class="sd">                 Parallel particle loss [:py:math:`cm^{-3}`]</span>
 <span class="sd">            N_dsul : array (nt,)</span>
+<span class="sd">                 Parallel particle loss at the limiter [:py:math:`cm^{-3}`]</span>
 <span class="sd">            rcld_rate : array (nt,)</span>
+<span class="sd">                 Recycling from the divertor [:py:math:`s^{-1} cm^{-3}`]</span>
 <span class="sd">            rclw_rate : array (nt,)</span>
-
+<span class="sd">                 Recycling from the wall [:py:math:`s^{-1} cm^{-3}`]</span>
 <span class="sd">        &#39;&#39;&#39;</span>
         <span class="c1"># D_z and V_z must have the same shape</span>
         <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">D_z</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">V_z</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span>
@@ -524,7 +536,7 @@
             <span class="c1"># run Julia version of the code</span>
             <span class="kn">from</span> <span class="nn">julia.api</span> <span class="kn">import</span> <span class="n">Julia</span>
             <span class="n">jl</span> <span class="o">=</span> <span class="n">Julia</span><span class="p">(</span><span class="n">compiled_modules</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                       <span class="n">sysimage</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;/jlib/aurora.so&quot;</span><span class="p">)</span>
+                       <span class="n">sysimage</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;/../aurora.jl/sysimage.so&quot;</span><span class="p">)</span>
             <span class="kn">from</span> <span class="nn">julia</span> <span class="kn">import</span> <span class="n">aurora</span> <span class="k">as</span> <span class="n">aurora_jl</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">res</span> <span class="o">=</span> <span class="n">aurora_jl</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_out</span><span class="p">),</span>  <span class="c1"># number of times at which simulation outputs results</span>
@@ -541,9 +553,9 @@
                                      <span class="bp">self</span><span class="o">.</span><span class="n">save_time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sawtooth_erfc_width</span><span class="p">,</span> <span class="c1"># dsaw width  [cm, circ geometry]</span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">wall_recycling</span><span class="p">,</span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">source_div_fraction</span><span class="p">,</span> <span class="c1"># divbls [fraction of source into divertor]</span>
-                                     <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span>  <span class="c1">#[s] </span>
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL_ms</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump_ms</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret_ms</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span>  <span class="c1">#[s] </span>
                                      <span class="bp">self</span><span class="o">.</span><span class="n">rvol_lcfs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bound_sep</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lim_sep</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prox_param</span><span class="p">,</span>
-                                     <span class="n">nz_init</span><span class="p">)</span>
+                                     <span class="n">nz_init</span><span class="p">,</span> <span class="n">alg_opt</span><span class="p">,</span> <span class="n">evolneut</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">res</span> <span class="o">=</span>  <span class="n">_aurora</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_out</span><span class="p">),</span>  <span class="c1"># number of times at which simulation outputs results</span>
                                     <span class="n">times_DV</span><span class="p">,</span>
@@ -559,36 +571,39 @@
                                     <span class="bp">self</span><span class="o">.</span><span class="n">save_time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sawtooth_erfc_width</span><span class="p">,</span> <span class="c1"># dsaw width  [cm, circ geometry]</span>
                                     <span class="bp">self</span><span class="o">.</span><span class="n">wall_recycling</span><span class="p">,</span>
                                     <span class="bp">self</span><span class="o">.</span><span class="n">source_div_fraction</span><span class="p">,</span> <span class="c1"># divbls [fraction of source into divertor]</span>
-                                    <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span>  <span class="c1"># [s]  </span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">tau_div_SOL_ms</span> <span class="o">*</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_pump_ms</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau_rcl_ret_ms</span> <span class="o">*</span><span class="mf">1e-3</span><span class="p">,</span>  <span class="c1"># [s]  </span>
                                     <span class="bp">self</span><span class="o">.</span><span class="n">rvol_lcfs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bound_sep</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lim_sep</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prox_param</span><span class="p">,</span>
                                     <span class="n">rn_t0</span> <span class="o">=</span> <span class="n">nz_init</span><span class="p">,</span>  <span class="c1"># if omitted, internally set to 0&#39;s</span>
-                                    <span class="n">linder</span><span class="o">=</span><span class="kc">True</span> <span class="k">if</span> <span class="n">method</span><span class="o">==</span><span class="s1">&#39;linder&#39;</span> <span class="k">else</span> <span class="kc">False</span><span class="p">,</span>
+                                    <span class="n">alg_opt</span><span class="o">=</span><span class="n">alg_opt</span><span class="p">,</span>
                                     <span class="n">evolneut</span><span class="o">=</span><span class="n">evolneut</span><span class="p">)</span>
 
-        
         <span class="c1"># nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">res</span></div>
     
         
 
-<div class="viewcode-block" id="aurora_sim.check_conservation"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.check_conservation">[docs]</a>    <span class="k">def</span> <span class="nf">check_conservation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">axs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="aurora_sim.check_conservation"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.check_conservation">[docs]</a>    <span class="k">def</span> <span class="nf">check_conservation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">axs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;Check particle conservation for an aurora simulation.</span>
 
 <span class="sd">        Args : </span>
-<span class="sd">            axs : matplotlib.Axes instances</span>
-<span class="sd">                Axes to pass to :py:meth:`~aurora.particle_conver.check_1d_conserv`</span>
+<span class="sd">            plot : bool, optional</span>
+<span class="sd">                If True, plot time histories in each particle reservoir and display quality of particle conservation.</span>
+<span class="sd">            axs : matplotlib.Axes instances, optional </span>
+<span class="sd">                Axes to pass to :py:meth:`~aurora.particle_conserv.check_particle_conserv`</span>
 <span class="sd">                These may be the axes returned from a previous call to this function, to overlap </span>
 <span class="sd">                results for different runs. </span>
 <span class="sd">        Returns : </span>
-<span class="sd">            axs : matplotlib.Axes instances</span>
-<span class="sd">                New or updated axes returned by :py:meth:`~aurora.particle_conver.check_1d_conserv`</span>
+<span class="sd">            out : dict</span>
+<span class="sd">                Dictionary containing density of particles in each reservoir.</span>
+<span class="sd">            axs : matplotlib.Axes instances , only returned if plot=True</span>
+<span class="sd">                New or updated axes returned by :py:meth:`~aurora.particle_conserv.check_particle_conserv`</span>
 <span class="sd">        &#39;&#39;&#39;</span>
         <span class="n">nz</span><span class="p">,</span> <span class="n">N_wall</span><span class="p">,</span> <span class="n">N_div</span><span class="p">,</span> <span class="n">N_pump</span><span class="p">,</span> <span class="n">N_ret</span><span class="p">,</span> <span class="n">N_tsu</span><span class="p">,</span> <span class="n">N_dsu</span><span class="p">,</span> <span class="n">N_dsul</span><span class="p">,</span> <span class="n">rcld_rate</span><span class="p">,</span> <span class="n">rclw_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">res</span>
         <span class="n">nz</span> <span class="o">=</span> <span class="n">nz</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>   <span class="c1"># time,nZ,space</span>
 
         <span class="c1"># Check particle conservation</span>
-        <span class="n">ds</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;impurity_density&#39;</span><span class="p">:</span> <span class="p">([</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;charge_states&#39;</span><span class="p">,</span><span class="s1">&#39;radius_grid&#39;</span><span class="p">],</span> <span class="n">nz</span><span class="p">),</span>
-                         <span class="s1">&#39;source_function&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_time_history</span> <span class="p">),</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span><span class="s1">&#39;impurity_density&#39;</span><span class="p">:</span> <span class="p">([</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;charge_states&#39;</span><span class="p">,</span><span class="s1">&#39;rvol_grid&#39;</span><span class="p">],</span> <span class="n">nz</span><span class="p">),</span>
+                         <span class="s1">&#39;source_time_history&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_time_history</span> <span class="p">),</span>
                          <span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">N_div</span><span class="p">),</span> 
                          <span class="s1">&#39;particles_in_pump&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">N_pump</span><span class="p">),</span> 
                          <span class="s1">&#39;parallel_loss&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">N_dsu</span><span class="p">),</span> 
@@ -598,16 +613,15 @@
                          <span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">N_ret</span><span class="p">),</span> 
                          <span class="s1">&#39;recycling_from_wall&#39;</span><span class="p">:</span>  <span class="p">([</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">rclw_rate</span><span class="p">),</span> 
                          <span class="s1">&#39;recycling_from_divertor&#39;</span><span class="p">:</span>  <span class="p">([</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">rcld_rate</span><span class="p">),</span> 
-                         <span class="s1">&#39;pro&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;radius_grid&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">pro_grid</span><span class="p">),</span> 
-                         <span class="s1">&#39;rhop_grid&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;radius_grid&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhop_grid</span><span class="p">)</span>
+                         <span class="s1">&#39;pro&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;rvol_grid&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">pro_grid</span><span class="p">),</span> 
+                         <span class="s1">&#39;rhop_grid&#39;</span><span class="p">:</span> <span class="p">([</span><span class="s1">&#39;rvol_grid&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhop_grid</span><span class="p">)</span>
                          <span class="p">},</span>
                         <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_out</span><span class="p">,</span> 
-                                <span class="s1">&#39;radius_grid&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">,</span>
+                                <span class="s1">&#39;rvol_grid&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">,</span>
                                 <span class="s1">&#39;charge_states&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nz</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
                                 <span class="p">})</span>
 
-        <span class="n">ds</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span><span class="n">ax2</span><span class="p">)</span> <span class="o">=</span> <span class="n">particle_conserv</span><span class="o">.</span><span class="n">check_1d_conserv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Raxis</span><span class="p">,</span> <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="p">,</span> <span class="n">axs</span><span class="o">=</span><span class="n">axs</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span><span class="n">ax2</span><span class="p">)</span></div></div>
+        <span class="k">return</span> <span class="n">particle_conserv</span><span class="o">.</span><span class="n">check_particle_conserv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Raxis</span><span class="p">,</span> <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="n">plot</span><span class="p">,</span> <span class="n">axs</span><span class="o">=</span><span class="n">axs</span><span class="p">)</span></div></div>
 </pre></div>
 
            </div>

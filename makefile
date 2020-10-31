@@ -2,14 +2,14 @@
 # make aurora           # generate aurora shared-object library
 # make clean     # delete previous versions of the aurora shared-object library
 #
-# When using "make" or "make jlib", attempt to create Julia library as well (requires Julia to be available)
+# When using "make" or "make julia", create Julia sysimage as well (requires Julia to be available)
 
 .PHONY: all aurora clean
 
-#flags=
-#fcompiler=gnu95
-flags="-fast"
-fcompiler=intelem
+flags=
+fcompiler=gnu95
+#flags="-fast"
+#fcompiler=intelem
 
 
 ############
@@ -30,6 +30,9 @@ julia :
 
 
 clean :
-	@echo "Eliminating aurora shared-object library"
+	@echo "Eliminating Aurora shared-object library"
 	rm aurora/_aurora*.so
+
+clean_julia :
+	@echo "Eliminating Aurora Julia sysimage"
 	rm aurora.jl/sysimage.so

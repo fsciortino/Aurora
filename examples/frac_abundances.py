@@ -4,32 +4,29 @@ Note that this is a calculation from atomic physics only, i.e. no transport is a
 
 It is recommended to run this in IPython.
 '''
-
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-import pickle as pkl
+import omfit_eqdsk, omfit_gapy
+import scipy,sys,os
+import time
+from scipy.interpolate import interp1d
 
 # Make sure that package home is added to sys.path
 import sys
 sys.path.append('../')
 import aurora
 
-# example kinetic profiles
-with open('./test_kin_profs.pkl','rb') as f:
-    ne_profs,Te_profs = pkl.load(f)
+# read in some kinetic profiles
+inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
 
-ne_vals = ne_profs['ne']*1e14  # 10^20 m^-3 --> cm^-3
-rhop = ne_profs['rhop']
-Te_vals = Te_profs['Te']*1e3  # keV --> eV
-
-# average over time
-ne_avg = np.mean(ne_vals,axis=0)
-Te_avg = np.mean(Te_vals,axis=0)  # assume on the same radial basis as ne_avg
-
+# transform rho_phi (=sqrt toroidal flux) into rho_psi (=sqrt poloidal flux) and save kinetic profiles
+rhop = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
+ne_vals = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
+Te_vals = inputgacode['Te']*1e3  # keV --> eV
 
 # get charge state distributions from ionization equilibrium for Ca
-atom_data = aurora.atomic.get_all_atom_data('Ca',['acd','scd'])
+atom_data = aurora.atomic.get_atom_data('Ca',['acd','scd'])
 
 # get fractional abundances on ne (cm^-3) and Te (eV) grid
-logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_avg, Te_avg, rho=rhop)
+logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_vals, Te_vals, rho=rhop)

@@ -432,7 +432,27 @@ class aurora_sim:
         return self.res
     
         
+    def calc_Zeff(self):
+        '''Compute Zeff from each charge state density, using the result of an Aurora simulation.
+        The total Zeff change over time and space due to the simulated impurity can be simply obtained by summing 
+        over charge states
 
+        Results are stored as an attribute of the simulation object instance. 
+        '''
+        # This method requires that a simulation has already been run:
+        assert hasattr(self,'res')
+
+        # extract charge state densities from the simulation result
+        nz = self.res[0]
+
+        # Compute the variation of Zeff from these charge states
+        Zmax = nz.shape[1]-1
+        Z = np.arange(Zmax+1)
+        self.delta_Zeff = nz*(Z*(Z-1))[None,:,None]   # for each charge state
+        self.delta_Zeff/= self.ne.T[:,None,:]
+
+
+        
     def check_conservation(self, plot=True, axs=None):
         '''Check particle conservation for an aurora simulation.
 

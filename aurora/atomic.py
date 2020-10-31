@@ -506,7 +506,7 @@ def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=
         x_fine = np.linspace(np.min(x), np.max(x),10000)
         for cs in range(fz.shape[1]):
             fz_i = interp1d(x, fz[:,cs], kind='cubic')(x_fine)
-
+            axx.plot(x_fine, fz_i)
             imax = np.argmax(fz_i)
             axx.text(np.max([0.05,x_fine[imax]]), fz_i[imax], cs,
                      horizontalalignment='center', clip_on=True)
@@ -1090,10 +1090,10 @@ def adas_files_dict():
     files["Si"]["pbs"] = "pbsx5_si.dat"
     files["Si"]["prc"] = "prc89_si.dat"
     files["Ar"] = {}     #18
-    files["Ar"]['acd'] = "acd00_ar.dat"
-    files["Ar"]['scd'] = "scd00_ar.dat"
-    files["Ar"]['prb'] = "prb00_ar.dat"
-    files["Ar"]['plt'] = "plt00_ar.dat"
+    files["Ar"]['acd'] = "acd89_ar.dat"
+    files["Ar"]['scd'] = "scd89_ar.dat"
+    files["Ar"]['prb'] = "prb89_ar.dat"
+    files["Ar"]['plt'] = "plt89_ar.dat"
     files["Ar"]['ccd'] = "ccd89_ar.dat"
     files["Ar"]['prc'] = "prc89_ar.dat"
     files["Ar"]['pls'] = "pls_Ar_14.dat"

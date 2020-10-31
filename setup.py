@@ -11,14 +11,14 @@ wrapper = Extension(name='aurora',
                              'aurora/math.f90'])
 
 setup(name='aurora',
-      version='1.3.1',
+      version='1.0.0',
       description=long_description,
-      url='https://github.com/fsciortino/aurora',
+      url='https://github.com/fsciortino/Aurora',
       author='F. Sciortino',
       author_email='sciortino@psfc.mit.edu',
       license='MIT',
       packages=['aurora'],
-      install_requires=['numpy','scipy','matplotlib','omfit_eqdsk'],
+      install_requires=['numpy','scipy','matplotlib','omfit_eqdsk','omfit_gapy'],
       ext_modules=[wrapper]
   )
 

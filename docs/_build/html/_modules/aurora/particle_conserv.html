@@ -155,34 +155,34 @@
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">from</span> <span class="nn">scipy.integrate</span> <span class="kn">import</span> <span class="n">cumtrapz</span>
 
-<div class="viewcode-block" id="vol_int"><a class="viewcode-back" href="../../aurora.html#aurora.particle_conserv.vol_int">[docs]</a><span class="k">def</span> <span class="nf">vol_int</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span><span class="n">rhop_max</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">R_axis</span><span class="o">=</span><span class="mf">68.5</span><span class="p">):</span>
+<div class="viewcode-block" id="vol_int"><a class="viewcode-back" href="../../aurora.html#aurora.particle_conserv.vol_int">[docs]</a><span class="k">def</span> <span class="nf">vol_int</span><span class="p">(</span><span class="n">Raxis</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">rhop_max</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Perform a volume integral of an input variable. If the variable is f(t,x) </span>
 <span class="sd">    then the result is f(t). If the variable is f(t,*,x) then the result is f(t,charge)</span>
 <span class="sd">    when &quot;*&quot; represents charge, line index, etc...</span>
 
-<span class="sd">    :param ds: xarray dataset containing Aurora or STRAHL result</span>
-<span class="sd">    :param var: Name of the variable in the strahl_result.cdf file</span>
-<span class="sd">    :params rhop_max: Maximum normalized poloidal flux for integral</span>
-<span class="sd">    :params R_axis: major radius on axis [cm]</span>
+<span class="sd">    Args:</span>
+<span class="sd">        Raxis : float </span>
+<span class="sd">             Major radius on axis [cm]</span>
+<span class="sd">         ds: xarray dataset </span>
+<span class="sd">             Dataset containing Aurora or STRAHL result</span>
+<span class="sd">        var: str</span>
+<span class="sd">             Name of the variable in the strahl_result.cdf file</span>
+<span class="sd">        rhop_max : float</span>
+<span class="sd">             Maximum normalized poloidal flux for integral. If not provided, integrate</span>
+<span class="sd">             over the entire simulation grid. </span>
 
 <span class="sd">    :return: Time history of volume integrated variable</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="c1"># Coordinates</span>
-    <span class="n">pro</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;pro&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="c1"># 2x radial step</span>
-    <span class="n">radius_grid</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;radius_grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
-    <span class="n">rhop_grid</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;rhop_grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
-
-    <span class="n">C</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">R_axis</span>
-    <span class="n">zvol</span> <span class="o">=</span> <span class="n">C</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">radius_grid</span> <span class="o">/</span> <span class="n">pro</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">Raxis</span>
+    <span class="n">zvol</span> <span class="o">=</span> <span class="n">C</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;rvol_grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">/</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;pro&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> 
 
     <span class="c1"># Get our variable</span>
     <span class="n">f</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">var</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
 
     <span class="c1"># Determine range</span>
     <span class="k">if</span> <span class="n">rhop_max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">wh</span> <span class="o">=</span> <span class="p">(</span><span class="n">rhop_grid</span> <span class="o">&lt;=</span> <span class="n">rhop_max</span><span class="p">)</span>
+        <span class="n">wh</span> <span class="o">=</span> <span class="p">(</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;rhop_grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span> <span class="o">&lt;=</span> <span class="n">rhop_max</span><span class="p">)</span>
         <span class="n">zvol</span> <span class="o">=</span> <span class="n">zvol</span><span class="p">[</span><span class="n">wh</span><span class="p">]</span>
         <span class="n">f</span>  <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="o">...</span><span class="p">,</span><span class="n">wh</span><span class="p">]</span>
 
@@ -192,129 +192,9 @@
     <span class="k">return</span> <span class="n">fvolint</span></div>
 
 
-<div class="viewcode-block" id="get_particle_nums"><a class="viewcode-back" href="../../aurora.html#aurora.particle_conserv.get_particle_nums">[docs]</a><span class="k">def</span> <span class="nf">get_particle_nums</span><span class="p">(</span><span class="n">filepath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">R_axis</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39; Check time evolution and particle conservation in Aurora or STRAHL output.</span>
-<span class="sd">    If filepath is not None, load data from file, otherwise use xarray Dataset in ds. </span>
-
-<span class="sd">    R_axis [cm] is needed for volume integrals. If None, it is set to a C-Mod default. </span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="k">if</span> <span class="n">filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">ds</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>  
-        <span class="c1"># use STRAHL notation for source function</span>
-        <span class="n">source_lbl</span> <span class="o">=</span> <span class="s1">&#39;influx_through_valve&#39;</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># use Aurora notation for source function</span>
-        <span class="n">source_lbl</span> <span class="o">=</span> <span class="s1">&#39;source_function&#39;</span>
-
-    <span class="k">if</span> <span class="n">R_axis</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># set to C-Mod default</span>
-        <span class="n">R_axis</span> <span class="o">=</span> <span class="mf">68.5</span>
-
-    <span class="c1"># calculate total impurity density (summed over charge states)</span>
-    <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;total_impurity_density&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;impurity_density&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-                                                    <span class="n">coords</span><span class="o">=</span><span class="p">[</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;radius_grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">],</span> 
-                                                    <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;space&#39;</span><span class="p">])</span>
-    
-    <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">source_lbl</span><span class="p">,</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">,</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;parallel_loss&#39;</span><span class="p">,</span><span class="s1">&#39;parallel_loss_to_limiter&#39;</span><span class="p">,</span><span class="s1">&#39;edge_loss&#39;</span><span class="p">,</span> <span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span>
-
-    <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="sa">r</span><span class="s1">&#39;Influx ($s^{-1}$)&#39;</span><span class="p">,</span><span class="s1">&#39;Particles in Divertor&#39;</span><span class="p">,</span><span class="s1">&#39;Particles in Pump&#39;</span><span class="p">,</span>
-              <span class="s1">&#39;Parallel Loss&#39;</span><span class="p">,</span>   <span class="c1">#losses between LCFS and limiter</span>
-              <span class="s1">&#39;Parallel Loss to Limiter&#39;</span><span class="p">,</span>  <span class="c1">#losses between limiter and edge</span>
-              <span class="s1">&#39;Edge Loss&#39;</span><span class="p">,</span>  <span class="c1">#losses outside the last grit point</span>
-             <span class="s1">&#39;Particles Stuck at Wall&#39;</span><span class="p">]</span> <span class="c1"># particles that will never leave the wall</span>
-
-    <span class="k">if</span> <span class="s1">&#39;recycling_from_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>   <span class="c1"># activated recycling model</span>
-        <span class="k">if</span> <span class="s1">&#39;particles_retained_at_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>    <span class="c1"># activated wall retention model</span>
-            <span class="n">keys</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">]</span>
-            <span class="n">labels</span> <span class="o">+=</span> <span class="p">[</span> <span class="s1">&#39;Particles Retained at Wall&#39;</span><span class="p">]</span>
-
-        <span class="n">keys</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;recycling_from_wall&#39;</span><span class="p">,</span><span class="s1">&#39;recycling_from_divertor&#39;</span><span class="p">]</span>
-        <span class="n">labels</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;Wall Recy. Rate&#39;</span><span class="p">,</span><span class="s1">&#39;Divertor Recy. Rate&#39;</span><span class="p">]</span>
-
-    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
-        <span class="c1"># substitute 0 to nan&#39;s for particle numbers</span>
-        <span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mf">0.0</span><span class="p">))</span>
-
-    <span class="n">time</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
-    <span class="n">vol_int_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;total_impurity_density&#39;</span><span class="p">,</span><span class="s1">&#39;impurity_radiation&#39;</span><span class="p">]</span>
-    <span class="n">vol_int_rhop</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
-    <span class="n">vol_int_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Core Impurity Particles&#39;</span><span class="p">,</span> <span class="s1">&#39;Core Radiation (W)&#39;</span><span class="p">]</span>
-
-    <span class="n">circ</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">R_axis</span> <span class="c1">#cm </span>
-
-    <span class="c1"># Check particle conservation</span>
-    <span class="n">plasma_particles</span> <span class="o">=</span> <span class="n">vol_int</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="s1">&#39;total_impurity_density&#39;</span><span class="p">)</span>
-    <span class="n">total</span> <span class="o">=</span> <span class="n">plasma_particles</span><span class="o">+</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">+</span>\
-                              <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="o">*</span><span class="n">circ</span> 
-    
-    <span class="k">if</span> <span class="s1">&#39;recycling_from_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
-        <span class="n">total</span><span class="o">+=</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
-        
-        <span class="k">if</span> <span class="s1">&#39;particles_retained_at_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
-            <span class="c1"># only plot particles retained at wall if retention model is used</span>
-            <span class="n">total</span><span class="o">+=</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
-
-    <span class="n">source</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">source_lbl</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
-    <span class="n">integ_source</span> <span class="o">=</span>  <span class="n">cumtrapz</span><span class="p">(</span><span class="n">source</span><span class="p">,</span><span class="n">time</span><span class="p">,</span><span class="n">initial</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    
-    <span class="c1"># return the relevant quantities for particle conservation</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time</span>
-    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">total</span>
-    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;plasma_particles&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">plasma_particles</span> <span class="c1"># vol_int(ds, &#39;total_impurity_density&#39;)</span>
-    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
-    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
-    <span class="k">if</span> <span class="s1">&#39;recycling_from_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
-        <span class="n">res</span><span class="p">[</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
-    <span class="k">if</span> <span class="s1">&#39;recycling_from_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span> <span class="ow">and</span> <span class="s1">&#39;particles_retained_at_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
-        <span class="n">res</span><span class="p">[</span><span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
-    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;integ_source&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">integ_source</span>
-
-    <span class="c1"># close dataset</span>
-    <span class="n">ds</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-    
-    <span class="k">return</span> <span class="n">res</span></div>
 
 
-
-
-
-<div class="viewcode-block" id="plot_particle_conserv"><a class="viewcode-back" href="../../aurora.html#aurora.particle_conserv.plot_particle_conserv">[docs]</a><span class="k">def</span> <span class="nf">plot_particle_conserv</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39; Plot number of particles in each Aurora simulation reservoir. &#39;&#39;&#39;</span>
-
-    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span> 
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">ax</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-
-    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;plasma_particles&#39;</span><span class="p">]</span> <span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Particles in Plasma&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span> <span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Particles stuck at wall&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">],</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Particles in Divertor&#39;</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="s1">&#39;particles_in_pump&#39;</span> <span class="ow">in</span> <span class="n">res</span><span class="p">:</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">]</span> <span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Particles in Pump&#39;</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="s1">&#39;particles_retained_at_wall&#39;</span> <span class="ow">in</span> <span class="n">res</span><span class="p">:</span>
-        <span class="c1"># only plot particles retained at wall if retention model is used</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">],</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Particles retained at wall&#39;</span><span class="p">)</span>
-
-    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">],</span><span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Total&#39;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;integ_source&#39;</span><span class="p">],</span><span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Integrated source&#39;</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="nb">abs</span><span class="p">((</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;integ_source&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="n">res</span><span class="p">[</span><span class="s1">&#39;integ_source&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">&gt;</span> <span class="o">.</span><span class="mi">1</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning: significant error in particle conservation! try to increase grid or time resolution&#39;</span><span class="p">)</span>
-
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="kc">None</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;best&#39;</span><span class="p">)</span>
-
-    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span></div>
-
-
-
-
-
-<div class="viewcode-block" id="check_1d_conserv"><a class="viewcode-back" href="../../aurora.html#aurora.particle_conserv.check_1d_conserv">[docs]</a><span class="k">def</span> <span class="nf">check_1d_conserv</span><span class="p">(</span><span class="n">Raxis</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">filepath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="check_particle_conserv"><a class="viewcode-back" href="../../aurora.html#aurora.particle_conserv.check_particle_conserv">[docs]</a><span class="k">def</span> <span class="nf">check_particle_conserv</span><span class="p">(</span><span class="n">Raxis</span><span class="p">,</span> <span class="n">ds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">filepath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39; Check time evolution and particle conservation in Aurora or STRAHL output.</span>
 
 <span class="sd">    Args:</span>
@@ -331,6 +211,8 @@
 <span class="sd">             matplotlib linestyle, default is &#39;-&#39; (continuous lines). Use this to </span>
 <span class="sd">             overplot lines on the same plots using different linestyles, e.g. to check</span>
 <span class="sd">             whether some aurora option makes particle conservation better or worse. </span>
+<span class="sd">         plot : bool, optional</span>
+<span class="sd">             If True, plot time histories of particle densities in each simulation reservoir.</span>
 <span class="sd">         axs : 2-tuple or array</span>
 <span class="sd">             array-like structure containing two matplotlib.Axes instances: the first one </span>
 <span class="sd">             for the separate particle time variation in each reservoir, the second for </span>
@@ -338,12 +220,10 @@
 <span class="sd">             from several aurora runs on the same axes. </span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">         ds : xarray dataset</span>
-<span class="sd">             Dataset containing results in xarray format. </span>
-<span class="sd">         res : dict</span>
+<span class="sd">         out : dict</span>
 <span class="sd">             Dictionary containing time histories across all reservoirs, useful for </span>
 <span class="sd">             the assessment of particle conservation.</span>
-<span class="sd">         axs : 2-tuple or array</span>
+<span class="sd">         axs : 2-tuple or array, only returned if plot=True</span>
 <span class="sd">             array-like structure containing two matplotlib.Axes instances, (ax1,ax2).</span>
 <span class="sd">             See optional input argument.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
@@ -352,25 +232,22 @@
         <span class="c1"># use STRAHL notation for source function</span>
         <span class="n">source_lbl</span> <span class="o">=</span> <span class="s1">&#39;influx_through_valve&#39;</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># use Aurora notation for source function</span>
-        <span class="n">source_lbl</span> <span class="o">=</span> <span class="s1">&#39;source_function&#39;</span>
+        <span class="c1"># use Aurora notation for source time history</span>
+        <span class="n">source_lbl</span> <span class="o">=</span> <span class="s1">&#39;source_time_history&#39;</span>
 
-    <span class="k">if</span> <span class="n">Raxis</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">Raxis</span> <span class="o">=</span> <span class="mf">0.685</span> <span class="c1"># m </span>
-    
     <span class="c1"># calculate total impurity density (summed over charge states)</span>
     <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;total_impurity_density&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;impurity_density&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-                                                    <span class="n">coords</span><span class="o">=</span><span class="p">[</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;radius_grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">],</span> 
+                                                    <span class="n">coords</span><span class="o">=</span><span class="p">[</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;rvol_grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">],</span> 
                                                     <span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;space&#39;</span><span class="p">])</span>
     
     <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">source_lbl</span><span class="p">,</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">,</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">,</span>
             <span class="s1">&#39;parallel_loss&#39;</span><span class="p">,</span><span class="s1">&#39;parallel_loss_to_limiter&#39;</span><span class="p">,</span><span class="s1">&#39;edge_loss&#39;</span><span class="p">,</span> <span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span>
 
     <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="sa">r</span><span class="s1">&#39;Influx ($s^{-1}$)&#39;</span><span class="p">,</span><span class="s1">&#39;Particles in Divertor&#39;</span><span class="p">,</span><span class="s1">&#39;Particles in Pump&#39;</span><span class="p">,</span>
-              <span class="s1">&#39;Parallel Loss&#39;</span><span class="p">,</span>   <span class="c1">#losses between LCFS and limiter</span>
-              <span class="s1">&#39;Parallel Loss to Limiter&#39;</span><span class="p">,</span>  <span class="c1">#losses between limiter and edge</span>
-              <span class="s1">&#39;Edge Loss&#39;</span><span class="p">,</span>  <span class="c1">#losses outside the last grit point</span>
-             <span class="s1">&#39;Particles Stuck at Wall&#39;</span><span class="p">]</span> <span class="c1"># particles that will never leave the wall</span>
+              <span class="s1">&#39;Parallel Loss&#39;</span><span class="p">,</span>   <span class="c1"># losses between LCFS and limiter</span>
+              <span class="s1">&#39;Parallel Loss to Limiter&#39;</span><span class="p">,</span>  <span class="c1"># losses between limiter and edge</span>
+              <span class="s1">&#39;Edge Loss&#39;</span><span class="p">,</span>  <span class="c1"># losses outside the last grid point</span>
+              <span class="s1">&#39;Particles Stuck at Wall&#39;</span><span class="p">]</span> <span class="c1"># particles that will never leave the wall</span>
 
     <span class="k">if</span> <span class="s1">&#39;recycling_from_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>   <span class="c1"># activated recycling model</span>
         <span class="k">if</span> <span class="s1">&#39;particles_retained_at_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>    <span class="c1"># activated wall retention model</span>
@@ -389,76 +266,100 @@
     <span class="n">vol_int_rhop</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
     <span class="n">vol_int_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Core Impurity Particles&#39;</span><span class="p">,</span> <span class="s1">&#39;Core Radiation (W)&#39;</span><span class="p">]</span>
 
+    <span class="c1"># factor to account for cylindrical geometry:</span>
     <span class="n">circ</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">Raxis</span><span class="o">*</span><span class="mi">100</span> <span class="c1"># cm</span>
-    <span class="n">nplots</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">k</span> <span class="ow">in</span> <span class="n">ds</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="o">+</span><span class="n">vol_int_keys</span><span class="p">])</span>
-    <span class="n">ncol</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="n">nplots</span><span class="p">)</span>
-    <span class="n">nrow</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">nplots</span><span class="p">)</span><span class="o">/</span><span class="n">ncol</span><span class="p">))</span>
 
-    <span class="k">if</span> <span class="n">axs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">fig</span><span class="p">,</span><span class="n">ax1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="n">nrow</span><span class="p">,</span><span class="n">ncols</span><span class="o">=</span><span class="n">ncol</span><span class="p">,</span><span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">ax1</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1">#Compute total number of particles for particle conservation checks:</span>
+    <span class="n">all_particles</span> <span class="o">=</span> <span class="n">vol_int</span><span class="p">(</span><span class="n">Raxis</span><span class="p">,</span><span class="n">ds</span><span class="p">,</span> <span class="s1">&#39;total_impurity_density&#39;</span><span class="p">)</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="n">all_particles</span><span class="o">+</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">+</span>\
+                           <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="o">*</span><span class="n">circ</span> 
+    
+    <span class="k">if</span> <span class="s1">&#39;recycling_from_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">total</span><span class="o">+=</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;particles_retained_at_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+            <span class="n">total</span><span class="o">+=</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
 
-    <span class="n">axf</span> <span class="o">=</span> <span class="n">ax1</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
-    <span class="n">iplot</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="c1"># particles that entered as &quot;source&quot;:</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">source_lbl</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
+    <span class="n">integ_source</span> <span class="o">=</span>  <span class="n">cumtrapz</span><span class="p">(</span><span class="n">source</span><span class="p">,</span><span class="n">time</span><span class="p">,</span><span class="n">initial</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="c1"># collect all the relevant quantities for particle conservation</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">out</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">total</span>
+    <span class="n">out</span><span class="p">[</span><span class="s1">&#39;plasma_particles&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vol_int</span><span class="p">(</span><span class="n">Raxis</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="s1">&#39;total_impurity_density&#39;</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span><span class="p">,</span>
+    <span class="n">out</span><span class="p">[</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
+    <span class="k">if</span> <span class="s1">&#39;recycling_from_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">out</span><span class="p">[</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
+    <span class="k">if</span> <span class="s1">&#39;recycling_from_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span> <span class="ow">and</span> <span class="s1">&#39;particles_retained_at_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">out</span><span class="p">[</span><span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
+    <span class="n">out</span><span class="p">[</span><span class="s1">&#39;integ_source&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">integ_source</span>
 
-    <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">label</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span><span class="n">labels</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
-            <span class="n">y</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="o">!=</span> <span class="s1">&#39;particles_in_pump&#39;</span><span class="p">:</span>
-                <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="o">*</span> <span class="n">circ</span> <span class="c1">#normalize it to #/s or # units</span>
 
-            <span class="n">axf</span><span class="p">[</span><span class="n">iplot</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="s1">&#39;-o&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span><span class="n">markersize</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">linestyle</span><span class="p">)</span>
-            <span class="n">iplot</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
+        <span class="c1"># ---------------------------------------------------------------------</span>
+        <span class="c1"># plot time histories for each particle reservoirs:</span>
+        <span class="n">nplots</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">k</span> <span class="ow">in</span> <span class="n">ds</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="o">+</span><span class="n">vol_int_keys</span><span class="p">])</span>
+        <span class="n">ncol</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="n">nplots</span><span class="p">)</span>
+        <span class="n">nrow</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">nplots</span><span class="p">)</span><span class="o">/</span><span class="n">ncol</span><span class="p">))</span>
 
-    <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">key</span><span class="p">,</span><span class="n">rhop</span><span class="p">,</span><span class="n">lab</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">vol_int_keys</span><span class="p">))),</span><span class="n">vol_int_keys</span><span class="p">,</span><span class="n">vol_int_rhop</span><span class="p">,</span><span class="n">vol_int_labels</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
-            <span class="n">vol_int_data</span> <span class="o">=</span> <span class="n">vol_int</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span><span class="n">rhop_max</span><span class="o">=</span><span class="n">rhop</span><span class="p">)</span>
-            
-            <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;impurity_radiation&#39;</span><span class="p">:</span>
-                <span class="n">vol_int_data</span> <span class="o">=</span> <span class="n">vol_int_data</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-            <span class="n">axf</span><span class="p">[</span><span class="n">iplot</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time</span><span class="p">,</span><span class="n">vol_int_data</span><span class="p">,</span><span class="s1">&#39;o-&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="n">lab</span><span class="p">,</span><span class="n">markersize</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">linestyle</span><span class="p">)</span>
-            <span class="n">iplot</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">axs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="p">,</span><span class="n">ax1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="n">nrow</span><span class="p">,</span><span class="n">ncols</span><span class="o">=</span><span class="n">ncol</span><span class="p">,</span><span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ax1</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-    <span class="k">for</span> <span class="n">axxx</span> <span class="ow">in</span> <span class="n">axf</span><span class="p">[</span><span class="o">-</span><span class="n">ncol</span><span class="p">:]:</span>
-        <span class="n">axxx</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time (s)&#39;</span><span class="p">)</span>
-    <span class="n">axxx</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">time</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="n">axf</span> <span class="o">=</span> <span class="n">ax1</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="n">iplot</span> <span class="o">=</span> <span class="mi">0</span>
 
-    <span class="k">for</span> <span class="n">aaa</span> <span class="ow">in</span> <span class="n">axf</span><span class="p">[:</span><span class="n">iplot</span><span class="p">]:</span>
-        <span class="n">aaa</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;best&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">set_draggable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span><span class="n">label</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span><span class="n">labels</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="o">!=</span> <span class="s1">&#39;particles_in_pump&#39;</span><span class="p">:</span>
+                    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="o">*</span> <span class="n">circ</span> <span class="c1">#normalize it to #/s or # units</span>
 
-    <span class="c1"># ---------------------------------------------</span>
-    <span class="k">if</span> <span class="s1">&#39;particles_at_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
-        <span class="c1"># Check particle conservation</span>
+                <span class="n">axf</span><span class="p">[</span><span class="n">iplot</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="s1">&#39;-o&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span><span class="n">markersize</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">linestyle</span><span class="p">)</span>
+                <span class="n">iplot</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">key</span><span class="p">,</span><span class="n">rhop</span><span class="p">,</span><span class="n">lab</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">vol_int_keys</span><span class="p">))),</span><span class="n">vol_int_keys</span><span class="p">,</span><span class="n">vol_int_rhop</span><span class="p">,</span><span class="n">vol_int_labels</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+                <span class="n">vol_int_data</span> <span class="o">=</span> <span class="n">vol_int</span><span class="p">(</span><span class="n">Raxis</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span><span class="n">rhop_max</span><span class="o">=</span><span class="n">rhop</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;impurity_radiation&#39;</span><span class="p">:</span>
+                    <span class="n">vol_int_data</span> <span class="o">=</span> <span class="n">vol_int_data</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">axf</span><span class="p">[</span><span class="n">iplot</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time</span><span class="p">,</span><span class="n">vol_int_data</span><span class="p">,</span><span class="s1">&#39;o-&#39;</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="n">lab</span><span class="p">,</span><span class="n">markersize</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">linestyle</span><span class="p">)</span>
+                <span class="n">iplot</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">for</span> <span class="n">axxx</span> <span class="ow">in</span> <span class="n">axf</span><span class="p">[</span><span class="o">-</span><span class="n">ncol</span><span class="p">:]:</span>
+            <span class="n">axxx</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time (s)&#39;</span><span class="p">)</span>
+        <span class="n">axxx</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">time</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+
+        <span class="k">for</span> <span class="n">aaa</span> <span class="ow">in</span> <span class="n">axf</span><span class="p">[:</span><span class="n">iplot</span><span class="p">]:</span>
+            <span class="n">aaa</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;best&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">set_draggable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># --------------------------------------------------------------------------------------------</span>
+        <span class="c1"># now plot all particle reservoirs to check particle conservation:</span>
 
         <span class="k">if</span> <span class="n">axs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">fig</span><span class="p">,</span><span class="n">ax2</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">ax2</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-    
+
         <span class="n">ax2</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;time [s]&#39;</span><span class="p">)</span>
-        <span class="n">all_particles</span> <span class="o">=</span> <span class="n">vol_int</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="s1">&#39;total_impurity_density&#39;</span><span class="p">)</span>
-        <span class="n">total</span> <span class="o">=</span> <span class="n">all_particles</span><span class="o">+</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">+</span>\
-                <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="o">*</span><span class="n">circ</span> 
-    
+
         <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">all_particles</span> <span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Particles in Plasma&#39;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">linestyle</span><span class="p">)</span>
         <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Particles stuck at wall&#39;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">linestyle</span><span class="p">)</span>
         <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Particles in Divertor&#39;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">linestyle</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="s1">&#39;recycling_from_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
             <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span> <span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Particles in Pump&#39;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">linestyle</span><span class="p">)</span>
-            <span class="n">total</span><span class="o">+=</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
 
             <span class="k">if</span> <span class="s1">&#39;particles_retained_at_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
                 <span class="c1"># only plot particles retained at wall if retention model is used</span>
                 <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Particles retained at wall&#39;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">linestyle</span><span class="p">)</span>
-                <span class="n">total</span><span class="o">+=</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
 
         <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time</span><span class="p">,</span><span class="n">total</span><span class="p">,</span><span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Total&#39;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">linestyle</span><span class="p">)</span>
-        
-        <span class="n">source</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">source_lbl</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
-        <span class="n">integ_source</span> <span class="o">=</span>  <span class="n">cumtrapz</span><span class="p">(</span><span class="n">source</span><span class="p">,</span><span class="n">time</span><span class="p">,</span><span class="n">initial</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    
+
         <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time</span><span class="p">,</span><span class="n">integ_source</span><span class="p">,</span><span class="n">lw</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Integrated source&#39;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="n">linestyle</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">abs</span><span class="p">((</span><span class="n">total</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">integ_source</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="n">integ_source</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">&gt;</span> <span class="o">.</span><span class="mi">1</span><span class="p">:</span>
@@ -466,28 +367,20 @@
 
         <span class="n">ax2</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="kc">None</span><span class="p">)</span>
         <span class="n">ax2</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;best&#39;</span><span class="p">)</span>
-        
+
         <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
 
-    <span class="c1"># return the relevant quantities for particle conservation</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">total</span>
-    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;plasma_particles&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vol_int</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="s1">&#39;total_impurity_density&#39;</span><span class="p">)</span>
-    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span><span class="p">,</span>
-    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_divertor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
-    <span class="k">if</span> <span class="s1">&#39;recycling_from_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
-        <span class="n">res</span><span class="p">[</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_in_pump&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
-    <span class="k">if</span> <span class="s1">&#39;recycling_from_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span> <span class="ow">and</span> <span class="s1">&#39;particles_retained_at_wall&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
-        <span class="n">res</span><span class="p">[</span><span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;particles_retained_at_wall&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">*</span><span class="n">circ</span>
-    <span class="n">res</span><span class="p">[</span><span class="s1">&#39;integ_source&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">integ_source</span>
     
-    <span class="c1"># close dataset</span>
+    <span class="c1"># close dataset if necessary</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">ds</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
     <span class="k">except</span><span class="p">:</span>
         <span class="k">pass</span>
 
-    <span class="k">return</span> <span class="n">ds</span><span class="p">,</span> <span class="n">res</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span><span class="n">ax2</span><span class="p">)</span></div>
+    <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span><span class="n">ax2</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">out</span></div>
 
 </pre></div>
 

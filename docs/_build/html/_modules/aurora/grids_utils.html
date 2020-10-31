@@ -755,13 +755,36 @@
     
     <span class="k">return</span> <span class="n">clen_divertor</span><span class="p">,</span> <span class="n">clen_limiter</span></div>
 
-<div class="viewcode-block" id="estimate_boundary_distance"><a class="viewcode-back" href="../../aurora.html#aurora.grids_utils.estimate_boundary_distance">[docs]</a><span class="k">def</span> <span class="nf">estimate_boundary_distance</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">,</span> <span class="n">shot</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time_ms</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Obtain a simple estimate for the distance between the LCFS and the wall </span>
-<span class="sd">    boundary.</span>
+
+
+
+<div class="viewcode-block" id="estimate_boundary_distance"><a class="viewcode-back" href="../../aurora.html#aurora.grids_utils.estimate_boundary_distance">[docs]</a><span class="k">def</span> <span class="nf">estimate_boundary_distance</span><span class="p">(</span><span class="n">shot</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">time_ms</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Obtain a simple estimate for the distance between the LCFS and the wall boundary.</span>
+<span class="sd">    This requires access to the A_EQDSK on the EFIT01 tree on MDS+. Users who may find that this call</span>
+<span class="sd">    does not work for their device may try to adapt the OMFITmdsValue TDI string.</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">        shot : int</span>
+<span class="sd">             Discharge/experiment number</span>
+<span class="sd">        device : str</span>
+<span class="sd">             Name of device, e.g. &#39;C-Mod&#39;, &#39;DIII-D&#39;, etc.</span>
+<span class="sd">        time_ms : int or float</span>
+<span class="sd">            Time at which results for the outer gap should be taken.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bound_sep : float</span>
+<span class="sd">            Estimate for the distance between the wall boundary and the separatrix [cm]</span>
+<span class="sd">        lim_sep : float</span>
+<span class="sd">            Estimate for the distance between the limiter and the separatrix [cm]. This is (quite arbitrarily)</span>
+<span class="sd">            taken to be 2/3 of the bound_sep distance.    </span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="c1"># estimate separation between LCFS and boundary from the outer gap</span>
-    <span class="n">tmp</span> <span class="o">=</span> <span class="n">OMFITmdsValue</span><span class="p">(</span><span class="n">server</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">treename</span><span class="o">=</span><span class="s1">&#39;EFIT01&#39;</span><span class="p">,</span> <span class="n">shot</span><span class="o">=</span><span class="n">shot</span><span class="p">,</span>
-                        <span class="n">TDI</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">ANALYSIS::TOP.EFIT.RESULTS.A_EQDSK.ORIGHT&#39;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">OMFITmdsValue</span><span class="p">(</span><span class="n">server</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">treename</span><span class="o">=</span><span class="s1">&#39;EFIT01&#39;</span><span class="p">,</span> <span class="n">shot</span><span class="o">=</span><span class="n">shot</span><span class="p">,</span>
+                            <span class="n">TDI</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">EFIT01::TOP.RESULTS.A_EQDSK.ORIGHT&#39;</span><span class="p">)</span>  <span class="c1"># CMOD format, take ORIGHT</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">OMFITmdsValue</span><span class="p">(</span><span class="n">server</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">treename</span><span class="o">=</span><span class="s1">&#39;EFIT01&#39;</span><span class="p">,</span> <span class="n">shot</span><span class="o">=</span><span class="n">shot</span><span class="p">,</span>
+                            <span class="n">TDI</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">EFIT01::TOP.RESULTS.AEQDSK.GAPOUT&#39;</span><span class="p">)</span> <span class="c1"># useful variable for many other devices</span>
+
     <span class="n">time_vec</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">dim_of</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
     <span class="n">data_r</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">.</span><span class="n">data</span><span class="p">()</span>
     

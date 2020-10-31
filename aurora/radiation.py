@@ -11,11 +11,13 @@ from scipy import constants
 from IPython import embed
 import warnings, copy
 
-def compute_rad(imp, rhop, time, nz, ne, Te,
+def compute_rad(imp, nz, ne, Te,
                 n0 = None, Ti = None, ni = None, main_ion_name='D', adas_files = {},
                 prad_flag=False,thermal_cx_rad_flag=False, spectral_brem_flag=False,
                 sxr_flag=False, main_ion_brem_flag=False):
-    '''Calculate radiation terms corresponding to a simulation result. 
+    '''Calculate radiation terms corresponding to a simulation result. The nz,ne,Te,n0,Ti,ni arrays
+    are normally assumed to be given as a function of (time,nZ,space), but time and space may 
+    be substituted by other coordinates (e.g. R,Z)
     
     Result can be conveniently plotted with a time-slider using, for example
 
@@ -35,10 +37,6 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
     Args:
         imp : str
              Impurity symbol, e.g. Ca, F, W
-        rhop : array (space,)
-             Sqrt of poloidal flux radial grid of simulation output. 
-        time : array (time,) [s]
-             Time array of simulation output.
         nz : array (time, nZ, space) [cm^-3]
             Dictionary with impurity density result, as given by :py:func:`~aurora.core.run_aurora` method.
         ne : array (time,space) [cm^-3]
@@ -191,7 +189,7 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
                               RuntimeWarning)
                 Ti = copy.deepcopy(Te)
 
-            # make sure that n0 and Ti are given as a function of time and space:
+            # make sure that n0 and Ti are given as 2D:
             assert n0.ndim==2 and Ti.ndim==2
             
             logni = np.log10(ni)
@@ -205,7 +203,7 @@ def compute_rad(imp, rhop, time, nz, ne, Te,
             prc = atomic.interp_atom_prof(atom_data['prc'],logni,logTi,x_multiply=False) # W
 
             # broadcast n0 to dimensions (nt,nZ,nr):
-            res['thermal_cx_cont_rad'] = nz[:,1:] * n0[None,:] * prc
+            res['thermal_cx_cont_rad'] = nz[:,1:] * n0[:,None] * prc
 
             # add to total unfiltered radiation:
             res['tot'] += res['thermal_cx_cont_rad'].sum(1)
@@ -517,7 +515,7 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     out['ni'] -= Z_n_imp
 
     # compute radiated power components
-    rad = compute_rad(imp, rhop, [1.0], nz_cm3.transpose(0,2,1), ne_cm3[None,:], Te_eV[None,:],
+    rad = compute_rad(imp, nz_cm3.transpose(0,2,1), ne_cm3[None,:], Te_eV[None,:],
                       n0=n0_cm3[None,:] if n0_cm3 is not None else None,
                       Ti=Te_eV[None,:] if Ti_eV is None else Ti_eV[None,:],
                       ni=out['ni'], adas_files=adas_files,

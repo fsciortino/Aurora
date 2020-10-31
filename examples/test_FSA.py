@@ -5,70 +5,39 @@ This is inspired by Dux et al. NF 2020.
 
 It is recommended to run this in IPython.
 '''
-
 import numpy as np
-import matplotlib.pyplot as plt; plt.ion()
-import omfit_eqdsk
-import pickle as pkl
+import matplotlib.pyplot as plt
+plt.ion()
+import omfit_eqdsk, omfit_gapy
 import scipy,sys,os
 import time
 from scipy.interpolate import interp1d
-from omfit_commonclasses.utils_math import atomic_element
 
 # Make sure that package home is added to sys.path
 import sys
 sys.path.append('../')
 import aurora
 
-
+# read in default Aurora namelist
 namelist = aurora.default_nml.load_default_namelist()
+kp = namelist['kin_profs']
 
-# test for C-Mod:
-namelist['device'] = 'CMOD'
-namelist['shot'] = 1101014030
-namelist['time'] = 1250 # ms
-gfile_name=f'g{namelist["shot"]}.{str(namelist["time"]).zfill(5)}'
+# Use gfile and statefile in local directory:
+geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
+inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
 
+# transform rho_phi (=sqrt toroidal flux) into rho_psi (=sqrt poloidal flux) and save kinetic profiles
+rhop = kp['Te']['rhop'] = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
+kp['ne']['vals'] = inputgacode['ne'][None,:]*1e13 # 1e19 m^-3 --> cm^-3
+kp['Te']['vals'] = inputgacode['Te'][None,:]*1e3  # keV --> eV
 
-if os.path.exists(gfile_name):
-    # fetch local g-file if available
-    geqdsk = omfit_eqdsk.OMFITgeqdsk(gfile_name)
-    print('Fetched local g-file')
-else:
-    # attempt to construct it via omfit_eqdsk if not available locally
-    geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(
-        device=namelist['device'],shot=namelist['shot'],
-        time=namelist['time'], SNAPfile='EFIT01',
-        fail_if_out_of_range=False,time_diff_warning_threshold=20
-    )
-    # save g-file locally:
-    geqdsk.save(raw=True)
-    print('Saved g-file locally')
-
-
-# example kinetic profiles
-kin_profs = namelist['kin_profs']
-
-with open('./test_kin_profs.pkl','rb') as f:
-    ne_profs,Te_profs = pkl.load(f)
-
-kin_profs['ne']['vals'] = ne_profs['ne']*1e14  # 10^20 m^-3 --> cm^-3
-kin_profs['ne']['times'] = ne_profs['t']
-rhop = kin_profs['ne']['rhop'] = ne_profs['rhop']
-kin_profs['Te']['vals'] = Te_profs['Te']*1e3  # keV --> eV
-kin_profs['Te']['times'] = Te_profs['t']
-kin_profs['Te']['rhop'] = Te_profs['rhop']
-
-# set no sources of impurities
+# set impurity species and sources rate
+imp = namelist['imp'] = 'Ar'
 namelist['source_type'] = 'const'
-namelist['Phi0'] = 1e24 #1.0
+namelist['Phi0'] = 1e24
 
-# Set up for 1 ion:
-imp = namelist['imp'] = 'Ca' #'Ar' #'Ca'
-
-# Now get aurora setup
+# Setup aurora sim to efficiently setup atomic rates and profiles over radius
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
-
 
 # plot normalized ionization frequency for the last time point, only within LCFS:
 rhop_in = asim.rhop_grid[asim.rhop_grid<1.0]
@@ -86,10 +55,8 @@ nu_ioniz_star = aurora.atomic.plot_norm_ion_freq( S_z, q_prof, R_prof, asim.A_im
 
 
 # get average over charge states using fractional abundances in ionization equilibrium (no transport)
-
-# average over time
-ne_avg = np.mean(kin_profs['ne']['vals'],axis=0)
-Te_avg = np.mean(kin_profs['Te']['vals'],axis=0)  # assume on the same radial basis as ne_avg
+ne_avg = np.mean(kp['ne']['vals'],axis=0) # average over time
+Te_avg = np.mean(kp['Te']['vals'],axis=0) # assume on the same radial basis as ne_avg
 
 # get fractional abundances on ne (cm^-3) and Te (eV) grid
 atom_data = aurora.get_atom_data(imp,['acd','scd'])

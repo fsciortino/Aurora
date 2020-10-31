@@ -28,7 +28,7 @@ def load_default_namelist():
         'imp_source_energy_eV' : 3.0, # only needed if source_width_in=source_width_out=0.0
         'prompt_redep_flag' : False,
         'Phi0': 1e+24,
-        'source_type':'file', 
+        'source_type':'const', 
         'source_file': None, # required if source_type='file'
         'source_cm_out_lcfs' : 1.0, # source distance in cm from LCFS
         'lbo_model': {'n_particles': 1e+18,
@@ -40,7 +40,7 @@ def load_default_namelist():
         'timing': {'dt_increase': np.array([1., 1.]),
                    'dt_start': np.array([0.001, 0.001]),
                    'steps_per_cycle': np.array([1, 1]),
-                   'times': np.array([1., 2.])},
+                   'times': np.array([0., 0.2])},
         # --------------------
         # radial grid
         'K': 6.0,
