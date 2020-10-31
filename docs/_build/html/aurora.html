@@ -37,6 +37,7 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tutorial:" href="tutorial.html" />
     <link rel="prev" title="aurora: modern 1.5D modeling of particle transport in magnetically-confined plasmas" href="index.html" /> 
 </head>
 
@@ -101,6 +102,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#module-aurora">Module contents</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial:</a></li>
 </ul>
 
             
@@ -179,6 +181,15 @@
 <em class="property">class </em><code class="sig-prename descclassname">aurora.core.</code><code class="sig-name descname">aurora_sim</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">namelist</span></em>, <em class="sig-param"><span class="n">geqdsk</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">nbi_cxr</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Class to setup and run aurora simulations.</p>
+<dl class="py method">
+<dt id="aurora.core.aurora_sim.calc_Zeff">
+<code class="sig-name descname">calc_Zeff</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.calc_Zeff"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.calc_Zeff" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute Zeff from each charge state density, using the result of an Aurora simulation.
+The total Zeff change over time and space due to the simulated impurity can be simply obtained by summing 
+over charge states</p>
+<p>Results are stored as an attribute of the simulation object instance.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt id="aurora.core.aurora_sim.check_conservation">
 <code class="sig-name descname">check_conservation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">axs</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/core.html#aurora_sim.check_conservation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.core.aurora_sim.check_conservation" title="Permalink to this definition">¶</a></dt>
@@ -276,7 +287,7 @@ this up. Default is False (still under development)</p>
 </dl>
 </dd>
 <dt>Returns:</dt><dd><dl class="simple">
-<dt>nz<span class="classifier">array, (nr,nZ,nt)</span></dt><dd><p>Charge state densities [<a href="#id1"><span class="problematic" id="id2">:py:math:`cm^{-3}`</span></a>] over the space and time grids.</p>
+<dt>nz<span class="classifier">array, (nr,nZ,nt)</span></dt><dd><p>Charge state densities [:math::<cite>cm^{-3}</cite>] over the space and time grids.</p>
 </dd>
 <dt>N_wall<span class="classifier">array (nt,)</span></dt><dd><p>Number of particles at the wall reservoir over time.</p>
 </dd>
@@ -286,15 +297,15 @@ this up. Default is False (still under development)</p>
 </dd>
 <dt>N_ret<span class="classifier">array (nt,)</span></dt><dd><p>Number of particles temporarily held in the wall reservoirs.</p>
 </dd>
-<dt>N_tsu<span class="classifier">array (nt,)</span></dt><dd><p>Edge particle loss [<a href="#id3"><span class="problematic" id="id4">:py:math:`cm^{-3}`</span></a>]</p>
+<dt>N_tsu<span class="classifier">array (nt,)</span></dt><dd><p>Edge particle loss [:math::<cite>cm^{-3}</cite>]</p>
 </dd>
-<dt>N_dsu<span class="classifier">array (nt,)</span></dt><dd><p>Parallel particle loss [<a href="#id5"><span class="problematic" id="id6">:py:math:`cm^{-3}`</span></a>]</p>
+<dt>N_dsu<span class="classifier">array (nt,)</span></dt><dd><p>Parallel particle loss [:math::<cite>cm^{-3}</cite>]</p>
 </dd>
-<dt>N_dsul<span class="classifier">array (nt,)</span></dt><dd><p>Parallel particle loss at the limiter [<a href="#id7"><span class="problematic" id="id8">:py:math:`cm^{-3}`</span></a>]</p>
+<dt>N_dsul<span class="classifier">array (nt,)</span></dt><dd><p>Parallel particle loss at the limiter [:math::<cite>cm^{-3}</cite>]</p>
 </dd>
-<dt>rcld_rate<span class="classifier">array (nt,)</span></dt><dd><p>Recycling from the divertor [<a href="#id9"><span class="problematic" id="id10">:py:math:`s^{-1} cm^{-3}`</span></a>]</p>
+<dt>rcld_rate<span class="classifier">array (nt,)</span></dt><dd><p>Recycling from the divertor [:math::<cite>s^{-1} cm^{-3}</cite>]</p>
 </dd>
-<dt>rclw_rate<span class="classifier">array (nt,)</span></dt><dd><p>Recycling from the wall [<a href="#id11"><span class="problematic" id="id12">:py:math:`s^{-1} cm^{-3}`</span></a>]</p>
+<dt>rclw_rate<span class="classifier">array (nt,)</span></dt><dd><p>Recycling from the wall [:math::<cite>s^{-1} cm^{-3}</cite>]</p>
 </dd>
 </dl>
 </dd>
@@ -698,8 +709,10 @@ This function will be moved and expanded in ColRadPy in the near future.</p>
 
 <dl class="py function">
 <dt id="aurora.radiation.compute_rad">
-<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">compute_rad</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">time</span></em>, <em class="sig-param"><span class="n">nz</span></em>, <em class="sig-param"><span class="n">ne</span></em>, <em class="sig-param"><span class="n">Te</span></em>, <em class="sig-param"><span class="n">n0</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">Ti</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ni</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">main_ion_name</span><span class="o">=</span><span class="default_value">'D'</span></em>, <em class="sig-param"><span class="n">adas_files</span><span class="o">=</span><span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">prad_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">thermal_cx_rad_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">spectral_brem_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">sxr_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">main_ion_brem_flag</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#compute_rad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.compute_rad" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate radiation terms corresponding to a simulation result.</p>
+<code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">compute_rad</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imp</span></em>, <em class="sig-param"><span class="n">nz</span></em>, <em class="sig-param"><span class="n">ne</span></em>, <em class="sig-param"><span class="n">Te</span></em>, <em class="sig-param"><span class="n">n0</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">Ti</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ni</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">main_ion_name</span><span class="o">=</span><span class="default_value">'D'</span></em>, <em class="sig-param"><span class="n">adas_files</span><span class="o">=</span><span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">prad_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">thermal_cx_rad_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">spectral_brem_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">sxr_flag</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">main_ion_brem_flag</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#compute_rad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.compute_rad" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate radiation terms corresponding to a simulation result. The nz,ne,Te,n0,Ti,ni arrays
+are normally assumed to be given as a function of (time,nZ,space), but time and space may 
+be substituted by other coordinates (e.g. R,Z)</p>
 <p>Result can be conveniently plotted with a time-slider using, for example</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">zmax</span> <span class="o">=</span> <span class="n">nz</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># number of charge states (including neutrals)</span>
 <span class="n">rad</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;impurity_radiation&#39;</span><span class="p">][:,:</span><span class="n">zmax</span><span class="p">,:]</span>   <span class="c1"># no fully-stripped line radiation</span>
@@ -715,10 +728,6 @@ given for inputs.</p>
 <dl>
 <dt>Args:</dt><dd><dl class="simple">
 <dt>imp<span class="classifier">str</span></dt><dd><p>Impurity symbol, e.g. Ca, F, W</p>
-</dd>
-<dt>rhop<span class="classifier">array (space,)</span></dt><dd><p>Sqrt of poloidal flux radial grid of simulation output.</p>
-</dd>
-<dt>time<span class="classifier">array (time,) [s]</span></dt><dd><p>Time array of simulation output.</p>
 </dd>
 <dt>nz<span class="classifier">array (time, nZ, space) [cm^-3]</span></dt><dd><p>Dictionary with impurity density result, as given by <code class="xref py py-func docutils literal notranslate"><span class="pre">run_aurora()</span></code> method.</p>
 </dd>
@@ -2085,6 +2094,8 @@ Section 4.2.4</p>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="tutorial.html" class="btn btn-neutral float-right" title="Tutorial:" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="index.html" class="btn btn-neutral float-left" title="aurora: modern 1.5D modeling of particle transport in magnetically-confined plasmas" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

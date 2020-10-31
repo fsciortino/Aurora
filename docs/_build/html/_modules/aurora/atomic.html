@@ -83,6 +83,7 @@
             
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../aurora.html">aurora package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial:</a></li>
 </ul>
 
             
@@ -655,7 +656,7 @@
         <span class="n">x_fine</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">x</span><span class="p">),</span><span class="mi">10000</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">cs</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">fz</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
             <span class="n">fz_i</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fz</span><span class="p">[:,</span><span class="n">cs</span><span class="p">],</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;cubic&#39;</span><span class="p">)(</span><span class="n">x_fine</span><span class="p">)</span>
-
+            <span class="n">axx</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_fine</span><span class="p">,</span> <span class="n">fz_i</span><span class="p">)</span>
             <span class="n">imax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">fz_i</span><span class="p">)</span>
             <span class="n">axx</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="mf">0.05</span><span class="p">,</span><span class="n">x_fine</span><span class="p">[</span><span class="n">imax</span><span class="p">]]),</span> <span class="n">fz_i</span><span class="p">[</span><span class="n">imax</span><span class="p">],</span> <span class="n">cs</span><span class="p">,</span>
                      <span class="n">horizontalalignment</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">clip_on</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1239,10 +1240,10 @@
     <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_si.dat&quot;</span>
     <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_si.dat&quot;</span>
     <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>     <span class="c1">#18</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd00_ar.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd00_ar.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb00_ar.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt00_ar.dat&quot;</span>
+    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd89_ar.dat&quot;</span>
+    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd89_ar.dat&quot;</span>
+    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb89_ar.dat&quot;</span>
+    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt89_ar.dat&quot;</span>
     <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_ar.dat&quot;</span>
     <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_ar.dat&quot;</span>
     <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls_Ar_14.dat&quot;</span>

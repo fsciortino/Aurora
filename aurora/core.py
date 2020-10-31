@@ -175,10 +175,15 @@ class aurora_sim:
     def get_aurora_kin_profs(self, min_T=1.01, min_ne=1e10):
         '''Get kinetic profiles on radial and time grids.
         '''
+        # ensure 2-dimensional inputs:
+        self.kin_profs['ne']['vals'] = np.atleast_2d(self.kin_profs['ne']['vals'])
+        self.kin_profs['Te']['vals'] = np.atleast_2d(self.kin_profs['Te']['vals'])
+        
         Te = self.interp_kin_prof('Te')
         ne = self.interp_kin_prof('ne')
 
         if 'Ti' in self.kin_profs and 'vals' in self.kin_profs['Ti']:
+            self.kin_profs['Ti']['vals'] = np.atleast_2d(self.kin_profs['Ti']['vals'])
             Ti = self.interp_kin_prof('Ti')
         else:
             Ti = Te
@@ -337,7 +342,7 @@ class aurora_sim:
 
         Returns:
             nz : array, (nr,nZ,nt)
-                Charge state densities [:py:math:`cm^{-3}`] over the space and time grids.
+                Charge state densities [:math::`cm^{-3}`] over the space and time grids.
             N_wall : array (nt,)
                 Number of particles at the wall reservoir over time.
             N_div : array (nt,)
@@ -347,15 +352,15 @@ class aurora_sim:
             N_ret : array (nt,)
                  Number of particles temporarily held in the wall reservoirs. 
             N_tsu : array (nt,)
-                 Edge particle loss [:py:math:`cm^{-3}`]
+                 Edge particle loss [:math::`cm^{-3}`]
             N_dsu : array (nt,)
-                 Parallel particle loss [:py:math:`cm^{-3}`]
+                 Parallel particle loss [:math::`cm^{-3}`]
             N_dsul : array (nt,)
-                 Parallel particle loss at the limiter [:py:math:`cm^{-3}`]
+                 Parallel particle loss at the limiter [:math::`cm^{-3}`]
             rcld_rate : array (nt,)
-                 Recycling from the divertor [:py:math:`s^{-1} cm^{-3}`]
+                 Recycling from the divertor [:math::`s^{-1} cm^{-3}`]
             rclw_rate : array (nt,)
-                 Recycling from the wall [:py:math:`s^{-1} cm^{-3}`]
+                 Recycling from the wall [:math::`s^{-1} cm^{-3}`]
         '''
         # D_z and V_z must have the same shape
         assert np.array(D_z).shape == np.array(V_z).shape

@@ -83,6 +83,7 @@
             
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../aurora.html">aurora package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial:</a></li>
 </ul>
 
             
@@ -160,11 +161,13 @@
 <span class="kn">from</span> <span class="nn">IPython</span> <span class="kn">import</span> <span class="n">embed</span>
 <span class="kn">import</span> <span class="nn">warnings</span><span class="o">,</span> <span class="nn">copy</span>
 
-<div class="viewcode-block" id="compute_rad"><a class="viewcode-back" href="../../aurora.html#aurora.radiation.compute_rad">[docs]</a><span class="k">def</span> <span class="nf">compute_rad</span><span class="p">(</span><span class="n">imp</span><span class="p">,</span> <span class="n">rhop</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">nz</span><span class="p">,</span> <span class="n">ne</span><span class="p">,</span> <span class="n">Te</span><span class="p">,</span>
+<div class="viewcode-block" id="compute_rad"><a class="viewcode-back" href="../../aurora.html#aurora.radiation.compute_rad">[docs]</a><span class="k">def</span> <span class="nf">compute_rad</span><span class="p">(</span><span class="n">imp</span><span class="p">,</span> <span class="n">nz</span><span class="p">,</span> <span class="n">ne</span><span class="p">,</span> <span class="n">Te</span><span class="p">,</span>
                 <span class="n">n0</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Ti</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ni</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">main_ion_name</span><span class="o">=</span><span class="s1">&#39;D&#39;</span><span class="p">,</span> <span class="n">adas_files</span> <span class="o">=</span> <span class="p">{},</span>
                 <span class="n">prad_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">thermal_cx_rad_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">spectral_brem_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">sxr_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">main_ion_brem_flag</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Calculate radiation terms corresponding to a simulation result. </span>
+    <span class="sd">&#39;&#39;&#39;Calculate radiation terms corresponding to a simulation result. The nz,ne,Te,n0,Ti,ni arrays</span>
+<span class="sd">    are normally assumed to be given as a function of (time,nZ,space), but time and space may </span>
+<span class="sd">    be substituted by other coordinates (e.g. R,Z)</span>
 <span class="sd">    </span>
 <span class="sd">    Result can be conveniently plotted with a time-slider using, for example</span>
 
@@ -184,10 +187,6 @@
 <span class="sd">    Args:</span>
 <span class="sd">        imp : str</span>
 <span class="sd">             Impurity symbol, e.g. Ca, F, W</span>
-<span class="sd">        rhop : array (space,)</span>
-<span class="sd">             Sqrt of poloidal flux radial grid of simulation output. </span>
-<span class="sd">        time : array (time,) [s]</span>
-<span class="sd">             Time array of simulation output.</span>
 <span class="sd">        nz : array (time, nZ, space) [cm^-3]</span>
 <span class="sd">            Dictionary with impurity density result, as given by :py:func:`~aurora.core.run_aurora` method.</span>
 <span class="sd">        ne : array (time,space) [cm^-3]</span>
@@ -340,7 +339,7 @@
                               <span class="ne">RuntimeWarning</span><span class="p">)</span>
                 <span class="n">Ti</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">Te</span><span class="p">)</span>
 
-            <span class="c1"># make sure that n0 and Ti are given as a function of time and space:</span>
+            <span class="c1"># make sure that n0 and Ti are given as 2D:</span>
             <span class="k">assert</span> <span class="n">n0</span><span class="o">.</span><span class="n">ndim</span><span class="o">==</span><span class="mi">2</span> <span class="ow">and</span> <span class="n">Ti</span><span class="o">.</span><span class="n">ndim</span><span class="o">==</span><span class="mi">2</span>
             
             <span class="n">logni</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">ni</span><span class="p">)</span>
@@ -354,7 +353,7 @@
             <span class="n">prc</span> <span class="o">=</span> <span class="n">atomic</span><span class="o">.</span><span class="n">interp_atom_prof</span><span class="p">(</span><span class="n">atom_data</span><span class="p">[</span><span class="s1">&#39;prc&#39;</span><span class="p">],</span><span class="n">logni</span><span class="p">,</span><span class="n">logTi</span><span class="p">,</span><span class="n">x_multiply</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="c1"># W</span>
 
             <span class="c1"># broadcast n0 to dimensions (nt,nZ,nr):</span>
-            <span class="n">res</span><span class="p">[</span><span class="s1">&#39;thermal_cx_cont_rad&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nz</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span> <span class="o">*</span> <span class="n">n0</span><span class="p">[</span><span class="kc">None</span><span class="p">,:]</span> <span class="o">*</span> <span class="n">prc</span>
+            <span class="n">res</span><span class="p">[</span><span class="s1">&#39;thermal_cx_cont_rad&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nz</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span> <span class="o">*</span> <span class="n">n0</span><span class="p">[:,</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">prc</span>
 
             <span class="c1"># add to total unfiltered radiation:</span>
             <span class="n">res</span><span class="p">[</span><span class="s1">&#39;tot&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">res</span><span class="p">[</span><span class="s1">&#39;thermal_cx_cont_rad&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
@@ -666,7 +665,7 @@
     <span class="n">out</span><span class="p">[</span><span class="s1">&#39;ni&#39;</span><span class="p">]</span> <span class="o">-=</span> <span class="n">Z_n_imp</span>
 
     <span class="c1"># compute radiated power components</span>
-    <span class="n">rad</span> <span class="o">=</span> <span class="n">compute_rad</span><span class="p">(</span><span class="n">imp</span><span class="p">,</span> <span class="n">rhop</span><span class="p">,</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">],</span> <span class="n">nz_cm3</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="n">ne_cm3</span><span class="p">[</span><span class="kc">None</span><span class="p">,:],</span> <span class="n">Te_eV</span><span class="p">[</span><span class="kc">None</span><span class="p">,:],</span>
+    <span class="n">rad</span> <span class="o">=</span> <span class="n">compute_rad</span><span class="p">(</span><span class="n">imp</span><span class="p">,</span> <span class="n">nz_cm3</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="n">ne_cm3</span><span class="p">[</span><span class="kc">None</span><span class="p">,:],</span> <span class="n">Te_eV</span><span class="p">[</span><span class="kc">None</span><span class="p">,:],</span>
                       <span class="n">n0</span><span class="o">=</span><span class="n">n0_cm3</span><span class="p">[</span><span class="kc">None</span><span class="p">,:]</span> <span class="k">if</span> <span class="n">n0_cm3</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
                       <span class="n">Ti</span><span class="o">=</span><span class="n">Te_eV</span><span class="p">[</span><span class="kc">None</span><span class="p">,:]</span> <span class="k">if</span> <span class="n">Ti_eV</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">Ti_eV</span><span class="p">[</span><span class="kc">None</span><span class="p">,:],</span>
                       <span class="n">ni</span><span class="o">=</span><span class="n">out</span><span class="p">[</span><span class="s1">&#39;ni&#39;</span><span class="p">],</span> <span class="n">adas_files</span><span class="o">=</span><span class="n">adas_files</span><span class="p">,</span>

@@ -83,6 +83,7 @@
             
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../aurora.html">aurora package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial:</a></li>
 </ul>
 
             
@@ -324,10 +325,15 @@
 <div class="viewcode-block" id="aurora_sim.get_aurora_kin_profs"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.get_aurora_kin_profs">[docs]</a>    <span class="k">def</span> <span class="nf">get_aurora_kin_profs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_T</span><span class="o">=</span><span class="mf">1.01</span><span class="p">,</span> <span class="n">min_ne</span><span class="o">=</span><span class="mf">1e10</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;Get kinetic profiles on radial and time grids.</span>
 <span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c1"># ensure 2-dimensional inputs:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="s1">&#39;ne&#39;</span><span class="p">][</span><span class="s1">&#39;vals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="s1">&#39;ne&#39;</span><span class="p">][</span><span class="s1">&#39;vals&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="s1">&#39;Te&#39;</span><span class="p">][</span><span class="s1">&#39;vals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="s1">&#39;Te&#39;</span><span class="p">][</span><span class="s1">&#39;vals&#39;</span><span class="p">])</span>
+        
         <span class="n">Te</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_kin_prof</span><span class="p">(</span><span class="s1">&#39;Te&#39;</span><span class="p">)</span>
         <span class="n">ne</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_kin_prof</span><span class="p">(</span><span class="s1">&#39;ne&#39;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="s1">&#39;Ti&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span> <span class="ow">and</span> <span class="s1">&#39;vals&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="s1">&#39;Ti&#39;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="s1">&#39;Ti&#39;</span><span class="p">][</span><span class="s1">&#39;vals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kin_profs</span><span class="p">[</span><span class="s1">&#39;Ti&#39;</span><span class="p">][</span><span class="s1">&#39;vals&#39;</span><span class="p">])</span>
             <span class="n">Ti</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interp_kin_prof</span><span class="p">(</span><span class="s1">&#39;Ti&#39;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">Ti</span> <span class="o">=</span> <span class="n">Te</span>
@@ -486,7 +492,7 @@
 
 <span class="sd">        Returns:</span>
 <span class="sd">            nz : array, (nr,nZ,nt)</span>
-<span class="sd">                Charge state densities [:py:math:`cm^{-3}`] over the space and time grids.</span>
+<span class="sd">                Charge state densities [:math::`cm^{-3}`] over the space and time grids.</span>
 <span class="sd">            N_wall : array (nt,)</span>
 <span class="sd">                Number of particles at the wall reservoir over time.</span>
 <span class="sd">            N_div : array (nt,)</span>
@@ -496,15 +502,15 @@
 <span class="sd">            N_ret : array (nt,)</span>
 <span class="sd">                 Number of particles temporarily held in the wall reservoirs. </span>
 <span class="sd">            N_tsu : array (nt,)</span>
-<span class="sd">                 Edge particle loss [:py:math:`cm^{-3}`]</span>
+<span class="sd">                 Edge particle loss [:math::`cm^{-3}`]</span>
 <span class="sd">            N_dsu : array (nt,)</span>
-<span class="sd">                 Parallel particle loss [:py:math:`cm^{-3}`]</span>
+<span class="sd">                 Parallel particle loss [:math::`cm^{-3}`]</span>
 <span class="sd">            N_dsul : array (nt,)</span>
-<span class="sd">                 Parallel particle loss at the limiter [:py:math:`cm^{-3}`]</span>
+<span class="sd">                 Parallel particle loss at the limiter [:math::`cm^{-3}`]</span>
 <span class="sd">            rcld_rate : array (nt,)</span>
-<span class="sd">                 Recycling from the divertor [:py:math:`s^{-1} cm^{-3}`]</span>
+<span class="sd">                 Recycling from the divertor [:math::`s^{-1} cm^{-3}`]</span>
 <span class="sd">            rclw_rate : array (nt,)</span>
-<span class="sd">                 Recycling from the wall [:py:math:`s^{-1} cm^{-3}`]</span>
+<span class="sd">                 Recycling from the wall [:math::`s^{-1} cm^{-3}`]</span>
 <span class="sd">        &#39;&#39;&#39;</span>
         <span class="c1"># D_z and V_z must have the same shape</span>
         <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">D_z</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">V_z</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span>
@@ -581,7 +587,27 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">res</span></div>
     
         
+<div class="viewcode-block" id="aurora_sim.calc_Zeff"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.calc_Zeff">[docs]</a>    <span class="k">def</span> <span class="nf">calc_Zeff</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Compute Zeff from each charge state density, using the result of an Aurora simulation.</span>
+<span class="sd">        The total Zeff change over time and space due to the simulated impurity can be simply obtained by summing </span>
+<span class="sd">        over charge states</span>
 
+<span class="sd">        Results are stored as an attribute of the simulation object instance. </span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c1"># This method requires that a simulation has already been run:</span>
+        <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="s1">&#39;res&#39;</span><span class="p">)</span>
+
+        <span class="c1"># extract charge state densities from the simulation result</span>
+        <span class="n">nz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Compute the variation of Zeff from these charge states</span>
+        <span class="n">Zmax</span> <span class="o">=</span> <span class="n">nz</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span>
+        <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">Zmax</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delta_Zeff</span> <span class="o">=</span> <span class="n">nz</span><span class="o">*</span><span class="p">(</span><span class="n">Z</span><span class="o">*</span><span class="p">(</span><span class="n">Z</span><span class="o">-</span><span class="mi">1</span><span class="p">))[</span><span class="kc">None</span><span class="p">,:,</span><span class="kc">None</span><span class="p">]</span>   <span class="c1"># for each charge state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delta_Zeff</span><span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ne</span><span class="o">.</span><span class="n">T</span><span class="p">[:,</span><span class="kc">None</span><span class="p">,:]</span></div>
+
+
+        
 <div class="viewcode-block" id="aurora_sim.check_conservation"><a class="viewcode-back" href="../../aurora.html#aurora.core.aurora_sim.check_conservation">[docs]</a>    <span class="k">def</span> <span class="nf">check_conservation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">axs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;Check particle conservation for an aurora simulation.</span>
 

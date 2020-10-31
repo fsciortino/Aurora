@@ -17,16 +17,16 @@ import aurora
 
 # read in default Aurora namelist
 namelist = aurora.default_nml.load_default_namelist()
-kp = namelist['kin_profs']
 
 # Use gfile and statefile in local directory:
 geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
 inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
 
-# transform rho_phi (=sqrt toroidal flux) into rho_psi (=sqrt poloidal flux) and save kinetic profiles
+# save kinetic profiles on a rhop (sqrt of norm. pol. flux) grid
+kp = namelist['kin_profs']
 kp['Te']['rhop'] = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
-kp['ne']['vals'] = inputgacode['ne'][None,:]*1e13 # 1e19 m^-3 --> cm^-3
-kp['Te']['vals'] = inputgacode['Te'][None,:]*1e3  # keV --> eV
+kp['ne']['vals'] = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
+kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
 
 # set impurity species and sources rate
 imp = namelist['imp'] = 'Ar'
