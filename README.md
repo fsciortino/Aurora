@@ -2,7 +2,7 @@
 
 `Aurora` is a modern heavy-ion transport code for magnetically-confined plasmas. Its main applications are forward modeling of impurity transport and radiation predictions for fusion synthetic diagnostics. `Aurora` offers a simple interface between Python3 and Fortran 90 -- a solution that ensures fast iterations, while maintaining simplicity for users. Recently, a Julia interface has also been developed and is now in beta testing. The package includes extensive Python3 functionality to create inputs and read/plot outputs. Moreover, users can read and process ADAS atomic data to make radiation predictions, both using the charge state density distributions from an `aurora` simulation or simply from fractional abundances in ionization equilibrium. 
 
-Documentation for the code is available at https://aurora=fusion.readthedocs.io.
+Documentation for the code is available at https://aurora-fusion.readthedocs.io.
 
 `Aurora` has been thoroughly benchmarked with the standard STRAHL, based on which it was originally developed. Recently, the algorithm proposed by O.Linder et al, Nuclear Fusion 2020, has been implemented and is now the default numerical scheme, although legacy options remain available. 
 
