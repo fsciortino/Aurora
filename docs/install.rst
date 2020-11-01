@@ -1,16 +1,26 @@
 Installation
 ============
 
-To obtain the latest version of the code, it is recommended to git-clone the repo at
+Installing from source
+----------------------
+
+We recommend installing from the latest version of the code, obtained by git-cloning the repository at
 
     https://github.com/fsciortino/aurora
     
-Then, running::
+After doing this, you can run::
 
   python setup.py install
 
-should do the magic.
+and should do the magic.
 
+Some users may want to have greater control over which compiler is being used for the installation; this can be most easily done by modifying the provided Makefile directly. After changing its top configuration lines, users can do::
+
+  make clean; make
+
+
+Installing via PyPI or Anaconda
+-------------------------------
 
 The latest stable version of the code will soon also be available via::
 
@@ -20,13 +30,9 @@ or from Anaconda Cloud::
 
     conda install aurora
 
-Some users may want to have greater control over which compiler is being used for the installation; this can be most easily done by modifying the provided Makefile directly. After changing its top configuration lines, users can do::
 
-  make clean; make
-
-
-Running in Julia
-----------------
+Running with Julia
+------------------
 
 Aurora simulations can also be done using a Python-Julia interface; this makes iterative runs even faster!
 

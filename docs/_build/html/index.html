@@ -89,6 +89,8 @@
 <li class="toctree-l1"><a class="reference internal" href="requirements.html">Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="params.html">Input parameters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="atomic_data.html">Atomic data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="citing.html">Citing Aurora</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contacts.html">Questions and contributions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="aurora.html">Aurora modules</a></li>
 </ul>
 
@@ -177,16 +179,14 @@
 <p>A number of standard tests and examples are provided using a real set of Alcator C-Mod kinetic profiles and geometry. In order to interface with EFIT gEQDSK files, <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> makes use of the [omfit_eqdsk](<a class="reference external" href="https://pypi.org/project/omfit-eqdsk/">https://pypi.org/project/omfit-eqdsk/</a>) package, which offers flexibility to work with data from many devices worldwide. Users may easily substitute this dependence with different magnetic reconstruction packages and/or postprocessing interfaces, if required. Interfacing <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> with several file formats used throughout the fusion community to store kinetic profiles is simple.</p>
 <p><a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> was born as a fast forward model of impurity transport, but it can also be useful for synthetic spectroscopic diagnostics and radiation modeling in fusion plasmas. For example, it may be helpful for parameter scans to explore the performance of future devices. The <a class="reference internal" href="aurora.html#aurora.radiation.radiation_model" title="aurora.radiation.radiation_model"><code class="xref py py-func docutils literal notranslate"><span class="pre">radiation_model()</span></code></a> method allows one to use ADAS atomic rates and given kinetic profiles to compute line radiation, bremsstrahlung, continuum and soft-x-ray-filtered radiation. Ionization equilibria can also be computed using the <a class="reference internal" href="aurora.html#module-aurora.atomic" title="aurora.atomic"><code class="xref py py-meth docutils literal notranslate"><span class="pre">atomic()</span></code></a> methods, thus enabling simple “constant-fraction” models where the total density of an impurity species is fixed to a certain percentage of the electron density.</p>
 </div>
-<div class="section" id="questions-suggestions">
-<h2>Questions? Suggestions?<a class="headerlink" href="#questions-suggestions" title="Permalink to this headline">¶</a></h2>
-<p>Please contact sciortino-at-psfc.mit.edu for any questions. Suggestions and collaborations are more than welcome!</p>
-</div>
-<div class="section" id="package-reference">
-<h2>Package Reference<a class="headerlink" href="#package-reference" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="documentation-contents">
+<h2>Documentation contents<a class="headerlink" href="#documentation-contents" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="install.html#running-in-julia">Running in Julia</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#installing-from-source">Installing from source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#installing-via-pypi-or-anaconda">Installing via PyPI or Anaconda</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#running-with-julia">Running with Julia</a></li>
 <li class="toctree-l2"><a class="reference internal" href="install.html#what-s-next">What’s next?</a></li>
 </ul>
 </li>
@@ -207,6 +207,8 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="atomic_data.html">Atomic data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="citing.html">Citing Aurora</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contacts.html">Questions and contributions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="aurora.html">Aurora modules</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="aurora.html#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="aurora.html#module-aurora.core">aurora.core module</a></li>

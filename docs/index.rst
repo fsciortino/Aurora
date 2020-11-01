@@ -33,15 +33,9 @@ A number of standard tests and examples are provided using a real set of Alcator
 :py:mod:`aurora` was born as a fast forward model of impurity transport, but it can also be useful for synthetic spectroscopic diagnostics and radiation modeling in fusion plasmas. For example, it may be helpful for parameter scans to explore the performance of future devices. The :py:func:`~aurora.radiation.radiation_model` method allows one to use ADAS atomic rates and given kinetic profiles to compute line radiation, bremsstrahlung, continuum and soft-x-ray-filtered radiation. Ionization equilibria can also be computed using the :py:meth:`~aurora.atomic` methods, thus enabling simple "constant-fraction" models where the total density of an impurity species is fixed to a certain percentage of the electron density. 
 
 
-
-Questions? Suggestions? 
------------------------
-Please contact sciortino-at-psfc.mit.edu for any questions. Suggestions and collaborations are more than welcome!
-
-
   
-Package Reference
------------------
+Documentation contents
+----------------------
 .. toctree::
    :maxdepth: 4
 
@@ -50,6 +44,8 @@ Package Reference
    requirements
    params
    atomic_data
+   citing
+   contacts
    aurora
 
 
