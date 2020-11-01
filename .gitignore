@@ -14,5 +14,5 @@ __pycache__
 docs/_build/
 
 # ADAS files should not be exported
-adas_dir/adf11/*
-adas_dir/adf15/*
+adas_data/adf11/*
+adas_data/adf15/*
