@@ -69,8 +69,10 @@ def animate_aurora(x,y,z, xlabel='', ylabel='', zlabel='',
 
     lines = []
     for l_ in labels:
-        a_legend.plot([],[],'k-' if l_=='total' else next(ls_cycle), lw=2.5 if l_=='total' else 1.0, label=l_)[0]
-        lobj = a_plot.plot([],[],'k-' if l_=='total' else next(ls_cycle), lw=2.5 if l_=='total' else 1.0)[0]
+        a_legend.plot([],[],'k-' if l_=='total' else next(ls_cycle),
+                      lw=2.5 if l_=='total' else 1.0, label=l_)[0]
+        lobj = a_plot.plot([],[],'k-' if l_=='total' else next(ls_cycle),
+                           lw=2.5 if l_=='total' else 1.0)[0]
         lines.append(lobj)
 
     # time label (NB: update won't work if this is placed outside axes)

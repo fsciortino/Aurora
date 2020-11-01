@@ -22,6 +22,15 @@ aurora.atomic module
     :undoc-members:
     :show-inheritance:
 
+       
+aurora.adas_files module
+------------------------
+
+.. automodule:: aurora.adas_files
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 aurora.radiation module
 -----------------------

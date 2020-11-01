@@ -77,6 +77,7 @@
         
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
+    
             
             
               
@@ -86,11 +87,15 @@
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="params.html">Input parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="atomic_data.html">Atomic data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="aurora.html">Aurora modules</a></li>
 </ul>
 
             
           
+    <a href="genindex.html">Index</a>
+  
         </div>
         
       </div>
@@ -166,10 +171,10 @@
 </div>
 <div class="section" id="what-is-aurora-useful-for">
 <h2>What is Aurora useful for?<a class="headerlink" href="#what-is-aurora-useful-for" title="Permalink to this headline">¶</a></h2>
-<p><a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> is useful for modeling of particle transport and radiation in fusion plasmas. The package includes Python functionality to create inputs and read/plot outputs from simulations. <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> was designed to be as efficient as possible in iterative workflows, where parameters (particularly diffusion and convection coefficients) are run through the code and repeatedly modified in order to match some experimental observations. For this reason, <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> keeps all data in memory and avoids any disk-I/O during operation. ALl data is kept in memory.</p>
+<p><a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> is useful for modeling of particle transport and radiation in fusion plasmas. The package includes Python functionality to create inputs and read/plot outputs from simulations. <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> was designed to be as efficient as possible in iterative workflows, where parameters (particularly diffusion and convection coefficients) are run through the code and repeatedly modified in order to match some experimental observations. For this reason, <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> keeps all data in memory and avoids any disk-I/O during operation. All data is kept in memory.</p>
 <p><a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> provides convenient interfaces to load a default namelist via <a class="reference internal" href="aurora.html#module-aurora.default_nml" title="aurora.default_nml"><code class="xref py py-func docutils literal notranslate"><span class="pre">default_nml()</span></code></a>, modify it as required and then pass the resulting namelist dictionary into the simulation setup. This is in the main class of <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a>, <a class="reference internal" href="aurora.html#aurora.core.aurora_sim" title="aurora.core.aurora_sim"><code class="xref py py-class docutils literal notranslate"><span class="pre">aurora_sim</span></code></a>, which allows creation of radial and temporal grids, interpolation of atomic rates, preparation of parallel loss rates at the edge, etc.</p>
 <p>The library in <a class="reference internal" href="aurora.html#module-aurora.atomic" title="aurora.atomic"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora.atomic</span></code></a> provides functions to load and interpolate atomic rates from ADAS ADF-11 files, as well as from ADF-15 photon emissivity coefficients (PEC) files. PEC data can alternatively be computed using the collisional-radiative model of ColRadPy, using methods in <a class="reference internal" href="aurora.html#module-aurora.radiation" title="aurora.radiation"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora.radiation</span></code></a>.</p>
-<p>A number of standard tests and examples are provided using a real set of Alcator C-Mod kinetic profiles and geometry. In order to interface with EFIT gEQDSK files, <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> makes use of the <code class="xref py py-mod docutils literal notranslate"><span class="pre">omfit_eqdsk</span></code> package, which offers flexibility to work with data from many devices worldwide. Users may easily substitute this dependence with different magnetic reconstruction packages and/or postprocessing interfaces, if required. Interfacing <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> with several file formats used throughout the fusion community to store kinetic profiles is simple.</p>
+<p>A number of standard tests and examples are provided using a real set of Alcator C-Mod kinetic profiles and geometry. In order to interface with EFIT gEQDSK files, <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> makes use of the [omfit_eqdsk](<a class="reference external" href="https://pypi.org/project/omfit-eqdsk/">https://pypi.org/project/omfit-eqdsk/</a>) package, which offers flexibility to work with data from many devices worldwide. Users may easily substitute this dependence with different magnetic reconstruction packages and/or postprocessing interfaces, if required. Interfacing <a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> with several file formats used throughout the fusion community to store kinetic profiles is simple.</p>
 <p><a class="reference internal" href="aurora.html#module-aurora" title="aurora"><code class="xref py py-mod docutils literal notranslate"><span class="pre">aurora</span></code></a> was born as a fast forward model of impurity transport, but it can also be useful for synthetic spectroscopic diagnostics and radiation modeling in fusion plasmas. For example, it may be helpful for parameter scans to explore the performance of future devices. The <a class="reference internal" href="aurora.html#aurora.radiation.radiation_model" title="aurora.radiation.radiation_model"><code class="xref py py-func docutils literal notranslate"><span class="pre">radiation_model()</span></code></a> method allows one to use ADAS atomic rates and given kinetic profiles to compute line radiation, bremsstrahlung, continuum and soft-x-ray-filtered radiation. Ionization equilibria can also be computed using the <a class="reference internal" href="aurora.html#module-aurora.atomic" title="aurora.atomic"><code class="xref py py-meth docutils literal notranslate"><span class="pre">atomic()</span></code></a> methods, thus enabling simple “constant-fraction” models where the total density of an impurity species is fixed to a certain percentage of the electron density.</p>
 </div>
 <div class="section" id="questions-suggestions">
@@ -186,14 +191,27 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="tutorial.html#running-aurora-simulations">Running <code class="xref py py-mod docutils literal notranslate"><span class="pre">Aurora</span></code> simulations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#running-aurora-simulations">Running Aurora simulations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#radiation-predictions">Radiation predictions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#zeff-contributions">Zeff contributions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#ionization-equilibrium">Ionization equilibrium</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="requirements.html">Requirements</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="requirements.html#julia-requirements">Julia requirements</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="params.html">Input parameters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="params.html#spatio-temporal-grids">Spatio-temporal grids</a></li>
+<li class="toctree-l2"><a class="reference internal" href="params.html#recycling">Recycling</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="atomic_data.html">Atomic data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="aurora.html">Aurora modules</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="aurora.html#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="aurora.html#module-aurora.core">aurora.core module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="aurora.html#module-aurora.atomic">aurora.atomic module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="aurora.html#module-aurora.adas_files">aurora.adas_files module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="aurora.html#module-aurora.radiation">aurora.radiation module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="aurora.html#module-aurora.grids_utils">aurora.grids_utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="aurora.html#module-aurora.coords">aurora.coords module</a></li>

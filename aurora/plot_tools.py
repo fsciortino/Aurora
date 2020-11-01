@@ -74,20 +74,14 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
 
 
     def update(dum):
-        # ls_cycle = itertools.cycle(ls_vals)
-        # remove_all(l)
-        # while l:
-        #     l.pop()
 
         i = int(slider.val)
 
         for v, l_ in zip(zz, l):
             l_.set_ydata(v[:, i])
-            # l.append(a_plot.plot(x, v[:, i], ls_cycle.next(), label=l_, **kwargs))
 
         if plot_sum:
             l_sum.set_ydata(zz[:, :, i].sum(axis=0))
-            # l.append(a_plot.plot(x, zz[:, :, i].sum(axis=0), ls_cycle.next(), label='total', **kwargs))
 
         a_plot.relim()
         a_plot.autoscale()
@@ -129,9 +123,11 @@ def get_ls_cycle():
             ls_vals.append(c + s)
     return itertools.cycle(ls_vals)
 
+
 def get_color_cycle():
     color_vals = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
     return itertools.cycle(color_vals)
+
 
 def get_line_cycle():
     style_vals = ['-', '--', '-.', ':']

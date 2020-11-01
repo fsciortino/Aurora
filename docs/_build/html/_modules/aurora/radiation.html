@@ -76,6 +76,7 @@
         
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
+    
             
             
               
@@ -85,11 +86,15 @@
 <li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../params.html">Input parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../atomic_data.html">Atomic data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../aurora.html">Aurora modules</a></li>
 </ul>
 
             
           
+    <a href="genindex.html">Index</a>
+  
         </div>
         
       </div>
@@ -183,28 +188,28 @@
 <span class="sd">            plot_sum=True,</span>
 <span class="sd">            labels=[f&#39;Ca$^{{{str(i)}}}$&#39; for i in np.arange(nz_w.shape[1]-1)])</span>
 
-<span class="sd">    All radiation outputs are given in :math:`W cm^-3`, consistently with units of :math:`cm^-3`</span>
+<span class="sd">    All radiation outputs are given in :math:`W cm^{-3}`, consistently with units of :math:`cm^{-3}`</span>
 <span class="sd">    given for inputs.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        imp : str</span>
 <span class="sd">             Impurity symbol, e.g. Ca, F, W</span>
-<span class="sd">        nz : array (time, nZ, space) [cm^-3]</span>
+<span class="sd">        nz : array (time, nZ, space) [:math:`cm^{-3}`]</span>
 <span class="sd">            Dictionary with impurity density result, as given by :py:func:`~aurora.core.run_aurora` method.</span>
-<span class="sd">        ne : array (time,space) [cm^-3]</span>
+<span class="sd">        ne : array (time,space) [:math:`cm^{-3}`]</span>
 <span class="sd">            Electron density on the output grids.</span>
 <span class="sd">        Te : array (time,space) [eV]</span>
 <span class="sd">            Electron temperature on the output grids.</span>
 
 
 <span class="sd">    Keyword Args:</span>
-<span class="sd">        n0 : array(time,space), optional [cm^-3]</span>
+<span class="sd">        n0 : array(time,space), optional [:math:`cm^{-3}`]</span>
 <span class="sd">             Background neutral density (assumed of hydrogen-isotopes).</span>
 <span class="sd">             This is only used if thermal_cx_rad_flag=True.</span>
 <span class="sd">        Ti : array (time,space) [eV]</span>
 <span class="sd">            Main ion temperature (assumed of hydrogen-isotopes). This is only used</span>
 <span class="sd">            if thermal_cx_rad_flag=True. If not set, Ti is taken equal to Te. </span>
-<span class="sd">        ni : array (time,space), optional [cm^-3]</span>
+<span class="sd">        ni : array (time,space), optional [:math:`cm^{-3}`]</span>
 <span class="sd">             Main ion density. This is used if thermal_cx_rad_flag=True and/or</span>
 <span class="sd">             main_ion_brem_flag=True. If not set, ni is taken to be equal to ne, subtracting</span>
 <span class="sd">             the impurity density x Z for each charge state. </span>
@@ -468,7 +473,7 @@
 <span class="sd">        nz_prof : array (TODO for docs: check dimensions)</span>
 <span class="sd">            Impurity charge state densities</span>
 <span class="sd">        logne_prof : array (TODO for docs: check dimensions)</span>
-<span class="sd">            Electron density profiles in cm^-3</span>
+<span class="sd">            Electron density profiles in :math:`cm^{-3}`</span>
 <span class="sd">        logTe_prof : array (TODO for docs: check dimensions)</span>
 <span class="sd">            Electron temperature profiles in eV</span>
 <span class="sd">        xvar_prof : array (TODO for docs: check dimensions)</span>
@@ -561,7 +566,7 @@
 <span class="sd">        rhop : array (nr,)</span>
 <span class="sd">            Sqrt of normalized poloidal flux array from the axis outwards</span>
 <span class="sd">        ne_cm3 : array (nr,)</span>
-<span class="sd">            Electron density in :math:`cm^-3` units.</span>
+<span class="sd">            Electron density in :math:`cm^{-3}` units.</span>
 <span class="sd">        Te_eV : array (nr,)</span>
 <span class="sd">            Electron temperature in eV</span>
 <span class="sd">        vol : array (nr,)</span>
@@ -584,7 +589,7 @@
 <span class="sd">            Background ion density (H,D or T). This is only used if CX recombination is </span>
 <span class="sd">            requested, i.e. if n0_cm3 is not None. If not given, Ti is set equal to Te. </span>
 <span class="sd">        nz_cm3 : array (nr,nz), optional</span>
-<span class="sd">            Impurity charge state densities in cm^-3 units. Fractional abundancies can </span>
+<span class="sd">            Impurity charge state densities in :math:`cm^{-3}` units. Fractional abundancies can </span>
 <span class="sd">            alternatively be specified via the :param:frac parameter for a constant-fraction</span>
 <span class="sd">            impurity model across the radius. If provided, nz_cm3 is used. </span>
 <span class="sd">        frac : float, optional</span>
@@ -785,7 +790,7 @@
                  <span class="n">pec_threshold</span><span class="o">=</span><span class="mf">1e-20</span><span class="p">,</span> <span class="n">phot2energy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Compute radial profile for Photon Emissivity Coefficients (PEC) for lines within the chosen</span>
 <span class="sd">    wavelength range using the ColRadPy package. This is an alternative to the option of using </span>
-<span class="sd">    the :py:method:atomic.read_adf15() function to read PEC data from an ADAS ADF-15 file and </span>
+<span class="sd">    the :py:method:`~atomic.read_adf15` function to read PEC data from an ADAS ADF-15 file and </span>
 <span class="sd">    interpolate results on ne,Te grids. </span>
 
 <span class="sd">    Args:</span>
@@ -796,7 +801,7 @@
 <span class="sd">        rhop : array (nr,)</span>
 <span class="sd">            Srt of normalized poloidal flux radial array</span>
 <span class="sd">        ne_cm3 : array (nr,)</span>
-<span class="sd">            Electron density in cm^-3 units</span>
+<span class="sd">            Electron density in :math:`cm^{-3}` units</span>
 <span class="sd">        Te_eV : array (nr,)</span>
 <span class="sd">            Electron temperature in eV units</span>
 <span class="sd">        lam_nm : float</span>
@@ -808,15 +813,15 @@
 <span class="sd">        adf04_repo : str</span>
 <span class="sd">            Location where ADF04 file from :py:method:adf04_files() should be fetched.</span>
 <span class="sd">        prec_threshold : float</span>
-<span class="sd">            Minimum value of PECs to be considered, in photons.cm^3/s  </span>
+<span class="sd">            Minimum value of PECs to be considered, in :math:`photons \cdot cm^3/s`</span>
 <span class="sd">        phot2energy : bool</span>
-<span class="sd">            If True, results are converted from photons.cm^3/s to W.cm^3</span>
+<span class="sd">            If True, results are converted from :math:`photons \cdot cm^3/s` to :math:`W.cm^3`</span>
 <span class="sd">        plot : bool</span>
 <span class="sd">            If True, plot lines profiles and total</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        pec_tot_prof : array (nr,)</span>
-<span class="sd">            Radial profile of PEC intensity, in units of :math:`photons cm^3/s` (if phot2energy=False) or </span>
+<span class="sd">            Radial profile of PEC intensity, in units of :math:`photons \cdot cm^3/s` (if phot2energy=False) or </span>
 <span class="sd">            :math:`W \cdot cm^3` depending (if phot2energy=True). </span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">try</span><span class="p">:</span>

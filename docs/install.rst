@@ -5,14 +5,14 @@ To obtain the latest version of the code, it is recommended to git-clone the rep
 
     https://github.com/fsciortino/aurora
     
-Thwn, running::
+Then, running::
 
   python setup.py install
 
 should do the magic.
 
 
-The latest stable version of the code can also be obtained via::
+The latest stable version of the code will soon also be available via::
 
     pip install aurora
 

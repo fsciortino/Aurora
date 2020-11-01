@@ -31,28 +31,28 @@ def compute_rad(imp, nz, ne, Te,
             plot_sum=True,
             labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]-1)])
 
-    All radiation outputs are given in :math:`W cm^-3`, consistently with units of :math:`cm^-3`
+    All radiation outputs are given in :math:`W cm^{-3}`, consistently with units of :math:`cm^{-3}`
     given for inputs.
 
     Args:
         imp : str
              Impurity symbol, e.g. Ca, F, W
-        nz : array (time, nZ, space) [cm^-3]
+        nz : array (time, nZ, space) [:math:`cm^{-3}`]
             Dictionary with impurity density result, as given by :py:func:`~aurora.core.run_aurora` method.
-        ne : array (time,space) [cm^-3]
+        ne : array (time,space) [:math:`cm^{-3}`]
             Electron density on the output grids.
         Te : array (time,space) [eV]
             Electron temperature on the output grids.
 
 
     Keyword Args:
-        n0 : array(time,space), optional [cm^-3]
+        n0 : array(time,space), optional [:math:`cm^{-3}`]
              Background neutral density (assumed of hydrogen-isotopes).
              This is only used if thermal_cx_rad_flag=True.
         Ti : array (time,space) [eV]
             Main ion temperature (assumed of hydrogen-isotopes). This is only used
             if thermal_cx_rad_flag=True. If not set, Ti is taken equal to Te. 
-        ni : array (time,space), optional [cm^-3]
+        ni : array (time,space), optional [:math:`cm^{-3}`]
              Main ion density. This is used if thermal_cx_rad_flag=True and/or
              main_ion_brem_flag=True. If not set, ni is taken to be equal to ne, subtracting
              the impurity density x Z for each charge state. 
@@ -316,7 +316,7 @@ def plot_radiation_profs(imp, nz_prof, logne_prof, logTe_prof, xvar_prof,
         nz_prof : array (TODO for docs: check dimensions)
             Impurity charge state densities
         logne_prof : array (TODO for docs: check dimensions)
-            Electron density profiles in cm^-3
+            Electron density profiles in :math:`cm^{-3}`
         logTe_prof : array (TODO for docs: check dimensions)
             Electron temperature profiles in eV
         xvar_prof : array (TODO for docs: check dimensions)
@@ -409,7 +409,7 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         rhop : array (nr,)
             Sqrt of normalized poloidal flux array from the axis outwards
         ne_cm3 : array (nr,)
-            Electron density in :math:`cm^-3` units.
+            Electron density in :math:`cm^{-3}` units.
         Te_eV : array (nr,)
             Electron temperature in eV
         vol : array (nr,)
@@ -432,7 +432,7 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
             Background ion density (H,D or T). This is only used if CX recombination is 
             requested, i.e. if n0_cm3 is not None. If not given, Ti is set equal to Te. 
         nz_cm3 : array (nr,nz), optional
-            Impurity charge state densities in cm^-3 units. Fractional abundancies can 
+            Impurity charge state densities in :math:`cm^{-3}` units. Fractional abundancies can 
             alternatively be specified via the :param:frac parameter for a constant-fraction
             impurity model across the radius. If provided, nz_cm3 is used. 
         frac : float, optional
@@ -633,7 +633,7 @@ def get_pec_prof(ion, cs, rhop, ne_cm3, Te_eV, lam_nm=1.8705, lam_width_nm=0.002
                  pec_threshold=1e-20, phot2energy=True, plot=True):
     '''Compute radial profile for Photon Emissivity Coefficients (PEC) for lines within the chosen
     wavelength range using the ColRadPy package. This is an alternative to the option of using 
-    the :py:method:atomic.read_adf15() function to read PEC data from an ADAS ADF-15 file and 
+    the :py:method:`~atomic.read_adf15` function to read PEC data from an ADAS ADF-15 file and 
     interpolate results on ne,Te grids. 
 
     Args:
@@ -644,7 +644,7 @@ def get_pec_prof(ion, cs, rhop, ne_cm3, Te_eV, lam_nm=1.8705, lam_width_nm=0.002
         rhop : array (nr,)
             Srt of normalized poloidal flux radial array
         ne_cm3 : array (nr,)
-            Electron density in cm^-3 units
+            Electron density in :math:`cm^{-3}` units
         Te_eV : array (nr,)
             Electron temperature in eV units
         lam_nm : float
@@ -656,15 +656,15 @@ def get_pec_prof(ion, cs, rhop, ne_cm3, Te_eV, lam_nm=1.8705, lam_width_nm=0.002
         adf04_repo : str
             Location where ADF04 file from :py:method:adf04_files() should be fetched.
         prec_threshold : float
-            Minimum value of PECs to be considered, in photons.cm^3/s  
+            Minimum value of PECs to be considered, in :math:`photons \cdot cm^3/s`
         phot2energy : bool
-            If True, results are converted from photons.cm^3/s to W.cm^3
+            If True, results are converted from :math:`photons \cdot cm^3/s` to :math:`W.cm^3`
         plot : bool
             If True, plot lines profiles and total
 
     Returns:
         pec_tot_prof : array (nr,)
-            Radial profile of PEC intensity, in units of :math:`photons cm^3/s` (if phot2energy=False) or 
+            Radial profile of PEC intensity, in units of :math:`photons \cdot cm^3/s` (if phot2energy=False) or 
             :math:`W \cdot cm^3` depending (if phot2energy=True). 
     '''
     try:

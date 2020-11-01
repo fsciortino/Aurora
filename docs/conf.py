@@ -34,7 +34,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.autosummary',
               'sphinx.ext.autosectionlabel',
               'sphinx.ext.todo',
-              'sphinx.ext.mathjax',  # 'sphinx.ext.imgmath'
+              'sphinx.ext.mathjax',  #
+              #'sphinx.ext.imgmath',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
 ]

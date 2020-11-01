@@ -12,6 +12,7 @@ from ._aurora import run,time_steps
 
 from .core import *
 from .atomic import *
+from .adas_files import *
 
 from .source_utils import *
 from .default_nml import *

@@ -76,6 +76,7 @@
         
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
+    
             
             
               
@@ -85,11 +86,15 @@
 <li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../params.html">Input parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../atomic_data.html">Atomic data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../aurora.html">Aurora modules</a></li>
 </ul>
 
             
           
+    <a href="genindex.html">Index</a>
+  
         </div>
         
       </div>
@@ -150,8 +155,9 @@
            <div itemprop="articleBody">
             
   <h1>Source code for aurora.atomic</h1><div class="highlight"><pre>
-<span></span><span class="c1">#-*-Python-*-</span>
-<span class="c1"># Created by sciortinof at 05 Feb 2020  14:59</span>
+<span></span><span class="sd">&#39;&#39;&#39;Collection of classes and functions for loading, interpolation and processing of atomic data. </span>
+<span class="sd">Refer also to the adas_files.py script. </span>
+<span class="sd">&#39;&#39;&#39;</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">RectBivariateSpline</span><span class="p">,</span> <span class="n">interp1d</span>
@@ -161,53 +167,44 @@
 <span class="kn">from</span> <span class="nn">scipy.linalg</span> <span class="kn">import</span> <span class="n">svd</span>
 <span class="kn">from</span> <span class="nn">IPython</span> <span class="kn">import</span> <span class="n">embed</span>
 <span class="kn">from</span> <span class="nn">scipy.constants</span> <span class="kn">import</span> <span class="n">m_p</span><span class="p">,</span> <span class="n">e</span> <span class="k">as</span> <span class="n">q_electron</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">adas_files</span>
 
 
-<div class="viewcode-block" id="get_file_types"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_file_types">[docs]</a><span class="k">def</span> <span class="nf">get_file_types</span><span class="p">():</span>
-    <span class="sd">&#39;&#39;&#39;Returns main types of ADAS atomic data of interest &#39;&#39;&#39;</span>
-    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;acd&#39;</span><span class="p">:</span><span class="s1">&#39;recombination&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;scd&#39;</span><span class="p">:</span><span class="s1">&#39;ionization&#39;</span><span class="p">,</span>
+<div class="viewcode-block" id="get_adas_file_types"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_adas_file_types">[docs]</a><span class="k">def</span> <span class="nf">get_adas_file_types</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;Obtain a description of each ADAS file type and its meaning in the context of Aurora.</span>
+<span class="sd">    For background, refer to::</span>
+
+<span class="sd">       Summers et al., &quot;Ionization state, excited populations and emission of impurities </span>
+<span class="sd">       in dynamic finite density plasmas: I. The generalized collisional-radiative model for </span>
+<span class="sd">       light elements&quot;, Plasma Physics and Controlled Fusion, 48:2, 2006</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary with keys given by the ADAS file types and values giving a description for them.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;acd&#39;</span><span class="p">:</span><span class="s1">&#39;effective recombination&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;scd&#39;</span><span class="p">:</span><span class="s1">&#39;effective ionization&#39;</span><span class="p">,</span>
             <span class="s1">&#39;prb&#39;</span><span class="p">:</span><span class="s1">&#39;continuum radiation&#39;</span><span class="p">,</span>
             <span class="s1">&#39;plt&#39;</span><span class="p">:</span><span class="s1">&#39;line radiation&#39;</span><span class="p">,</span>
             <span class="s1">&#39;ccd&#39;</span><span class="p">:</span><span class="s1">&#39;thermal charge exchange&#39;</span><span class="p">,</span>
             <span class="s1">&#39;prc&#39;</span><span class="p">:</span><span class="s1">&#39;thermal charge exchange continuum radiation&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;pls&#39;</span><span class="p">:</span><span class="s1">&#39;line radiation in sxr range&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;prs&#39;</span><span class="p">:</span><span class="s1">&#39;continuum radiation in sxr range&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;pls&#39;</span><span class="p">:</span><span class="s1">&#39;line radiation in the SXR range&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;prs&#39;</span><span class="p">:</span><span class="s1">&#39;continuum radiation in the SXR range&#39;</span><span class="p">,</span>
             <span class="s1">&#39;brs&#39;</span><span class="p">:</span><span class="s1">&#39;continuum spectral bremstrahlung&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;fis&#39;</span><span class="p">:</span><span class="s1">&#39;sensitivity of sxr&#39;</span><span class="p">}</span></div>
+            <span class="s1">&#39;fis&#39;</span><span class="p">:</span><span class="s1">&#39;sensitivity in the SXR range&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;pbs&#39;</span><span class="p">:</span><span class="s1">&#39;impurity bremsstrahlung in SXR range, also included in prs files&#39;</span>
+    <span class="p">}</span></div>
 
-
-<div class="viewcode-block" id="get_atomdat_info"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.get_atomdat_info">[docs]</a><span class="k">def</span> <span class="nf">get_atomdat_info</span><span class="p">():</span>
-    <span class="sd">&#39;&#39;&#39;Function to identify location of ADAS atomic data in a generalized fashion</span>
-<span class="sd">    and to obtain the list of file_types of interest.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="k">if</span> <span class="s1">&#39;STRAHL_DIR&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
-        <span class="c1"># STRAHL_DIR env variable can in principle be used by user to point to a personal installation</span>
-        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;STRAHL_DIR&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;HOME&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;/strahl&#39;</span>
-
-    <span class="c1"># Define hierarchy of directories that should be searched in order</span>
-    <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;HOME&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;/atomlib/atomdat_master/newdat/&#39;</span><span class="p">,</span>
-             <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;HOME&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;/atomAI/atomdat_master/newdat/&#39;</span><span class="p">,</span>
-             <span class="s1">&#39;/fusion/projects/codes/strahl/</span><span class="si">{}</span><span class="s1">/intel-18/strahl20/atomdat/newdat/&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;USER&#39;</span><span class="p">]),</span>
-             <span class="s1">&#39;/fusion/projects/codes/strahl/</span><span class="si">{}</span><span class="s1">/strahl/atomdat/newdat/&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;USER&#39;</span><span class="p">]),</span>
-             <span class="s1">&#39;/fusion/projects/codes/strahl/public20/atomdat/newdat/&#39;</span><span class="p">,</span>
-             <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;STRAHL_DIR&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;/atomdat/newdat/&#39;</span><span class="p">,</span>
-             <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;HOME&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;/strahl/atomdat/newdat/&#39;</span><span class="p">,</span>
-             <span class="s1">&#39;&#39;</span><span class="p">]</span>
     
-    <span class="k">for</span> <span class="n">atomdat_dir</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">atomdat_dir</span><span class="p">):</span>
-            <span class="k">break</span>
-
-    <span class="k">return</span> <span class="n">atomdat_dir</span></div>
-
-
-
 <div class="viewcode-block" id="adas_file"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.adas_file">[docs]</a><span class="k">class</span> <span class="nc">adas_file</span><span class="p">():</span>
-    <span class="sd">&#39;&#39;&#39;Read ADAS file in ADF11 format over the given ne, T. &#39;&#39;&#39;</span>
+    <span class="sd">&#39;&#39;&#39;Read ADAS file in ADF11 format over the given density and temperature grids. </span>
+<span class="sd">    Note that such grids vary between files, and the species they refer to may too.</span>
+
+<span class="sd">    Refer to ADAS documentation for details on each file.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">):</span>
-
+        
         <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span> <span class="o">=</span> <span class="n">filepath</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="o">=</span><span class="n">filepath</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">file_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span>
@@ -266,7 +263,7 @@
 
         <span class="n">axes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">axes</span><span class="p">)</span>
         <span class="n">colormap</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">rainbow</span>
-        <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="o">+</span><span class="s1">&#39;  &#39;</span><span class="o">+</span> <span class="n">get_file_types</span><span class="p">()[</span><span class="bp">self</span><span class="o">.</span><span class="n">file_type</span><span class="p">])</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="o">+</span><span class="s1">&#39;  &#39;</span><span class="o">+</span> <span class="n">adas_files</span><span class="o">.</span><span class="n">get_adas_file_types</span><span class="p">()[</span><span class="bp">self</span><span class="o">.</span><span class="n">file_type</span><span class="p">])</span>
 
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">ax</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">axes</span><span class="o">.</span><span class="n">flatten</span><span class="p">()):</span>
             <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_ion</span><span class="p">:</span> <span class="k">break</span>
@@ -319,15 +316,16 @@
             <span class="n">files</span><span class="p">[</span><span class="n">typ</span><span class="p">]</span> <span class="o">=</span> <span class="n">filenames</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># get dictionary containing default list of ADAS atomic files</span>
-        <span class="n">def_adas_files_dict</span> <span class="o">=</span> <span class="n">adas_files_dict</span><span class="p">()</span>
-        <span class="n">files</span> <span class="o">=</span> <span class="n">def_adas_files_dict</span><span class="p">[</span><span class="n">imp</span><span class="p">]</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="n">adas_files</span><span class="o">.</span><span class="n">adas_files_dict</span><span class="p">()[</span><span class="n">imp</span><span class="p">]</span>
 
-    <span class="n">atomdat_dir</span> <span class="o">=</span> <span class="n">get_atomdat_info</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">filetype</span> <span class="ow">in</span> <span class="n">filetypes</span><span class="p">:</span>
         <span class="n">filename</span> <span class="o">=</span> <span class="n">files</span><span class="p">[</span><span class="n">filetype</span><span class="p">]</span>
 
+        <span class="c1"># find location of required ADF11 file</span>
+        <span class="n">fileloc</span> <span class="o">=</span> <span class="n">adas_files</span><span class="o">.</span><span class="n">get_adas_file_loc</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        
         <span class="c1"># load specific file and add it to output dictionary</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="n">adas_file</span><span class="p">(</span><span class="n">atomdat_dir</span><span class="o">+</span><span class="n">filename</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">adas_file</span><span class="p">(</span><span class="n">fileloc</span><span class="p">)</span>
         <span class="n">atom_data</span><span class="p">[</span><span class="n">filetype</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">logNe</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">logT</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">data</span>
 
     <span class="k">return</span> <span class="n">atom_data</span></div>
@@ -1094,244 +1092,6 @@
 
 
 
-<div class="viewcode-block" id="adas_files_dict"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.adas_files_dict">[docs]</a><span class="k">def</span> <span class="nf">adas_files_dict</span><span class="p">():</span>
-    <span class="sd">&#39;&#39;&#39;Selections for ADAS files for Aurora runs and radiation calculations.</span>
-<span class="sd">    This function can be called to fetch a set of default files, which can then be modified (e.g. to </span>
-<span class="sd">    use a new file for a specific SXR filter) before running a calculation. </span>
-<span class="sd">    &#39;&#39;&#39;</span>
-            
-    <span class="n">files</span><span class="o">=</span><span class="p">{}</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>   <span class="c1">#1</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd96_h.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd96_h.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb96_h.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt96_h.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd96_h.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc96_h.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls_H_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prs_H_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfil14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx7_h.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_h.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;He&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>   <span class="c1">#2</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;He&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd96_he.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;He&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd96_he.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;He&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb96_he.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;He&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt96_he.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;He&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd07_he.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;He&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls_He_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;He&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prs_He_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;He&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfil14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;He&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;He&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_he.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;He&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc96_he.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Li&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>   <span class="c1">#3</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Li&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd96_li.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Li&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd96_li.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Li&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_li.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Li&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb96_li.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Li&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt96_li.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Li&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_li.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Li&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls89_li.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Li&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Li&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_li.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Be&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>   <span class="c1">#4</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Be&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd96_be.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Be&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd96_be.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Be&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb96_be.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Be&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt96_be.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Be&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_be.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Be&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_be.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Be&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plsx5_be.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Be&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prsx5_be.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Be&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_be.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Be&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_be.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>   <span class="c1">#5</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd89_b.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd89_b.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_b.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb89_b.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt89_b.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_b.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plsx5_b.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prsx5_b.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_b.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_b.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>    <span class="c1">#6</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd96_c.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd96_c.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb96_c.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt96_c.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd96_c.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls_C_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prs_C_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfil14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_c.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;C&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc96_c.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>    <span class="c1">#7</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd96_n.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd96_n.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_n.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb96_n.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt96_n.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plsx8_n.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prsx8_n.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfilD1.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd96_n.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_n.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_n.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;O&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>    <span class="c1">#8</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;O&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd96_o.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;O&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd96_o.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;O&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_o.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;O&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb96_o.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;O&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt96_o.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;O&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plsx5_o.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;O&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prsx5_o.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;O&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_o.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;O&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_o.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>    <span class="c1">#9</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd89_f.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd89_f.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_f.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb89_f.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt89_f.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfil14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls_F_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prs_F_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_f.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;F&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_f.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ne&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>   <span class="c1">#10</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ne&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd96_ne.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ne&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd96_ne.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ne&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb96_ne.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ne&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt96_ne.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ne&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_ne.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ne&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plsx8_ne.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ne&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prsx8_ne.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ne&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfilD1.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ne&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ne&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_ne.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ne&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_ne.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Al&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>    <span class="c1">#13</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Al&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd00_al.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Al&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd00_al.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Al&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb00_al.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Al&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt00_al.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Al&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_al.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Al&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls_Al_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Al&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prs_Al_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Al&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfil14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Al&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Al&quot;</span><span class="p">][</span><span class="s1">&#39;pbs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_al.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Al&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_al.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>     <span class="c1">#14</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd00_si.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd00_si.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb00_si.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt97_si.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls_Si_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prs_Si_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfil14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_si.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_si.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Si&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_si.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>     <span class="c1">#18</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd89_ar.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd89_ar.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb89_ar.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt89_ar.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_ar.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_ar.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls_Ar_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prs_Ar_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfil14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_ar.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ar&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_ar.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ca&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>     <span class="c1">#20</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ca&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd85_ca.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ca&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd85_ca.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ca&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_w.dat&quot;</span>  <span class="c1"># file not available, use first 20 ion stages using Foster scaling</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ca&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb85_ca.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ca&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt85_ca.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ca&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls_Ca_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ca&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prs_Ca_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ca&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfil14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ca&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ca&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ca&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Fe&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>     <span class="c1">#26</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Fe&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd89_fe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Fe&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd89_fe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Fe&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb89_fe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Fe&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt89_fe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Fe&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls_Fe_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Fe&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prs_Fe_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Fe&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfil14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Fe&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Fe&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_fe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Fe&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_fe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Fe&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_fe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ni&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>     <span class="c1">#28</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ni&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd00_ni.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ni&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd00_ni.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ni&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb00_ni.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ni&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt00_ni.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ni&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls_Ni_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ni&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prs_Ni_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ni&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfil14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ni&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ni&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_ni.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ni&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_ni.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Ni&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_ni.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Kr&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>     <span class="c1">#36</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Kr&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd89_kr.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Kr&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd89_kr.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Kr&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_kr.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Kr&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb89_kr.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Kr&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt89_kr.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Kr&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plsx5_kr.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Kr&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prsx5_kr.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Kr&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Kr&quot;</span><span class="p">][</span><span class="s2">&quot;prc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_kr.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Mo&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>     <span class="c1">#42</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Mo&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd89_mo.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Mo&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd89_mo.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Mo&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_mo.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Mo&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt89_mo.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Mo&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb89_mo.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Mo&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Mo&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_mo.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Xe&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>     <span class="c1">#56</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Xe&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd89_xe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Xe&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd89_xe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Xe&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_xe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Xe&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt89_xe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Xe&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb89_xe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Xe&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prsx1_xe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Xe&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prsx1_xe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Xe&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;Xe&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_xe.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>     <span class="c1">#74</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">][</span><span class="s1">&#39;acd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;acd89_w.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">][</span><span class="s1">&#39;scd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;scd89_w.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">][</span><span class="s1">&#39;prb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prb89_w.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">][</span><span class="s1">&#39;plt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plt89_w.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">][</span><span class="s1">&#39;fis&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;sxrfil14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">][</span><span class="s1">&#39;brs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;brs05360.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">][</span><span class="s1">&#39;pls&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pls_W_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">][</span><span class="s1">&#39;prs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prs_W_14.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">][</span><span class="s1">&#39;ccd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ccd89_w.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">][</span><span class="s2">&quot;pbs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pbsx5_w.dat&quot;</span>
-    <span class="n">files</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">][</span><span class="s1">&#39;prc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;prc89_w.dat&quot;</span>
-
-    <span class="k">return</span> <span class="n">files</span></div>
 </pre></div>
 
            </div>

@@ -37,7 +37,7 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Tutorial" href="tutorial.html" /> 
+    <link rel="prev" title="Atomic data" href="atomic_data.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -77,6 +77,7 @@
         
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
+    
             
             
               
@@ -85,10 +86,14 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="params.html">Input parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="atomic_data.html">Atomic data</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Aurora modules</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-aurora.core">aurora.core module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-aurora.atomic">aurora.atomic module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-aurora.adas_files">aurora.adas_files module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-aurora.radiation">aurora.radiation module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-aurora.grids_utils">aurora.grids_utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-aurora.coords">aurora.coords module</a></li>
@@ -107,6 +112,8 @@
 
             
           
+    <a href="genindex.html">Index</a>
+  
         </div>
         
       </div>
@@ -331,6 +338,8 @@ this up. Default is False (still under development)</p></li>
 </div>
 <div class="section" id="module-aurora.atomic">
 <span id="aurora-atomic-module"></span><h2>aurora.atomic module<a class="headerlink" href="#module-aurora.atomic" title="Permalink to this headline">¶</a></h2>
+<p>Collection of classes and functions for loading, interpolation and processing of atomic data.
+Refer also to the adas_files.py script.</p>
 <dl class="py class">
 <dt id="aurora.atomic.CartesianGrid">
 <em class="property">class </em><code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">CartesianGrid</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">grids</span></em>, <em class="sig-param"><span class="n">values</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#CartesianGrid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.CartesianGrid" title="Permalink to this definition">¶</a></dt>
@@ -343,7 +352,9 @@ This is a regular grid with equal spacing.</p>
 <dt id="aurora.atomic.adas_file">
 <em class="property">class </em><code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">adas_file</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filepath</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#adas_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.adas_file" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Read ADAS file in ADF11 format over the given ne, T.</p>
+<p>Read ADAS file in ADF11 format over the given density and temperature grids.
+Note that such grids vary between files, and the species they refer to may too.</p>
+<p>Refer to ADAS documentation for details on each file.</p>
 <dl class="py method">
 <dt id="aurora.atomic.adas_file.load">
 <code class="sig-name descname">load</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#adas_file.load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.adas_file.load" title="Permalink to this definition">¶</a></dt>
@@ -357,17 +368,26 @@ This is a regular grid with equal spacing.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt id="aurora.atomic.adas_files_dict">
-<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">adas_files_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#adas_files_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.adas_files_dict" title="Permalink to this definition">¶</a></dt>
-<dd><p>Selections for ADAS files for Aurora runs and radiation calculations.
-This function can be called to fetch a set of default files, which can then be modified (e.g. to
-use a new file for a specific SXR filter) before running a calculation.</p>
-</dd></dl>
-
-<dl class="py function">
 <dt id="aurora.atomic.balance">
 <code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">balance</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">logTe_val</span></em>, <em class="sig-param"><span class="n">cs</span></em>, <em class="sig-param"><span class="n">n0_by_ne</span></em>, <em class="sig-param"><span class="n">logTe_</span></em>, <em class="sig-param"><span class="n">S</span></em>, <em class="sig-param"><span class="n">R</span></em>, <em class="sig-param"><span class="n">cx</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#balance"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.balance" title="Permalink to this definition">¶</a></dt>
 <dd><p>Evaluate balance of effective ionization, recombination and charge exchange at a given temperature.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.atomic.get_adas_file_types">
+<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_adas_file_types</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_adas_file_types"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_adas_file_types" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain a description of each ADAS file type and its meaning in the context of Aurora.
+For background, refer to:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Summers</span> <span class="n">et</span> <span class="n">al</span><span class="o">.</span><span class="p">,</span> <span class="s2">&quot;Ionization state, excited populations and emission of impurities</span>
+<span class="ow">in</span> <span class="n">dynamic</span> <span class="n">finite</span> <span class="n">density</span> <span class="n">plasmas</span><span class="p">:</span> <span class="n">I</span><span class="o">.</span> <span class="n">The</span> <span class="n">generalized</span> <span class="n">collisional</span><span class="o">-</span><span class="n">radiative</span> <span class="n">model</span> <span class="k">for</span>
+<span class="n">light</span> <span class="n">elements</span><span class="s2">&quot;, Plasma Physics and Controlled Fusion, 48:2, 2006</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Dictionary with keys given by the ADAS file types and values giving a description for them.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -403,13 +423,6 @@ as attributes atom_data[key].logNe, atom_data[key].logT, atom_data[key].data</p>
 <dd class="field-odd"><p>atom_data</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py function">
-<dt id="aurora.atomic.get_atomdat_info">
-<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_atomdat_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_atomdat_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_atomdat_info" title="Permalink to this definition">¶</a></dt>
-<dd><p>Function to identify location of ADAS atomic data in a generalized fashion
-and to obtain the list of file_types of interest.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -488,12 +501,6 @@ will be in units of s^-1.</p>
 <dd class="field-odd"><p>logTe</p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py function">
-<dt id="aurora.atomic.get_file_types">
-<code class="sig-prename descclassname">aurora.atomic.</code><code class="sig-name descname">get_file_types</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/atomic.html#get_file_types"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.atomic.get_file_types" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns main types of ADAS atomic data of interest</p>
 </dd></dl>
 
 <dl class="py function">
@@ -755,6 +762,78 @@ pec = read_adf15(path, plot_lines=[list(pec.keys())[0]], recomb=False)</p>
 </dd></dl>
 
 </div>
+<div class="section" id="module-aurora.adas_files">
+<span id="aurora-adas-files-module"></span><h2>aurora.adas_files module<a class="headerlink" href="#module-aurora.adas_files" title="Permalink to this headline">¶</a></h2>
+<p>Functions to provide default ADAS files for Aurora modelling, including capabilities to fetch
+these files remotely from the OPEN-ADAS website.</p>
+<dl class="py function">
+<dt id="aurora.adas_files.adas_files_dict">
+<code class="sig-prename descclassname">aurora.adas_files.</code><code class="sig-name descname">adas_files_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/adas_files.html#adas_files_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.adas_files.adas_files_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Selections for ADAS files for Aurora runs and radiation calculations.
+This function can be called to fetch a set of default files, which can then be modified (e.g. to
+use a new file for a specific SXR filter) before running a calculation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>dict</dt><dd><p>Dictionary with keys equal to the atomic symbols of many of the most common ions of
+interest in fusion research. For each ion, a sub-dictionary contains recommended file
+names for the relevant ADAS data types. Not all files types are available for all ions.
+Files types are usually a subset of
+‘acd’,’scd’,’prb’,’plt’,’ccd’,’prc’,’pls’,’prs’,’fis’,’brs’,’pbs’,prc’
+Refer to <a class="reference internal" href="#aurora.atomic.get_adas_file_types" title="aurora.atomic.get_adas_file_types"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_adas_file_types()</span></code></a> for a description of the meaning of
+each file.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>files</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.adas_files.fetch_adf11_file">
+<code class="sig-prename descclassname">aurora.adas_files.</code><code class="sig-name descname">fetch_adf11_file</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/adas_files.html#fetch_adf11_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.adas_files.fetch_adf11_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download ADF11 file from the OPEN-ADAS website and store it in the ‘adas_data’
+directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>filename</strong> – str
+Name of ADF11 file to be downloaded, e.g. ‘plt89_ar.dat’.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="aurora.adas_files.get_adas_file_loc">
+<code class="sig-prename descclassname">aurora.adas_files.</code><code class="sig-name descname">get_adas_file_loc</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/adas_files.html#get_adas_file_loc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.adas_files.get_adas_file_loc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find location of requested atomic data file for the indicated ion.
+The search proceeds with the following attempts, in this order:</p>
+<ol class="arabic simple">
+<li><p>If the file is available in Aurora/adas_data/adf11, always use this data.</p></li>
+<li><p>If the environmental variable “AURORA_ADAS_DIR” is defined, attempt to find the file there and copy it to Aurora/adas_data/adf11.</p></li>
+<li><p>Attempt to fetch the file remotely via open.adas.ac.uk and save it in Aurora/adas_data/adf11/.</p></li>
+</ol>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>filename</strong> – str
+Name of the ADAS ADF11 file of interest, e.g. ‘plt89_ar.dat’</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>str</dt><dd><p>Full path to the requested file.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>file_loc</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
 <div class="section" id="module-aurora.radiation">
 <span id="aurora-radiation-module"></span><h2>aurora.radiation module<a class="headerlink" href="#module-aurora.radiation" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
@@ -780,16 +859,16 @@ be substituted by other coordinates (e.g. R,Z)</p>
     <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;Ca$^</span><span class="se">{{</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="si">}</span><span class="se">}}</span><span class="s1">$&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nz_w</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span><span class="p">)])</span>
 </pre></div>
 </div>
-<p>All radiation outputs are given in <span class="math notranslate nohighlight">\(W cm^-3\)</span>, consistently with units of <span class="math notranslate nohighlight">\(cm^-3\)</span>
+<p>All radiation outputs are given in <span class="math notranslate nohighlight">\(W cm^{-3}\)</span>, consistently with units of <span class="math notranslate nohighlight">\(cm^{-3}\)</span>
 given for inputs.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>imp</strong> – str
 Impurity symbol, e.g. Ca, F, W</p></li>
-<li><p><strong>nz</strong> – array (time, nZ, space) [cm^-3]
+<li><p><strong>nz</strong> – array (time, nZ, space) [<span class="math notranslate nohighlight">\(cm^{-3}\)</span>]
 Dictionary with impurity density result, as given by <code class="xref py py-func docutils literal notranslate"><span class="pre">run_aurora()</span></code> method.</p></li>
-<li><p><strong>ne</strong> – array (time,space) [cm^-3]
+<li><p><strong>ne</strong> – array (time,space) [<span class="math notranslate nohighlight">\(cm^{-3}\)</span>]
 Electron density on the output grids.</p></li>
 <li><p><strong>Te</strong> – array (time,space) [eV]
 Electron temperature on the output grids.</p></li>
@@ -797,13 +876,13 @@ Electron temperature on the output grids.</p></li>
 </dd>
 <dt class="field-even">Keyword Arguments</dt>
 <dd class="field-even"><ul class="simple">
-<li><p><strong>n0</strong> – array(time,space), optional [cm^-3]
+<li><p><strong>n0</strong> – array(time,space), optional [<span class="math notranslate nohighlight">\(cm^{-3}\)</span>]
 Background neutral density (assumed of hydrogen-isotopes).
 This is only used if thermal_cx_rad_flag=True.</p></li>
 <li><p><strong>Ti</strong> – array (time,space) [eV]
 Main ion temperature (assumed of hydrogen-isotopes). This is only used
 if thermal_cx_rad_flag=True. If not set, Ti is taken equal to Te.</p></li>
-<li><p><strong>ni</strong> – array (time,space), optional [cm^-3]
+<li><p><strong>ni</strong> – array (time,space), optional [<span class="math notranslate nohighlight">\(cm^{-3}\)</span>]
 Main ion density. This is used if thermal_cx_rad_flag=True and/or
 main_ion_brem_flag=True. If not set, ni is taken to be equal to ne, subtracting
 the impurity density x Z for each charge state.</p></li>
@@ -814,7 +893,7 @@ This is only used if main_ion_brem_flag=True.</p></li>
 Dictionary containing ADAS file names for radiation calculations, possibly including keys
 “plt”,”prb”,”prc”,”pls”,”prs”,”pbs”,”brs”
 Any file names that are needed and not provided will be searched in the
-<a class="reference internal" href="#aurora.atomic.adas_files_dict" title="aurora.atomic.adas_files_dict"><code class="xref py py-meth docutils literal notranslate"><span class="pre">adas_files_dict()</span></code></a> dictionary.</p></li>
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">adas_files_dict()</span></code> dictionary.</p></li>
 <li><p><strong>prad_flag</strong> – bool, optional
 If True, total radiation is computed (for each charge state and their sum)</p></li>
 <li><p><strong>thermal_cx_rad_flag</strong> – bool, optional
@@ -898,7 +977,7 @@ sxr_flag=True and is automatically added to res[‘sxr_tot’].</p>
 <code class="sig-prename descclassname">aurora.radiation.</code><code class="sig-name descname">get_pec_prof</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ion</span></em>, <em class="sig-param"><span class="n">cs</span></em>, <em class="sig-param"><span class="n">rhop</span></em>, <em class="sig-param"><span class="n">ne_cm3</span></em>, <em class="sig-param"><span class="n">Te_eV</span></em>, <em class="sig-param"><span class="n">lam_nm</span><span class="o">=</span><span class="default_value">1.8705</span></em>, <em class="sig-param"><span class="n">lam_width_nm</span><span class="o">=</span><span class="default_value">0.002</span></em>, <em class="sig-param"><span class="n">meta_idxs</span><span class="o">=</span><span class="default_value">[0]</span></em>, <em class="sig-param"><span class="n">adf04_repo</span><span class="o">=</span><span class="default_value">'/home/sciortino/adf04_files/ca/ca_adf04_adas/'</span></em>, <em class="sig-param"><span class="n">pec_threshold</span><span class="o">=</span><span class="default_value">1e-20</span></em>, <em class="sig-param"><span class="n">phot2energy</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aurora/radiation.html#get_pec_prof"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#aurora.radiation.get_pec_prof" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute radial profile for Photon Emissivity Coefficients (PEC) for lines within the chosen
 wavelength range using the ColRadPy package. This is an alternative to the option of using
-the :py:method:atomic.read_adf15() function to read PEC data from an ADAS ADF-15 file and
+the <a href="#id1"><span class="problematic" id="id2">:py:method:`~atomic.read_adf15`</span></a> function to read PEC data from an ADAS ADF-15 file and
 interpolate results on ne,Te grids.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -910,7 +989,7 @@ Charge state, given in format like ‘Ca18+’</p></li>
 <li><p><strong>rhop</strong> – array (nr,)
 Srt of normalized poloidal flux radial array</p></li>
 <li><p><strong>ne_cm3</strong> – array (nr,)
-Electron density in cm^-3 units</p></li>
+Electron density in <span class="math notranslate nohighlight">\(cm^{-3}\)</span> units</p></li>
 <li><p><strong>Te_eV</strong> – array (nr,)
 Electron temperature in eV units</p></li>
 <li><p><strong>lam_nm</strong> – float
@@ -922,16 +1001,16 @@ List of levels in ADF04 file to be treated as metastable states.</p></li>
 <li><p><strong>adf04_repo</strong> – str
 Location where ADF04 file from :py:method:adf04_files() should be fetched.</p></li>
 <li><p><strong>prec_threshold</strong> – float
-Minimum value of PECs to be considered, in photons.cm^3/s</p></li>
+Minimum value of PECs to be considered, in <span class="math notranslate nohighlight">\(photons \cdot cm^3/s\)</span></p></li>
 <li><p><strong>phot2energy</strong> – bool
-If True, results are converted from photons.cm^3/s to W.cm^3</p></li>
+If True, results are converted from <span class="math notranslate nohighlight">\(photons \cdot cm^3/s\)</span> to <span class="math notranslate nohighlight">\(W.cm^3\)</span></p></li>
 <li><p><strong>plot</strong> – bool
 If True, plot lines profiles and total</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>array (nr,)</dt><dd><p>Radial profile of PEC intensity, in units of <span class="math notranslate nohighlight">\(photons cm^3/s\)</span> (if phot2energy=False) or
+<dt>array (nr,)</dt><dd><p>Radial profile of PEC intensity, in units of <span class="math notranslate nohighlight">\(photons \cdot cm^3/s\)</span> (if phot2energy=False) or
 <span class="math notranslate nohighlight">\(W \cdot cm^3\)</span> depending (if phot2energy=True).</p>
 </dd>
 </dl>
@@ -962,7 +1041,7 @@ Impurity ion atomic symbol.</p></li>
 <li><p><strong>nz_prof</strong> – array (TODO for docs: check dimensions)
 Impurity charge state densities</p></li>
 <li><p><strong>logne_prof</strong> – array (TODO for docs: check dimensions)
-Electron density profiles in cm^-3</p></li>
+Electron density profiles in <span class="math notranslate nohighlight">\(cm^{-3}\)</span></p></li>
 <li><p><strong>logTe_prof</strong> – array (TODO for docs: check dimensions)
 Electron temperature profiles in eV</p></li>
 <li><p><strong>xvar_prof</strong> – array (TODO for docs: check dimensions)
@@ -1008,7 +1087,7 @@ Impurity ion symbol, e.g. W</p></li>
 <li><p><strong>rhop</strong> – array (nr,)
 Sqrt of normalized poloidal flux array from the axis outwards</p></li>
 <li><p><strong>ne_cm3</strong> – array (nr,)
-Electron density in <span class="math notranslate nohighlight">\(cm^-3\)</span> units.</p></li>
+Electron density in <span class="math notranslate nohighlight">\(cm^{-3}\)</span> units.</p></li>
 <li><p><strong>Te_eV</strong> – array (nr,)
 Electron temperature in eV</p></li>
 <li><p><strong>vol</strong> – array (nr,)
@@ -1024,7 +1103,7 @@ Dictionary containing ADAS file names for forward modeling and/or radiation calc
 Possibly useful keys include
 “scd”,”acd”,”ccd”,”plt”,”prb”,”prc”,”pls”,”prs”,”pbs”,”brs”
 Any file names that are needed and not provided will be searched in the
-<a class="reference internal" href="#aurora.atomic.adas_files_dict" title="aurora.atomic.adas_files_dict"><code class="xref py py-meth docutils literal notranslate"><span class="pre">adas_files_dict()</span></code></a> dictionary.</p></li>
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">adas_files_dict()</span></code> dictionary.</p></li>
 <li><p><strong>n0_cm3</strong> – array (nr,), optional
 Background ion density (H,D or T). If provided, charge exchange (CX)
 recombination is included in the calculation of charge state fractional
@@ -1033,7 +1112,7 @@ abundances.</p></li>
 Background ion density (H,D or T). This is only used if CX recombination is
 requested, i.e. if n0_cm3 is not None. If not given, Ti is set equal to Te.</p></li>
 <li><p><strong>nz_cm3</strong> – array (nr,nz), optional
-Impurity charge state densities in cm^-3 units. Fractional abundancies can
+Impurity charge state densities in <span class="math notranslate nohighlight">\(cm^{-3}\)</span> units. Fractional abundancies can
 alternatively be specified via the :param:frac parameter for a constant-fraction
 impurity model across the radius. If provided, nz_cm3 is used.</p></li>
 <li><p><strong>frac</strong> – float, optional
@@ -2303,7 +2382,7 @@ Section 4.2.4</p>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="tutorial.html" class="btn btn-neutral float-left" title="Tutorial" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="atomic_data.html" class="btn btn-neutral float-left" title="Atomic data" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

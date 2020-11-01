@@ -50,7 +50,10 @@ nz = out[0]
 _ = asim.check_conservation()
 
 # plot charge state distributions over radius and time
-aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,0,2), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=asim.rvol_lcfs)
+aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,0,2),
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]',
+                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                              plot_sum=True, x_line=asim.rvol_lcfs)
 
 # add radiation
 asim.rad = aurora.radiation.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te,
@@ -59,14 +62,20 @@ asim.rad = aurora.radiation.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.
                                         main_ion_brem_flag=False)
 
 # plot radiation profiles over radius and time
-aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=asim.rvol_lcfs)
+aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]',
+                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                              plot_sum=True, x_line=asim.rvol_lcfs)
 
 
 # plot Delta-Zeff profiles over radius and time
 asim.calc_Zeff()
 
 # plot variation of Zeff due to simulated impurity:
-aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, asim.delta_Zeff.transpose(1,0,2), xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$\Delta$ $Z_{eff}$', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True,x_line=asim.rvol_lcfs)
+aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, asim.delta_Zeff.transpose(1,0,2),
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$\Delta$ $Z_{eff}$',
+                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                              plot_sum=True,x_line=asim.rvol_lcfs)
 
 
 

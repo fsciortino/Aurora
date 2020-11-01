@@ -7,7 +7,7 @@ It is recommended to run this in IPython.
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-import omfit_eqdsk, omfit_gapy
+import omfit_gapy
 import scipy,sys,os
 import time
 from scipy.interpolate import interp1d
@@ -26,7 +26,7 @@ ne_vals = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
 Te_vals = inputgacode['Te']*1e3  # keV --> eV
 
 # get charge state distributions from ionization equilibrium for Ca
-atom_data = aurora.atomic.get_atom_data('Ca',['acd','scd'])
+atom_data = aurora.atomic.get_atom_data('Ca',['scd','acd'])
 
 # get fractional abundances on ne (cm^-3) and Te (eV) grid
 logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_vals, Te_vals, rho=rhop)

@@ -1,10 +1,10 @@
 Tutorial
 ========
 
-Assuming that you have `Aurora` already installed on your system, we're now ready to move forward. Some basic :py:mod:`aurora` functionality is demonstrated in the `examples` package directory, where users may find a number of useful scripts. Here, we go through some of the same examples and methods.
+Assuming that you have Aurora already installed on your system, we're now ready to move forward. Some basic :py:mod:`aurora` functionality is demonstrated in the `examples` package directory, where users may find a number of useful scripts. Here, we go through some of the same examples and methods.
 
-Running :py:mod:`Aurora` simulations
-------------------------------------
+Running Aurora simulations
+--------------------------
 
 If :py:mod:`aurora` is correctly installed, you should be able to do::
 
@@ -81,4 +81,71 @@ A plot is worth a thousand words, so let's make one for the charge state densiti
     labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=asim.rvol_lcfs
     )
 
-Use the slider to go over time, as you look at the distributions over radius of all the charge states. 
+Use the slider to go over time, as you look at the distributions over radius of all the charge states. It would be really great if you could just save this type of time- and spatially-dependent visualization to a video-format, right? That couldn't be easier, using the :py:func:`~aurora.animate.animate_aurora` function:::
+
+  aurora.animate.animate_aurora(asim.rhop_grid, asim.time_out, nz.transpose(1,0,2),
+                              xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [A.U.]',
+                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                              plot_sum=True, save_filename='aurora_anim')
+
+After running this, a .mp4 file with the name "aurora_anim.mp4" will be saved locally.
+
+
+
+Radiation predictions
+---------------------
+
+Once a set of charge state densities has been obtained, it is simple to compute radiation terms in Aurora. For example, using the results from the Aurora run in :ref:`Running Aurora simulations`, one can then run::
+
+  asim.rad = aurora.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te, prad_flag=True)
+
+See the documentation on :py:func:`~aurora.radiation.compute_rad` for details on input array dimensions and the various flags that may be turned on. In the case above, we simply indicated the ion number (`imp`), and provided charge state densities (with dimensions of time, charge state and space), electron density and temperature (dimensions of time and space). We then explicitely indicated `prad_flag=True`, which means that unfiltered "effective" radiation terms (line radiation and continuum radiation) should be computed. Other possible flags include `thermal_cx_rad_flag`, `spectral_brem_flag`, `sxr_flag` and `main_ion_brem_flag`, all of which are `False` by default. Their nomenclature clearly indicates what calculation they enable (with the possible exception of "spectral bremsstrahlung", which stands for bremsstrahlung at a specific wavelength, defined by the selected ADAS "brs" file. ADAS files for all calculations are taken by default from the list of files indicated in :py:func:`~aurora.adas_files.get_adas_dict` function, but may be replaced by specifying the `adas_files` argument to :py:func:`~aurora.radiation.compute_rad`.
+
+Results from :py:func:`~aurora.radiation.compute_rad` are collected in a dictionary (named "rad" above and added as an attribute to the "asim" object, for convenience) with clear keys, described in the function documentation. To get a quick plot of the radiation profiles, e.g. for line radiation from all simulated charge states, one can do::
+
+  aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]',
+                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                              plot_sum=True, x_line=asim.rvol_lcfs)
+
+			      
+
+Zeff contributions
+------------------
+
+Following an Aurora run, one may be interested in what is the contribution of the simulated impurity to the total effective charge of the plasma. The :py:meth:`~aurora.core.aurora_sim.calc_Zeff` method allows one to quickly compute this by running::
+
+  asim.calc_Zeff()
+
+This makes use of the electron density profiles (as a function of space and time), stored in the "asim" object, and keeps Zeff contributions separate for each charge state. They can of course be plotted with :py:func:`~aurora.plot_tools.slider_plot`:::
+
+  aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, asim.delta_Zeff.transpose(1,0,2),
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$\Delta$ $Z_{eff}$',
+                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                              plot_sum=True,x_line=asim.rvol_lcfs)
+
+
+
+Ionization equilibrium
+----------------------
+
+It may be useful to compare and contrast the charge state distributions obtained from an Aurora run with the distributions predicted by pure ionization equilibium, i.e. by atomic physics only, with no trasport. To do this, we only need some kinetic profiles, which for this example we will load from the sample `input.gacode` file available in the "examples" directory:::
+
+  import omfit_gapy
+  inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
+
+Recall that Aurora generally uses CGS units, so we need to convert electron densities to :math:`cm^{-3}` and electron temperatures to :math:`eV`::
+
+  rhop = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
+  ne_vals = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
+  Te_vals = inputgacode['Te']*1e3  # keV --> eV
+
+Here we also defined a `rhop` grid from the poloidal flux values in the `inputgacode` dictionary. We can then use the :py:func:`~aurora.atomic.get_atom_data` function to read atomic effective ionization ("scd") and recombination ("acd") from the default ADAS files listed in :py:func:`~aurora.adas_files.adas_files_dict`. In this example, we are going to focus on calcium ions:::
+
+  atom_data = aurora.atomic.get_atom_data('Ca',['scd','acd'])
+
+In ionization equilibrium, all ionization and recombination processes will be perfectly balanced. This condition corresponds to specific fractions of each charge state at some locations that we define using arrays of electron density and temperature. We can compute fractional abundances and plot results using::
+
+  logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_vals, Te_vals, rho=rhop, plot=True)
+
+The :py:func:`~aurora.atomic.get_frac_abundances` function returns the log-10 of the electron temperature on the same grid as the fractional abundances, given by the `fz` parameter (dimensions: space, charge state). This same function can be used to both compute radiation profiles of fractional abundances or to compute fractional abundances as a function of scanned parameters `ne` and/or `Te`.

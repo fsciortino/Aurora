@@ -76,6 +76,7 @@
         
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
+    
             
             
               
@@ -85,11 +86,15 @@
 <li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../params.html">Input parameters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../atomic_data.html">Atomic data</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../aurora.html">Aurora modules</a></li>
 </ul>
 
             
           
+    <a href="genindex.html">Index</a>
+  
         </div>
         
       </div>
@@ -221,8 +226,10 @@
 
     <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">l_</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span>
-        <span class="n">a_legend</span><span class="o">.</span><span class="n">plot</span><span class="p">([],[],</span><span class="s1">&#39;k-&#39;</span> <span class="k">if</span> <span class="n">l_</span><span class="o">==</span><span class="s1">&#39;total&#39;</span> <span class="k">else</span> <span class="nb">next</span><span class="p">(</span><span class="n">ls_cycle</span><span class="p">),</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.5</span> <span class="k">if</span> <span class="n">l_</span><span class="o">==</span><span class="s1">&#39;total&#39;</span> <span class="k">else</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">l_</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">lobj</span> <span class="o">=</span> <span class="n">a_plot</span><span class="o">.</span><span class="n">plot</span><span class="p">([],[],</span><span class="s1">&#39;k-&#39;</span> <span class="k">if</span> <span class="n">l_</span><span class="o">==</span><span class="s1">&#39;total&#39;</span> <span class="k">else</span> <span class="nb">next</span><span class="p">(</span><span class="n">ls_cycle</span><span class="p">),</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.5</span> <span class="k">if</span> <span class="n">l_</span><span class="o">==</span><span class="s1">&#39;total&#39;</span> <span class="k">else</span> <span class="mf">1.0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">a_legend</span><span class="o">.</span><span class="n">plot</span><span class="p">([],[],</span><span class="s1">&#39;k-&#39;</span> <span class="k">if</span> <span class="n">l_</span><span class="o">==</span><span class="s1">&#39;total&#39;</span> <span class="k">else</span> <span class="nb">next</span><span class="p">(</span><span class="n">ls_cycle</span><span class="p">),</span>
+                      <span class="n">lw</span><span class="o">=</span><span class="mf">2.5</span> <span class="k">if</span> <span class="n">l_</span><span class="o">==</span><span class="s1">&#39;total&#39;</span> <span class="k">else</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">l_</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">lobj</span> <span class="o">=</span> <span class="n">a_plot</span><span class="o">.</span><span class="n">plot</span><span class="p">([],[],</span><span class="s1">&#39;k-&#39;</span> <span class="k">if</span> <span class="n">l_</span><span class="o">==</span><span class="s1">&#39;total&#39;</span> <span class="k">else</span> <span class="nb">next</span><span class="p">(</span><span class="n">ls_cycle</span><span class="p">),</span>
+                           <span class="n">lw</span><span class="o">=</span><span class="mf">2.5</span> <span class="k">if</span> <span class="n">l_</span><span class="o">==</span><span class="s1">&#39;total&#39;</span> <span class="k">else</span> <span class="mf">1.0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lobj</span><span class="p">)</span>
 
     <span class="c1"># time label (NB: update won&#39;t work if this is placed outside axes)</span>

@@ -1,5 +1,6 @@
-#-*-Python-*-
-# Created by sciortinof at 05 Feb 2020  14:59
+'''Collection of classes and functions for loading, interpolation and processing of atomic data. 
+Refer also to the adas_files.py script. 
+'''
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import RectBivariateSpline, interp1d
@@ -9,53 +10,44 @@ import scipy.ndimage
 from scipy.linalg import svd
 from IPython import embed
 from scipy.constants import m_p, e as q_electron
+from . import adas_files
 
 
-def get_file_types():
-    '''Returns main types of ADAS atomic data of interest '''
-    return {'acd':'recombination',
-            'scd':'ionization',
+def get_adas_file_types():
+    '''Obtain a description of each ADAS file type and its meaning in the context of Aurora.
+    For background, refer to::
+
+       Summers et al., "Ionization state, excited populations and emission of impurities 
+       in dynamic finite density plasmas: I. The generalized collisional-radiative model for 
+       light elements", Plasma Physics and Controlled Fusion, 48:2, 2006
+
+    Returns:
+        Dictionary with keys given by the ADAS file types and values giving a description for them.
+    '''
+    
+    return {'acd':'effective recombination',
+            'scd':'effective ionization',
             'prb':'continuum radiation',
             'plt':'line radiation',
             'ccd':'thermal charge exchange',
             'prc':'thermal charge exchange continuum radiation',
-            'pls':'line radiation in sxr range',
-            'prs':'continuum radiation in sxr range',
+            'pls':'line radiation in the SXR range',
+            'prs':'continuum radiation in the SXR range',
             'brs':'continuum spectral bremstrahlung',
-            'fis':'sensitivity of sxr'}
+            'fis':'sensitivity in the SXR range',
+            'pbs':'impurity bremsstrahlung in SXR range, also included in prs files'
+    }
 
-
-def get_atomdat_info():
-    '''Function to identify location of ADAS atomic data in a generalized fashion
-    and to obtain the list of file_types of interest.
-    '''
-    if 'STRAHL_DIR' not in os.environ:
-        # STRAHL_DIR env variable can in principle be used by user to point to a personal installation
-        os.environ['STRAHL_DIR'] = os.environ['HOME'] + '/strahl'
-
-    # Define hierarchy of directories that should be searched in order
-    paths = [os.environ['HOME'] + '/atomlib/atomdat_master/newdat/',
-             os.environ['HOME'] + '/atomAI/atomdat_master/newdat/',
-             '/fusion/projects/codes/strahl/{}/intel-18/strahl20/atomdat/newdat/'.format(os.environ['USER']),
-             '/fusion/projects/codes/strahl/{}/strahl/atomdat/newdat/'.format(os.environ['USER']),
-             '/fusion/projects/codes/strahl/public20/atomdat/newdat/',
-             os.environ['STRAHL_DIR'] + '/atomdat/newdat/',
-             os.environ['HOME'] + '/strahl/atomdat/newdat/',
-             '']
     
-    for atomdat_dir in paths:
-        if os.path.isdir(atomdat_dir):
-            break
-
-    return atomdat_dir
-
-
-
 class adas_file():
-    '''Read ADAS file in ADF11 format over the given ne, T. '''
+    '''Read ADAS file in ADF11 format over the given density and temperature grids. 
+    Note that such grids vary between files, and the species they refer to may too.
+
+    Refer to ADAS documentation for details on each file.
+    '''
 
     def __init__(self, filepath):
-
+        
         self.filepath = filepath
         self.filename=filepath.split('/')[-1]
         self.file_type = self.filename[:3]
@@ -114,7 +106,7 @@ class adas_file():
 
         axes = np.atleast_2d(axes)
         colormap = cm.rainbow
-        fig.suptitle(self.filename+'  '+ get_file_types()[self.file_type])
+        fig.suptitle(self.filename+'  '+ adas_files.get_adas_file_types()[self.file_type])
 
         for i,ax in enumerate(axes.flatten()):
             if i >= self.n_ion: break
@@ -167,15 +159,16 @@ def get_atom_data(imp, filetypes=['acd','scd'], filenames=[]):
             files[typ] = filenames[ii]
     else:
         # get dictionary containing default list of ADAS atomic files
-        def_adas_files_dict = adas_files_dict()
-        files = def_adas_files_dict[imp]
+        files = adas_files.adas_files_dict()[imp]
 
-    atomdat_dir = get_atomdat_info()
     for filetype in filetypes:
         filename = files[filetype]
 
+        # find location of required ADF11 file
+        fileloc = adas_files.get_adas_file_loc(filename)
+        
         # load specific file and add it to output dictionary
-        res = adas_file(atomdat_dir+filename)
+        res = adas_file(fileloc)
         atom_data[filetype] = res.logNe, res.logT, res.data
 
     return atom_data
@@ -942,241 +935,3 @@ def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
 
 
 
-def adas_files_dict():
-    '''Selections for ADAS files for Aurora runs and radiation calculations.
-    This function can be called to fetch a set of default files, which can then be modified (e.g. to 
-    use a new file for a specific SXR filter) before running a calculation. 
-    '''
-            
-    files={}
-    files["H"] = {}   #1
-    files["H"]['acd'] = "acd96_h.dat"
-    files["H"]['scd'] = "scd96_h.dat"
-    files["H"]['prb'] = "prb96_h.dat"
-    files["H"]['plt'] = "plt96_h.dat"
-    files["H"]['ccd'] = "ccd96_h.dat"
-    files["H"]['prc'] = "prc96_h.dat"
-    files["H"]['pls'] = "pls_H_14.dat"
-    files["H"]['prs'] = "prs_H_14.dat"
-    files["H"]['fis'] = "sxrfil14.dat"
-    files["H"]['brs'] = "brs05360.dat"
-    files["H"]["pbs"] = "pbsx7_h.dat"
-    files["H"]["prc"] = "prc89_h.dat"
-    files["He"] = {}   #2
-    files["He"]['acd'] = "acd96_he.dat"
-    files["He"]['scd'] = "scd96_he.dat"
-    files["He"]['prb'] = "prb96_he.dat"
-    files["He"]['plt'] = "plt96_he.dat"
-    files["He"]['ccd'] = "ccd07_he.dat"
-    files["He"]['pls'] = "pls_He_14.dat"
-    files["He"]['prs'] = "prs_He_14.dat"
-    files["He"]['fis'] = "sxrfil14.dat"
-    files["He"]['brs'] = "brs05360.dat"
-    files["He"]["pbs"] = "pbsx5_he.dat"
-    files["He"]['prc'] = "prc96_he.dat"
-    files["Li"] = {}   #3
-    files["Li"]['acd'] = "acd96_li.dat"
-    files["Li"]['scd'] = "scd96_li.dat"
-    files["Li"]['ccd'] = "ccd89_li.dat"
-    files["Li"]['prb'] = "prb96_li.dat"
-    files["Li"]['plt'] = "plt96_li.dat"
-    files["Li"]['prc'] = "prc89_li.dat"
-    files["Li"]['pls'] = "pls89_li.dat"
-    files["Li"]["pbs"] = ''
-    files["Li"]["prc"] = "prc89_li.dat"
-    files["Be"] = {}   #4
-    files["Be"]['acd'] = "acd96_be.dat"
-    files["Be"]['scd'] = "scd96_be.dat"
-    files["Be"]['prb'] = "prb96_be.dat"
-    files["Be"]['plt'] = "plt96_be.dat"
-    files["Be"]['ccd'] = "ccd89_be.dat"
-    files["Be"]['prc'] = "prc89_be.dat"
-    files["Be"]['pls'] = "plsx5_be.dat"
-    files["Be"]['prs'] = "prsx5_be.dat"
-    files["Be"]["pbs"] = "pbsx5_be.dat"
-    files["Be"]["prc"] = "prc89_be.dat"
-    files["B"] = {}   #5
-    files["B"]['acd'] = "acd89_b.dat"
-    files["B"]['scd'] = "scd89_b.dat"
-    files["B"]['ccd'] = "ccd89_b.dat"
-    files["B"]['prb'] = "prb89_b.dat"
-    files["B"]['plt'] = "plt89_b.dat"
-    files["B"]['prc'] = "prc89_b.dat"
-    files["B"]['pls'] = "plsx5_b.dat"
-    files["B"]['prs'] = "prsx5_b.dat"
-    files["B"]["pbs"] = "pbsx5_b.dat"
-    files["B"]["prc"] = "prc89_b.dat"
-    files["C"] = {}    #6
-    files["C"]['acd'] = "acd96_c.dat"
-    files["C"]['scd'] = "scd96_c.dat"
-    files["C"]['prb'] = "prb96_c.dat"
-    files["C"]['plt'] = "plt96_c.dat"
-    files["C"]['ccd'] = "ccd96_c.dat"
-    files["C"]['pls'] = "pls_C_14.dat"
-    files["C"]['prs'] = "prs_C_14.dat"
-    files["C"]['fis'] = "sxrfil14.dat"
-    files["C"]['brs'] = "brs05360.dat"
-    files["C"]["pbs"] = "pbsx5_c.dat"
-    files["C"]['prc'] = "prc96_c.dat"
-    files["N"] = {}    #7
-    files["N"]['acd'] = "acd96_n.dat"
-    files["N"]['scd'] = "scd96_n.dat"
-    files["N"]['ccd'] = "ccd89_n.dat"
-    files["N"]['prb'] = "prb96_n.dat"
-    files["N"]['plt'] = "plt96_n.dat"
-    files["N"]['pls'] = "plsx8_n.dat"
-    files["N"]['prs'] = "prsx8_n.dat"
-    files["N"]['fis'] = "sxrfilD1.dat"
-    files["N"]['brs'] = "brs05360.dat"
-    files["N"]['ccd'] = "ccd96_n.dat"
-    files["N"]["pbs"] = "pbsx5_n.dat"
-    files["N"]["prc"] = "prc89_n.dat"
-    files["O"] = {}    #8
-    files["O"]['acd'] = "acd96_o.dat"
-    files["O"]['scd'] = "scd96_o.dat"
-    files["O"]['ccd'] = "ccd89_o.dat"
-    files["O"]['prb'] = "prb96_o.dat"
-    files["O"]['plt'] = "plt96_o.dat"
-    files["O"]['pls'] = "plsx5_o.dat"
-    files["O"]['prs'] = "prsx5_o.dat"
-    files["O"]["pbs"] = "pbsx5_o.dat"
-    files["O"]["prc"] = "prc89_o.dat"
-    files["F"] = {}    #9
-    files["F"]['acd'] = "acd89_f.dat"
-    files["F"]['scd'] = "scd89_f.dat"
-    files["F"]['ccd'] = "ccd89_f.dat"
-    files["F"]['prb'] = "prb89_f.dat"
-    files["F"]['plt'] = "plt89_f.dat"
-    files["F"]['fis'] = "sxrfil14.dat"
-    files["F"]['brs'] = "brs05360.dat"
-    files["F"]['pls'] = "pls_F_14.dat"
-    files["F"]['prs'] = "prs_F_14.dat"
-    files["F"]["pbs"] = "pbsx5_f.dat"
-    files["F"]['prc'] = "prc89_f.dat"
-    files["Ne"] = {}   #10
-    files["Ne"]['acd'] = "acd96_ne.dat"
-    files["Ne"]['scd'] = "scd96_ne.dat"
-    files["Ne"]['prb'] = "prb96_ne.dat"
-    files["Ne"]['plt'] = "plt96_ne.dat"
-    files["Ne"]['ccd'] = "ccd89_ne.dat"
-    files["Ne"]['pls'] = "plsx8_ne.dat"
-    files["Ne"]['prs'] = "prsx8_ne.dat"
-    files["Ne"]['fis'] = "sxrfilD1.dat"
-    files["Ne"]['brs'] = "brs05360.dat"
-    files["Ne"]["pbs"] = "pbsx5_ne.dat"
-    files["Ne"]['prc'] = "prc89_ne.dat"
-    files["Al"] = {}    #13
-    files["Al"]['acd'] = "acd00_al.dat"
-    files["Al"]['scd'] = "scd00_al.dat"
-    files["Al"]['prb'] = "prb00_al.dat"
-    files["Al"]['plt'] = "plt00_al.dat"
-    files["Al"]['ccd'] = "ccd89_al.dat"
-    files["Al"]['pls'] = "pls_Al_14.dat"
-    files["Al"]['prs'] = "prs_Al_14.dat"
-    files["Al"]['fis'] = "sxrfil14.dat"
-    files["Al"]['brs'] = "brs05360.dat"
-    files["Al"]['pbs'] = "pbsx5_al.dat"
-    files["Al"]['prc'] = "prc89_al.dat"
-    files["Si"] = {}     #14
-    files["Si"]['acd'] = "acd00_si.dat"
-    files["Si"]['scd'] = "scd00_si.dat"
-    files["Si"]['prb'] = "prb00_si.dat"
-    files["Si"]['plt'] = "plt97_si.dat"
-    files["Si"]['pls'] = "pls_Si_14.dat"
-    files["Si"]['prs'] = "prs_Si_14.dat"
-    files["Si"]['fis'] = "sxrfil14.dat"
-    files["Si"]['brs'] = "brs05360.dat"
-    files["Si"]['ccd'] = "ccd89_si.dat"
-    files["Si"]["pbs"] = "pbsx5_si.dat"
-    files["Si"]["prc"] = "prc89_si.dat"
-    files["Ar"] = {}     #18
-    files["Ar"]['acd'] = "acd89_ar.dat"
-    files["Ar"]['scd'] = "scd89_ar.dat"
-    files["Ar"]['prb'] = "prb89_ar.dat"
-    files["Ar"]['plt'] = "plt89_ar.dat"
-    files["Ar"]['ccd'] = "ccd89_ar.dat"
-    files["Ar"]['prc'] = "prc89_ar.dat"
-    files["Ar"]['pls'] = "pls_Ar_14.dat"
-    files["Ar"]['prs'] = "prs_Ar_14.dat"
-    files["Ar"]['fis'] = "sxrfil14.dat"
-    files["Ar"]['brs'] = "brs05360.dat"
-    files["Ar"]["pbs"] = "pbsx5_ar.dat"
-    files["Ar"]["prc"] = "prc89_ar.dat"
-    files["Ca"] = {}     #20
-    files["Ca"]['acd'] = "acd85_ca.dat"
-    files["Ca"]['scd'] = "scd85_ca.dat"
-    files["Ca"]['ccd'] = "ccd89_w.dat"  # file not available, use first 20 ion stages using Foster scaling
-    files["Ca"]['prb'] = "prb85_ca.dat"
-    files["Ca"]['plt'] = "plt85_ca.dat"
-    files["Ca"]['pls'] = "pls_Ca_14.dat"
-    files["Ca"]['prs'] = "prs_Ca_14.dat"
-    files["Ca"]['fis'] = "sxrfil14.dat"
-    files["Ca"]['brs'] = "brs05360.dat"
-    files["Ca"]["pbs"] = ""
-    files["Ca"]["prc"] = ""
-    files["Fe"] = {}     #26
-    files["Fe"]['acd'] = "acd89_fe.dat"
-    files["Fe"]['scd'] = "scd89_fe.dat"
-    files["Fe"]['prb'] = "prb89_fe.dat"
-    files["Fe"]['plt'] = "plt89_fe.dat"
-    files["Fe"]['pls'] = "pls_Fe_14.dat"
-    files["Fe"]['prs'] = "prs_Fe_14.dat"
-    files["Fe"]['fis'] = "sxrfil14.dat"
-    files["Fe"]['brs'] = "brs05360.dat"
-    files["Fe"]['ccd'] = "ccd89_fe.dat"
-    files["Fe"]["pbs"] = "pbsx5_fe.dat"
-    files["Fe"]["prc"] = "prc89_fe.dat"
-    files["Ni"] = {}     #28
-    files["Ni"]['acd'] = "acd00_ni.dat"
-    files["Ni"]['scd'] = "scd00_ni.dat"
-    files["Ni"]['prb'] = "prb00_ni.dat"
-    files["Ni"]['plt'] = "plt00_ni.dat"
-    files["Ni"]['pls'] = "pls_Ni_14.dat"
-    files["Ni"]['prs'] = "prs_Ni_14.dat"
-    files["Ni"]['fis'] = "sxrfil14.dat"
-    files["Ni"]['brs'] = "brs05360.dat"
-    files["Ni"]['ccd'] = "ccd89_ni.dat"
-    files["Ni"]["pbs"] = "pbsx5_ni.dat"
-    files["Ni"]["prc"] = "prc89_ni.dat"
-    files["Kr"] = {}     #36
-    files["Kr"]['acd'] = "acd89_kr.dat"
-    files["Kr"]['scd'] = "scd89_kr.dat"
-    files["Kr"]['ccd'] = "ccd89_kr.dat"
-    files["Kr"]['prb'] = "prb89_kr.dat"
-    files["Kr"]['plt'] = "plt89_kr.dat"
-    files["Kr"]['pls'] = "plsx5_kr.dat"
-    files["Kr"]['prs'] = "prsx5_kr.dat"
-    files["Kr"]["pbs"] = ""
-    files["Kr"]["prc"] = "prc89_kr.dat"
-    files["Mo"] = {}     #42
-    files["Mo"]['acd'] = "acd89_mo.dat"
-    files["Mo"]['scd'] = "scd89_mo.dat"
-    files["Mo"]['ccd'] = "ccd89_mo.dat"
-    files["Mo"]['plt'] = "plt89_mo.dat"
-    files["Mo"]['prb'] = "prb89_mo.dat"
-    files["Mo"]["pbs"] = ""
-    files["Mo"]['prc'] = "prc89_mo.dat"
-    files["Xe"] = {}     #56
-    files["Xe"]['acd'] = "acd89_xe.dat"
-    files["Xe"]['scd'] = "scd89_xe.dat"
-    files["Xe"]['ccd'] = "ccd89_xe.dat"
-    files["Xe"]['plt'] = "plt89_xe.dat"
-    files["Xe"]['prb'] = "prb89_xe.dat"
-    files["Xe"]['prs'] = "prsx1_xe.dat"
-    files["Xe"]['pls'] = "prsx1_xe.dat"
-    files["Xe"]["pbs"] = ""
-    files["Xe"]['prc'] = "prc89_xe.dat"
-    files["W"] = {}     #74
-    files["W"]['acd'] = "acd89_w.dat"
-    files["W"]['scd'] = "scd89_w.dat"
-    files["W"]['prb'] = "prb89_w.dat"
-    files["W"]['plt'] = "plt89_w.dat"
-    files["W"]['fis'] = "sxrfil14.dat"
-    files["W"]['brs'] = "brs05360.dat"
-    files["W"]['pls'] = "pls_W_14.dat"
-    files["W"]['prs'] = "prs_W_14.dat"
-    files["W"]['ccd'] = "ccd89_w.dat"
-    files["W"]["pbs"] = "pbsx5_w.dat"
-    files["W"]['prc'] = "prc89_w.dat"
-
-    return files

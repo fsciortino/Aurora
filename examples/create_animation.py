@@ -50,4 +50,7 @@ out = asim.run_aurora(D_z, V_z)
 nz = out[0]
 
 # now create animation
-aurora.animate.animate_aurora(asim.rhop_grid, asim.time_out, nz.transpose(1,0,2), xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [A.U.]', labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, save_filename='aurora_anim')
+aurora.animate.animate_aurora(asim.rhop_grid, asim.time_out, nz.transpose(1,0,2),
+                              xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [A.U.]',
+                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                              plot_sum=True, save_filename='aurora_anim')
