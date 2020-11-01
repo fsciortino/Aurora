@@ -1,7 +1,10 @@
-Tutorial: 
-----------------------------------------------------------------
+Tutorial
+========
 
-Some basic :py:mod:`aurora` functionality is demonstrated in the `examples` package directory, where users may find a number of useful scripts. Here, we go through some of the same examples and methods.
+Assuming that you have `Aurora` already installed on your system, we're now ready to move forward. Some basic :py:mod:`aurora` functionality is demonstrated in the `examples` package directory, where users may find a number of useful scripts. Here, we go through some of the same examples and methods.
+
+Running :py:mod:`Aurora` simulations
+------------------------------------
 
 If :py:mod:`aurora` is correctly installed, you should be able to do::
 
@@ -62,7 +65,7 @@ At this point, we are ready to run an :py:mod:`aurora` simulation, with::
 
   out = asim.run_aurora(D_z, V_z)
 
-which is blazing fast! Depending on how many time and radial points you have requested (a few hundreds by default), how many charge states you are simulating, etc., a simulation could take as little as <50 ms, which is a significant improvement with respect to other codes. If you add `use_julia=True` to the :py:meth:`~aurora.core.run_aurora` call the run will be even faster; make sure to wear your seatbelt.
+Blazing fast! Depending on how many time and radial points you have requested (a few hundreds by default), how many charge states you are simulating, etc., a simulation could take as little as <50 ms, which is significantly faster than other code, as far as we know. If you add `use_julia=True` to the :py:meth:`~aurora.core.run_aurora` call the run will be even faster; wear your seatbelt!
 
 You can easily check the quality of particle conservation in the various reservoirs by using::
 

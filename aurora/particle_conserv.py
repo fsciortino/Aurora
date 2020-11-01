@@ -15,7 +15,7 @@ def vol_int(Raxis, ds, var, rhop_max=None):
     Args:
         Raxis : float 
              Major radius on axis [cm]
-         ds: xarray dataset 
+        ds: xarray dataset 
              Dataset containing Aurora or STRAHL result
         var: str
              Name of the variable in the strahl_result.cdf file
@@ -23,7 +23,9 @@ def vol_int(Raxis, ds, var, rhop_max=None):
              Maximum normalized poloidal flux for integral. If not provided, integrate
              over the entire simulation grid. 
 
-    :return: Time history of volume integrated variable
+    Returns: 
+        var_volint : array (nt,)
+             Time history of volume integrated variable
     """
     C = 2.0 * np.pi * Raxis
     zvol = C * np.pi * ds['rvol_grid'].data / ds['pro'].data 
@@ -38,9 +40,9 @@ def vol_int(Raxis, ds, var, rhop_max=None):
         f  = f[...,wh]
 
     # 2D or 3D array f(t,x)
-    fvolint = np.nansum(f*zvol,axis=-1)
+    var_volint = np.nansum(f*zvol,axis=-1)
 
-    return fvolint
+    return var_volint
 
 
 

@@ -1,4 +1,4 @@
-aurora package
+Aurora modules
 ==============
 
 Submodules

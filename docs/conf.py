@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'aurora'
+project = 'Aurora'
 copyright = '2020, F.Sciortino'
 author = 'F.Sciortino'
 
@@ -31,11 +31,12 @@ release = '1.0.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc',
-              #'sphinx.ext.imgmath',
+              'sphinx.ext.autosummary',
+              'sphinx.ext.autosectionlabel',
               'sphinx.ext.todo',
-              'sphinx.ext.mathjax',
+              'sphinx.ext.mathjax',  # 'sphinx.ext.imgmath'
               'sphinx.ext.viewcode',
-              #'sphinxcontrib.napoleon'
+              'sphinx.ext.napoleon',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -89,7 +90,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'aurora.tex', u'aurora Documentation',
+  ('index', 'aurora.tex', u'Aurora Documentation',
    u'Francesco Sciortino', 'manual'),
 ]
 
@@ -119,7 +120,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'aurora', u'aurora Documentation',
+    ('index', 'Aurora', u'Aurora Documentation',
      [u'Francesco Sciortino'], 1)
 ]
 
@@ -133,8 +134,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'aurora', u'aurora Documentation',
-   u'Francesco Sciortino', 'aurora', 'Modern 1.5D impurity transport and radiation modeling for magnetically-confined plasmas.', 'Miscellaneous'),
+  ('index', 'Aurora', u'Aurora Documentation',
+   u'Francesco Sciortino', 'Aurora', 'Modern 1.5D impurity transport and radiation modeling for magnetically-confined plasmas.', 'Miscellaneous'),
 ]
 
 # Documents to append as an appendix to all manuals.
