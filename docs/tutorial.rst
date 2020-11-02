@@ -18,26 +18,26 @@ Note that you can always look at where this function is defined in the package b
 
   aurora.load_default_namelist.__module__
 
-Once you have loaded the default namelist, have a look at the `namelist` dictionary. It contains a number of parameters that are needed for Aurora runs. Some of them, like the name of the device, are only important if automatic fetching of the EFIT equilibrium through :py:mod:`MDSplus` is required, or else it can be ignored (leaving it to its default value). Most of the parameter names should be fairly self-descriptive, but a detailed description will be available soon. In the meantime, please refer to docstrings through the code documentation.
+Once you have loaded the default namelist, have a look at the `namelist` dictionary. It contains a number of parameters that are needed for Aurora runs. Some of them, like the name of the device, are only important if automatic fetching of the EFIT equilibrium through `MDSplus` is required, or else it can be ignored (leaving it to its default value). Most of the parameter names should be fairly self-descriptive, but a detailed description will be available soon. In the meantime, please refer to docstrings through the code documentation.
 
 Next, read in a magnetic equilibrium. You can find an example from a C-Mod discharge in the `examples` directory::
   
   geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
 
-The output `geqdsk` dictionary contains the contents of the EFIT geqdsk file, with additional processing done by the :py:mod:`omfit_eqdsk` package for flux surfaces. Only some of the dictionary fields are used; refer to the :py:meth:`~aurora.grids_utiles` methods for details. The `geqdsk` dictionary is used to create a mapping between the `rhop` grid (square root of normalized poloidal flux) and a `rvol` grid, defined by the normalized volume of each flux surface. Aurora, like STRAHL, runs its simulations on the `rvol` grid. 
+The output `geqdsk` dictionary contains the contents of the EFIT geqdsk file, with additional processing done by the `omfit_eqdsk` package for flux surfaces. Only some of the dictionary fields are used; refer to the :py:mod:`~aurora.grids_utils` methods for details. The `geqdsk` dictionary is used to create a mapping between the `rhop` grid (square root of normalized poloidal flux) and a `rvol` grid, defined by the normalized volume of each flux surface. Aurora, like STRAHL, runs its simulations on the `rvol` grid. 
 
 We next need to read in some kinetic profiles, for example from an `input.gacode` file (available in the `examples` directory)::
   
   inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
 
-Other file formats (e.g. plasma statefiles, TRANSP outputs, etc.) may also be read with :py:mod:`omfit_gapy` or other OMFIT-distributed packages. It is however not important to Aurora how the users get kinetic profiles: all that matters is that they are stored in the `namelist['kin_prof']` dictionary. To set up time-independent kinetic profiles we can use::
+Other file formats (e.g. plasma statefiles, TRANSP outputs, etc.) may also be read with `omfit_gapy` or other OMFIT-distributed packages. It is however not important to Aurora how the users get kinetic profiles: all that matters is that they are stored in the `namelist['kin_prof']` dictionary. To set up time-independent kinetic profiles we can use::
 
   kp = namelist['kin_profs']
   kp['Te']['rhop'] = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
   kp['ne']['vals'] = inputgacode['ne']*1e13    # 1e19 m^-3 --> cm^-3
   kp['Te']['vals'] = inputgacode['Te']*1e3     # keV --> eV
 
-Note that both electron density (`ne`) and temperature (`Te`) must be saved on a `rhop` grid. This grid is internally used by Aurora to map to the `rvol` grid. Also note that, unless otherwise stated, Aurora inputs are always in CGS units, i.e. all spatial quantities are given in :math:`cm`!! (exclamation marks are there to highlight that "I told you").
+Note that both electron density (`ne`) and temperature (`Te`) must be saved on a `rhop` grid. This grid is internally used by Aurora to map to the `rvol` grid. Also note that, unless otherwise stated, Aurora inputs are always in CGS units, i.e. all spatial quantities are given in :math:`cm`!! (the extra exclamation mark is there for a good reason...).
 
 Next, we specify the ion species that we want to simulate. We can simply do::
 
