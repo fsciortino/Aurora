@@ -3,12 +3,8 @@ from matplotlib import pyplot as plt
 from matplotlib import animation
 plt.ion()
 import pickle as pkl
-#import matplotlib as mpl
-#mpl.verbose.set_level("helpful")
-
 from . import plot_tools
 
-from IPython import embed
 
 def animate_aurora(x,y,z, xlabel='', ylabel='', zlabel='', 
                    labels=None, plot_sum=False,

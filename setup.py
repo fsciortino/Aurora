@@ -18,7 +18,7 @@ setup(name='aurora',
       author_email='sciortino@psfc.mit.edu',
       license='MIT',
       packages=['aurora'],
-      install_requires=['numpy','scipy','matplotlib','omfit_eqdsk','omfit_gapy'],
+      install_requires=['numpy','scipy','matplotlib','xarray','omfit_eqdsk','omfit_gapy'],
       ext_modules=[wrapper]
   )
 
