@@ -5,7 +5,6 @@ These are useful in aurora to compute total (n-unresolved) charge exchange rates
 sciortino, 2020
 '''
 
-
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()

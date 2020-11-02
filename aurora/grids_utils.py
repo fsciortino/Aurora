@@ -10,6 +10,7 @@ if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules
 
     from omfit_mds import OMFITmdsValue
 
+
 def create_radial_grid(namelist,plot=False):
     r'''Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. 
     The lim_sep parameters is additionally used if plotting is requested. 

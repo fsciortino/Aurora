@@ -3,6 +3,7 @@ import numpy as np, copy
 import matplotlib.gridspec as mplgs
 import matplotlib.widgets as mplw
 import itertools
+plt.ion()
 
 
 def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=False,
