@@ -6,16 +6,17 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
+    # this if statement prevents issues with sphinx when building docs
     from . import _aurora
 
     from omfit_commonclasses.utils_math import atomic_element
     import omfit_eqdsk
 
-from . import interp
-from . import atomic
-from . import grids_utils
-from . import source_utils
-from . import particle_conserv
+    from . import interp
+    from . import atomic
+    from . import grids_utils
+    from . import source_utils
+    from . import particle_conserv
 
 from scipy.constants import e as q_electron, m_p
 import xarray
