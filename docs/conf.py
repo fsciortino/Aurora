@@ -13,8 +13,8 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-sys.path.insert(0, os.path.abspath('../aurora'))
-autodoc_mock_imports = ["aurora"]
+#sys.path.insert(0, os.path.abspath('../aurora'))
+#autodoc_mock_imports = ["aurora"]
 
 
 # -- Project information -----------------------------------------------------
