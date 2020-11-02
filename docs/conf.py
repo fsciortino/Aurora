@@ -10,8 +10,8 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
-import sys
+import os, sys
+sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('..'))
 autodoc_mock_imports = ["aurora"]
 
@@ -58,7 +58,6 @@ pygments_style = 'sphinx'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-import os
 on_rtd = os.environ.get('READTHEDOCS',None) == 'True'
 
 if not on_rtd: # only import and set the theme if we're buiding docs locally
