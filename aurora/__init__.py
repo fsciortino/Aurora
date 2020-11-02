@@ -8,7 +8,9 @@ name='aurora'
 
 __version__ = '1.3.1'
 
-from ._aurora import run,time_steps
+import numpy as np, sys
+if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
+    from ._aurora import run,time_steps
 
 from .core import *
 from .atomic import *

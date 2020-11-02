@@ -4,7 +4,10 @@
 import matplotlib.pyplot as plt
 import numpy as np, sys, os
 from scipy.interpolate import interp1d
-from . import _aurora
+
+if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
+    from . import _aurora
+
 from IPython import embed
 from omfit_mds import OMFITmdsValue
 

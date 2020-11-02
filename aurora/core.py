@@ -5,7 +5,10 @@ import copy,os,sys
 import numpy as np
 from scipy.interpolate import interp1d
 from omfit_commonclasses.utils_math import atomic_element
-from . import _aurora
+
+if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
+    from . import _aurora
+    
 from . import interp
 from . import atomic
 from . import grids_utils
