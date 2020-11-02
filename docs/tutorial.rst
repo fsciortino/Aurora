@@ -1,12 +1,12 @@
 Tutorial
 ========
 
-Assuming that you have Aurora already installed on your system, we're now ready to move forward. Some basic :py:mod:`aurora` functionality is demonstrated in the `examples` package directory, where users may find a number of useful scripts. Here, we go through some of the same examples and methods.
+Assuming that you have Aurora already installed on your system, we're now ready to move forward. Some basic Aurora functionality is demonstrated in the `examples` package directory, where users may find a number of useful scripts. Here, we go through some of the same examples and methods.
 
 Running Aurora simulations
 --------------------------
 
-If :py:mod:`aurora` is correctly installed, you should be able to do::
+If Aurora is correctly installed, you should be able to do::
 
   import aurora
 
@@ -18,50 +18,50 @@ Note that you can always look at where this function is defined in the package b
 
   aurora.load_default_namelist.__module__
 
-Once you have loaded the default namelist, have a look at the `namelist` dictionary. It contains a number of parameters that are needed for :py:mod:`aurora` runs. Some of them, like the name of the device, are only important if automatic fetching of the EFIT equilibrium through :py:mod:`MDSplus` is required, or else it can be ignored (leaving it to its default value). Most of the parameter names should be fairly self-descriptive, but a detailed description will be available soon. In the meantime, please refer to docstrings through the code documentation.
+Once you have loaded the default namelist, have a look at the `namelist` dictionary. It contains a number of parameters that are needed for Aurora runs. Some of them, like the name of the device, are only important if automatic fetching of the EFIT equilibrium through :py:mod:`MDSplus` is required, or else it can be ignored (leaving it to its default value). Most of the parameter names should be fairly self-descriptive, but a detailed description will be available soon. In the meantime, please refer to docstrings through the code documentation.
 
 Next, read in a magnetic equilibrium. You can find an example from a C-Mod discharge in the `examples` directory::
   
   geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
 
-The output `geqdsk` dictionary contains the contents of the EFIT geqdsk file, with additional processing done by the :py:mod:`omfit_eqdsk` package for flux surfaces. Only some of the dictionary fields are used; refer to the :py:meth:`~aurora.grids_utiles` methods for details. The `geqdsk` dictionary is used to create a mapping between the `rhop` grid (square root of normalized poloidal flux) and a `rvol` grid, defined by the normalized volume of each flux surface. :py:mod:`aurora`, like STRAHL, runs its simulations on the `rvol` grid. 
+The output `geqdsk` dictionary contains the contents of the EFIT geqdsk file, with additional processing done by the :py:mod:`omfit_eqdsk` package for flux surfaces. Only some of the dictionary fields are used; refer to the :py:meth:`~aurora.grids_utiles` methods for details. The `geqdsk` dictionary is used to create a mapping between the `rhop` grid (square root of normalized poloidal flux) and a `rvol` grid, defined by the normalized volume of each flux surface. Aurora, like STRAHL, runs its simulations on the `rvol` grid. 
 
 We next need to read in some kinetic profiles, for example from an `input.gacode` file (available in the `examples` directory)::
   
   inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
 
-Other file formats (e.g. plasma statefiles, TRANSP outputs, etc.) may also be read with :py:mod:`omfit_gapy` or other OMFIT-distributed packages. It is however not important to :py:mod:`aurora` how the users get kinetic profiles: all that matters is that they are stored in the `namelist['kin_prof']` dictionary. To set up time-independent kinetic profiles we can use::
+Other file formats (e.g. plasma statefiles, TRANSP outputs, etc.) may also be read with :py:mod:`omfit_gapy` or other OMFIT-distributed packages. It is however not important to Aurora how the users get kinetic profiles: all that matters is that they are stored in the `namelist['kin_prof']` dictionary. To set up time-independent kinetic profiles we can use::
 
   kp = namelist['kin_profs']
   kp['Te']['rhop'] = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
   kp['ne']['vals'] = inputgacode['ne']*1e13    # 1e19 m^-3 --> cm^-3
   kp['Te']['vals'] = inputgacode['Te']*1e3     # keV --> eV
 
-Note that both electron density (`ne`) and temperature (`Te`) must be saved on a `rhop` grid. This grid is internally used by :py:mod:`aurora` to map to the `rvol` grid. Also note that, unless otherwise stated, :py:mod:`aurora` inputs are always in CGS units, i.e. all spatial quantities are given in :math:`cm`!! (exclamation marks are there to highlight that "I told you").
+Note that both electron density (`ne`) and temperature (`Te`) must be saved on a `rhop` grid. This grid is internally used by Aurora to map to the `rvol` grid. Also note that, unless otherwise stated, Aurora inputs are always in CGS units, i.e. all spatial quantities are given in :math:`cm`!! (exclamation marks are there to highlight that "I told you").
 
 Next, we specify the ion species that we want to simulate. We can simply do::
 
   imp = namelist['imp'] = 'Ar'
 
-and :py:mod:`aurora` will internally find ADAS data for that ion (assuming that this is one of the common ones for fusion modeling). The namelist also contains information on what kind of source of impurities we need to simulate; here we are going to select a constant source (starting at t=0) of :math:`10^{24}` particles/second.::
+and Aurora will internally find ADAS data for that ion (assuming that this is one of the common ones for fusion modeling). The namelist also contains information on what kind of source of impurities we need to simulate; here we are going to select a constant source (starting at t=0) of :math:`10^{24}` particles/second.::
 
   namelist['source_type'] = 'const'
   namelist['Phi0'] = 1e24
 
 Time dependent time histories of the impurity source may however be given by selecting `namelist['source_type']="step"` (for a series of step functions), `"synth_LBO"` (for an analytic function resembling a laser-blow-off (LBO) time history) or `"file"` (to load a detailed function from a file). Refer to the :py:meth:`~aurora.source_utils.get_source_time_history` method for more details. 
 
-Assuming that we're happy with all the inputs in the namelist at this point (many more could be changed!), we can now go ahead and set up our :py:mod:`aurora` simulation:::
+Assuming that we're happy with all the inputs in the namelist at this point (many more could be changed!), we can now go ahead and set up our Aurora simulation:::
 
   asim = aurora.aurora_sim(namelist, geqdsk=geqdsk)
 
-The :py:class:`~aurora.core.aurora_sim` class creates a Python object with spatial and temporal grids, kinetic profiles, atomic rates and all other inputs to the forward model. :py:mod:`aurora` uses a diffusive-convective model for particle fluxes, so we need to specify diffusion (D) and convection (V) coefficients next:::
+The :py:class:`~aurora.core.aurora_sim` class creates a Python object with spatial and temporal grids, kinetic profiles, atomic rates and all other inputs to the forward model. Aurora uses a diffusive-convective model for particle fluxes, so we need to specify diffusion (D) and convection (V) coefficients next:::
 
   D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
   V_z = -2e2 * np.ones(len(asim.rvol_grid)) # cm/s
 
-Here we have made use of the `rvol_grid` attribute of the `asim` object, whose name is self-explanatory. This grid has a 1-to-1 correspondence with `asim.rhop_grid`. In the lines above we have created flat profiles of :math:`D=10^4 cm^2/s` and :math:`V=-2\times 10^2 cm/s`, defined on our simulation grids. D's and V's could in principle (and, very often, in practice) be defined with more dimensions to represent a time-dependence and also different values for different charge states. Unless specifed otherwise, :py:mod:`aurora` assumes all points of the time grid (now stored in `asim.time_grid`) and all charge states to have the same D and V. See the :py:meth:`~aurora.core.run_aurora` method for details on how to speficy further dependencies.
+Here we have made use of the `rvol_grid` attribute of the `asim` object, whose name is self-explanatory. This grid has a 1-to-1 correspondence with `asim.rhop_grid`. In the lines above we have created flat profiles of :math:`D=10^4 cm^2/s` and :math:`V=-2\times 10^2 cm/s`, defined on our simulation grids. D's and V's could in principle (and, very often, in practice) be defined with more dimensions to represent a time-dependence and also different values for different charge states. Unless specifed otherwise, Aurora assumes all points of the time grid (now stored in `asim.time_grid`) and all charge states to have the same D and V. See the :py:meth:`~aurora.core.run_aurora` method for details on how to speficy further dependencies.
 
-At this point, we are ready to run an :py:mod:`aurora` simulation, with::
+At this point, we are ready to run an Aurora simulation, with::
 
   out = asim.run_aurora(D_z, V_z)
 
@@ -99,7 +99,7 @@ Once a set of charge state densities has been obtained, it is simple to compute 
 
   asim.rad = aurora.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te, prad_flag=True)
 
-See the documentation on :py:func:`~aurora.radiation.compute_rad` for details on input array dimensions and the various flags that may be turned on. In the case above, we simply indicated the ion number (`imp`), and provided charge state densities (with dimensions of time, charge state and space), electron density and temperature (dimensions of time and space). We then explicitely indicated `prad_flag=True`, which means that unfiltered "effective" radiation terms (line radiation and continuum radiation) should be computed. Other possible flags include `thermal_cx_rad_flag`, `spectral_brem_flag`, `sxr_flag` and `main_ion_brem_flag`, all of which are `False` by default. Their nomenclature clearly indicates what calculation they enable (with the possible exception of "spectral bremsstrahlung", which stands for bremsstrahlung at a specific wavelength, defined by the selected ADAS "brs" file. ADAS files for all calculations are taken by default from the list of files indicated in :py:func:`~aurora.adas_files.get_adas_dict` function, but may be replaced by specifying the `adas_files` argument to :py:func:`~aurora.radiation.compute_rad`.
+See the documentation on :py:func:`~aurora.radiation.compute_rad` for details on input array dimensions and the various flags that may be turned on. In the case above, we simply indicated the ion number (`imp`), and provided charge state densities (with dimensions of time, charge state and space), electron density and temperature (dimensions of time and space). We then explicitely indicated `prad_flag=True`, which means that unfiltered "effective" radiation terms (line radiation and continuum radiation) should be computed. Other possible flags include `thermal_cx_rad_flag`, `spectral_brem_flag`, `sxr_flag` and `main_ion_brem_flag`, all of which are `False` by default. Their nomenclature clearly indicates what calculation they enable (with the possible exception of "spectral bremsstrahlung", which stands for bremsstrahlung at a specific wavelength, defined by the selected ADAS "brs" file). ADAS files for all calculations are taken by default from the list of files indicated in :py:func:`~aurora.adas_files.get_adas_dict` function, but may be replaced by specifying the `adas_files` argument to :py:func:`~aurora.radiation.compute_rad`.
 
 Results from :py:func:`~aurora.radiation.compute_rad` are collected in a dictionary (named "rad" above and added as an attribute to the "asim" object, for convenience) with clear keys, described in the function documentation. To get a quick plot of the radiation profiles, e.g. for line radiation from all simulated charge states, one can do::
 
