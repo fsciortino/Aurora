@@ -732,30 +732,35 @@ def gff_mean(Z,Te):
 
 
 def impurity_brems(nz, ne, Te):
-    '''Approximate impurity bremsstrahlung in units of mW/nm/sr/m^3.cm^3.
+    '''Approximate bremsstrahlung in units of :math:`mW/nm/sr/m^3 \cdot cm^3`, or
+    equivalently :math:`W/m^3` for full spherical emission. 
 
-    This may not be very useful, since this contribution is already included in the 
-    continuum radiation component in ADAS files. 
+    Note that this may not be very useful, since this contribution is already included 
+    in the continuum radiation component in ADAS files. The bremsstrahlung estimate in 
+    ADAS continuum radiation files is more accurate than the one give by this function, 
+    which uses a simpler interpolation of the Gaunt factor with weak ne-dependence. 
+    Use with care!
 
-    This estimate does not have the correct ne-dependence of the Gaunt factor... use with care!
+    Args:
+        nz : array (time,nZ,space)
+            Densities for each charge state [:math:`cm^{-3}`]
+        ne : array (time,space)
+            Electron density [:math:`cm^{-3}`]
+        Te : array (time,space)
+            Electron temperature [:math:`cm^{-3}`]
+
+    Returns:
+        brems : array (time,nZ,space)
+            Bremsstrahlung for each charge state 
     '''
     # neutral stage doesn't produce brems
     Z_imp = nz.shape[1]-1
     Z = np.arange(Z_imp)[None,:,None]+1
 
     gff = gff_mean(Z,Te[:,None])
-    imp_brems = Z**2 * nz[:,1:] * gff * (1.69e-32 *np.sqrt(Te) * ne) [:,None]
+    brems = Z**2 * nz[:,1:] * gff * (1.69e-32 *np.sqrt(Te) * ne) [:,None]
 
-    return imp_brems
-
-
-def main_ion_brems(Zi, ni, ne, Te):
-    '''Approximate main-ion bremsstrahlung in units of  mW/nm/sr/m^3.cm^3.
-
-    It is likely better to calculate this from H/D/T plt files, which will have more accurate 
-    Gaunt factors with the correct density dependence.
-    '''
-    return 1.69e-32 * ni * Zi**2. * ne * np.sqrt(Te) * gff_mean(Zi,Te)
+    return brems
 
 
 

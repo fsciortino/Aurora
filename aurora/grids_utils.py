@@ -469,8 +469,10 @@ def get_rhopol_rvol_mapping(geqdsk, rho_pol=None):
 
     # compute rvol
     rvol = np.sqrt(V/(2*np.pi**2 * R0)) * 100 # m --> cm
-    rvol[0] = 0.0 # enforce 0 on axis
 
+    # enforce 0 on axis
+    rvol[0] = 0.0
+    
     return rho_pol, rvol
 
 

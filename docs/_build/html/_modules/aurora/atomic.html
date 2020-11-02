@@ -891,30 +891,35 @@
 
 
 <div class="viewcode-block" id="impurity_brems"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.impurity_brems">[docs]</a><span class="k">def</span> <span class="nf">impurity_brems</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">ne</span><span class="p">,</span> <span class="n">Te</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Approximate impurity bremsstrahlung in units of mW/nm/sr/m^3.cm^3.</span>
+    <span class="sd">&#39;&#39;&#39;Approximate bremsstrahlung in units of :math:`mW/nm/sr/m^3 \cdot cm^3`, or</span>
+<span class="sd">    equivalently :math:`W/m^3` for full spherical emission. </span>
 
-<span class="sd">    This may not be very useful, since this contribution is already included in the </span>
-<span class="sd">    continuum radiation component in ADAS files. </span>
+<span class="sd">    Note that this may not be very useful, since this contribution is already included </span>
+<span class="sd">    in the continuum radiation component in ADAS files. The bremsstrahlung estimate in </span>
+<span class="sd">    ADAS continuum radiation files is more accurate than the one give by this function, </span>
+<span class="sd">    which uses a simpler interpolation of the Gaunt factor with weak ne-dependence. </span>
+<span class="sd">    Use with care!</span>
 
-<span class="sd">    This estimate does not have the correct ne-dependence of the Gaunt factor... use with care!</span>
+<span class="sd">    Args:</span>
+<span class="sd">        nz : array (time,nZ,space)</span>
+<span class="sd">            Densities for each charge state [:math:`cm^{-3}`]</span>
+<span class="sd">        ne : array (time,space)</span>
+<span class="sd">            Electron density [:math:`cm^{-3}`]</span>
+<span class="sd">        Te : array (time,space)</span>
+<span class="sd">            Electron temperature [:math:`cm^{-3}`]</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        brems : array (time,nZ,space)</span>
+<span class="sd">            Bremsstrahlung for each charge state </span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="c1"># neutral stage doesn&#39;t produce brems</span>
     <span class="n">Z_imp</span> <span class="o">=</span> <span class="n">nz</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="mi">1</span>
     <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">Z_imp</span><span class="p">)[</span><span class="kc">None</span><span class="p">,:,</span><span class="kc">None</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span>
 
     <span class="n">gff</span> <span class="o">=</span> <span class="n">gff_mean</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span><span class="n">Te</span><span class="p">[:,</span><span class="kc">None</span><span class="p">])</span>
-    <span class="n">imp_brems</span> <span class="o">=</span> <span class="n">Z</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">nz</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span> <span class="o">*</span> <span class="n">gff</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.69e-32</span> <span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Te</span><span class="p">)</span> <span class="o">*</span> <span class="n">ne</span><span class="p">)</span> <span class="p">[:,</span><span class="kc">None</span><span class="p">]</span>
+    <span class="n">brems</span> <span class="o">=</span> <span class="n">Z</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">nz</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:]</span> <span class="o">*</span> <span class="n">gff</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.69e-32</span> <span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Te</span><span class="p">)</span> <span class="o">*</span> <span class="n">ne</span><span class="p">)</span> <span class="p">[:,</span><span class="kc">None</span><span class="p">]</span>
 
-    <span class="k">return</span> <span class="n">imp_brems</span></div>
-
-
-<div class="viewcode-block" id="main_ion_brems"><a class="viewcode-back" href="../../aurora.html#aurora.atomic.main_ion_brems">[docs]</a><span class="k">def</span> <span class="nf">main_ion_brems</span><span class="p">(</span><span class="n">Zi</span><span class="p">,</span> <span class="n">ni</span><span class="p">,</span> <span class="n">ne</span><span class="p">,</span> <span class="n">Te</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Approximate main-ion bremsstrahlung in units of  mW/nm/sr/m^3.cm^3.</span>
-
-<span class="sd">    It is likely better to calculate this from H/D/T plt files, which will have more accurate </span>
-<span class="sd">    Gaunt factors with the correct density dependence.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="k">return</span> <span class="mf">1.69e-32</span> <span class="o">*</span> <span class="n">ni</span> <span class="o">*</span> <span class="n">Zi</span><span class="o">**</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">ne</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Te</span><span class="p">)</span> <span class="o">*</span> <span class="n">gff_mean</span><span class="p">(</span><span class="n">Zi</span><span class="p">,</span><span class="n">Te</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">brems</span></div>
 
 
 

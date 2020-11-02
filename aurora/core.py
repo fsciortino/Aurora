@@ -62,14 +62,15 @@ class aurora_sim:
         rho_pol, _rvol = grids_utils.get_rhopol_rvol_mapping(geqdsk)
         rvol_lcfs = interp1d(rho_pol,_rvol)(1.0)
         self.rvol_lcfs = self.namelist['rvol_lcfs'] = np.round(rvol_lcfs,3)  # set limit on accuracy
-
+        
         # create radial grid
         grid_params = grids_utils.create_radial_grid(self.namelist, plot=False)
         self.rvol_grid,self.pro_grid,self.qpr_grid,self.prox_param = grid_params
 
         # get rho_poloidal grid corresponding to aurora internal (rvol) grid
         self.rhop_grid = interp1d(_rvol,rho_pol)(self.rvol_grid)
-
+        self.rhop_grid[0] = 0.0 # enforce on axis
+        
         # Save R on LFS and HFS
         self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(geqdsk, rho_pol=self.rhop_grid)
 

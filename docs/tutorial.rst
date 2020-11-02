@@ -99,7 +99,19 @@ Once a set of charge state densities has been obtained, it is simple to compute 
 
   asim.rad = aurora.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te, prad_flag=True)
 
-See the documentation on :py:func:`~aurora.radiation.compute_rad` for details on input array dimensions and the various flags that may be turned on. In the case above, we simply indicated the ion number (`imp`), and provided charge state densities (with dimensions of time, charge state and space), electron density and temperature (dimensions of time and space). We then explicitely indicated `prad_flag=True`, which means that unfiltered "effective" radiation terms (line radiation and continuum radiation) should be computed. Other possible flags include `thermal_cx_rad_flag`, `spectral_brem_flag`, `sxr_flag` and `main_ion_brem_flag`, all of which are `False` by default. Their nomenclature clearly indicates what calculation they enable (with the possible exception of "spectral bremsstrahlung", which stands for bremsstrahlung at a specific wavelength, defined by the selected ADAS "brs" file). ADAS files for all calculations are taken by default from the list of files indicated in :py:func:`~aurora.adas_files.get_adas_dict` function, but may be replaced by specifying the `adas_files` argument to :py:func:`~aurora.radiation.compute_rad`.
+The documentation on :py:func:`~aurora.radiation.compute_rad` gives details on input array dimensions and various flags that may be turned on. In the case above, we simply indicated the ion number (`imp`), and provided charge state densities (with dimensions of time, charge state and space), electron density and temperature (dimensions of time and space). We then explicitely indicated `prad_flag=True`, which means that unfiltered "effective" radiation terms (line radiation and continuum radiation) should be computed. Bremsstrahlung is also estimated using an interpolation formula that is independent of ADAS data and can be found in `asim.rad['brems']`. However, note that bremsstrahlung is already included in `asim.rad['cont_rad']`, which also includes other terms including continuum recombination using ADAS data. It can be useful to compare the bremsstrahlung calculation in `asim.rad['brems']` with `asim.rad['cont_rad']`, but we recommend that users rely on the full continuum prediction for total power estimations.
+
+Other possible flags of the :py:func:`~aurora.radiation.compute_rad` function include::
+
+#. `sxr_flag`: if True, compute line and continuum radiation in the SXR range using the ADAS "pls" and "prs" files. Bremsstrahlung is also separately computed using the ADAS "pbs" files.
+
+#. `thermal_cx_rad_flag`: if True, the code checks for inputs `n0` (atomic H/D/T neutral density) and `Ti` (ion temperature) and computes line power due to charge transfer from thermal background neutrals and impurities.
+
+#. `spectral_brem_flag`: if True, use the ADAS "brs" files to compute bremsstrahlung at a wavelength specified by the chosen file. 
+     
+All of the radiation flags are `False` by default.
+
+ADAS files for all calculations are taken by default from the list of files indicated in :py:func:`~aurora.adas_files.get_adas_dict` function, but may be replaced by specifying the `adas_files` dictionary argument to :py:func:`~aurora.radiation.compute_rad`.
 
 Results from :py:func:`~aurora.radiation.compute_rad` are collected in a dictionary (named "rad" above and added as an attribute to the "asim" object, for convenience) with clear keys, described in the function documentation. To get a quick plot of the radiation profiles, e.g. for line radiation from all simulated charge states, one can do::
 
@@ -108,7 +120,53 @@ Results from :py:func:`~aurora.radiation.compute_rad` are collected in a diction
                               labels=[str(i) for i in np.arange(0,nz.shape[1])],
                               plot_sum=True, x_line=asim.rvol_lcfs)
 
-			      
+Aurora's radiation modeling capabilities may also be useful when assessing total power radiation for integrated modeling. The :py:func:`~aurora.radiation.radiation_model` function allows one to easily obtain the most important radiation terms at a single time slice, both as power densities (units of :math:`MW/cm^{-3}`) and absolute power (units of :math:`MW`). To obtain the latter form, we need to integrate over flux surface volumes. We can use the `geqdsk` dictionary obtained via::
+
+  geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
+
+(or equivalent methods/files) to then extract flux surface volumes (units of :math:`m^3`) at each value of `rhop`:::
+
+  grhop = np.sqrt(geqdsk['fluxSurfaces']['geo']['psin'])
+  gvol = geqdsk['fluxSurfaces']['geo']['vol']
+
+  # interpolate on our grid
+  vol = interp1d(grhop, gvol)(rhop)
+
+We can now pass the `vol` array to :py:func:`~aurora.radiation.radiation_model`, together with the impurity atomic symbol (`imp`), the `rhop` grid array, electron density (`ne_cm3`) and temperature (`Te_eV`) and, optionally, also background neutral densities to include thermal charge exchange:::
+
+  res = aurora.radiation_model(imp,rhop,ne_cm3,Te_eV, vol,
+                               n0_cm3=None, frac=0.005, plot=True)
+
+Here we specified the impurity densities as a simple fraction of the electron density profile, by specifying the `frac` argument. This is obviously a simplifying assumption, effectively stating that the total impurity density profile should have a maximum amplitude of `frac` (in the case above, set to 0.005) and a profile shape (corresponding t a profile of `V/D`) that is identical to the one of the :math:`n_e` profile. This may be convenient for parameter scans in the design process of future devices, but is by no means a correct assumption. If we'd rather calculate the total radiated power from a specific set of impurity charge state profiles (e.g. from an Aurora simulation), we can do::
+
+  res = aurora.radiation_model(imp,rhop,ne_cm3,Te_eV, vol,
+                               n0_cm3=None, nz_cm3=nz_cm3, plot=True)
+
+
+where we specified the charge state densities (dimensions of space, charge state) at a single time. Since we specified `plot=True`, a number of useful radiation profiles should be displayed.
+
+Of course, one can also estimate radiation from the main ions. To do this, we first want to estimate the main ion density, using::
+
+  ni_cm3 = aurora.get_main_ion_dens(ne_cm3, ions)
+
+with `ions` being a dictionary of the form::
+
+  ions = {'C': nC_cm3, 'Ne': nNe_cm3}   # (time,charge state,space)
+
+with a number of impurity charge state densities with dimensions of (time,charge state,space). The :py:func:`~aurora.radiation.get_main_ion_dens` function subtracts each of these densities (times the Z of each charge state) from the electron density to obtain a main ion density estimate based on quasineutrality. Before we move forward, we need to add a neutral stage density for the main ion species, e.g. using::
+
+  niz_cm3 = np.vstack((n0_cm3[None,:],ni_cm3)).T
+
+such that the `niz_cm3` output is a 2D array of dimensions (charge state, radius). 
+
+To estimate main ion radiation we can now do::
+  
+  res_mainion = aurora.radiation_model('H',rhop,ne_cm3,Te_eV, vol, nz_cm3 = niz_cm3, plot=True)
+
+(Note that the atomic data does not discriminate between hydrogen isotopes)
+In the call above, the neutral density has been included in `niz_cm3`, but note that (1) there is no radiation due to charge exchange between deuterium neutrals and deuterium ions, since they are indistinguishable, and (2) we did not attempt to include the effect of charge exchange on deuterium fractional abundances because `n0_cm3` (included in `niz_cm3` already fully specifies fractional abundances for main ions).
+
+
 
 Zeff contributions
 ------------------

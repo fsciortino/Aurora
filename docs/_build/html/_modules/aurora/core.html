@@ -221,14 +221,15 @@
         <span class="n">rho_pol</span><span class="p">,</span> <span class="n">_rvol</span> <span class="o">=</span> <span class="n">grids_utils</span><span class="o">.</span><span class="n">get_rhopol_rvol_mapping</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">)</span>
         <span class="n">rvol_lcfs</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">rho_pol</span><span class="p">,</span><span class="n">_rvol</span><span class="p">)(</span><span class="mf">1.0</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rvol_lcfs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">[</span><span class="s1">&#39;rvol_lcfs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">rvol_lcfs</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span>  <span class="c1"># set limit on accuracy</span>
-
+        
         <span class="c1"># create radial grid</span>
         <span class="n">grid_params</span> <span class="o">=</span> <span class="n">grids_utils</span><span class="o">.</span><span class="n">create_radial_grid</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">namelist</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">pro_grid</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">qpr_grid</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">prox_param</span> <span class="o">=</span> <span class="n">grid_params</span>
 
         <span class="c1"># get rho_poloidal grid corresponding to aurora internal (rvol) grid</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rhop_grid</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">_rvol</span><span class="p">,</span><span class="n">rho_pol</span><span class="p">)(</span><span class="bp">self</span><span class="o">.</span><span class="n">rvol_grid</span><span class="p">)</span>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">rhop_grid</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span> <span class="c1"># enforce on axis</span>
+        
         <span class="c1"># Save R on LFS and HFS</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">Rhfs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Rlfs</span> <span class="o">=</span> <span class="n">grids_utils</span><span class="o">.</span><span class="n">get_HFS_LFS</span><span class="p">(</span><span class="n">geqdsk</span><span class="p">,</span> <span class="n">rho_pol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rhop_grid</span><span class="p">)</span>
 
