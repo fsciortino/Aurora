@@ -1,4 +1,1 @@
-numpy
-scipy
-numpydoc
-matplotlib
+sphinxcontrib-napoleon
