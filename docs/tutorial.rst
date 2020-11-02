@@ -75,18 +75,17 @@ which will show the results in full detail. The `reservoirs` output list contain
 
 A plot is worth a thousand words, so let's make one for the charge state densities (on a nice slider!)::
 
-  aurora.plot_tools.slider_plot(
-    asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
-    xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]',
-    labels=[str(i) for i in np.arange(0,nz.shape[1])], plot_sum=True, x_line=asim.rvol_lcfs
-    )
+  aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
+                     xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]',
+                     labels=[str(i) for i in np.arange(0,nz.shape[1])],
+		     plot_sum=True, x_line=asim.rvol_lcfs )
 
 Use the slider to go over time, as you look at the distributions over radius of all the charge states. It would be really great if you could just save this type of time- and spatially-dependent visualization to a video-format, right? That couldn't be easier, using the :py:func:`~aurora.animate.animate_aurora` function:::
 
-  aurora.animate.animate_aurora(asim.rhop_grid, asim.time_out, nz.transpose(1,0,2),
-                              xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [A.U.]',
-                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
-                              plot_sum=True, save_filename='aurora_anim')
+  aurora.animate_aurora(asim.rhop_grid, asim.time_out, nz.transpose(1,0,2),
+                        xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [A.U.]',
+                        labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                        plot_sum=True, save_filename='aurora_anim')
 
 After running this, a .mp4 file with the name "aurora_anim.mp4" will be saved locally.
 
@@ -101,7 +100,7 @@ Once a set of charge state densities has been obtained, it is simple to compute 
 
 The documentation on :py:func:`~aurora.radiation.compute_rad` gives details on input array dimensions and various flags that may be turned on. In the case above, we simply indicated the ion number (`imp`), and provided charge state densities (with dimensions of time, charge state and space), electron density and temperature (dimensions of time and space). We then explicitely indicated `prad_flag=True`, which means that unfiltered "effective" radiation terms (line radiation and continuum radiation) should be computed. Bremsstrahlung is also estimated using an interpolation formula that is independent of ADAS data and can be found in `asim.rad['brems']`. However, note that bremsstrahlung is already included in `asim.rad['cont_rad']`, which also includes other terms including continuum recombination using ADAS data. It can be useful to compare the bremsstrahlung calculation in `asim.rad['brems']` with `asim.rad['cont_rad']`, but we recommend that users rely on the full continuum prediction for total power estimations.
 
-Other possible flags of the :py:func:`~aurora.radiation.compute_rad` function include::
+Other possible flags of the :py:func:`~aurora.radiation.compute_rad` function include:
 
 #. `sxr_flag`: if True, compute line and continuum radiation in the SXR range using the ADAS "pls" and "prs" files. Bremsstrahlung is also separately computed using the ADAS "pbs" files.
 
@@ -111,14 +110,14 @@ Other possible flags of the :py:func:`~aurora.radiation.compute_rad` function in
      
 All of the radiation flags are `False` by default.
 
-ADAS files for all calculations are taken by default from the list of files indicated in :py:func:`~aurora.adas_files.get_adas_dict` function, but may be replaced by specifying the `adas_files` dictionary argument to :py:func:`~aurora.radiation.compute_rad`.
+ADAS files for all calculations are taken by default from the list of files indicated in :py:func:`~aurora.adas_files.adas_files_dict` function, but may be replaced by specifying the `adas_files` dictionary argument to :py:func:`~aurora.radiation.compute_rad`.
 
 Results from :py:func:`~aurora.radiation.compute_rad` are collected in a dictionary (named "rad" above and added as an attribute to the "asim" object, for convenience) with clear keys, described in the function documentation. To get a quick plot of the radiation profiles, e.g. for line radiation from all simulated charge states, one can do::
 
-  aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
-                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]',
-                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
-                              plot_sum=True, x_line=asim.rvol_lcfs)
+  aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
+                     xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]',
+                     labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                     plot_sum=True, x_line=asim.rvol_lcfs)
 
 Aurora's radiation modeling capabilities may also be useful when assessing total power radiation for integrated modeling. The :py:func:`~aurora.radiation.radiation_model` function allows one to easily obtain the most important radiation terms at a single time slice, both as power densities (units of :math:`MW/cm^{-3}`) and absolute power (units of :math:`MW`). To obtain the latter form, we need to integrate over flux surface volumes. We can use the `geqdsk` dictionary obtained via::
 
@@ -177,10 +176,10 @@ Following an Aurora run, one may be interested in what is the contribution of th
 
 This makes use of the electron density profiles (as a function of space and time), stored in the "asim" object, and keeps Zeff contributions separate for each charge state. They can of course be plotted with :py:func:`~aurora.plot_tools.slider_plot`:::
 
-  aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, asim.delta_Zeff.transpose(1,0,2),
-                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$\Delta$ $Z_{eff}$',
-                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
-                              plot_sum=True,x_line=asim.rvol_lcfs)
+  aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.delta_Zeff.transpose(1,0,2),
+                     xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$\Delta$ $Z_{eff}$',
+                     labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                     plot_sum=True,x_line=asim.rvol_lcfs)
 
 
 
@@ -200,10 +199,10 @@ Recall that Aurora generally uses CGS units, so we need to convert electron dens
 
 Here we also defined a `rhop` grid from the poloidal flux values in the `inputgacode` dictionary. We can then use the :py:func:`~aurora.atomic.get_atom_data` function to read atomic effective ionization ("scd") and recombination ("acd") from the default ADAS files listed in :py:func:`~aurora.adas_files.adas_files_dict`. In this example, we are going to focus on calcium ions:::
 
-  atom_data = aurora.atomic.get_atom_data('Ca',['scd','acd'])
+  atom_data = aurora.get_atom_data('Ca',['scd','acd'])
 
 In ionization equilibrium, all ionization and recombination processes will be perfectly balanced. This condition corresponds to specific fractions of each charge state at some locations that we define using arrays of electron density and temperature. We can compute fractional abundances and plot results using::
 
-  logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_vals, Te_vals, rho=rhop, plot=True)
+  logTe, fz = aurora.get_frac_abundances(atom_data, ne_vals, Te_vals, rho=rhop, plot=True)
 
 The :py:func:`~aurora.atomic.get_frac_abundances` function returns the log-10 of the electron temperature on the same grid as the fractional abundances, given by the `fz` parameter (dimensions: space, charge state). This same function can be used to both compute radiation profiles of fractional abundances or to compute fractional abundances as a function of scanned parameters `ne` and/or `Te`.
