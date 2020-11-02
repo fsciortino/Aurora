@@ -1,0 +1,5 @@
+numpy
+scipy
+matplotlib
+omfit_eqdsk
+omfit_gapy

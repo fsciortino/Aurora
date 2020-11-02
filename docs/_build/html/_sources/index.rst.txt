@@ -41,7 +41,7 @@ Documentation contents
 
    install
    tutorial
-   requirements
+   aurora_req
    params
    atomic_data
    citing
