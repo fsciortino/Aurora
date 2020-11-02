@@ -8,7 +8,6 @@ from matplotlib import cm
 import os
 import scipy.ndimage
 from scipy.linalg import svd
-from IPython import embed
 from scipy.constants import m_p, e as q_electron
 from . import adas_files
 

@@ -9,7 +9,6 @@ from scipy.integrate import cumtrapz
 import matplotlib.pyplot as plt
 plt.ion()
 from scipy import constants
-from IPython import embed
 import warnings, copy
 
 def compute_rad(imp, nz, ne, Te,

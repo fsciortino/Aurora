@@ -8,8 +8,7 @@ from scipy.interpolate import interp1d
 if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
     from . import _aurora
 
-from IPython import embed
-from omfit_mds import OMFITmdsValue
+    from omfit_mds import OMFITmdsValue
 
 def create_radial_grid(namelist,plot=False):
     r'''Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. 

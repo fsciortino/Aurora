@@ -4,18 +4,19 @@ import scipy.io
 import copy,os,sys
 import numpy as np
 from scipy.interpolate import interp1d
-from omfit_commonclasses.utils_math import atomic_element
 
 if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
     from . import _aurora
-    
+
+    from omfit_commonclasses.utils_math import atomic_element
+    import omfit_eqdsk
+
 from . import interp
 from . import atomic
 from . import grids_utils
 from . import source_utils
 from . import particle_conserv
-from IPython import embed
-import omfit_eqdsk
+
 from scipy.constants import e as q_electron, m_p
 import xarray
 
