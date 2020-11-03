@@ -4,6 +4,7 @@ import scipy.io
 import copy,os,sys
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy.constants import e as q_electron, m_p
 
 if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
     # this if statement prevents issues with sphinx when building docs
@@ -19,8 +20,7 @@ if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules
     from . import source_utils
     from . import particle_conserv
 
-from scipy.constants import e as q_electron, m_p
-import xarray
+    import xarray
 
 
 class aurora_sim:
