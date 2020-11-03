@@ -11,13 +11,13 @@ if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules
 
     import omfit_eqdsk
     
-from omfit_commonclasses.utils_math import atomic_element
-
-from . import interp
-from . import atomic
-from . import grids_utils
-from . import source_utils
-from . import particle_conserv
+    from omfit_commonclasses.utils_math import atomic_element
+    
+    from . import interp
+    from . import atomic
+    from . import grids_utils
+    from . import source_utils
+    from . import particle_conserv
 
 from scipy.constants import e as q_electron, m_p
 import xarray
