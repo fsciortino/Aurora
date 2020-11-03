@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import RectBivariateSpline, interp1d
 from matplotlib import cm
-import os
+import os, sys
 import scipy.ndimage
 from scipy.linalg import svd
 from scipy.constants import m_p, e as q_electron
