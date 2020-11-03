@@ -1,5 +1,5 @@
 numpy
 scipy
 matplotlib
-xarra
+xarray
 omfit_commonclasses
