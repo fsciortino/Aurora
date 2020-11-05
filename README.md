@@ -1,10 +1,10 @@
-# Aurora: fast 1.5D modeling of particle transport and radiation in magnetically-confined plasmas
+# Aurora: a modern toolbox for impurity transport and radiation modeling
 
-Aurora is a modern heavy-ion transport code for magnetically-confined plasmas. Its main applications are forward modeling of impurity transport and radiation predictions for fusion synthetic diagnostics. Aurora offers a simple interface between Python3 and Fortran 90 -- a solution that ensures fast iterations, while maintaining simplicity for users. Recently, a Julia interface has also been developed and is now in beta testing. The package includes extensive Python3 functionality to create inputs and read/plot outputs. Moreover, users can read and process ADAS atomic data to make radiation predictions, both using the charge state density distributions from an `aurora` simulation or simply from fractional abundances in ionization equilibrium. 
+Aurora is an expanding package to simulate heavy-ion transport and radiation in magnetically-confined plasmas. The package offers a simple interface between Python3 and Fortran 90 -- a solution that ensures fast iterations over a 1.5-D forward model, while maintaining simplicity for users. Recently, a Julia interface has also been developed and is now in beta testing. The package includes extensive Python3 functionality to create inputs and read/plot outputs. Users can read and process ADAS atomic data to make radiation predictions, both using the charge state density distributions from an Aurora simulation or from fractional abundances in ionization equilibrium. This type of radiation predictions can be conveniently made for Aurora's own forward model results, and also for external 1D, 2D or 3D transport codes. 
 
-Documentation for the code is available at https://aurora-fusion.readthedocs.io.
+Documentation is available at https://aurora-fusion.readthedocs.io.
 
-Aurora has been thoroughly benchmarked with the standard STRAHL, based on which it was originally developed. Recently, the algorithm proposed by O.Linder et al, Nuclear Fusion 2020, has been implemented and is now the default numerical scheme, although legacy options remain available. 
+Aurora's 1.5D forward model has been thoroughly benchmarked with the standard STRAHL, based on which it was originally developed. Recently, the algorithm proposed by O.Linder et al, Nuclear Fusion 2020, has been implemented and is now the default numerical scheme, although legacy options remain available. 
 
 <img src="https://user-images.githubusercontent.com/25516628/93692659-f12c4b00-fac3-11ea-817c-d971c6853b8b.jpg" width="500" align="right">
 
@@ -24,7 +24,7 @@ Generally, we would appreciate if you could work with us to merge your features 
 
 We recommend installing from source, by git-cloning [this repo](https://github.com/fsciortino/aurora) from Github. This will ensure that you can access the latest version of the tools. Make sure to use the `master` branch to use a stable version. *Make use of the Makefile in the package directory to build the Fortran or Julia code* using 
 ```
-make clean; make
+make clean; make aurora
 ```
 Note that the Julia version of the code is not built by default. If you have Julia installed on your system, you can do  
 ```
@@ -32,7 +32,7 @@ make julia
 ```
 from the main package directory. See the documentation to read about interfacing Python3 and Julia. 
 
-The latest release of the package is also available on the Anaconda Cloud:
+In the near future, the latest release of the package will also available on the Anaconda Cloud:
 
 [![Anaconda-Server Badge](https://anaconda.org/sciortino/aurora-fusion/badges/latest_release_date.svg)](https://anaconda.org/sciortino/aurora-fusion)
 
@@ -48,4 +48,4 @@ The package is made open-source with the hope that this will speed up research o
 
 # Citing Aurora
 
-Please see the [User Agreement](https://github.com/fsciortino/Aurora/blob/master/USER_AGREEMENT.txt)
+Please see the [User Agreement](https://github.com/fsciortino/Aurora/blob/master/USER_AGREEMENT.txt). 
