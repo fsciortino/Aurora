@@ -1,13 +1,18 @@
 # Usage:
 # make aurora           # generate aurora shared-object library
-# make clean     # delete previous versions of the aurora shared-object library
+# make clean             # delete previous versions of the aurora shared-object library
+# make julia              # create Julia sysimage -- requires Julia to be available on system!
+# make clean_julia     # delete Julia sysimage
 #
-# When using "make" or "make julia", create Julia sysimage as well (requires Julia to be available)
+# To create Fortran libraries for Aurora, make sure to select the correct compiler option at the top of this makefile.
 
 .PHONY: all aurora clean
 
+# option #1: basic gnu95 compiler (no flags is fine)
 flags=
 fcompiler=gnu95
+
+# option #2: if Intel compilers are available, use this option:
 #flags="-fast"
 #fcompiler=intelem
 
