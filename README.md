@@ -34,11 +34,11 @@ from the main package directory. See the documentation to read about interfacing
 
 The latest release of the package is also available on the Anaconda Cloud:
 
-[![Anaconda-Server Badge](https://anaconda.org/sciortino/aurora/badges/latest_release_date.svg)](https://anaconda.org/sciortino/aurora)
+[![Anaconda-Server Badge](https://anaconda.org/sciortino/aurora-fusion/badges/latest_release_date.svg)](https://anaconda.org/sciortino/aurora-fusion)
 
 and from PyPI using 
 ```
-pip install aurora
+pip install aurora-fusion
 ```
 
 # License

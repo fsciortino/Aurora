@@ -26,6 +26,8 @@ author = 'F.Sciortino'
 # The full version, including alpha/beta/rc tags
 release = '1.0.0'
 
+# FS: this seems to be useful for local build
+#master_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
 

@@ -13,6 +13,9 @@ __pycache__
 # Sphinx documentation
 docs/_build/
 
+# PyPI dist
+dist/*
+
 # ADAS files should not be exported
 adas_data/adf11/*
 adas_data/adf15/*

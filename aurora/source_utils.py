@@ -5,10 +5,12 @@ sciortino, 2020
 '''
 
 import numpy as np
-import copy
+import copy,sys
 from scipy.constants import m_p, e as q_electron
 
-from omfit_commonclasses.utils_math import atomic_element
+if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
+    # this if statement prevents issues with sphinx when building docs
+    from omfit_commonclasses.utils_math import atomic_element
 
 def get_source_time_history(namelist, Raxis, time):
     '''Load source time history based on current state of the namelist.
