@@ -1,12 +1,12 @@
-Aurora: modern 1.5D modeling of particle transport in magnetically-confined plasmas
-===================================================================================
+Aurora: a modern toolbox for impurity transport and radiation modeling
+======================================================================
 
-Github repo: https://github.com/fsciortino/aurora
+Github repo: https://github.com/fsciortino/Aurora
 
 Overview
 --------
 
-Aurora is a modern 1.5D forward model for radial particle transport in magnetically confined plasmas. It inherets many of its methods from the historical STRAHL code and has been thoroughly benchmarked with it. The core of Aurora is written in Python3 and Fortran90. A Julia interface has also recently been added. The package also enables radiation calculations using ADAS atomic rates. 
+Aurora is an expanding package to simulate heavy-ion transport and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model which inherets many of the methods from the historical STRAHL code and has been thoroughly benchmarked with it. Aurora's code is mostly written in Python 3 and Fortran 90. A Julia interface has also recently been added. The package enables radiation calculations using ADAS atomic rates, which can easily be applied to the output of Aurora's own forward model, or coupled with other 1D, 2D or 3D transport codes. 
 
 .. figure:: https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Virmalised_18.03.15_%284%29.jpg/1920px-Virmalised_18.03.15_%284%29.jpg
    :width: 50%
@@ -22,11 +22,13 @@ What is Aurora useful for?
 --------------------------
 
 
-Aurora is useful for modeling of particle transport and radiation in fusion plasmas. The package includes Python functionality to create inputs and read/plot outputs from simulations. Aurora was designed to be as efficient as possible in iterative workflows, where parameters (particularly diffusion and convection coefficients) are run through the code and repeatedly modified in order to match some experimental observations. For this reason, Aurora keeps all data in memory and avoids any disk-I/O during operation. All data is kept in memory. 
+Aurora is useful for modeling of particle transport and radiation in fusion plasmas.
 
-Aurora provides convenient interfaces to load a default namelist via :py:func:`~aurora.default_nml`, modify it as required and then pass the resulting namelist dictionary into the simulation setup. This is in the main class of Aurora, :py:class:`~aurora.core.aurora_sim`, which allows creation of radial and temporal grids, interpolation of atomic rates, preparation of parallel loss rates at the edge, etc.
+The package includes Python functionality to create inputs and read/plot outputs of impurity transport simulations. It was designed to be as efficient as possible in iterative workflows, where parameters (particularly diffusion and convection coefficients) are run through the forward model and repeatedly modified in order to match some experimental observations. For this reason, Aurora avoids any disk input-output (I/O) during operation. All data is kept in memory. 
 
-The library in :py:mod:`aurora.atomic` provides functions to load and interpolate atomic rates from ADAS ADF-11 files, as well as from ADF-15 photon emissivity coefficients (PEC) files. PEC data can alternatively be computed using the collisional-radiative model of ColRadPy, using methods in :py:mod:`aurora.radiation`.
+Aurora provides convenient interfaces to load a default namelist via :py:func:`~aurora.default_nml`, modify it as required and then pass the resulting namelist dictionary into the simulation setup. This is in the :py:class:`~aurora.core.aurora_sim` class, which allows creation of radial and temporal grids, interpolation of atomic rates, preparation of parallel loss rates at the edge, etc.
+
+The :py:mod:`aurora.atomic` library provides functions to load and interpolate atomic rates from ADAS ADF-11 files, as well as from ADF-15 photon emissivity coefficients (PEC) files. PEC data can alternatively be computed using the collisional-radiative model of ColRadPy, using methods in :py:mod:`aurora.radiation`.
 
 A number of standard tests and examples are provided using a real set of Alcator C-Mod kinetic profiles and geometry. In order to interface with EFIT gEQDSK files, Aurora makes use of the `omfit_eqdsk <https://pypi.org/project/omfit-eqdsk/>`__ package, which offers flexibility to work with data from many devices worldwide. Users may easily substitute this dependence with different magnetic reconstruction packages and/or postprocessing interfaces, if required. Interfacing Aurora with several file formats used throughout the fusion community to store kinetic profiles is simple. 
 
