@@ -9,3 +9,4 @@ recursive-include adas_data *
 include makefile
 include USER_AGREEMENT.txt
 include README.md
+include .version
