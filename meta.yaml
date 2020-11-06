@@ -1,5 +1,5 @@
 package:
-  name: aurora_fusion
+  name: aurorafusion
   version: "{{ load_setup_py_data().version }}"
 
 source:

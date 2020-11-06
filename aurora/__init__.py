@@ -3,7 +3,7 @@
 
 import os
 aurora_dir = os.path.dirname(os.path.abspath(__file__))
-with open(aurora_dir+'/../.version') as vfile:
+with open(aurora_dir+'/.version') as vfile:
     version = vfile.read().strip()
 
 __version__ = version

@@ -16,7 +16,7 @@ import setuptools
 import os, sys, subprocess
 from numpy.distutils.core import setup, Extension
 
-package_name='aurora_fusion'
+package_name='aurorafusion'
 
 with open('README.md', 'r') as fh:
     long_description = fh.read()
@@ -45,7 +45,7 @@ setup(name=package_name,
       url='https://github.com/fsciortino/Aurora',
       author='F. Sciortino',
       author_email='sciortino@psfc.mit.edu',
-      packages=['aurora'], #setuptools.find_packages(), #['aurora'],
+      packages=['aurora'], #setuptools.find_packages(),
       requires=['numpy','scipy','matplotlib','xarray',
                 'omfit_commonclasses','omfit_eqdsk','omfit_gapy'],
       ext_modules=[wrapper],
