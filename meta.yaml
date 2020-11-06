@@ -1,5 +1,5 @@
 package:
-  name: Aurora
+  name: aurora-fusion
   version: "{{ load_setup_py_data().version }}"
 
 source:
@@ -12,13 +12,13 @@ requirements:
   build:
     - {{ compiler('fortran') }}
   host:
-    - python {{ python }}
+    - python
     - numpy {{ numpy }}
   run:
-    - python {{ python }}
+    - python
     - numpy {{ numpy }}
 
 about:
   home: https://github.com/fsciortino/aurora	
   license_file: USER_AGREEMENT.txt
-  summary: Modern radial impurity transport forward model for magnetically-confined plasmas
+  summary: modern toolbox for impurity transport and radiation modeling in fusion plasmas
