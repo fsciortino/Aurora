@@ -1,12 +1,11 @@
-# Explicit listing of files to be included in PyPI packaging
+# Explicit listing of additional files to be included in packaging
 
-include setup.py
-recursive-include aurora *
-recursive-include aurora.jl *
-recursive-include docs *
-recursive-include examples *
-recursive-include adas_data *
 include makefile
 include USER_AGREEMENT.txt
 include README.md
 include .version
+recursive-include aurora.jl *
+recursive-include docs *
+recursive-include examples *
+recursive-include adas_data *
+
