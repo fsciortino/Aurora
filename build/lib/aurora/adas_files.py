@@ -8,6 +8,7 @@ import shutil,os
 # location of the "adas_data" directory relative to this script:
 adas_data_dir = os.path.dirname(os.path.realpath(__file__))+'/../adas_data/adf11/'
 
+
 def get_adas_file_loc(filename):
     '''Find location of requested atomic data file for the indicated ion. 
     The search proceeds with the following attempts, in this order:
