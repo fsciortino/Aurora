@@ -16,6 +16,9 @@ docs/_build/
 # PyPI dist
 dist/*
 
+# build info
+build/*
+
 # ADAS files should not be exported
 adas_data/adf11/*
 adas_data/adf15/*
