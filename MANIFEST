@@ -19,3 +19,4 @@ aurora/particle_conserv.py
 aurora/plot_tools.py
 aurora/radiation.py
 aurora/source_utils.py
+README.md
