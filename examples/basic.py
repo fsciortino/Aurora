@@ -31,7 +31,7 @@ kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
 # set impurity species and sources rate
 imp = namelist['imp'] = 'Ar'
 namelist['source_type'] = 'const'
-namelist['Phi0'] = 1e24
+namelist['Phi0'] = 2e20  # particles/s
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -51,7 +51,7 @@ _ = asim.check_conservation()
 
 # plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,0,2),
-                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]',
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
                               labels=[str(i) for i in np.arange(0,nz.shape[1])],
                               plot_sum=True, x_line=asim.rvol_lcfs)
 
@@ -62,7 +62,7 @@ asim.rad = aurora.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te,
 
 # plot radiation profiles over radius and time
 aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
-                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]',
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'Line radiation [$MW/m^3$]',
                               labels=[str(i) for i in np.arange(0,nz.shape[1])],
                               plot_sum=True, x_line=asim.rvol_lcfs)
 

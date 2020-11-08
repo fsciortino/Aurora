@@ -37,7 +37,7 @@ kp['Te']['vals'] = inputgacode['Te'][None,:]*1e3  # keV --> eV
 # set impurity species and sources rate
 imp = namelist['imp'] = 'C'
 namelist['source_type'] = 'const'
-namelist['Phi0'] = 1e24
+namelist['Phi0'] = 1e21  # particles/s
 
 # Choose radial resolution
 #namelist['dr_0']=0.1 
@@ -81,9 +81,9 @@ nz = out[0]   # extract only charge state densities in the plasma from output --
 
 # plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,0,2),
-                             xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]',
-                             labels=[str(i) for i in np.arange(0,nz.shape[1])],
-                             plot_sum=True, x_line=asim.rvol_lcfs)
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
+                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                              plot_sum=True, x_line=asim.rvol_lcfs)
 
 # Check particle conservation
 out_fd, axs = asim.check_conservation(plot=True)
@@ -100,7 +100,7 @@ nz_2 = out_2[0]  # extract only charge state densities in the plasma from output
 
 #plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz_2.transpose(1,0,2),
-                             xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]',
+                             xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
                              labels=[str(i) for i in np.arange(0,nz_2.shape[1])],
                              plot_sum=True, x_line=asim.rvol_lcfs)
 
@@ -117,7 +117,7 @@ nz_3 = out_3[0]   # extract only charge state densities in the plasma from outpu
 
 # plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz_3.transpose(1,0,2),
-                             xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]',
+                             xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
                              labels=[str(i) for i in np.arange(0,nz_3.shape[1])],
                              plot_sum=True, x_line=asim.rvol_lcfs)
 

@@ -34,7 +34,7 @@ kp['Te']['vals'] = inputgacode['Te'][None,:]*1e3  # keV --> eV
 # set impurity species and sources rate
 imp = namelist['imp'] = 'Ar'
 namelist['source_type'] = 'const'
-namelist['Phi0'] = 1e24
+namelist['Phi0'] = 2e20 # particles/s
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -51,6 +51,6 @@ nz = out[0]
 
 # now create animation
 aurora.animate.animate_aurora(asim.rhop_grid, asim.time_out, nz.transpose(1,0,2),
-                              xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [A.U.]',
+                              xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
                               labels=[str(i) for i in np.arange(0,nz.shape[1])],
                               plot_sum=True, save_filename='aurora_anim')
