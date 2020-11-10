@@ -33,8 +33,24 @@ imp = namelist['imp'] = 'Ar'
 namelist['source_type'] = 'const'
 namelist['Phi0'] = 1e24
 
+# Change radial resolution from default:
+# namelist['dr_0']=0.3
+# namelist['dr_1']=0.05
+
+# Change time resolution from default:
+# namelist['timing']['dt_increase'] = np.array([1.01, 1.])
+# namelist['timing']['dt_start'] = np.array([1e-5, 0.001])
+# namelist['timing']['steps_per_cycle'] = np.array([1,1])
+# namelist['timing']['times'] = np.array([0.,0.2])
+
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
+
+# check radial grid:
+_ = aurora.create_radial_grid(namelist,plot=True)
+
+# check time grid:
+_ = aurora.create_time_grid(namelist['timing'], plot=True)
 
 # set time-independent transport coefficients (flat D=1 m^2/s, V=-2 cm/s)
 D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
