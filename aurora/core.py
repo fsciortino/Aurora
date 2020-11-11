@@ -18,6 +18,7 @@ if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules
     from . import grids_utils
     from . import source_utils
     from . import particle_conserv
+    from . import plot_tools
 
     import xarray
 
@@ -58,13 +59,17 @@ class aurora_sim:
 
         if geqdsk is None:
             # Fetch geqdsk from MDS+ (using EFIT01) and post-process it using the OMFIT geqdsk format.
-            geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(device=namelist['device'],shot=namelist['shot'],
-                                                              time=namelist['time'], SNAPfile='EFIT01',
-                                                              fail_if_out_of_range=False,
-                                                              time_diff_warning_threshold=20)
-
+            self.geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(
+                device=namelist['device'],shot=namelist['shot'],
+                time=namelist['time'], SNAPfile='EFIT01',
+                fail_if_out_of_range=False,
+                time_diff_warning_threshold=20
+            )
+        else:
+            self.geqdsk = geqdsk
+            
         # Get r_V to rho_pol mapping
-        rho_pol, _rvol = grids_utils.get_rhopol_rvol_mapping(geqdsk)
+        rho_pol, _rvol = grids_utils.get_rhopol_rvol_mapping(self.geqdsk)
         rvol_lcfs = interp1d(rho_pol,_rvol)(1.0)
         self.rvol_lcfs = self.namelist['rvol_lcfs'] = np.round(rvol_lcfs,3)  # set limit on accuracy
         
@@ -77,7 +82,7 @@ class aurora_sim:
         self.rhop_grid[0] = 0.0 # enforce on axis
         
         # Save R on LFS and HFS
-        self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(geqdsk, rho_pol=self.rhop_grid)
+        self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(self.geqdsk, rho_pol=self.rhop_grid)
 
         # define time grid ('timing' must be in namelist)
         self.time_grid, self.save_time = grids_utils.create_time_grid(timing=self.namelist['timing'], plot=False)
@@ -106,7 +111,7 @@ class aurora_sim:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
 
         # source function
-        self.Raxis_cm = geqdsk['RMAXIS']*100. # cm
+        self.Raxis_cm = self.geqdsk['RMAXIS']*100. # cm
         self.source_time_history = source_utils.get_source_time_history(
             self.namelist, self.Raxis_cm, self.time_grid
         )
@@ -304,7 +309,7 @@ class aurora_sim:
 
     def run_aurora(self, D_z, V_z,
                    times_DV=None, nz_init=None, alg_opt=1, evolneut=False,
-                   use_julia=False):
+                   use_julia=False, plot=False):
         '''Run a simulation using inputs in the given dictionary and D,v profiles as a function
         of space, time and potentially also ionization state. Users may give an initial state of each
         ion charge state as an input.
@@ -327,6 +332,8 @@ class aurora_sim:
                 If they are only 1-D, it is further assumed that they are time-independent. 
                 Note that it is assumed that D_z and V_z profiles are already on the self.rvol_grid 
                 radial grid.
+
+        Keyword Args:
             times_DV : 1D array, optional
                 Array of times at which D_z and V_z profiles are given. By Default, this is None, 
                 which implies that D_z and V_z are time independent. 
@@ -345,6 +352,9 @@ class aurora_sim:
             use_julia : bool, optional
                 If True, run the Julia pre-compiled version of the code. Run the julia makefile option to set 
                 this up. Default is False (still under development)
+            plot : bool, optional
+                If True, plot density for each charge state using a convenient slides over time and check 
+                particle conservation in each particle reservoir. 
 
         Returns:
             nz : array, (nr,nZ,nt)
@@ -439,6 +449,17 @@ class aurora_sim:
                                     alg_opt=alg_opt,
                                     evolneut=evolneut)
 
+        if plot:
+
+            # plot charge state density distributions over radius and time
+            plot_tools.slider_plot(self.rvol_grid, self.time_out, self.res[0].transpose(1,0,2),
+                                          xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
+                                          labels=[str(i) for i in np.arange(0,self.res[0].shape[1])],
+                                          plot_sum=True, x_line=self.rvol_lcfs)
+            
+            # check particle conservation by summing over simulation reservoirs
+            _ = self.check_conservation(plot=True)
+
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         return self.res
     
@@ -463,8 +484,16 @@ class aurora_sim:
         self.delta_Zeff/= self.ne.T[:,None,:]
 
 
+    def plot_resolutions(self):
+        '''Convenience function to show time and spatial resolution in Aurora simulation setup. 
+        '''
+        # display radial resolution
+        _ = grids_utils.create_radial_grid(self.namelist, plot=False)
         
-    def check_conservation(self, plot=True, axs=None):
+        # display time resolution
+        _ = grids_utils.create_time_grid(timing=self.namelist['timing'], plot=False)
+
+    def check_conservation(self, plot=True, axs=None, plot_resolutions=False):
         '''Check particle conservation for an aurora simulation.
 
         Args : 
@@ -506,7 +535,6 @@ class aurora_sim:
         return particle_conserv.check_particle_conserv(self.Raxis_cm, ds = ds, plot=plot, axs=axs)
 
 
-
     def centrifugal_asymmetry(self, omega, Zeff, plot=False):
         """Estimate impurity poloidal asymmetry effects from centrifugal forces. 
 
@@ -521,10 +549,11 @@ class aurora_sim:
         coefficients used in codes that use other coordinate systems (e.g. based on rmid). 
 
         Args:
-            omega : array (nr,nt)
-                 Toroidal rotation on Aurora rhop_grid radial (or, equivalently, rvol_grid), time_grid grids
-            Zeff : array (nr,nt) or float
-                 Effective plasma charge on Aurora rhop_grid radial (or, equivalently, rvol_grid), time_grid grids.
+            omega : array (nt,nr) or (nr,) [ rad/s ] 
+                 Toroidal rotation on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
+            Zeff : array (nt,nr) or float
+                 Effective plasma charge on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
+                 Alternatively, users may give Zeff as a float (taken constant over time and space).
 
         Keyword Args:
             plot : bool
@@ -534,15 +563,64 @@ class aurora_sim:
             lam : array (nr,)
                 Asymmetry factor, defined as :math:`\lambda` in the expression above. 
         """
+        if omega.ndim==1:
+            omega = omega[None,:]  # take constant in time
+        if isinstance(Zeff,(int,float)):
+            Zeff = np.array(Zeff) * np.ones_like(self.Ti)
+        if Zeff.ndim==1:
+            Zeff = Zeff[None,:] # take constant in time
+
         # deuterium mach number
-        mach = np.sqrt(2. * m_p / q_electron * (omega * self.Rlfs) ** 2 / (2. * self.Ti))
+        mach = np.sqrt(2. * m_p / q_electron * (omega * self.Rlfs[None,:]) ** 2 / (2. * self.Ti))
 
         # valid for deuterium plasma with Zeff almost constants on flux surfaces
-        lam = self.A_imp / 2. * (mach / self.Rlfs) ** 2 * (
+        lam = self.A_imp / 2. * (mach / self.Rlfs[None,:]) ** 2 * (
             1. - self.Z_imp * self.main_ion_A / self.A_imp * Zeff * self.Te / (self.Ti + Zeff * self.Te)
         )
 
         # centrifugal asymmetry is only relevant on closed flux surfaces
         lam[:, self.rhop_grid > 1.] = 0  
+
+        if plot:
+            import matplotlib.pyplot as plt
+            from scipy.interpolate import RectBivariateSpline, interp1d
+            import matplotlib.tri as tri
+
+            # show centrifugal asymmetry lambda as a function of radius
+            fig, ax = plt.subplots()
+            ax.plot(self.rhop_grid, lam.T)
+            ax.set_xlabel(r'$\rho_p$')
+            ax.set_ylabel(r'$\lambda$')
+
+            # plot expected radial total impurity density over the poloidal cross section            
+            fig,ax = plt.subplots()
+            tidx = -1
+            nz_tot = self.res[0].sum(1)[:,tidx]
+            rhop_surfs = np.sqrt(self.geqdsk['fluxSurfaces']['geo']['psin'])                   
+
+            Rs = []; Zs = []; vals = []
+            for ii,surf in enumerate(self.geqdsk['fluxSurfaces']['flux']):
+               
+                # FSA nz on this flux surface
+                nz_tot_i = interp1d(self.rhop_grid, nz_tot)(rhop_surfs[ii])
+                lam_i = interp1d(self.rhop_grid, lam[tidx,:])(rhop_surfs[ii])
+
+                Rs = np.concatenate((Rs, self.geqdsk['fluxSurfaces']['flux'][ii]['R']))
+                Zs = np.concatenate((Zs, self.geqdsk['fluxSurfaces']['flux'][ii]['Z']))
+                vals = np.concatenate( ( vals, 
+                                        nz_tot_i * np.exp(
+                                            lam_i * (
+                                                self.geqdsk['fluxSurfaces']['flux'][ii]['R']**2 - self.geqdsk['RMAXIS']**2
+                                                )
+                                        )
+                                    ) )
+
+            triang = tri.Triangulation(Rs, Zs)
+            cntr1 = ax.tricontourf(triang, vals,levels=300)
+            ax.plot(self.geqdsk['RBBBS'], self.geqdsk['ZBBBS'], c='k')
+            ax.scatter(self.geqdsk['RMAXIS'], self.geqdsk['ZMAXIS'], marker='x', c='k')
+            ax.axis('equal')
+            ax.set_xlabel('R [m]')
+            ax.set_ylabel('Z [m]')
 
         return lam

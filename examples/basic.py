@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 plt.ion()
 import omfit_eqdsk, omfit_gapy
 import sys
+from scipy.interpolate import interp1d
 
 # Make sure that package home is added to sys.path
 import sys
@@ -60,20 +61,11 @@ _ = aurora.create_time_grid(namelist['timing'], plot=True)
 D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
 V_z = -2e2 * np.ones(len(asim.rvol_grid)) # cm/s
 
-# run Aurora forward model
-out = asim.run_aurora(D_z, V_z)
+# run Aurora forward model and plot results
+out = asim.run_aurora(D_z, V_z, plot=True)
 
-# extract densities of each charge state:
-nz = out[0]
-
-# Check particle conservation
-_ = asim.check_conservation()
-
-# plot charge state distributions over radius and time
-aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,0,2),
-                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
-                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
-                              plot_sum=True, x_line=asim.rvol_lcfs)
+# extract densities and particle numbers in each simulation reservoir
+nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 
 # add radiation
 asim.rad = aurora.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te,
@@ -98,4 +90,16 @@ aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.delta_Zeff.transpose(1,0,
 
 
 
+# plot expected centrifugal asymmetry from finite rotation
+rhop_gacode = aurora.rad_coord_transform(inputgacode['rho'],'rhon','rhop', asim.geqdsk)
 
+# omega appears unreliable near axis in input.gacode
+omega = interp1d(rhop_gacode[3:], inputgacode['omega0'][3:],
+                 bounds_error=False,fill_value='extrapolate')(asim.rhop_grid)
+
+# obtain net Zeff in this discharge (exclude last point, unreliable)
+Zeff = interp1d(rhop_gacode[:-1], inputgacode['z_eff'][:-1],
+                 bounds_error=False,fill_value='extrapolate')(asim.rhop_grid)
+
+# Obtain exponential factor for centrifigal asymmetry (see funtion documentation)
+lam = asim.centrifugal_asymmetry(omega, Zeff, plot=True)
