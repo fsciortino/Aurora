@@ -39,15 +39,15 @@ imp = namelist['imp'] = 'C'
 namelist['source_type'] = 'const'
 namelist['Phi0'] = 1e21  # particles/s
 
-# Choose radial resolution
-#namelist['dr_0']=0.1 
-#namelist['dr_1']=0.01
+# Change radial resolution from default:
+# namelist['dr_0']=0.3
+# namelist['dr_1']=0.05
 
-# Choose time resolution
-#namelist['timing']['dt_increase'] = np.array([1., 1.])
-#namelist['timing']['dt_start'] = np.array([0.0001, 0.001])
-#namelist['timing']['steps_per_cycle'] = np.array([1,1])
-#namelist['timing']['times'] = np.array([1.,2.])
+# Change time resolution from default:
+# namelist['timing']['dt_increase'] = np.array([1.01, 1.])
+# namelist['timing']['dt_start'] = np.array([1e-5, 0.001])
+# namelist['timing']['steps_per_cycle'] = np.array([1,1])
+# namelist['timing']['times'] = np.array([0.,0.2])
 
 # Now get aurora setup (let setup process create inputs needed to produce radial and temporal grids)
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
