@@ -92,6 +92,8 @@ def get_source_time_history(namelist, Raxis_cm, time):
     else:
         raise ValueError('Unspecified source function time history!')
 
+    #from IPython import embed
+    #embed()
     source = np.interp(time,src_times, src_rates, left=0,right=0)
     circ = 2*np.pi*Raxis_cm   #cm
 

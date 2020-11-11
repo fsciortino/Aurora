@@ -29,19 +29,19 @@ kp['ne']['vals'] = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
 kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
 
 # set impurity species and sources rate
-#imp = namelist['imp'] = 'Ar'
-#namelist['source_type'] = 'const'
-#namelist['Phi0'] = 2e20  # particles/s
-
 imp = namelist['imp'] = 'Ca'
-namelist['source_type'] = 'file'
-namelist['source_file'] = '/home/sciortino/BITE/1101014030/source_function_1101014030.dat'
-namelist['source_width_in'] =0.0 # -1.0
-namelist['source_width_out'] = 0.0 #-1.0
-namelist['imp_energy'] = 3.0 # eV
+namelist['source_type'] = 'const'
+namelist['Phi0'] = 2e20  # particles/s
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
+
+# Visualize radial grid
+#rvol_grid, pro_grid, qpr_grid, prox_param = aurora.grids_utils.create_radial_grid(namelist,plot=True)
+
+# Visualize time resolution
+time_grid, save_grid = aurora.grids_utils.create_time_grid(namelist['timing'], plot=True)
+
 
 # set time-independent transport coefficients (flat D=1 m^2/s, V=-2 cm/s)
 D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s

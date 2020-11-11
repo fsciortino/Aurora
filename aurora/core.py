@@ -269,10 +269,11 @@ class aurora_sim:
         # background mass number (=2 for D)
         out = atomic_element(symbol=self.namelist['main_element'])
         spec = list(out.keys())[0]
-        main_ion_A = int(out[spec]['A'])
+        self.main_ion_A = int(out[spec]['A'])
 
         # factor for v = machnumber * sqrt((3T_i+T_e)k/m)
-        vpf = self.namelist['SOL_mach']*np.sqrt(q_electron/m_p/main_ion_A)  # v[m/s]=vpf*sqrt(T[ev])
+        vpf = self.namelist['SOL_mach']*np.sqrt(q_electron/m_p/self.main_ion_A)  
+        # v[m/s]=vpf*sqrt(T[ev])
 
         # number of points inside of LCFS
         ids = self.rvol_grid.searchsorted(self.namelist['rvol_lcfs'],side='left')
@@ -504,3 +505,45 @@ class aurora_sim:
                                 })
 
         return particle_conserv.check_particle_conserv(self.Raxis_cm, ds = ds, plot=plot, axs=axs)
+
+
+
+    def centrifugal_asymmetry(self, omega, Zeff, plot=False):
+        """Estimate impurity poloidal asymmetry effects from centrifugal forces. 
+
+        The result of this function is :math:`\lambda`, defined such that
+
+        .. math::
+
+           n(r,\theta) = n_0(r) \times \exp\left{\lambda(\rho) (R(r,\theta)^2- R_0^2)\right}
+
+        See Appendix A of Angioni et al 2014 Nucl. Fusion 54 083028 for details on centrifugal asymmetries
+        should be accounted for when comparing transport coefficients used in Aurora (on a rvol grid) to 
+        coefficients used in codes that use other coordinate systems (e.g. based on rmid). 
+
+        Args:
+            omega : array (nr,nt)
+                 Toroidal rotation on Aurora rhop_grid radial (or, equivalently, rvol_grid), time_grid grids
+            Zeff : array (nr,nt) or float
+                 Effective plasma charge on Aurora rhop_grid radial (or, equivalently, rvol_grid), time_grid grids.
+
+        Keyword Args:
+            plot : bool
+                If True, plot asymmetry factor :math:`\lambda` vs. radius
+
+        Returns:
+            lam : array (nr,)
+                Asymmetry factor, defined as :math:`\lambda` in the expression above. 
+        """
+        # deuterium mach number
+        mach = np.sqrt(2. * m_p / q_electron * (omega * self.Rlfs) ** 2 / (2. * self.Ti))
+
+        # valid for deuterium plasma with Zeff almost constants on flux surfaces
+        lam = self.A_imp / 2. * (mach / self.Rlfs) ** 2 * (
+            1. - self.Z_imp * self.main_ion_A / self.A_imp * Zeff * self.Te / (self.Ti + Zeff * self.Te)
+        )
+
+        # centrifugal asymmetry is only relevant on closed flux surfaces
+        lam[:, self.rhop_grid > 1.] = 0  
+
+        return lam
