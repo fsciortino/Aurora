@@ -12,7 +12,7 @@ if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules
 
 
 def create_radial_grid(namelist,plot=False):
-    r'''Create radial grid for aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. 
+    r'''Create radial grid for Aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. 
     The lim_sep parameters is additionally used if plotting is requested. 
 
     Radial mesh points are set to be equidistant in the coordinate :math:`\rho`, with
@@ -32,14 +32,14 @@ def create_radial_grid(namelist,plot=False):
 
     Args:
         namelist : dict
-             Dictionary containing aurora namelist. This function uses the K, dr_0, dr_1, rvol_lcfs 
+             Dictionary containing Aurora namelist. This function uses the K, dr_0, dr_1, rvol_lcfs 
              and bound_sep parameters. Additionally, lim_sep is used if plotting is requested. 
         plot : bool, optional
              If True, plot the radial grid spacing vs. radial location. 
 
     Returns:
         rvol_grid : array
-            Volume-normalized grid used for aurora simulations.
+            Volume-normalized grid used for Aurora simulations.
         pro : array
             Normalized first derivatives of the radial grid, defined as 
             pro = (drho/dr)/(2 d_rho) = rho'/(2 d_rho)
@@ -114,9 +114,9 @@ def create_radial_grid(namelist,plot=False):
         r_lim  = namelist['rvol_lcfs'] + namelist['lim_sep']
         dr = np.gradient(rvol_grid)
 
-        if plt.fignum_exists('aurora radial step'):
-            plt.figure(num='aurora radial step').clf()
-        f,ax = plt.subplots(num='aurora radial step')
+        if plt.fignum_exists('Aurora radial step'):
+            plt.figure(num='Aurora radial step').clf()
+        f,ax = plt.subplots(num='Aurora radial step')
         
         ax.plot(rvol_grid/namelist['rvol_lcfs'], dr,'-')
         ax.axvline(1,ls='--',c='k')
@@ -158,7 +158,7 @@ def create_time_grid(timing=None, plot=False):
             Computational time grid corresponding to :param:timing input.
         save : array
             Array of zeros and ones, where ones indicate that the time step will be stored in memory
-            in aurora simulations. Points corresponding to zeros will not be returned to spare memory. 
+            in Aurora simulations. Points corresponding to zeros will not be returned to spare memory. 
     '''
 
     _time, _save = _aurora.time_steps(

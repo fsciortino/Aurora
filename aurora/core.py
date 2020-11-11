@@ -111,12 +111,11 @@ class aurora_sim:
             self.namelist, self.Raxis_cm, self.time_grid
         )
         
-        # get radial profile of source function when the impurity source begins
-        source_tidx = np.min(np.nonzero(self.source_time_history))
+        # get radial profile of source function for each time step
         self.source_rad_prof = source_utils.get_radial_source(self.namelist,
                                                               self.rvol_grid, self.pro_grid,
-                                                              self.S_rates[:,source_tidx],
-                                                              self._Ti[source_tidx,:]) 
+                                                              self.S_rates[:,0,:],   # 0th charge state (neutral)
+                                                              self._Ti)
 
         # get maximum Z of impurity ion
         out = atomic_element(symbol=self.imp)

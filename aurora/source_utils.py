@@ -92,8 +92,6 @@ def get_source_time_history(namelist, Raxis_cm, time):
     else:
         raise ValueError('Unspecified source function time history!')
 
-    #from IPython import embed
-    #embed()
     source = np.interp(time,src_times, src_rates, left=0,right=0)
     circ = 2*np.pi*Raxis_cm   #cm
 
@@ -214,11 +212,11 @@ def lbo_source_function(t_start, t_rise, t_fall, n_particles=1.0, time_vec=None)
 
 
 def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
-    ''' Obtain spatial dependence of source function.
+    '''Obtain spatial dependence of source function.
 
     If namelist['source_width_in']==0 and namelist['source_width_out']==0, the source
     radial profile is defined as an exponential decay due to ionization of neutrals. This requires
-    S_rates, the ionization rate of neutral impurities, to be given with S_rates.shape=(len(rvol_grid),)
+    S_rates, the ionization rate of neutral impurities, to be given with S_rates.shape=(len(rvol_grid),len(time_grid))
 
     If namelist['imp_source_energy_eV']<0, the neutrals speed is taken as the thermal speed based
     on Ti_eV, otherwise the value corresponding to namelist['imp_source_energy_eV'] is used.
@@ -229,18 +227,18 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
             source atoms are accessed. 
         rvol_grid : array (nr,)
             Radial grid in volume-normalized coordinates [cm]
-        S_rates : array (nr,)
-            Ionization rate of neutral impurity at initial time step. 
         pro_grid : array (nr,)
             Normalized first derivatives of the radial grid in volume-normalized coordinates. 
-        Ti_eV : array, optional (nr)
+        S_rates : array (nr,nt)
+            Ionization rate of neutral impurity over space and time.
+        Ti_eV : array, optional (nr,nt)
             Background ion temperature, only used if source_width_in=source_width_out=0.0 and 
             imp_source_energy_eV<=0, in which case the source impurity neutrals are taken to 
             have energy equal to the local Ti [eV]. 
 
     Returns:
-        source_rad_prof : array (nr,)
-            Radial profile of the impurity neutral source. 
+        source_rad_prof : array (nr,nt)
+            Radial profile of the impurity neutral source for each time step.
     '''
     r_src = namelist['rvol_lcfs'] + namelist['source_cm_out_lcfs']
 

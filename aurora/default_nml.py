@@ -36,10 +36,10 @@ def load_default_namelist():
                       't_start': 1.0},
         # --------------------
         # timing
-        'timing': {'dt_increase': np.array([1.01, 1.]),
+        'timing': {'dt_increase': np.array([1.005, 1.]),
                    'dt_start': np.array([1e-5, 0.001]),
                    'steps_per_cycle': np.array([1, 1]),
-                   'times': np.array([0., 0.2])},
+                   'times': np.array([0., 0.1])},
         # --------------------
         # radial grid
         'K': 6.0,

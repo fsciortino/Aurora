@@ -29,19 +29,23 @@ kp['ne']['vals'] = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
 kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
 
 # set impurity species and sources rate
-imp = namelist['imp'] = 'Ca'
+imp = namelist['imp'] = 'Ar'
 namelist['source_type'] = 'const'
 namelist['Phi0'] = 2e20  # particles/s
 
+# load impurity source time history from a file on disk:
+#namelist['source_type'] = 'file'
+#namelist['source_file'] = '/home/sciortino/BITE/1101014030/source_function_1101014030.dat.0'
+
 # Change radial resolution from default:
-# namelist['dr_0']=0.3
-# namelist['dr_1']=0.05
+#namelist['dr_0']=0.2
+#namelist['dr_1']=0.02
 
 # Change time resolution from default:
-# namelist['timing']['dt_increase'] = np.array([1.01, 1.])
-# namelist['timing']['dt_start'] = np.array([1e-5, 0.001])
-# namelist['timing']['steps_per_cycle'] = np.array([1,1])
-# namelist['timing']['times'] = np.array([0.,0.2])
+#namelist['timing']['dt_increase'] = np.array([1.001, 1.0, 1.])
+#namelist['timing']['dt_start'] = np.array([1e-5, 5e-5, 0.001])
+#namelist['timing']['steps_per_cycle'] = np.array([1,1,1])
+#namelist['timing']['times'] = np.array([0.,0.05,0.2])
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
