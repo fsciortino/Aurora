@@ -26,7 +26,7 @@ def load_default_namelist():
         'source_width_out': 0.0,    
         'imp_source_energy_eV' : 3.0, # only needed if source_width_in=source_width_out=0.0
         'prompt_redep_flag' : False,
-        'Phi0': 1e+24,
+        'Phi0': 1e+21,
         'source_type':'const', 
         'source_file': None, # required if source_type='file'
         'source_cm_out_lcfs' : 1.0, # source distance in cm from LCFS

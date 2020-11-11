@@ -106,6 +106,9 @@ def create_radial_grid(namelist,plot=False):
     pro_grid = pro[idxs]
     qpr_grid = qpr[idxs]
 
+    #force rvol=0 on axis
+    rvol_grid[0] = 0.0
+
     if plot:
 
         r_lim  = namelist['rvol_lcfs'] + namelist['lim_sep']
@@ -131,7 +134,7 @@ def create_radial_grid(namelist,plot=False):
         ax.set_ylabel(r'$\Delta$ r [cm]');
         ax.set_ylim(0,None)
         ax.set_xlim(0,r_edge/namelist['rvol_lcfs'])
-        ax.set_title('# radial grid points: %d'%len(rvol_grid))
+        ax.set_title(r'\# radial grid points: %d'%len(rvol_grid))
 
     return rvol_grid, pro_grid, qpr_grid, prox_param
 
@@ -171,7 +174,7 @@ def create_time_grid(timing=None, plot=False):
         if plt.fignum_exists('Aurora time step'):
             plt.figure('Aurora time step').clf()
         f,ax = plt.subplots(num='Aurora time step')
-        ax.set_title('# time steps: %d    # saved steps %d'%(len(time), sum(save)))
+        ax.set_title(r'\# time steps: %d    \# saved steps %d'%(len(time), sum(save)))
         ax.semilogy(time[1:],np.diff(time),'.-',label='step')
         ax.semilogy(time[1:][save[1:]],np.diff(time)[save[1:]],'o',label='step')
         [ax.axvline(t,c='k',ls='--') for t in timing['times']]

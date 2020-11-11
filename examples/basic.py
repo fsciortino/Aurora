@@ -29,9 +29,16 @@ kp['ne']['vals'] = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
 kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
 
 # set impurity species and sources rate
-imp = namelist['imp'] = 'Ar'
-namelist['source_type'] = 'const'
-namelist['Phi0'] = 1e24
+#imp = namelist['imp'] = 'Ar'
+#namelist['source_type'] = 'const'
+#namelist['Phi0'] = 2e20  # particles/s
+
+imp = namelist['imp'] = 'Ca'
+namelist['source_type'] = 'file'
+namelist['source_file'] = '/home/sciortino/BITE/1101014030/source_function_1101014030.dat'
+namelist['source_width_in'] =0.0 # -1.0
+namelist['source_width_out'] = 0.0 #-1.0
+namelist['imp_energy'] = 3.0 # eV
 
 # Change radial resolution from default:
 # namelist['dr_0']=0.3
@@ -67,7 +74,7 @@ _ = asim.check_conservation()
 
 # plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,0,2),
-                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='nz [A.U.]',
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
                               labels=[str(i) for i in np.arange(0,nz.shape[1])],
                               plot_sum=True, x_line=asim.rvol_lcfs)
 
@@ -78,7 +85,7 @@ asim.rad = aurora.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te,
 
 # plot radiation profiles over radius and time
 aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
-                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]',
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'Line radiation [$MW/m^3$]',
                               labels=[str(i) for i in np.arange(0,nz.shape[1])],
                               plot_sum=True, x_line=asim.rvol_lcfs)
 
