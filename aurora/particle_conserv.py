@@ -4,14 +4,14 @@ import numpy as np
 import copy
 from scipy.integrate import cumtrapz
 
-def vol_int(Raxis, ds, var, rhop_max=None):
+def vol_int(Raxis_cm, ds, var, rhop_max=None):
     """
     Perform a volume integral of an input variable. If the variable is f(t,x) 
     then the result is f(t). If the variable is f(t,*,x) then the result is f(t,charge)
     when "*" represents charge, line index, etc...
 
     Args:
-        Raxis : float 
+        Raxis_cm : float 
              Major radius on axis [cm]
         ds: xarray dataset 
              Dataset containing Aurora or STRAHL result
@@ -25,7 +25,7 @@ def vol_int(Raxis, ds, var, rhop_max=None):
         var_volint : array (nt,)
              Time history of volume integrated variable
     """
-    C = 2.0 * np.pi * Raxis
+    C = 2 * np.pi * Raxis_cm
     zvol = C * np.pi * ds['rvol_grid'].data / ds['pro'].data 
 
     # Get our variable
@@ -45,12 +45,12 @@ def vol_int(Raxis, ds, var, rhop_max=None):
 
 
 
-def check_particle_conserv(Raxis, ds=None, filepath=None, linestyle='-', plot=True, axs = None):
+def check_particle_conserv(Raxis_cm, ds=None, filepath=None, linestyle='-', plot=True, axs = None):
     ''' Check time evolution and particle conservation in Aurora or STRAHL output.
 
     Args:
-         Raxis : float
-             Major radius on axis [m], used for volume integrals. 
+         Raxis_cm : float
+             Major radius on axis [cm], used for volume integrals. 
          ds : xarray dataset, optional
              Dataset containing Aurora results, created using the xarray package. 
              See :py:meth:`~aurora.core.check_conservation` for an illustration on how
@@ -118,10 +118,10 @@ def check_particle_conserv(Raxis, ds=None, filepath=None, linestyle='-', plot=Tr
     vol_int_labels = ['Core Impurity Particles', 'Core Radiation (W)']
 
     # factor to account for cylindrical geometry:
-    circ = 2*np.pi*Raxis*100 # cm
+    circ = 2*np.pi*Raxis_cm # cm
 
     #Compute total number of particles for particle conservation checks:
-    all_particles = vol_int(Raxis,ds, 'total_impurity_density')
+    all_particles = vol_int(Raxis_cm,ds, 'total_impurity_density')
     total = all_particles+(ds['particles_at_wall'].data+\
                            ds['particles_in_divertor'].data)*circ 
     
@@ -138,7 +138,7 @@ def check_particle_conserv(Raxis, ds=None, filepath=None, linestyle='-', plot=Tr
     # collect all the relevant quantities for particle conservation
     out = {}
     out['total'] = total
-    out['plasma_particles'] = vol_int(Raxis, ds, 'total_impurity_density')
+    out['plasma_particles'] = vol_int(Raxis_cm, ds, 'total_impurity_density')
     out['particles_at_wall'] = ds['particles_at_wall'].data*circ,
     out['particles_in_divertor'] = ds['particles_in_divertor'].data*circ
     if 'recycling_from_wall' in ds:
@@ -174,10 +174,10 @@ def check_particle_conserv(Raxis, ds=None, filepath=None, linestyle='-', plot=Tr
 
         for i,key,rhop,lab in zip(list(range(len(vol_int_keys))),vol_int_keys,vol_int_rhop,vol_int_labels):
             if key in ds:
-                vol_int_data = vol_int(Raxis, ds, key,rhop_max=rhop)
+                vol_int_data = vol_int(Raxis_cm, ds, key,rhop_max=rhop)
 
                 if key == 'impurity_radiation':
-                    vol_int_data = vol_int_data[:,-1]
+                    vol_int_data = vol_int_data[:,-1]   #total radiation
                 axf[iplot].plot(time,vol_int_data,'o-',label=lab,markersize=2.0, ls=linestyle)
                 iplot += 1
 

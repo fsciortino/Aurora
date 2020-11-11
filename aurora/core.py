@@ -106,9 +106,9 @@ class aurora_sim:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
 
         # source function
-        self.Raxis = geqdsk['RMAXIS'] # m
+        self.Raxis_cm = geqdsk['RMAXIS']*100. # cm
         self.source_time_history = source_utils.get_source_time_history(
-            self.namelist, self.Raxis, self.time_grid
+            self.namelist, self.Raxis_cm, self.time_grid
         )
         
         # get radial profile of source function when the impurity source begins
@@ -503,4 +503,4 @@ class aurora_sim:
                                 'charge_states': np.arange(nz.shape[1])
                                 })
 
-        return particle_conserv.check_particle_conserv(self.Raxis, ds = ds, plot=plot, axs=axs)
+        return particle_conserv.check_particle_conserv(self.Raxis_cm, ds = ds, plot=plot, axs=axs)

@@ -12,7 +12,7 @@ if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules
     # this if statement prevents issues with sphinx when building docs
     from omfit_commonclasses.utils_math import atomic_element
 
-def get_source_time_history(namelist, Raxis, time):
+def get_source_time_history(namelist, Raxis_cm, time):
     '''Load source time history based on current state of the namelist.
 
     There are 4 options to describe the time-dependence of the source:
@@ -43,8 +43,8 @@ def get_source_time_history(namelist, Raxis, time):
     Args:
         namelist : dict
             Aurora namelist dictionary.
-        Raxis : float
-            Major radius at the magnetic axis [m]. This is needed to normalize the 
+        Raxis_cm : float
+            Major radius at the magnetic axis [cm]. This is needed to normalize the 
             source such that it is treated as toroidally symmetric -- a necessary
             idealization for 1.5D simulations. 
         time : array (nt,), optional
@@ -91,9 +91,9 @@ def get_source_time_history(namelist, Raxis, time):
                                                    namelist['LBO']['n_particles'])
     else:
         raise ValueError('Unspecified source function time history!')
-        
+
     source = np.interp(time,src_times, src_rates, left=0,right=0)
-    circ = 2*np.pi*Raxis*100   #cm
+    circ = 2*np.pi*Raxis_cm   #cm
 
     # number of particles per cm and sec
     source_time_history = np.r_[source[1:],0]/circ #NOTE source in STRAHL is by one timestep shifted
