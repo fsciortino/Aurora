@@ -101,5 +101,5 @@ omega = interp1d(rhop_gacode[3:], inputgacode['omega0'][3:],
 Zeff = interp1d(rhop_gacode[:-1], inputgacode['z_eff'][:-1],
                  bounds_error=False,fill_value='extrapolate')(asim.rhop_grid)
 
-# Obtain exponential factor for centrifigal asymmetry (see funtion documentation)
-lam = asim.centrifugal_asymmetry(omega, Zeff, plot=True)
+# Obtain estimates for centrifigal asymmetry and plot expected 2D distribution inside LCFS
+asim.centrifugal_asym(omega, Zeff, plot=True)

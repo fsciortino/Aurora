@@ -29,3 +29,5 @@ from .animate import *
 from .janev_smith_rates import *
 from .nbi_neutrals import *
 
+
+from .synth_diags import *

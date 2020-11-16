@@ -19,7 +19,7 @@ if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules
     from . import source_utils
     from . import particle_conserv
     from . import plot_tools
-
+    from . import synth_diags
     import xarray
 
 
@@ -488,10 +488,10 @@ class aurora_sim:
         '''Convenience function to show time and spatial resolution in Aurora simulation setup. 
         '''
         # display radial resolution
-        _ = grids_utils.create_radial_grid(self.namelist, plot=False)
+        _ = grids_utils.create_radial_grid(self.namelist, plot=True)
         
         # display time resolution
-        _ = grids_utils.create_time_grid(timing=self.namelist['timing'], plot=False)
+        _ = grids_utils.create_time_grid(timing=self.namelist['timing'], plot=True)
 
     def check_conservation(self, plot=True, axs=None, plot_resolutions=False):
         '''Check particle conservation for an aurora simulation.
@@ -535,23 +535,17 @@ class aurora_sim:
         return particle_conserv.check_particle_conserv(self.Raxis_cm, ds = ds, plot=plot, axs=axs)
 
 
-    def centrifugal_asymmetry(self, omega, Zeff, plot=False):
-        """Estimate impurity poloidal asymmetry effects from centrifugal forces. 
+    def centrifugal_asym(self, omega, Zeff, plot=False):
+        """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the 
+        :py:func:`~aurora.synth_diags.centrifugal_asym` function docstring for details.
 
-        The result of this function is :math:`\lambda`, defined such that
-
-        .. math::
-
-           n(r,\theta) = n_0(r) \times \exp\left{\lambda(\rho) (R(r,\theta)^2- R_0^2)\right}
-
-        See Appendix A of Angioni et al 2014 Nucl. Fusion 54 083028 for details on centrifugal asymmetries
-        should be accounted for when comparing transport coefficients used in Aurora (on a rvol grid) to 
-        coefficients used in codes that use other coordinate systems (e.g. based on rmid). 
+        In this function, we use the average Z of the impurity species in the Aurora simulation result, using only
+        the last time slice to calculate fractional abundances. The CF lambda factor
 
         Args:
             omega : array (nt,nr) or (nr,) [ rad/s ] 
                  Toroidal rotation on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
-            Zeff : array (nt,nr) or float
+            Zeff : array (nt,nr), (nr,) or float
                  Effective plasma charge on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
                  Alternatively, users may give Zeff as a float (taken constant over time and space).
 
@@ -560,67 +554,16 @@ class aurora_sim:
                 If True, plot asymmetry factor :math:`\lambda` vs. radius
 
         Returns:
-            lam : array (nr,)
-                Asymmetry factor, defined as :math:`\lambda` in the expression above. 
+            CF_lambda : array (nr,)
+                Asymmetry factor, defined as :math:`\lambda` in the :py:func:`~aurora.synth_diags.centrifugal_asym` function
+                docstring.
         """
-        if omega.ndim==1:
-            omega = omega[None,:]  # take constant in time
-        if isinstance(Zeff,(int,float)):
-            Zeff = np.array(Zeff) * np.ones_like(self.Ti)
-        if Zeff.ndim==1:
-            Zeff = Zeff[None,:] # take constant in time
+        fz = self.res[0][...,-1] / np.sum(self.res[0][...,-1],axis=1)[:,None]
+        Z_ave_vec = np.mean(self.Z_imp * fz * np.arange(self.Z_imp+1)[None,:],axis=1)
+        
+        self.CF_lambda = synth_diags.centrifugal_asym(self.rhop_grid, self.Rlfs, omega, Zeff, 
+                                                      self.A_imp, Z_ave_vec, 
+                                                      self.Te, self.Ti, main_ion_A=self.main_ion_A, 
+                                                      plot=plot, nz=self.res[0][...,-1], geqdsk=self.geqdsk).mean(0)
 
-        # deuterium mach number
-        mach = np.sqrt(2. * m_p / q_electron * (omega * self.Rlfs[None,:]) ** 2 / (2. * self.Ti))
-
-        # valid for deuterium plasma with Zeff almost constants on flux surfaces
-        lam = self.A_imp / 2. * (mach / self.Rlfs[None,:]) ** 2 * (
-            1. - self.Z_imp * self.main_ion_A / self.A_imp * Zeff * self.Te / (self.Ti + Zeff * self.Te)
-        )
-
-        # centrifugal asymmetry is only relevant on closed flux surfaces
-        lam[:, self.rhop_grid > 1.] = 0  
-
-        if plot:
-            import matplotlib.pyplot as plt
-            from scipy.interpolate import RectBivariateSpline, interp1d
-            import matplotlib.tri as tri
-
-            # show centrifugal asymmetry lambda as a function of radius
-            fig, ax = plt.subplots()
-            ax.plot(self.rhop_grid, lam.T)
-            ax.set_xlabel(r'$\rho_p$')
-            ax.set_ylabel(r'$\lambda$')
-
-            # plot expected radial total impurity density over the poloidal cross section            
-            fig,ax = plt.subplots()
-            tidx = -1
-            nz_tot = self.res[0].sum(1)[:,tidx]
-            rhop_surfs = np.sqrt(self.geqdsk['fluxSurfaces']['geo']['psin'])                   
-
-            Rs = []; Zs = []; vals = []
-            for ii,surf in enumerate(self.geqdsk['fluxSurfaces']['flux']):
-               
-                # FSA nz on this flux surface
-                nz_tot_i = interp1d(self.rhop_grid, nz_tot)(rhop_surfs[ii])
-                lam_i = interp1d(self.rhop_grid, lam[tidx,:])(rhop_surfs[ii])
-
-                Rs = np.concatenate((Rs, self.geqdsk['fluxSurfaces']['flux'][ii]['R']))
-                Zs = np.concatenate((Zs, self.geqdsk['fluxSurfaces']['flux'][ii]['Z']))
-                vals = np.concatenate( ( vals, 
-                                        nz_tot_i * np.exp(
-                                            lam_i * (
-                                                self.geqdsk['fluxSurfaces']['flux'][ii]['R']**2 - self.geqdsk['RMAXIS']**2
-                                                )
-                                        )
-                                    ) )
-
-            triang = tri.Triangulation(Rs, Zs)
-            cntr1 = ax.tricontourf(triang, vals,levels=300)
-            ax.plot(self.geqdsk['RBBBS'], self.geqdsk['ZBBBS'], c='k')
-            ax.scatter(self.geqdsk['RMAXIS'], self.geqdsk['ZMAXIS'], marker='x', c='k')
-            ax.axis('equal')
-            ax.set_xlabel('R [m]')
-            ax.set_ylabel('Z [m]')
-
-        return lam
+        return self.CF_lambda

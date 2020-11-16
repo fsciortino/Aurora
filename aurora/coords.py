@@ -116,7 +116,8 @@ def rV_vol_average(quant,r_V):
 
     
 def rad_coord_transform(x,name_in,name_out, geqdsk):
-    """Transform from one radial coordinate to another.
+    """Transform from one radial coordinate to another. Note that this coordinate conversion is only
+    strictly valid inside of the LCFS.
 
     Args:
         x: array
