@@ -131,6 +131,15 @@ aurora.janev_smith_rates module
     :show-inheritance:
 
 
+aurora.synth_diags module
+-------------------------------
+
+.. automodule:: aurora.synth_diags
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
 Module contents
 ---------------
 

@@ -1,10 +1,10 @@
 Aurora: a modern toolbox for impurity transport and radiation modeling
-======================================================================
+==========================================
 
 Github repo: https://github.com/fsciortino/Aurora
 
 Overview
---------
+-------------
 
 Aurora is a package to simulate heavy-ion transport and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model which inherits many of the methods from the historical STRAHL code and has been thoroughly benchmarked with it. Aurora's code is mostly written in Python 3 and Fortran 90. A Julia interface has also recently been added. The package enables radiation calculations using ADAS atomic rates, which can easily be applied to the output of Aurora's own forward model, or coupled with other 1D, 2D or 3D transport codes. 
 
@@ -15,11 +15,11 @@ Aurora is a package to simulate heavy-ion transport and radiation in magneticall
 
    Inspirational photo of the Aurora Borealis by K.Pikner
    
-This documentation aims at making `Aurora` usage as clear as possible. Getting started is easy - see the :ref:`Installation` section.  To learn the basics, head to the :ref:`Tutorial` section. 
+This documentation aims at making Aurora usage as clear as possible. Getting started is easy - see the :ref:`Installation` section.  To learn the basics, head to the :ref:`Tutorial` section. 
 
    
 What is Aurora useful for?
---------------------------
+---------------------------------------
 
 
 Aurora is useful for modeling of particle transport and radiation in fusion plasmas.
@@ -37,7 +37,7 @@ Aurora was born as a fast forward model of impurity transport, but it can also b
 
   
 Documentation contents
-----------------------
+-------------------------------------
 .. toctree::
    :maxdepth: 4
 
@@ -53,7 +53,7 @@ Documentation contents
 
 
 Indices and tables
-==================
+===========
 
 * :ref:`genindex`
 * :ref:`modindex`
