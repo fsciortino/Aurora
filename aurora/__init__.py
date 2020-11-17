@@ -1,12 +1,13 @@
 """:py:mod:`aurora` 
 """
 
-import os
-aurora_dir = os.path.dirname(os.path.abspath(__file__))
-with open(aurora_dir+'/.version') as vfile:
-    version = vfile.read().strip()
+# import os
+# aurora_dir = os.path.dirname(os.path.abspath(__file__))
+# with open(aurora_dir+'/.version') as vfile:
+#     version = vfile.read().strip()
 
-__version__ = version
+# __version__ = version
+__version__='1.0.6'
 
 import numpy as np, sys
 if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):

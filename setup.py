@@ -33,10 +33,10 @@ wrapper = Extension(name='_aurora',
 
 
 # load version number from .version file
-aurora_dir = os.path.dirname(os.path.abspath(__file__))
-with open(aurora_dir+'/.version') as vfile:
-    version = vfile.read().strip()
-
+# aurora_dir = os.path.dirname(os.path.abspath(__file__))
+# with open(aurora_dir+'/.version') as vfile:
+#     version = vfile.read().strip()
+version='1.0.6'
 
 setup(name=package_name,
       version=version,
