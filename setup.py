@@ -21,7 +21,7 @@ package_name='aurorafusion'
 with open('README.md', 'r') as fh:
     long_description = fh.read()
 
-wrapper = Extension(name='_aurora', 
+wrapper = Extension(name='aurora._aurora', 
                     sources=['aurora/main.f90',
                              'aurora/grids.f90',
                              'aurora/impden.f90',
@@ -32,11 +32,9 @@ wrapper = Extension(name='_aurora',
 #result = subprocess.call(cmd, shell=True) 
 
 
-# load version number from .version file
-# aurora_dir = os.path.dirname(os.path.abspath(__file__))
-# with open(aurora_dir+'/.version') as vfile:
-#     version = vfile.read().strip()
-version='1.0.6'
+aurora_dir = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(aurora_dir, 'aurora', 'version')) as vfile:
+    version = vfile.read().strip()
 
 setup(name=package_name,
       version=version,

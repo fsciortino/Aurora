@@ -3,7 +3,7 @@
 include makefile
 include USER_AGREEMENT.txt
 include README.md
-include .version
+recursive-include aurora
 recursive-include aurora.jl *
 recursive-include docs *
 recursive-include examples *
