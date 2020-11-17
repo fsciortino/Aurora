@@ -36,6 +36,8 @@ aurora_dir = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(aurora_dir, 'aurora', 'version')) as vfile:
     version = vfile.read().strip()
 
+install_requires = open('requirements.txt').read().split('\n')
+    
 setup(name=package_name,
       version=version,
       description=long_description,
@@ -44,8 +46,9 @@ setup(name=package_name,
       author='F. Sciortino',
       author_email='sciortino@psfc.mit.edu',
       packages=['aurora'], #setuptools.find_packages(),
-      requires=['numpy','scipy','matplotlib','xarray',
-                'omfit_commonclasses','omfit_eqdsk','omfit_gapy'],
+      install_requires=install_requires,
+      include_package_data=True,
+      package_data={'':['aurora/version']},
       ext_modules=[wrapper],
       classifiers=['Programming Language :: Python :: 3',
                    'Operating System :: OS Independent',
