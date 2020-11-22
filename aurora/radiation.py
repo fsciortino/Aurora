@@ -585,6 +585,29 @@ def adf04_files():
     files['Ca']['Ca17+'] = 'lilike_lgy10#ca17.dat'
     files['Ca']['Ca18+'] = 'helike_adw05#ca18.dat'
 
+    # TODO: check quality
+    files['Al'] = {}
+    files['Al']['Al11+'] = 'helike_adw05#al11.dat'
+    files['Al']['Al10+'] = 'lilike_lgy10#al10.dat'
+    files['Al']['Al9+'] = 'belike_lfm14#al9.dat'
+    files['Al']['Al8+'] = 'blike_lgy12#al8.dat'
+    files['Al']['Al7+'] = 'clike_jm19#al7.dat'
+    files['Al']['Al6+'] = ''
+    files['Al']['Al5+'] = ''
+    files['Al']['Al4+'] = 'flike_mcw06#al4.dat'
+    files['Al']['Al3+'] = 'nelike_lgy09#al3.dat'
+    files['Al']['Al2+'] = 'nalike_lgy09#al2.dat'
+    files['Al']['Al1+'] = 'mglike_lfm14#al1.dat'
+
+    # TODO: check quality
+    files['F'] = {}
+    files['F']['F8+'] = 'copha#h_hah96f.dat'
+    files['F']['F7+'] = 'helike_adw05#f7.dat'
+    files['F']['F6+'] = 'lilike_lgy10#f6.dat'
+    files['F']['F5+'] = 'belike_lfm14#f5.dat'
+    files['F']['F4+'] = 'blike_lgy12#f4.dat'
+    files['F']['F3+'] = 'clike_jm19#f3.dat'
+
     return files
 
 

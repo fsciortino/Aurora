@@ -7,6 +7,7 @@ sciortino, 2020
 import numpy as np
 import copy,sys
 from scipy.constants import m_p, e as q_electron
+from scipy.special import erfc
 
 if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
     # this if statement prevents issues with sphinx when building docs
@@ -32,13 +33,13 @@ def get_source_time_history(namelist, Raxis_cm, time):
     step times can be given as a list in namelist['src_step_times']; the amplitude
     of the source at each step is given in namelist['src_step_rates']
 
-    (4) namelist['source_type'] == 'LBO': this produces a model source from a LBO
+    (4) namelist['source_type'] == 'synth_LBO': this produces a model source from a LBO
     injection, given by a convolution of a gaussian and an exponential. The required 
     parameters in this case are inside a namelist['LBO'] dictionary:
     namelist['LBO']['t_start'], namelist['LBO']['t_rise'], namelist['LBO']['t_fall'], 
-    namelist['LBO']['t_fall'], namelist['LBO']['n_particles']. The "n_particles" parameter
-    corresponds to the amplitude of the source (the number of particles corresponding
-    to the integral over the source function. 
+    namelist['LBO']['n_particles']. The "n_particles" parameter corresponds to the 
+    amplitude of the source (the number of particles corresponding to the integral over
+    the source function. 
 
     Args:
         namelist : dict
@@ -87,7 +88,7 @@ def get_source_time_history(namelist, Raxis_cm, time):
     elif namelist['source_type'] == 'synth_LBO':
         # use idealized source function
         src_times, src_rates = lbo_source_function(namelist['LBO']['t_start'],
-                                                   namelist['LBO']['t_rise'], namelist['LBO']['t_fall'], namelist['LBO']['t_fall'],
+                                                   namelist['LBO']['t_rise'], namelist['LBO']['t_fall'],
                                                    namelist['LBO']['n_particles'])
     else:
         raise ValueError('Unspecified source function time history!')

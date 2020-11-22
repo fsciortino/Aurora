@@ -7,7 +7,7 @@ plt.ion()
 from scipy.constants import e as q_electron, m_p
 
 
-def line_int_weights(R_path, Z_path, rhop_path, dist_path, R_axis, rhop_out=None, CF_lam=None):
+def line_int_weights(R_path, Z_path, rhop_path, dist_path, R_axis=None, rhop_out=None, CF_lam=None):
     '''Obtain weights for line integration on a rhop grid, given the 3D path of line integration in the (R,Z,Phi) 
     coordinates, as well as the value of sqrt of normalized poloidal flux at each point along the path. 
 
@@ -20,10 +20,11 @@ def line_int_weights(R_path, Z_path, rhop_path, dist_path, R_axis, rhop_out=None
             Values of the rhop coordinate along the line integration path. 
         dist_path : array (np,)
             Vector starting from 0 to the maximum distance [m] considered along the line integration. 
-        R_axis : float
-            R value at the magnetic axis [m]
+
 
     Keyword Args:
+        R_axis : float
+            R value at the magnetic axis [m]. Only used for centrifugal asymmetry effects if CF_lam is not None.
         rhop_out : array (nr,)
             The sqrt of normalized poloidal flux grid on which weights should be computed. If left to None, an 
             equally-spaced grid with 201 points from the magnetic axis to the LCFS is used. 

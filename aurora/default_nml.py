@@ -30,10 +30,11 @@ def load_default_namelist():
         'source_type':'const', 
         'source_file': None, # required if source_type='file'
         'source_cm_out_lcfs' : 1.0, # source distance in cm from LCFS
-        'lbo_model': {'n_particles': 1e+18,
-                      't_fall': 1.71,
-                      't_rise': 0.181,
-                      't_start': 1.0},
+        # LBO synthetic model, only used if source_type='synth_LBO'
+        'LBO': {'n_particles': 1e+18,
+                't_fall': 1.71,
+                't_rise': 0.181,
+                't_start': 0.0},
         # --------------------
         # timing
         'timing': {'dt_increase': np.array([1.005, 1.]),
