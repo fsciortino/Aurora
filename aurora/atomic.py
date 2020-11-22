@@ -409,8 +409,8 @@ def null_space(A):
     return Q, s[-2]  # matrix is singular, so last index is ~0
 
 
-def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=False,
-                        plot=True, ax = None, rho = None, rho_lbl=None,ls='-',compute_rates=False):
+def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=False, ne_tau=np.inf, 
+                        plot=True, ax = None, rho = None, rho_lbl=None,ls='-'):
     '''Calculate fractional abundances from ionization and recombination equilibrium.
     If include_cx=True, radiative recombination and thermal charge exchange are summed.
 
@@ -426,6 +426,10 @@ def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=
             Ratio of background neutral hydrogen to electron density, used if include_cx=True. 
         include_cx : bool
             If True, charge exchange with background thermal neutrals is included. 
+        ne_tau : float, opt
+            Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
+            This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
+            Setting ne_tau=np.inf (default) corresponds to no effect from transport. 
         plot : bool, optional
             Show fractional abundances as a function of ne,Te profiles parameterization.
         ax : matplotlib.pyplot Axes instance
@@ -437,9 +441,6 @@ def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=
             Label to be used for rho. If left to None, defaults to a general "rho".
         ls : str, optional
             Line style for plots. Continuous lines are used by default. 
-        compute_rates : bool
-            If True, compute rate coefficients for ionization/recombination equilibrium on top
-            of fractional abundances (which should be the same regardless of the method used). 
 
     Returns:
         logTe : array
@@ -458,26 +459,23 @@ def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=
         # Get an effective recombination rate by summing radiative & CX recombination rates
         logR= np.logaddexp(logR,np.log(n0_by_ne)[:,None] +logcx)
         
-    # analytical formula for fractional abundance
-    rate_ratio = np.hstack((np.zeros_like(logTe)[:,None], logS-logR))
-    rate_ratio[rate_ratio<-10.]=-10.  # to avoid underflow in exponential
-    fz = np.exp(np.cumsum(rate_ratio,axis=1))
-    fz /= fz.sum(1)[:,None]
-    
-    if compute_rates:
-        # numerical method which calculates also rate_coeff
-        nion = logR.shape[1]
-        fz  = np.zeros((logTe.size,nion+1))
-        rate_coeff = np.zeros(logTe.size)
-        for it,t in enumerate(logTe):
 
-            A = -np.diag(np.r_[np.exp(logS[it]),0])+np.diag(np.exp(logS[it]),-1)+\
-                np.diag(np.exp(logR[it]),1)- np.diag(np.r_[0,np.exp(logR[it])])
-            
-            N,rate_coeff[it] = null_space(A)
-            fz[it] = N/np.sum(N)
+    # numerical method which calculates also rate_coeff
+    nion = logR.shape[1]
+    fz  = np.zeros((logTe.size,nion+1))
+    rate_coeff = np.zeros(logTe.size)
+    for it,t in enumerate(logTe):
 
-        rate_coeff*=(ne_cm3 * 1e-6)
+        A = (
+              - np.diag(np.r_[np.exp(logS[it]), 0] + np.r_[0, np.exp(logR[it])] + 1e6 / ne_tau)
+              + np.diag(np.exp(logS[it]), -1)
+              + np.diag(np.exp(logR[it]), 1)
+              )
+
+        N,rate_coeff[it] = null_space(A)
+        fz[it] = N/np.sum(N)
+
+    rate_coeff*=(ne_cm3 * 1e-6)
 
     if plot:
         # plot fractional abundances
@@ -508,15 +506,11 @@ def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=
         axx.grid('on')
         axx.set_ylim(0,1.05)
         axx.set_xlim(x[0],x[-1])
-        axx.set_title(r'Fractional abundances')
 
     else:
         axx = None    
 
-    if compute_rates:
-        return logTe, fz, rate_coeff
-    else:
-        return logTe, fz
+    return logTe, fz, rate_coeff
 
 
 

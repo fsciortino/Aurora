@@ -60,7 +60,7 @@ Te_avg = np.mean(kp['Te']['vals'],axis=0) # assume on the same radial basis as n
 
 # get fractional abundances on ne (cm^-3) and Te (eV) grid
 atom_data = aurora.get_atom_data(imp,['acd','scd'])
-logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_avg, Te_avg, rho=rhop)
+logTe, fz, rates = aurora.atomic.get_frac_abundances(atom_data, ne_avg, Te_avg, rho=rhop)
 
 fz_profs = np.zeros_like(S_z)
 for cs in np.arange(S_z.shape[1]):

@@ -418,10 +418,10 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
 
         if n0_cm3 is None:
             # obtain fractional abundances without CX:
-            logTe, out['fz'] = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot)
+            logTe, out['fz'],rates = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot)
         else:
             # include CX for ionization balance:
-            logTe, out['fz'] = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot,
+            logTe, out['fz'],rates = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot,
                                                    include_cx=True, n0_by_ne=n0_cm3/ne_cm3)
         out['logTe'] = logTe
         
