@@ -113,6 +113,15 @@ aurora.particle_conserv module
     :show-inheritance:
 
 
+aurora.neutrals module
+--------------------------
+
+.. automodule:: aurora.neutrals
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
 aurora.nbi_neutrals module
 --------------------------
 

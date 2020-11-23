@@ -23,5 +23,8 @@ build/*
 adas_data/adf11/*
 adas_data/adf15/*
 
+# the DEGAS2 ehr5.dat file should not be exported
+ehr5.dat
+
 # don't upload packaging egg-info
 *egg-info/
