@@ -1,8 +1,7 @@
 """:py:mod:`aurora` 
 """
 
-import pkgutil
-__version__ = pkgutil.get_data("aurora", "version").decode()
+from .version import version as __version__
 
 import numpy as np, sys
 if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
