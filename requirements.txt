@@ -4,3 +4,4 @@ matplotlib
 xarray
 omfit_eqdsk
 omfit_gapy
+pexpect
