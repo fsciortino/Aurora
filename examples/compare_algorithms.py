@@ -81,7 +81,8 @@ nz = out[0]   # extract only charge state densities in the plasma from output --
 
 # plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,0,2),
-                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]',
+                              zlabel=r'$n_z$ [$cm^{-3}$]',
                               labels=[str(i) for i in np.arange(0,nz.shape[1])],
                               plot_sum=True, x_line=asim.rvol_lcfs)
 
@@ -96,30 +97,32 @@ start = time.time()
 for n in np.arange(num):
     out_2 = asim.run_aurora(D_z, V_z, alg_opt=1, evolneut=False) 
 print('Average FV time per run: ', (time.time() - start)/num)
-nz_2 = out_2[0]  # extract only charge state densities in the plasma from output -- (time,nZ,space)
+nz_2 = out_2[0]
 
 #plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz_2.transpose(1,0,2),
-                             xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
-                             labels=[str(i) for i in np.arange(0,nz_2.shape[1])],
-                             plot_sum=True, x_line=asim.rvol_lcfs)
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]',
+                              zlabel=r'$n_z$ [$cm^{-3}$]',
+                              labels=[str(i) for i in np.arange(0,nz_2.shape[1])],
+                              plot_sum=True, x_line=asim.rvol_lcfs)
 
 # Check particle conservation
 out_fv, axs = asim.check_conservation(plot=True, axs=axs)
 
 
-######### Finite volumes (Linder) evoling neutrals -- under development! #########
+######### Finite volumes (Linder) evolving neutrals -- under development! #########
 start = time.time()
 for n in np.arange(num):
     out_3 = asim.run_aurora(D_z, V_z, alg_opt=1, evolneut=True) 
-print('Average time per run: ', (time.time() - start)/num)
-nz_3 = out_3[0]   # extract only charge state densities in the plasma from output -- (time,nZ,space)
+print('Average FVN time per run: ', (time.time() - start)/num)
+nz_3 = out_3[0]
 
 # plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz_3.transpose(1,0,2),
-                             xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
-                             labels=[str(i) for i in np.arange(0,nz_3.shape[1])],
-                             plot_sum=True, x_line=asim.rvol_lcfs)
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]',
+                              zlabel=r'$n_z$ [$cm^{-3}$]',
+                              labels=[str(i) for i in np.arange(0,nz_3.shape[1])],
+                              plot_sum=True, x_line=asim.rvol_lcfs)
 
 # Check particle conservation
 out_fvn, axs = asim.check_conservation(plot=True, axs=axs)

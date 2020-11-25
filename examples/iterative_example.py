@@ -85,7 +85,10 @@ time_grid = copy.deepcopy(asim.time_grid)
 # TODO for user:
 # namelist['Te']['vals'] =
 # namelist['ne']['vals'] =
-asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
+
+# update kinetic profile dependencies:
+asim.setup_kin_profs_depts()
+
 
 for i in np.arange(num_sims):
     # get charge state densities from latest time step
@@ -102,7 +105,9 @@ for i in np.arange(num_sims):
     # TODO for user:
     # namelist['Te']['vals'] =
     # namelist['ne']['vals'] =
-    asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
+
+    # update kinetic profile dependencies:
+    asim.setup_kin_profs_depts()
     
 
 # plot charge state distributions over radius and time
