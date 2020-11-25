@@ -31,7 +31,7 @@ wrapper = Extension(name='aurora._aurora',
 aurora_dir = os.path.dirname(os.path.abspath(__file__))
 install_requires = open('requirements.txt').read().split('\n')
     
-config = Configuration(
+setup(
       name=package_name,
       description=long_description,
       long_description_content_type='text/markdown',
@@ -46,4 +46,3 @@ config = Configuration(
                    'Operating System :: OS Independent',
                    ],
       )
-setup(**config.todict())
