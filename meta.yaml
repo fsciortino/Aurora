@@ -17,6 +17,13 @@ requirements:
   run:
     - python
     - {{ pin_compatible('numpy') }}
+    
+test:
+  imports:
+    - aurora
+  commands:
+    - echo Running testing from meta.yaml
+    - python examples/basic_test.py
 
 about:
   home: https://github.com/fsciortino/aurora	
