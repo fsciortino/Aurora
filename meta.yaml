@@ -23,7 +23,7 @@ test:
     - aurora
   commands:
     - echo Running testing from meta.yaml
-    - python examples/basic_test.py
+    - python examples/basic.py
 
 about:
   home: https://github.com/fsciortino/aurora	
