@@ -158,26 +158,20 @@ fig.suptitle('Algorithm comparison')
 
 
 ######## images/plots of total density ############
-f = plt.figure()
-a = f.add_subplot(1, 1, 1)
-cmap = 'plasma'
-pcm = a.pcolormesh(asim.rhop_grid, asim.time_out, nz.sum(axis=1).T, cmap=cmap, 
-                   vmax=nz.sum(axis=1)[0,:].max())
-pcm.cmap.set_over('white')
-f.colorbar(pcm, extend='max')
-a.set_xlabel(r"$\rho_p$")
-a.set_ylabel(r"$t$ [s]")
-a.set_title("Tot impurity density (Finite differences)")
-a.set_xlim([0.0,1.0])
+fig,ax = plt.subplots()
+pcm = ax.pcolormesh(asim.rhop_grid, asim.time_out, nz.sum(axis=1).T, cmap='plasma', 
+                   vmax=nz.sum(axis=1)[0,:].max(), shading='auto')
+fig.colorbar(pcm) 
+ax.set_xlabel(r"$\rho_p$")
+ax.set_ylabel(r"$t$ [s]")
+ax.set_title("Tot impurity density (Finite differences)")
+ax.set_xlim([0.0,1.0])
 
-f = plt.figure()
-a = f.add_subplot(1, 1, 1)
-cmap = 'plasma'
-pcm = a.pcolormesh(asim.rhop_grid, asim.time_out, nz_2.sum(axis=1).T, cmap=cmap, 
-                   vmax=nz_2.sum(axis=1)[0,:].max())
-pcm.cmap.set_over('white')
-f.colorbar(pcm, extend='max')
-a.set_xlabel(r"$\rho_p$")
-a.set_ylabel(r"$t$ [s]")
-a.set_title("Tot impurity density (Finite volumes)")
-a.set_xlim([0.0,1.0])
+fig,ax = plt.subplots()
+pcm = ax.pcolormesh(asim.rhop_grid, asim.time_out, nz_2.sum(axis=1).T, cmap='plasma', 
+                   vmax=nz_2.sum(axis=1)[0,:].max(), shading='auto')
+fig.colorbar(pcm, extend='max')
+ax.set_xlabel(r"$\rho_p$")
+ax.set_ylabel(r"$t$ [s]")
+ax.set_title("Tot impurity density (Finite volumes)")
+ax.set_xlim([0.0,1.0])

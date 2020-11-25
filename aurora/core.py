@@ -127,7 +127,6 @@ class aurora_sim:
             # neutral density for influx/unitlength = 1/cm
             self.source_rad_prof = np.asfortranarray(source_rad_prof/pnorm)
 
-            print('Using explicitely provided impurity neutral source.')
         else:
             self.source_time_history = source_utils.get_source_time_history(
                 self.namelist, self.Raxis_cm, self.time_grid
