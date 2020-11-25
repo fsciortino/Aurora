@@ -1,0 +1,36 @@
+name: Testing
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  build:
+    if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip github]')"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build_command: ["python setup.py develop",
+                        "pip install .",
+                        "pip install --editable .",
+                        "python setup.py install",
+                        # "echo 'no operation'",  # how to test this one?
+        ]
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+    - name: Install dependencies
+      run: |
+        python -m pip install -r requirements.txt
+    - name: Install Aurora
+      run: ${{ matrix.build_command }}
+    - name: Move to root and try importing Aurora
+      run: |
+        cd /
+        python -c "import aurora; print(aurora.__version__)"

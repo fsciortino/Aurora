@@ -27,35 +27,21 @@ wrapper = Extension(name='aurora._aurora',
                              'aurora/impden.f90',
                              'aurora/math.f90'])
 
-# use local makefile and avoid numpy's Extension class...
-#cmd = 'make clean; make aurora'
-#result = subprocess.call(cmd, shell=True) 
-
-
 aurora_dir = os.path.dirname(os.path.abspath(__file__))
-with open(os.path.join(aurora_dir, 'aurora', 'version')) as vfile:
-    version = vfile.read().strip()
-
 install_requires = open('requirements.txt').read().split('\n')
     
-setup(name=package_name,
-      version=version,
+setup(
+      name=package_name,
       description=long_description,
       long_description_content_type='text/markdown',
       url='https://github.com/fsciortino/Aurora',
       author='F. Sciortino',
       author_email='sciortino@psfc.mit.edu',
       packages=['aurora'], #setuptools.find_packages(),
+      setup_requires=["numpy"],
       install_requires=install_requires,
-      include_package_data=True,
-      package_data={'':['aurora/version']},
       ext_modules=[wrapper],
       classifiers=['Programming Language :: Python :: 3',
                    'Operating System :: OS Independent',
                    ],
       )
-
-# move shared-object library to ./aurora
-#filename = [filename for filename in os.listdir('.') if filename.startswith('_aurora')]
-#print(filename)
-#os.rename(filename, './aurora/'+filename)
