@@ -36,7 +36,7 @@ def vol_int(Raxis_cm, ds, var, rhop_max=None):
         wh = ( ds['rhop_grid'].data <= rhop_max)
         zvol = zvol[wh]
         f  = f[...,wh]
-
+    
     # 2D or 3D array f(t,x)
     var_volint = np.nansum(f*zvol,axis=-1)
 
@@ -120,7 +120,7 @@ def check_particle_conserv(Raxis_cm, ds=None, filepath=None, linestyle='-', plot
     # factor to account for cylindrical geometry:
     circ = 2*np.pi*Raxis_cm # cm
 
-    #Compute total number of particles for particle conservation checks:
+    # Compute total number of particles for particle conservation checks:
     all_particles = vol_int(Raxis_cm,ds, 'total_impurity_density')
     total = all_particles+(ds['particles_at_wall'].data+\
                            ds['particles_in_divertor'].data)*circ 

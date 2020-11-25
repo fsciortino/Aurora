@@ -28,13 +28,11 @@ kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
 
 # set impurity species and sources rate
 imp = namelist['imp'] = 'Ar'
-namelist['source_type'] = 'const'
-namelist['Phi0'] = 2e20  # particles/s
 
 # provide impurity neutral sources on explicit radial and time grids
 namelist['explicit_source_time'] = np.linspace(0.,namelist['timing']['times'][-1],99)
 namelist['explicit_source_rhop'] = np.linspace(0,1.3,101)
-gaussian_rhop = 1e2 * np.exp(- (namelist['explicit_source_rhop']-0.5)**2/(2*0.1**2))
+gaussian_rhop = 1e10 * np.exp(- (namelist['explicit_source_rhop']-0.5)**2/(2*0.1**2))
 exp_time = np.exp(- namelist['explicit_source_time']/0.02)  # decay over 20ms time scale
 namelist['explicit_source_vals'] = gaussian_rhop[None,:]*exp_time[:,None]
 

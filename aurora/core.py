@@ -114,16 +114,19 @@ class aurora_sim:
         self.Raxis_cm = self.geqdsk['RMAXIS']*100. # cm
 
         if namelist['explicit_source_vals'] is not None:
-            # use dummy source_time_history, will multiply source_rad_prof in calculation
-            self.source_time_history = np.ones_like(self.time_grid)
 
             # interpolate explicit source values on time and rhop grids of simulation
-            self.source_rad_prof = np.asfortranarray(
-                RectBivariateSpline(namelist['explicit_source_rhop'],
-                                    namelist['explicit_source_time'],
-                                    namelist['explicit_source_vals'].T,
-                                    kx=1,ky=1)(self.rhop_grid, self.time_grid)
-            )
+            source_rad_prof = RectBivariateSpline(namelist['explicit_source_rhop'],
+                                                       namelist['explicit_source_time'],
+                                                       namelist['explicit_source_vals'].T,
+                                                       kx=1,ky=1)(self.rhop_grid, self.time_grid)
+
+            pnorm = np.pi*np.sum(source_rad_prof*self.S_rates[:,0,:]*(self.rvol_grid/self.pro_grid)[:,None],0)
+            self.source_time_history = np.asfortranarray(pnorm)
+
+            # neutral density for influx/unitlength = 1/cm
+            self.source_rad_prof = np.asfortranarray(source_rad_prof/pnorm)
+
             print('Using explicitely provided impurity neutral source.')
         else:
             self.source_time_history = source_utils.get_source_time_history(
@@ -538,9 +541,8 @@ class aurora_sim:
                                         'rvol_grid': self.rvol_grid
                                 })
             source_time_history = particle_conserv.vol_int(self.Raxis_cm, srp, 'source')
-            #from IPython import embed
-            #embed()
-            
+
+        source_time_history = self.source_time_history
         # Check particle conservation
         ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','rvol_grid'], nz),
                          'source_time_history': (['time'], source_time_history ),
