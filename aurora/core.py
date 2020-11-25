@@ -3,7 +3,7 @@
 import scipy.io
 import copy,os,sys
 import numpy as np
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.constants import e as q_electron, m_p
 
 if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
@@ -112,15 +112,29 @@ class aurora_sim:
 
         # source function
         self.Raxis_cm = self.geqdsk['RMAXIS']*100. # cm
-        self.source_time_history = source_utils.get_source_time_history(
-            self.namelist, self.Raxis_cm, self.time_grid
-        )
-        
-        # get radial profile of source function for each time step
-        self.source_rad_prof = source_utils.get_radial_source(self.namelist,
-                                                              self.rvol_grid, self.pro_grid,
-                                                              self.S_rates[:,0,:],   # 0th charge state (neutral)
-                                                              self._Ti)
+
+        if namelist['explicit_source_vals'] is not None:
+            # use dummy source_time_history, will multiply source_rad_prof in calculation
+            self.source_time_history = np.ones_like(self.time_grid)
+
+            # interpolate explicit source values on time and rhop grids of simulation
+            self.source_rad_prof = np.asfortranarray(
+                RectBivariateSpline(namelist['explicit_source_rhop'],
+                                    namelist['explicit_source_time'],
+                                    namelist['explicit_source_vals'].T,
+                                    kx=1,ky=1)(self.rhop_grid, self.time_grid)
+            )
+            print('Using explicitely provided impurity neutral source.')
+        else:
+            self.source_time_history = source_utils.get_source_time_history(
+                self.namelist, self.Raxis_cm, self.time_grid
+            )
+            
+            # get radial profile of source function for each time step
+            self.source_rad_prof = source_utils.get_radial_source(self.namelist,
+                                                                  self.rvol_grid, self.pro_grid,
+                                                                  self.S_rates[:,0,:],   # 0th charge state (neutral)
+                                                                  self._Ti)
 
         # get maximum Z of impurity ion
         out = atomic_element(symbol=self.imp)
@@ -512,9 +526,24 @@ class aurora_sim:
         nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         nz = nz.transpose(2,1,0)   # time,nZ,space
 
+        if self.namelist['explicit_source_vals'] is None:
+            source_time_history = self.source_time_history
+        else:
+            # if explicit source was provided, all info about the source is in the source_rad_prof array
+            srp = xarray.Dataset({'source': ([ 'time','rvol_grid'], self.source_rad_prof.T),
+                                 'pro': (['rvol_grid'], self.pro_grid), 
+                                 'rhop_grid': (['rvol_grid'], self.rhop_grid)
+            },
+                                coords={'time': self.time_out, 
+                                        'rvol_grid': self.rvol_grid
+                                })
+            source_time_history = particle_conserv.vol_int(self.Raxis_cm, srp, 'source')
+            #from IPython import embed
+            #embed()
+            
         # Check particle conservation
         ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','rvol_grid'], nz),
-                         'source_time_history': (['time'], self.source_time_history ),
+                         'source_time_history': (['time'], source_time_history ),
                          'particles_in_divertor': (['time'], N_div), 
                          'particles_in_pump': (['time'], N_pump), 
                          'parallel_loss': (['time'], N_dsu), 

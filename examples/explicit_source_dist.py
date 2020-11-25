@@ -1,9 +1,6 @@
 '''
-Script to test functionality from namelist creation to run and postprocessing.
-
-It is recommended to run this in IPython.
+Script demonstrating use of Aurora with explicit radial profiles of impurity neutral sources. 
 '''
-
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
@@ -34,15 +31,19 @@ imp = namelist['imp'] = 'Ar'
 namelist['source_type'] = 'const'
 namelist['Phi0'] = 2e20  # particles/s
 
-# Change radial resolution from default:
-#namelist['dr_0']=0.2
-#namelist['dr_1']=0.02
+# provide impurity neutral sources on explicit radial and time grids
+namelist['explicit_source_time'] = np.linspace(0.,namelist['timing']['times'][-1],99)
+namelist['explicit_source_rhop'] = np.linspace(0,1.3,101)
+gaussian_rhop = 1e2 * np.exp(- (namelist['explicit_source_rhop']-0.5)**2/(2*0.1**2))
+exp_time = np.exp(- namelist['explicit_source_time']/0.02)  # decay over 20ms time scale
+namelist['explicit_source_vals'] = gaussian_rhop[None,:]*exp_time[:,None]
 
-# Change time resolution from default:
-#namelist['timing']['dt_increase'] = np.array([1.001, 1.0, 1.])
-#namelist['timing']['dt_start'] = np.array([1e-5, 5e-5, 0.001])
-#namelist['timing']['steps_per_cycle'] = np.array([1,1,1])
-#namelist['timing']['times'] = np.array([0.,0.05,0.2])
+fig,ax = plt.subplots(num='Impurity neutral source')
+ax.contourf(namelist['explicit_source_rhop'],
+             namelist['explicit_source_time'],
+             namelist['explicit_source_vals'])
+ax.set_xlabel(r'$\rho_p$')
+ax.set_ylabel('time [s]')
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -75,27 +76,3 @@ aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose
                               plot_sum=True, x_line=asim.rvol_lcfs)
 
 
-# plot Delta-Zeff profiles over radius and time
-asim.calc_Zeff()
-
-# plot variation of Zeff due to simulated impurity:
-aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.delta_Zeff.transpose(1,0,2),
-                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$\Delta$ $Z_{eff}$',
-                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
-                              plot_sum=True,x_line=asim.rvol_lcfs)
-
-
-
-# plot expected centrifugal asymmetry from finite rotation
-rhop_gacode = aurora.rad_coord_transform(inputgacode['rho'],'rhon','rhop', asim.geqdsk)
-
-# omega appears unreliable near axis in input.gacode
-omega = interp1d(rhop_gacode[3:], inputgacode['omega0'][3:],
-                 bounds_error=False,fill_value='extrapolate')(asim.rhop_grid)
-
-# obtain net Zeff in this discharge (exclude last point, unreliable)
-Zeff = interp1d(rhop_gacode[:-1], inputgacode['z_eff'][:-1],
-                 bounds_error=False,fill_value='extrapolate')(asim.rhop_grid)
-
-# Obtain estimates for centrifigal asymmetry and plot expected 2D distribution inside LCFS
-asim.centrifugal_asym(omega, Zeff, plot=True)

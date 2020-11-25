@@ -232,6 +232,8 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
             Normalized first derivatives of the radial grid in volume-normalized coordinates. 
         S_rates : array (nr,nt)
             Ionization rate of neutral impurity over space and time.
+
+    Keyword Args:
         Ti_eV : array, optional (nr,nt)
             Background ion temperature, only used if source_width_in=source_width_out=0.0 and 
             imp_source_energy_eV<=0, in which case the source impurity neutrals are taken to 
