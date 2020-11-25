@@ -33,4 +33,4 @@ jobs:
     - name: Move to root and try importing Aurora
       run: |
         cd /
-        python -c "import aurora"
+        python -c "import aurora; print(aurora.__version__)"
