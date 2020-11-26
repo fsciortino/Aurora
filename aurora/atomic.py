@@ -10,9 +10,7 @@ import scipy.ndimage
 from scipy.linalg import svd
 from scipy.constants import m_p, e as q_electron
 
-if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
-    # this if statement prevents issues with sphinx when building docs
-    from . import adas_files
+from . import adas_files
 
 
 def get_adas_file_types():

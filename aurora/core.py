@@ -1,26 +1,28 @@
 '''This module includes the core class to set up simulations with :py:mod:`aurora`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.
 '''
-import scipy.io
+
 import copy,os,sys
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.constants import e as q_electron, m_p
 
-if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
-    # this if statement prevents issues with sphinx when building docs
-    from . import _aurora
+import omfit_eqdsk
+from omfit_commonclasses.utils_math import atomic_element
 
-    import omfit_eqdsk
-    from omfit_commonclasses.utils_math import atomic_element
-    
-    from . import interp
-    from . import atomic
-    from . import grids_utils
-    from . import source_utils
-    from . import particle_conserv
-    from . import plot_tools
-    from . import synth_diags
-    import xarray
+from . import interp
+from . import atomic
+from . import grids_utils
+from . import source_utils
+from . import particle_conserv
+from . import plot_tools
+from . import synth_diags
+import xarray
+
+# don't try to import compiled Fortran if building documentation:
+if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
+    from ._aurora import run,time_steps
+
+
 
 
 class aurora_sim:

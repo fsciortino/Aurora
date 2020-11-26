@@ -1,9 +1,6 @@
 import numpy as np,sys,os
 from scipy.interpolate import interp1d
-
-if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
-    # this if statement prevents issues with sphinx when building docs
-    from . import grids_utils
+from . import grids_utils
 
 def vol_average(quant, rhop, method='omfit', geqdsk=None, device=None, shot=None, time=None, return_geqdsk=False):
     '''Calculate the volume average of the given radially-dependent quantity on a rhop grid. 
