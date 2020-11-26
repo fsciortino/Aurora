@@ -21,7 +21,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install setuptools wheel numpy
     - name: Build the package
-      run: python setup.py sdist bdist_wheel
+      run: python setup.py sdist
     - name: Publish distribution 📦 to Test PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
