@@ -16,6 +16,42 @@ import sys
 sys.path.append('../')
 import aurora
 
+
+def get_nall(rhop, rhop_grid, ne, nd, nz):
+    # This function gives total ion+electron density
+    nz_interp = np.zeros([len(rhop),len(nz[0,:])])
+    for Z in range(len(nz[0,:])):
+        nz_interp[:,Z] = np.interp(rhop, rhop_grid, nz[:,Z])
+
+    nall = ne + nd
+    Znz = np.zeros(len(rhop))
+    for Z in range(len(nz_interp[0,:])):
+        nall += nz_interp[:,Z]
+        Znz += Z*nz_interp[:,Z]
+
+    nall += nall + Znz
+
+    return nall, Znz
+    
+def dilution_cooling(rhop, rhop_grid, ne_old, nd_old, T_old, nz_old, nz_new):
+    # This function reduces temperature by the increase in density
+    # Assumption of Ti=Te for simplicity
+
+    nall_old, Znz_old  = get_nall(rhop, rhop_grid, ne_old, nd_old, nz_old)
+    nall_new, Znz_new = get_nall(rhop, rhop_grid, ne_old, nd_old, nz_new)
+
+    ne_new = ne_old - Znz_old + Znz_new
+    T_new = T_old*nall_old/nall_new
+
+    return ne_new, T_new
+
+def radiation_cooling(rhop, rhop_grid, ne, nd, nz, T, Erad):
+    # This function subracts radiation power from plasma energy
+    nall, ZnZ = get_nall(rhop, rhop_grid, ne, nd, nz)
+    Erad = np.interp(rhop, rhop_grid, Erad)
+    T_new = T - 2*Erad/(3*nall) # 2/3 to account for stored energy = 3/2 integral p dV
+    return T_new
+
 # read in default Aurora namelist
 namelist = aurora.default_nml.load_default_namelist()
 
@@ -25,17 +61,36 @@ inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
 
 # save kinetic profiles on a rhop (sqrt of norm. pol. flux) grid
 kp = namelist['kin_profs']
-kp['Te']['rhop'] = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
-kp['ne']['vals'] = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
-kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
+kp['Te']['rhop'] = rhop = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
+kp['ne']['vals'] = ne_cm3 = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
+kp['Te']['vals'] = Te_eV = inputgacode['Te']*1e3  # keV --> eV
+nd_cm3 = copy.deepcopy(ne_cm3)
+
+################## Simulation time steps and duration settings ##################
+#
+# Update background every n_rep iterations, each of dt [s] length
+n_rep = 5
+dt = 1e-4
+
+# Total time to run [s] -- will be approximated by nearest multiplier of n_rep*dt
+sim_time = 5e-3  # 20 ms
+num_sims = int(sim_time/(n_rep*dt))
+##################################################################################
+
+# do only a few time steps per "run"
+namelist['timing'] = {'dt_increase': np.array([1., 1.   ]),
+                      'dt_start': np.array([dt, sim_time]),
+                      'steps_per_cycle': np.array([1, 1]),
+                      'times': np.array([0. , n_rep*dt])}
+
 
 # set impurity species and sources rate
 imp = namelist['imp'] = 'Ar'
 
 # provide impurity neutral sources on explicit radial and time grids
-namelist['explicit_source_time'] = np.linspace(0.,namelist['timing']['times'][-1],99)
+namelist['explicit_source_time'] = np.linspace(0.,namelist['timing']['times'][-1]*n_rep,99)
 namelist['explicit_source_rhop'] = np.linspace(0,1.3,101)
-gaussian_rhop = 1e10 * np.exp(- (namelist['explicit_source_rhop']-0.5)**2/(2*0.1**2))
+gaussian_rhop = 1e9 * np.exp(- (namelist['explicit_source_rhop']-0.5)**2/(2*0.1**2))
 exp_time = np.exp(- namelist['explicit_source_time']/0.02)  # decay over 20ms time scale
 namelist['explicit_source_vals'] = gaussian_rhop[None,:]*exp_time[:,None]
 
@@ -45,23 +100,6 @@ ax.contourf(namelist['explicit_source_rhop'],
              namelist['explicit_source_vals'])
 ax.set_xlabel(r'$\rho_p$')
 ax.set_ylabel('time [s]')
-
-################## Simulation time steps and duration settings ##################
-#
-# Update background every n_rep iterations, each of dt [s] length
-n_rep = 5
-dt = 1e-5
-
-# Total time to run [s] -- will be approximated by nearest multiplier of n_rep*dt
-sim_time = 5e-3  # 20 ms
-num_sims = int(sim_time/(n_rep*dt))
-##################################################################################
-
-# do only a few time steps per "run"
-namelist['timing'] = {'dt_increase': np.array([1., 1.   ]),
-                      'dt_start': np.array([1.e-05, 1.e-03]),
-                      'steps_per_cycle': np.array([1, 1]),
-                      'times': np.array([0. , n_rep*dt])}
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -73,6 +111,7 @@ V_z = -2e2 * np.ones(len(asim.rvol_grid)) # cm/s
 # run Aurora forward model and plot results
 out = asim.run_aurora(D_z, V_z, plot=False)
 nz_all = out[0] # impurity charge state densities are the first element of "out"
+nz_init = nz_all[:,:,-1]
 
 # calculate dilution cooling
 rad = aurora.compute_rad(
@@ -82,16 +121,25 @@ line_rad_all = rad['line_rad'].T # W/cm^3
 time_grid = copy.deepcopy(asim.time_grid)
 
 # modify background temperature and density profiles based on tot_rad_dens
-# TODO for user:
-# namelist['Te']['vals'] =
-# namelist['ne']['vals'] =
+rhop_grid = asim.rhop_grid
+Erad = np.trapz(tot_rad_dens[-1*n_rep:,:],axis=0,dx=dt) * 1.6e-13
+Te_eV = radiation_cooling(rhop, rhop_grid, ne_cm3, nd_cm3, nz_init, Te_eV, Erad)
+ne_cm3, Te_eV = dilution_cooling(rhop, rhop_grid, ne_cm3, nd_cm3, Te_eV, nz_init*0., nz_init)
+kp['Te']['vals'] = Te_eV
+kp['ne']['vals'] = ne_cm3
 
 # update kinetic profile dependencies:
 asim.setup_kin_profs_depts()
 
-
+Te_all = []
+Te_all.append(Te_eV)
 for i in np.arange(num_sims):
+    # Update time array
+    namelist['timing']['times'] = np.array([i*n_rep*dt+dt, (i+1)*n_rep*dt])
+    asim.setup_grids()
+    
     # get charge state densities from latest time step
+    nz_old = nz_all[:,:,-1*n_rep]
     nz_init = nz_all[:,:,-1]
     out = asim.run_aurora(D_z, V_z, nz_init=nz_init, plot=False)
     nz_all = np.dstack((nz_all, out[0]))
@@ -101,11 +149,15 @@ for i in np.arange(num_sims):
     tot_rad_dens = rad['tot'] # W/cm^3
     line_rad_all = np.dstack((line_rad_all, rad['line_rad'].T))
     time_grid = np.concatenate((time_grid, asim.time_grid))
+    
     # modify background temperature and density profiles
-    # TODO for user:
-    # namelist['Te']['vals'] =
-    # namelist['ne']['vals'] =
-
+    rhop_grid = asim.rhop_grid
+    Erad = np.trapz(tot_rad_dens[-1*n_rep:,:], axis=0) * 1.6e-13
+    Te_eV = radiation_cooling(rhop, rhop_grid, ne_cm3, nd_cm3, nz_init, Te_eV, Erad)
+    ne_cm3, Te_eV = dilution_cooling(rhop, rhop_grid, ne_cm3, nd_cm3, Te_eV, nz_old, nz_init)
+    kp['Te']['vals'] = Te_eV
+    kp['ne']['vals'] = ne_cm3
+    Te_all.append(Te_eV)
     # update kinetic profile dependencies:
     asim.setup_kin_profs_depts()
     
@@ -122,4 +174,10 @@ aurora.slider_plot(asim.rvol_grid, time_grid, line_rad_all.transpose(1,0,2),
                               labels=[str(i) for i in np.arange(0,nz_all.shape[1])],
                               plot_sum=True, x_line=asim.rvol_lcfs)
 
+print(len(rhop), len(time_grid))
+Te_all = np.array(Te_all).T
+Te_all = np.reshape(Te_all, (1,len(rhop),len(time_grid[::5])))
+aurora.slider_plot(rhop, time_grid[::5], Te_all, xlabel=r'$rho_p$', ylabel='time [s]', zlabel=r'Te [eV]')
+
+plt.show(block=True)
 
