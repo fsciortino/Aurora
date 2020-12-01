@@ -25,7 +25,22 @@ def download_ehr5_file():
     
 
 class ehr5_file:
-    ''' Read ehr5.dat file from DEGAS2. '''
+    ''' Read ehr5.dat file from DEGAS2. 
+    Returns a dictionary containing
+
+    - Ionization rate Seff in :math:`cm^3 s^{-1}`
+    - Recombination rate Reff in :math:`cm^3 s^{-1}`
+    - Neutral electron losses :math:`E_{loss}^{(i)}` in :math:`erg s^{-1}`
+    - Continuum electron losses :math:`E_{loss}^{(ii)}` in :math:`erg s^{-1}`
+    - Neutral “n=2 / n=1”, :math:`N_2^{(i)}/N_1`
+    - Continuum “n=2 / n=1”, :math:`N_2^{(ii)}/N_11
+    - Neutral “n=3 / n=1”, :math:`N_3^{(i)}/N_1`
+    - Continuum “n=3 / n=1”, :math:`N_3^{(ii)}/N_1`
+    
+    ... and similarly for n=4 to 9. 
+
+    Refer to the DEGAS2 manual for details.
+    '''
 
     def __init__(self, filepath=None):
         '''Load ehr5.dat file, either from the indicated path or by downloading it locally. 
@@ -124,11 +139,15 @@ def get_exc_state_ratio(m, N1, ni, ne, Te, rad_prof=None, rad_label=r'rmin [cm]'
     This function is not l-resolved.
 
     The function returns
-    $ N_m/N_1 = \left( \frac{N_m^i}{N_1} \right) N_m + \left(\frac{N_m^{ii}}{n_i} \right) n_i
-    where N_m is the number of electrons in the excited state m, N_1 is the number in the ground state,
-    and n_i is the density of ions that could recombine.
-    `i' and `ii' indicate terms corresponding to coupling to the ground state and to the continuum,
-    respectively.
+
+    .. math::
+
+        N_m/N_1 = \left( \frac{N_m^i}{N_1} \right) N_m + \left(\frac{N_m^{ii}}{n_i} \right) n_i
+
+    where N_m is the number of electrons in the excited state m, N_1 is the number in the 
+    ground state, and n_i is the density of ions that could recombine.
+    `i' and `ii' indicate terms corresponding to coupling to the ground state and to 
+    the continuum, respectively.
 
     Ref.: DEGAS2 manual.
 
