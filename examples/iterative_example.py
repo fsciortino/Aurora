@@ -3,6 +3,9 @@ Script demonstrating use of Aurora with explicit radial profiles of impurity neu
 also allowing users to vary the ne,Te grids based on arbitrary heating, cooling or dilution 
 processes. This may be useful, for example, for pellet ablation or massive gas injection studies. 
 
+Run this in IPython, or uncomment plt.show(block=True) at the end. 
+
+jmcclena and sciortino, Nov 2020
 '''
 import numpy as np
 import matplotlib.pyplot as plt
@@ -174,10 +177,10 @@ aurora.slider_plot(asim.rvol_grid, time_grid, line_rad_all.transpose(1,0,2),
                               labels=[str(i) for i in np.arange(0,nz_all.shape[1])],
                               plot_sum=True, x_line=asim.rvol_lcfs)
 
-print(len(rhop), len(time_grid))
-Te_all = np.array(Te_all).T
-Te_all = np.reshape(Te_all, (1,len(rhop),len(time_grid[::5])))
-aurora.slider_plot(rhop, time_grid[::5], Te_all, xlabel=r'$rho_p$', ylabel='time [s]', zlabel=r'Te [eV]')
 
-plt.show(block=True)
+_Te_all = np.array(Te_all).T
+Te_arr = np.reshape(_Te_all, (1,len(rhop),len(time_grid[::5])))
+aurora.slider_plot(rhop, time_grid[::5], Te_arr, xlabel=r'$rho_p$', ylabel='time [s]', zlabel=r'Te [eV]')
+
+#plt.show(block=True)
 

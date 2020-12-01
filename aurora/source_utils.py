@@ -309,8 +309,8 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
 
     # total ion source
     pnorm = np.pi*np.sum(source_rad_prof*S_rates*(rvol_grid/pro_grid)[:,None],0)  # sum over radius
-
-    # neutral density for influx/unitlength = 1/cm
+    
+    # neutral density for influx/unit-length = 1/cm
     source_rad_prof /= pnorm
 
     return np.asfortranarray(source_rad_prof)

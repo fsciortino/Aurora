@@ -327,7 +327,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rate
   endif
 
   ! Radial profile of recycling source should be close to the wall
-  ! Set it to be the same as the input (valve) source -- this may need revision:
+  ! Set it to be the same as the input (valve) source -- TODO: revise this!
   srcl = src_prof
   
   ! select whether neutrals should be evolved

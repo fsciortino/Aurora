@@ -83,7 +83,7 @@ class aurora_sim:
         if self.namelist['saw_model']['saw_flag'] and len(self.saw_times)>0:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
 
-        # get maximum Z of impurity ion
+        # get nuclear charge Z and atomic mass number A
         out = atomic_element(symbol=self.imp)
         spec = list(out.keys())[0]
         self.Z_imp = int(out[spec]['Z'])
@@ -165,7 +165,7 @@ class aurora_sim:
             pnorm = np.pi*np.sum(source_rad_prof*self.S_rates[:,0,:]*(self.rvol_grid/self.pro_grid)[:,None],0)
             self.source_time_history = np.asfortranarray(pnorm)
 
-            # neutral density for influx/unitlength = 1/cm
+            # neutral density for influx/unit-length = 1/cm
             self.source_rad_prof = np.asfortranarray(source_rad_prof/pnorm)
 
         else:
