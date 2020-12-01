@@ -154,16 +154,18 @@ def get_exc_state_ratio(m, N1, ni, ne, Te, rad_prof=None, rad_label=r'rmin [cm]'
     Args:
         m : int
             Principal quantum number of excited state of interest. 2<m<10
-        N1 : float or list [cm^-3]
+        N1 : float, list or 1D-array [cm^-3]
             Density of ions in the ground state. This must have the same shape as ni!
-        ni : float or list [cm^-3]
+        ni : float, list or 1D-array [cm^-3]
             Density of ions corresponding to the atom under consideration. This must
             have the same shape as N1!
-        ne : float or 1D array of floats [cm^-3]
+        ne : float, list or 1D-array [cm^-3]
             Electron density to evaluate atomic rates at.
-        Te : float or 1D array of floats [eV]
+        Te : float, list or 1D-array [eV]
             Electron temperature to evaluate atomic rates at.
-        rad_prof : 1D array or None
+
+    Keyword Args:
+        rad_prof : list, 1D array or None
             If None, excited state densities are evaluated at all the combinations of ne,Te and zip(Ni,ni).
             If a 1D array (same length as ne,Te,ni and N1), then this is taken to be a radial coordinate
             for radial profiles of ne,Te,ni and N1.

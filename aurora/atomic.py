@@ -224,7 +224,7 @@ def read_adf15(path, order=1, Te_max = None, ne_max = None,
             indicated type (ionization or recombination). Each interpolation function takes as arguments
             the log-10 of ne and Te.
 
-    MWE:
+    Minimal Working Example (MWE):
         path='/home/sciortino/atomlib/atomdat_master/adf15/h/pju#h0.dat'
         pec = read_adf15(path, recomb=False)
         pec = read_adf15(path, plot_lines=[list(pec.keys())[0]], recomb=False)
@@ -385,7 +385,7 @@ def read_adf15(path, order=1, Te_max = None, ne_max = None,
                     labels = ['{:.0e}'.format(ne)+r' $cm^{-3}$' for ne in ne_eval]
                     for ine in np.arange(PEC_eval.shape[1]):
                         ax1.plot(Te_eval, PEC_eval[:,ine], label=labels[ine])
-                    ax1.set_xlabel(r'$T_e$ [kev]')
+                    ax1.set_xlabel(r'$T_e$ [eV]')
                     ax1.set_ylabel('PEC')
                     ax1.set_yscale('log')
                     if pec_plot_min is not None:
