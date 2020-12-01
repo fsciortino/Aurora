@@ -14,7 +14,7 @@ A number of examples using Aurora are provided using real Alcator C-Mod kinetic 
 
 # Development 
 
-The code is developed and maintained by F. Sciortino (MIT-PSFC) in collaboration with T. Odstrcil (GA) and A. Cavallaro (MIT), with support from O. Linder (MPI-IPP) and C. Johnson (U. Auburn). The great wisdom (and patience) of S. Smith (GA) has allowed this code to be effectively shared and documented. Finally, the STRAHL documentation provided by R.Dux (MPI-IPP) was extremely helpful to guide the initial development of Aurora.
+The code is developed and maintained by F. Sciortino (MIT-PSFC) in collaboration with T. Odstrcil (GA) and A. Cavallaro (MIT), with support from O. Linder (MPI-IPP), C. Johnson (U. Auburn), D. Stanczak (IPPLM) and S. Smith (GA). The STRAHL documentation provided by R.Dux (MPI-IPP) was extremely helpful to guide the initial development of Aurora.
 
 New contributors are more than welcome! Please get in touch at sciortino-at-psfc.mit.edu or open a pull-request via Github. 
 

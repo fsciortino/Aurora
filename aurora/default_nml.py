@@ -21,7 +21,11 @@ def load_default_namelist():
         'main_element': 'D',
         'Baxis': 5.5,
         # --------------------
-        # source
+        # explicit source:
+        'explicit_source_vals' : None, # provide 2D array on explicit_source_time and explicit_source_rhop grids
+        'explicit_source_time' : None, 
+        'explicit_source_rhop' : None,
+        # other options to specify source:
         'source_width_in' :  0.0,   # exponential ionization decay from wall boundary if widths both = 0
         'source_width_out': 0.0,    
         'imp_source_energy_eV' : 3.0, # only needed if source_width_in=source_width_out=0.0

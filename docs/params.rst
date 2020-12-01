@@ -9,7 +9,7 @@ Spatio-temporal grids
 
 Aurora's spatial and temporal grids are defined in the same way as in STRAHL. Refer to the `STRAHL manual <https://pure.mpg.de/rest/items/item_2143869/component/file_2143868/content>`__ for details. Note that only STRAHL options that have been useful in the authors' experience have been included in Aurora. 
 
-In short, the :py:func:`~aurora.grids_utils.create_radial_grid` function produces a radial grid that is equally-spaced on the :math:`rho` grid, defined by
+In short, the :py:func:`~aurora.grids_utils.create_radial_grid` function produces a radial grid that is equally-spaced on the :math:`\rho` grid, defined by
 
     .. math::
 
