@@ -206,3 +206,13 @@ In ionization equilibrium, all ionization and recombination processes will be pe
   logTe, fz, rates = aurora.get_frac_abundances(atom_data, ne_vals, Te_vals, rho=rhop, plot=True)
 
 The :py:func:`~aurora.atomic.get_frac_abundances` function returns the log-10 of the electron temperature on the same grid as the fractional abundances, given by the `fz` parameter (dimensions: space, charge state). This same function can be used to both compute radiation profiles of fractional abundances or to compute fractional abundances as a function of scanned parameters `ne` and/or `Te`. The inverse of the `rates` output correspond to the atomic relaxation time. An additional argument of `ne_tau` (units of :math:`m^{-3}\cdot s`) can be used to approximately model the effect of transport on ionization balance.
+
+
+Working with neutrals
+---------------------
+
+Aurora includes a number of useful functions for neutral modeling, both from the edge of fusion devices (thermal neutrals) and from neutral beams (fast and halo neutrals).
+
+For thermal neutrals, atomic data from the Collrad collisional-radiative model, part of the `DEGAS2`_ code.
+
+.. _DEGAS2: https://w3.pppl.gov/degas2/
