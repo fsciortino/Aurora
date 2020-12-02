@@ -81,7 +81,8 @@ nz = out[0]   # extract only charge state densities in the plasma from output --
 
 # plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,0,2),
-                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]',
+                              zlabel=r'$n_z$ [$cm^{-3}$]',
                               labels=[str(i) for i in np.arange(0,nz.shape[1])],
                               plot_sum=True, x_line=asim.rvol_lcfs)
 
@@ -96,30 +97,32 @@ start = time.time()
 for n in np.arange(num):
     out_2 = asim.run_aurora(D_z, V_z, alg_opt=1, evolneut=False) 
 print('Average FV time per run: ', (time.time() - start)/num)
-nz_2 = out_2[0]  # extract only charge state densities in the plasma from output -- (time,nZ,space)
+nz_2 = out_2[0]
 
 #plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz_2.transpose(1,0,2),
-                             xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
-                             labels=[str(i) for i in np.arange(0,nz_2.shape[1])],
-                             plot_sum=True, x_line=asim.rvol_lcfs)
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]',
+                              zlabel=r'$n_z$ [$cm^{-3}$]',
+                              labels=[str(i) for i in np.arange(0,nz_2.shape[1])],
+                              plot_sum=True, x_line=asim.rvol_lcfs)
 
 # Check particle conservation
 out_fv, axs = asim.check_conservation(plot=True, axs=axs)
 
 
-######### Finite volumes (Linder) evoling neutrals -- under development! #########
+######### Finite volumes (Linder) evolving neutrals -- under development! #########
 start = time.time()
 for n in np.arange(num):
     out_3 = asim.run_aurora(D_z, V_z, alg_opt=1, evolneut=True) 
-print('Average time per run: ', (time.time() - start)/num)
-nz_3 = out_3[0]   # extract only charge state densities in the plasma from output -- (time,nZ,space)
+print('Average FVN time per run: ', (time.time() - start)/num)
+nz_3 = out_3[0]
 
 # plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz_3.transpose(1,0,2),
-                             xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
-                             labels=[str(i) for i in np.arange(0,nz_3.shape[1])],
-                             plot_sum=True, x_line=asim.rvol_lcfs)
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]',
+                              zlabel=r'$n_z$ [$cm^{-3}$]',
+                              labels=[str(i) for i in np.arange(0,nz_3.shape[1])],
+                              plot_sum=True, x_line=asim.rvol_lcfs)
 
 # Check particle conservation
 out_fvn, axs = asim.check_conservation(plot=True, axs=axs)
@@ -158,26 +161,20 @@ fig.suptitle('Algorithm comparison')
 
 
 ######## images/plots of total density ############
-f = plt.figure()
-a = f.add_subplot(1, 1, 1)
-cmap = 'plasma'
-pcm = a.pcolormesh(asim.rhop_grid, asim.time_out, nz.sum(axis=1).T, cmap=cmap, 
-                   vmax=nz.sum(axis=1)[0,:].max())
-pcm.cmap.set_over('white')
-f.colorbar(pcm, extend='max')
-a.set_xlabel(r"$\rho_p$")
-a.set_ylabel(r"$t$ [s]")
-a.set_title("Tot impurity density (Finite differences)")
-a.set_xlim([0.0,1.0])
+fig,ax = plt.subplots()
+pcm = ax.pcolormesh(asim.rhop_grid, asim.time_out, nz.sum(axis=1).T, cmap='plasma', 
+                   vmax=nz.sum(axis=1)[0,:].max(), shading='auto')
+fig.colorbar(pcm) 
+ax.set_xlabel(r"$\rho_p$")
+ax.set_ylabel(r"$t$ [s]")
+ax.set_title("Tot impurity density (Finite differences)")
+ax.set_xlim([0.0,1.0])
 
-f = plt.figure()
-a = f.add_subplot(1, 1, 1)
-cmap = 'plasma'
-pcm = a.pcolormesh(asim.rhop_grid, asim.time_out, nz_2.sum(axis=1).T, cmap=cmap, 
-                   vmax=nz_2.sum(axis=1)[0,:].max())
-pcm.cmap.set_over('white')
-f.colorbar(pcm, extend='max')
-a.set_xlabel(r"$\rho_p$")
-a.set_ylabel(r"$t$ [s]")
-a.set_title("Tot impurity density (Finite volumes)")
-a.set_xlim([0.0,1.0])
+fig,ax = plt.subplots()
+pcm = ax.pcolormesh(asim.rhop_grid, asim.time_out, nz_2.sum(axis=1).T, cmap='plasma', 
+                   vmax=nz_2.sum(axis=1)[0,:].max(), shading='auto')
+fig.colorbar(pcm, extend='max')
+ax.set_xlabel(r"$\rho_p$")
+ax.set_ylabel(r"$t$ [s]")
+ax.set_title("Tot impurity density (Finite volumes)")
+ax.set_xlim([0.0,1.0])

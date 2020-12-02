@@ -1,20 +1,21 @@
-# Aurora: a modern toolbox for impurity transport and radiation modeling
+# Aurora: a modern toolbox for impurity transport, neutrals and radiation modeling
 
-Aurora is an expanding package to simulate heavy-ion transport and radiation in magnetically-confined plasmas. The package offers a simple interface between Python3 and Fortran 90 -- a solution that ensures fast iterations over a 1.5-D forward model, while maintaining simplicity for users. Recently, a Julia interface has also been developed and is now in beta testing. The package includes extensive Python3 functionality to create inputs and read/plot outputs. Users can read and process ADAS atomic data to make radiation predictions, both using the charge state density distributions from an Aurora simulation or from fractional abundances in ionization equilibrium. This type of radiation predictions can be conveniently made for Aurora's own forward model results, and also for external 1D, 2D or 3D transport codes. 
+Aurora is an expanding package to simulate heavy-ion transportm neutrals and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model which inherits many of the methods from the historical STRAHL code and has been thoroughly benchmarked with it. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. Aurora's code is mostly written in Python 3 and Fortran 90. A Julia interface has also recently been added. The package enables radiation calculations using ADAS atomic rates, which can easily be applied to the output of Aurora's own forward model, or coupled with other 1D, 2D or 3D transport codes. 
+
+
+<figure>
+  <p><img src="https://user-images.githubusercontent.com/25516628/93692659-f12c4b00-fac3-11ea-817c-d971c6853b8b.jpg"
+    width="450" align="right"
+    alt="Aurora">
+  <figcaption>Fig: Inspirational photo of the Aurora Borealis by K.Pikner </figcaption>
+</figure>
 
 Documentation is available at https://aurora-fusion.readthedocs.io.
 
-Aurora's 1.5D forward model has been thoroughly benchmarked with the standard STRAHL, based on which it was originally developed. Recently, the algorithm proposed by O.Linder et al, Nuclear Fusion 2020, has been implemented and is now the default numerical scheme, although legacy options remain available. 
-
-<img src="https://user-images.githubusercontent.com/25516628/93692659-f12c4b00-fac3-11ea-817c-d971c6853b8b.jpg" width="500" align="right">
-
-Coupling to [ColRadPy](https://github.com/johnson-c/ColRadPy) is also available to process ADAS ADF04 files and estimate emission from Aurora charge state distributions at specific wavelengths. We recommend installation of ColRadPy from the source via Github cloning. 
-
-A number of examples using Aurora are provided using real Alcator C-Mod kinetic profiles and geometry. In order to interface with EFIT gEQDSK files, we make use of the [omfit-eqdsk](https://gafusion.github.io/OMFIT-source/classes.html) package, but users may easily substitute this if they prefer to adopt different magnetic reconstruction packages and/or postprocessing interfaces. 
 
 # Development 
 
-The code is developed and maintained by F. Sciortino (MIT-PSFC) in collaboration with T. Odstrcil (GA) and A. Cavallaro (MIT), with support from O. Linder (MPI-IPP) and C. Johnson (U. Auburn). The great wisdom (and patience) of S. Smith (GA) has allowed this code to be effectively shared and documented. Finally, the STRAHL documentation provided by R.Dux (MPI-IPP) was extremely helpful to guide the initial development of Aurora.
+The code is developed and maintained by F. Sciortino (MIT-PSFC) in collaboration with T. Odstrcil (GA) and A. Cavallaro (MIT), with support from O. Linder (MPI-IPP), C. Johnson (U. Auburn), D. Stanczak (IPPLM) and S. Smith (GA). The STRAHL documentation provided by R.Dux (MPI-IPP) was extremely helpful to guide the initial development of Aurora.
 
 New contributors are more than welcome! Please get in touch at sciortino-at-psfc.mit.edu or open a pull-request via Github. 
 

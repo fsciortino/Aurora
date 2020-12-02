@@ -8,7 +8,6 @@ sciortino, 2020
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-from scipy.interpolate import RectBivariateSpline
 import copy
 
 

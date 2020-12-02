@@ -27,7 +27,7 @@ author = 'F.Sciortino'
 release = '1.0.0'
 
 # FS: this seems to be useful for local build
-#master_doc = 'index'
+master_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
 
