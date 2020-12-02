@@ -33,8 +33,7 @@ install_requires = open('requirements.txt').read().split('\n')
 
 setup(
     name=package_name,
-    version=get_version("aurora/__init__.py"),
-    #version='1.1.8',
+    version='1.2.1',
     description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/fsciortino/Aurora',
