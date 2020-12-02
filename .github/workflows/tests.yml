@@ -33,10 +33,9 @@ jobs:
     - name: Test Aurora
       run: |
       	cd /
-	python examples/basic.py
-	echo "Completed execution of basic testing"
-	python examples/frac_abundances.py
-	echo "Completed execution of fractional abundances testing"
+	pip install pytest
+	pytest examples/basic.py
+	pytest examples/frac_abundances.py
     - name: Move to root and try importing Aurora
       run: |
         cd /

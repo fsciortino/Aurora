@@ -20,9 +20,7 @@ import xarray
 
 # don't try to import compiled Fortran if building documentation:
 if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
-    from ._aurora import run,time_steps
-
-
+    from ._aurora import run as fortran_run,time_steps
 
 
 class aurora_sim:
@@ -464,7 +462,7 @@ class aurora_sim:
                                      self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                      nz_init, alg_opt, evolneut)
         else:
-            self.res =  _aurora.run(len(self.time_out),  # number of times at which simulation outputs results
+            self.res =  fortran_run(len(self.time_out),  # number of times at which simulation outputs results
                                     times_DV,
                                     D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                     self.par_loss_rate,  # time dependent
