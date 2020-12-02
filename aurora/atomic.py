@@ -409,10 +409,14 @@ def null_space(A):
     return Q, s[-2]  # matrix is singular, so last index is ~0
 
 
-def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=False, ne_tau=np.inf, 
+def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
+                        include_cx=False, ne_tau=np.inf,
                         plot=True, ax = None, rho = None, rho_lbl=None,ls='-'):
     '''Calculate fractional abundances from ionization and recombination equilibrium.
     If include_cx=True, radiative recombination and thermal charge exchange are summed.
+
+    This method can work with ne,Te and n0_by_ne arrays of arbitrary dimension, but plotting 
+    is only supported in 1D (defaults to flattened arrays).
 
     Args:
         atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
@@ -448,22 +452,27 @@ def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=
             rate coefficients are given.
         fz : array, (space,nZ)
             Fractional abundances across the same grid used by the input ne,Te values. 
-        rate_coeff : array, (space, nZ)
+        rate_coeffs : array, (space, nZ)
             Rate coefficients in units of [s^-1]. 
 
     '''
+    # if input arrays are multi-dimensional, flatten them here and restructure at the end
+    _ne = ne_cm3.flatten()
+    _Te = Te_eV.flatten()
+    _n0_by_ne = n0_by_ne.flatten()
 
-    logTe, logS,logR,logcx = get_cs_balance_terms(atom_data,ne_cm3,Te_eV,maxTe=10e3,include_cx=include_cx)
+    logTe, logS,logR,logcx = get_cs_balance_terms(
+        atom_data, _ne, _Te, maxTe=10e3, include_cx=include_cx)
     
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
-        logR= np.logaddexp(logR,np.log(n0_by_ne)[:,None] +logcx)
-        
+        logR= np.logaddexp(logR,np.log(_n0_by_ne)[:,None] +logcx)
 
-    # numerical method which calculates also rate_coeff
+    # numerical method that calculates also rate_coeffs
     nion = logR.shape[1]
     fz  = np.zeros((logTe.size,nion+1))
-    rate_coeff = np.zeros(logTe.size)
+    rate_coeffs = np.zeros(logTe.size)
+
     for it,t in enumerate(logTe):
 
         A = (
@@ -472,13 +481,13 @@ def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=
               + np.diag(np.exp(logR[it]), 1)
               )
 
-        N,rate_coeff[it] = null_space(A)
+        N,rate_coeffs[it] = null_space(A)
         fz[it] = N/np.sum(N)
 
-    rate_coeff*=(ne_cm3 * 1e-6)
+    rate_coeffs*=(_ne * 1e-6)
 
     if plot:
-        # plot fractional abundances
+        # plot fractional abundances (only 1D)
         if ax is None:
             fig,axx = plt.subplots()
         else:
@@ -499,7 +508,7 @@ def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=
         x_fine = np.linspace(np.min(x), np.max(x),10000)
         for cs in range(fz.shape[1]):
             fz_i = interp1d(x, fz[:,cs], kind='cubic')(x_fine)
-            axx.plot(x_fine, fz_i)
+            axx.plot(x_fine, fz_i, ls=ls)
             imax = np.argmax(fz_i)
             axx.text(np.max([0.05,x_fine[imax]]), fz_i[imax], cs,
                      horizontalalignment='center', clip_on=True)
@@ -507,10 +516,12 @@ def get_frac_abundances(atom_data, ne_cm3,Te_eV=None, n0_by_ne=1e-5, include_cx=
         axx.set_ylim(0,1.05)
         axx.set_xlim(x[0],x[-1])
 
-    else:
-        axx = None    
-
-    return logTe, fz, rate_coeff
+    # re-structure to original array dimensions
+    logTe = logTe.reshape(ne_cm3.shape)
+    fz = fz.reshape(*ne_cm3.shape, fz.shape[1])
+    rate_coeffs = rate_coeffs.reshape(*ne_cm3.shape)
+    
+    return logTe, fz, rate_coeffs
 
 
 
