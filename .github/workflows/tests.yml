@@ -32,8 +32,7 @@ jobs:
       run: ${{ matrix.build_command }}
     - name: Test Aurora
       run: |
-      	cd /
-	pip install pytest
+	python -m pip install pytest
 	pytest examples/basic.py
 	pytest examples/frac_abundances.py
     - name: Move to root and try importing Aurora
