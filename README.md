@@ -5,9 +5,9 @@ Aurora is an expanding package to simulate heavy-ion transportm neutrals and rad
 
 <figure>
   <p><img src="https://user-images.githubusercontent.com/25516628/93692659-f12c4b00-fac3-11ea-817c-d971c6853b8b.jpg"
-    width="500" 
+    width="450" align="right"
     alt="Aurora">
-  <figcaption>Inspirational photo of the Aurora Borealis by K.Pikner </figcaption>
+  <figcaption>Fig: Inspirational photo of the Aurora Borealis by K.Pikner </figcaption>
 </figure>
 
 Documentation is available at https://aurora-fusion.readthedocs.io.
