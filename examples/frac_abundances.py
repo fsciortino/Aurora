@@ -17,6 +17,11 @@ import sys
 sys.path.append('../')
 import aurora
 
+try: # pass any argument via the command line to show plots
+    plot = len(sys.argv)>1
+except:
+    plot = False
+
 # read in some kinetic profiles
 inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
 
@@ -29,8 +34,10 @@ Te_vals = inputgacode['Te']*1e3  # keV --> eV
 atom_data = aurora.atomic.get_atom_data('Ca',['scd','acd'])
 
 # get fractional abundances on ne (cm^-3) and Te (eV) grid
-logTe, fz, rates = aurora.atomic.get_frac_abundances(atom_data, ne_vals, Te_vals, rho=rhop)
+logTe, fz, rates = aurora.atomic.get_frac_abundances(atom_data, ne_vals, Te_vals,
+                                                     rho=rhop, plot=plot)
 
 # compare to fractial abundances obtained with ne*tau=0.1e20 m^-3.s
-logTe, fz, rates = aurora.atomic.get_frac_abundances(atom_data, ne_vals, Te_vals, rho=rhop, 
-                                                     ne_tau=0.1e19, ax=plt.gca(), ls='--')
+logTe, fz, rates = aurora.atomic.get_frac_abundances(atom_data, ne_vals, Te_vals,
+                                                     rho=rhop, ne_tau=0.1e19,
+                                                     plot=plot, ax=plt.gca(), ls='--')
