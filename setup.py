@@ -18,8 +18,9 @@ from numpy.distutils.core import setup, Extension
 
 package_name='aurorafusion'
 
-with open('README.md', 'r') as fh:
-    long_description = fh.read()
+#with open('README.md', 'r') as fh:
+#    long_description = fh.read()
+long_description='See documentation at https://aurora-fusion.readthedocs.io'
 
 wrapper = Extension(name='aurora._aurora', 
                     sources=['aurora/main.f90',
