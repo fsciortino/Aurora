@@ -5,8 +5,9 @@ from .version import version as __version__
 
 import numpy as np, sys
 
-# don't try to import compiled Fortran if building documentation:
-if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
+# don't try to import compiled Fortran if building documentation or package:
+if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]) and\
+   not np.any(['distutils' in k.split('.') for k in sys.modules]):
     from ._aurora import run,time_steps
 
 from .core import *

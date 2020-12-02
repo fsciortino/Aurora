@@ -18,8 +18,9 @@ from . import plot_tools
 from . import synth_diags
 import xarray
 
-# don't try to import compiled Fortran if building documentation:
-if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
+# don't try to import compiled Fortran if building documentation or package:
+if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]) and\
+   not np.any(['distutils' in k.split('.') for k in sys.modules]):
     from ._aurora import run as fortran_run,time_steps
 
 
