@@ -1,7 +1,8 @@
 """:py:mod:`aurora` 
 """
 
-from .version import version as __version__
+from .version import version
+__version__ = version
 
 import numpy as np, sys
 
