@@ -30,20 +30,21 @@ wrapper = Extension(name='aurora._aurora',
 
 aurora_dir = os.path.dirname(os.path.abspath(__file__))
 install_requires = open('requirements.txt').read().split('\n')
-    
+
 setup(
-      name=package_name,
-      #version='1.1.8',
-      description=long_description,
-      long_description_content_type='text/markdown',
-      url='https://github.com/fsciortino/Aurora',
-      author='F. Sciortino',
-      author_email='sciortino@psfc.mit.edu',
-      packages=['aurora'], #setuptools.find_packages(),
-      setup_requires=["numpy"],
-      install_requires=install_requires,
-      ext_modules=[wrapper],
-      classifiers=['Programming Language :: Python :: 3',
-                   'Operating System :: OS Independent',
-                   ],
-      )
+    name=package_name,
+    version=get_version("aurora/__init__.py"),
+    #version='1.1.8',
+    description=long_description,
+    long_description_content_type='text/markdown',
+    url='https://github.com/fsciortino/Aurora',
+    author='F. Sciortino',
+    author_email='sciortino@psfc.mit.edu',
+    packages=['aurora'], #setuptools.find_packages(),
+    setup_requires=["numpy"],
+    install_requires=install_requires,
+    ext_modules=[wrapper],
+    classifiers=['Programming Language :: Python :: 3',
+                 'Operating System :: OS Independent',
+    ],
+)
