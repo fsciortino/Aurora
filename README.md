@@ -2,12 +2,13 @@
 
 Aurora is an expanding package to simulate heavy-ion transportm neutrals and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model which inherits many of the methods from the historical STRAHL code and has been thoroughly benchmarked with it. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. Aurora's code is mostly written in Python 3 and Fortran 90. A Julia interface has also recently been added. The package enables radiation calculations using ADAS atomic rates, which can easily be applied to the output of Aurora's own forward model, or coupled with other 1D, 2D or 3D transport codes. 
 
-.. figure:: https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Virmalised_18.03.15_%284%29.jpg/1920px-Virmalised_18.03.15_%284%29.jpg
-   :width: 50%
-   :alt: Aurora Borealis, photo by K.Pikner on Wikipedia	   
-   :align: left
 
-   Inspirational photo of the Aurora Borealis by K.Pikner
+<figure>
+  <p><img src="https://user-images.githubusercontent.com/25516628/93692659-f12c4b00-fac3-11ea-817c-d971c6853b8b.jpg"
+    width="500" 
+    alt="Aurora">
+  <figcaption>Inspirational photo of the Aurora Borealis by K.Pikner </figcaption>
+</figure>
 
 Documentation is available at https://aurora-fusion.readthedocs.io.
 
