@@ -30,11 +30,6 @@ jobs:
         python -m pip install -r requirements.txt
     - name: Install Aurora
       run: ${{ matrix.build_command }}
-    - name: Test Aurora with pytest
-      run: |
-        pip install pytest
-        pip install pytest-cov
-        pytest examples/basic.py --doctest-modules --junitxml=junit/test-results.xml --cov=com --cov-report=xml --cov-report=html
     - name: Move to root and try importing Aurora
       run: |
         cd /
