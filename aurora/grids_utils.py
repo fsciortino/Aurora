@@ -4,11 +4,12 @@
 import matplotlib.pyplot as plt
 import numpy as np, sys, os
 from scipy.interpolate import interp1d
+from omfit_mds import OMFITmdsValue
 
-if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
+# don't try to import when building documentation or package
+if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]) and\
+   not np.any([('distutils' in k.split('.') and 'command' in k.split('.')) for k in sys.modules]):
     from . import _aurora
-
-    from omfit_mds import OMFITmdsValue
 
 
 def create_radial_grid(namelist,plot=False):

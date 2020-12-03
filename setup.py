@@ -18,8 +18,9 @@ from numpy.distutils.core import setup, Extension
 
 package_name='aurorafusion'
 
-with open('README.md', 'r') as fh:
-    long_description = fh.read()
+#with open('README.md', 'r') as fh:
+#    long_description = fh.read()
+long_description='See documentation at https://aurora-fusion.readthedocs.io'
 
 wrapper = Extension(name='aurora._aurora', 
                     sources=['aurora/main.f90',
@@ -29,19 +30,26 @@ wrapper = Extension(name='aurora._aurora',
 
 aurora_dir = os.path.dirname(os.path.abspath(__file__))
 install_requires = open('requirements.txt').read().split('\n')
-    
+
 setup(
-      name=package_name,
-      description=long_description,
-      long_description_content_type='text/markdown',
-      url='https://github.com/fsciortino/Aurora',
-      author='F. Sciortino',
-      author_email='sciortino@psfc.mit.edu',
-      packages=['aurora'], #setuptools.find_packages(),
-      setup_requires=["numpy"],
-      install_requires=install_requires,
-      ext_modules=[wrapper],
-      classifiers=['Programming Language :: Python :: 3',
-                   'Operating System :: OS Independent',
-                   ],
-      )
+    name=package_name,
+    version='1.2.3',
+    description=long_description,
+    long_description_content_type='text/markdown',
+    url='https://github.com/fsciortino/Aurora',
+    author='F. Sciortino',
+    author_email='sciortino@psfc.mit.edu',
+    packages=['aurora'], #setuptools.find_packages(),
+    #package_dir = {'examples': 'examples'},
+    #package_data={'examples': ['examples/*']},
+    data_files = [('examples', ['examples/basic.py',
+                                'examples/frac_abundances.py',
+                                'examples/example.gfile',
+                                'examples/example.input.gacode'])],
+    setup_requires=["numpy"],
+    install_requires=install_requires,
+    ext_modules=[wrapper],
+    classifiers=['Programming Language :: Python :: 3',
+                 'Operating System :: OS Independent',
+    ],
+)

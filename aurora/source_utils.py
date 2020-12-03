@@ -8,10 +8,8 @@ import numpy as np
 import copy,sys
 from scipy.constants import m_p, e as q_electron
 from scipy.special import erfc
+from omfit_commonclasses.utils_math import atomic_element
 
-if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
-    # this if statement prevents issues with sphinx when building docs
-    from omfit_commonclasses.utils_math import atomic_element
 
 def get_source_time_history(namelist, Raxis_cm, time):
     '''Load source time history based on current state of the namelist.
@@ -150,7 +148,7 @@ def read_source(filename):
         lines = f.read()
     for line in lines.split('\n')[1:]:  # first line contains number of lines
         line = line.strip()
-        if line is not '':
+        if line != '':
             t.append(float(line.split()[0]))
             s.append(float(line.split()[1]))
     t = np.array(t)

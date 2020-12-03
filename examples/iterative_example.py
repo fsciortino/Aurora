@@ -11,11 +11,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 import omfit_eqdsk, omfit_gapy
-import sys, copy
+import sys, copy, os
 from scipy.interpolate import interp1d
 
 # Make sure that package home is added to sys.path
-import sys
 sys.path.append('../')
 import aurora
 
@@ -59,8 +58,9 @@ def radiation_cooling(rhop, rhop_grid, ne, nd, nz, T, Erad):
 namelist = aurora.default_nml.load_default_namelist()
 
 # Use gfile and statefile in local directory:
-geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
-inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
+examples_dir = os.path.dirname(os.path.abspath(__file__))
+geqdsk = omfit_eqdsk.OMFITgeqdsk(examples_dir+'/example.gfile')
+inputgacode = omfit_gapy.OMFITgacode(examples_dir+'/example.input.gacode')
 
 # save kinetic profiles on a rhop (sqrt of norm. pol. flux) grid
 kp = namelist['kin_profs']

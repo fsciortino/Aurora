@@ -6,14 +6,10 @@ import matplotlib.pyplot as plt
 plt.ion()
 from scipy import constants
 import warnings, copy
-
-if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]):
-    # this if statement prevents issues with sphinx when building docs
-    from omfit_commonclasses.utils_math import atomic_element
-    
-    from . import atomic
-    from . import adas_files
-    from . import plot_tools
+from omfit_commonclasses.utils_math import atomic_element
+from . import atomic
+from . import adas_files
+from . import plot_tools
 
 def compute_rad(imp, nz, ne, Te,
                 n0 = None, Ti = None, ni = None, adas_files_sub = {},
