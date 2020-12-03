@@ -8,7 +8,7 @@ from omfit_mds import OMFITmdsValue
 
 # don't try to import when building documentation or package
 if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]) and\
-   not np.any(['distutils' in k.split('.') for k in sys.modules]):
+   not np.any([('distutils' in k.split('.') and 'command' in k.split('.')) for k in sys.modules]):
     from . import _aurora
 
 

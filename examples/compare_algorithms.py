@@ -13,7 +13,6 @@ import time
 from copy import deepcopy
 
 # Make sure that package home is added to sys.path
-import sys
 sys.path.append('../')
 import aurora
 
@@ -26,8 +25,9 @@ namelist = aurora.default_nml.load_default_namelist()
 kp = namelist['kin_profs']
 
 # Use gfile and statefile in local directory:
-geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
-inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
+examples_dir = os.path.dirname(os.path.abspath(__file__))
+geqdsk = omfit_eqdsk.OMFITgeqdsk(examples_dir+'/example.gfile')
+inputgacode = omfit_gapy.OMFITgacode(examples_dir+'/example.input.gacode')
 
 # transform rho_phi (=sqrt toroidal flux) into rho_psi (=sqrt poloidal flux) and save kinetic profiles
 kp['Te']['rhop'] = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])

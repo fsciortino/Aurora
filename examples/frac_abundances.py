@@ -13,7 +13,6 @@ import time
 from scipy.interpolate import interp1d
 
 # Make sure that package home is added to sys.path
-import sys
 sys.path.append('../')
 import aurora
 
@@ -23,7 +22,8 @@ except:
     plot = False
 
 # read in some kinetic profiles
-inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
+examples_dir = os.path.dirname(os.path.abspath(__file__))
+inputgacode = omfit_gapy.OMFITgacode(examples_dir+'/example.input.gacode')
 
 # transform rho_phi (=sqrt toroidal flux) into rho_psi (=sqrt poloidal flux) and save kinetic profiles
 rhop = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
@@ -34,10 +34,10 @@ Te_vals = inputgacode['Te']*1e3  # keV --> eV
 atom_data = aurora.atomic.get_atom_data('Ca',['scd','acd'])
 
 # get fractional abundances on ne (cm^-3) and Te (eV) grid
-logTe, fz, rates = aurora.atomic.get_frac_abundances(atom_data, ne_vals, Te_vals,
-                                                     rho=rhop, plot=plot)
+logTe, fz, rates = aurora.atomic.get_frac_abundances(
+    atom_data, ne_vals, Te_vals, rho=rhop, plot=plot)
 
 # compare to fractial abundances obtained with ne*tau=0.1e20 m^-3.s
-logTe, fz, rates = aurora.atomic.get_frac_abundances(atom_data, ne_vals, Te_vals,
-                                                     rho=rhop, ne_tau=0.1e19,
-                                                     plot=plot, ax=plt.gca(), ls='--')
+logTe, fz, rates = aurora.atomic.get_frac_abundances(
+    atom_data, ne_vals, Te_vals, rho=rhop, ne_tau=0.1e19,
+    plot=plot, ax=plt.gca() if plot else None, ls='--')
