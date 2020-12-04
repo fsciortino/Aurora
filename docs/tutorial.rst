@@ -221,18 +221,16 @@ The :py:class:`~aurora.neutrals.erh5_file` class allows one to parse the `erh5.d
 
 Note that in order to find the photon emissivity coefficient of specific neutral lines, the :py:func:`~aurora.atomic.read_adf15` function may be used. For example, to obtain interpolation functions for neutral H Lyman-alpha emissivity, one can use::
 
-  path_to_file = "pju#h0.dat"  # file available from OPEN-ADAS
+  filename = 'pec96#h_pju#h0.dat' # for D Ly-alpha
+  
+  # fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
+  path = aurora.get_adas_file_loc(filename, filetype='adf15')  
+  
+  # plot Lyman-alpha line at 1215.2 A. See available lines with pec_dict.keys() after calling without plot_lines argument
+  pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
+  
 
-  # first find all lines available within this file
-  pec = aurora.read_adf15(path_to_file, recomb=False)
-
-  print(pec.keys())
-  # Returns: dict_keys([1215.2, 1025.3, 6561.9, 972.1, 4860.6, 18748.2, 949.3, 4339.9, 12816.1, 40505.3, 937.4, 4101.2, 10936.4, 26247.5, 74566.6, 930.4, 3969.5, 10047.9, 21651.9, 46517.8, 123665.9])
-
-  # Now, let's plot the Lyman-alpha data at 1215.2 A
-  pec = aurora.read_adf15(path_to_file, plot_lines=[1215.2], recomb=False)
-
-This will plot the Lyman-alpha emissivity as a function of temperature in eV. This line emissivity rapidly increases with temperature below 100 eV, and then decays less rapidly at higher temperatures.
+This will plot the Lyman-alpha photon emissivity coefficients (both the components due to excitation and recombination) as a function of temperature in eV. Some files (e.g. try `pec96#c_pju#c2.dat`) may also have charge exchange components.
 
 Analysis routines to work with fast and halo neutrals are also provided in Aurora. Atomic rates for charge exchange of impurities with NBI neutrals are taken from Janev & Smith NF 1993 and can be obtained from :py:func:`~aurora.janev_smith_rates.js_sigma`, which wraps a number of functions for specific atomic processes. To compute charge exchange rates between NBI neutrals (fast or thermal) and any ions in the plasma, users need to provide a prediction of neutral densities, likely from an external code like `FIDASIM`_.
 
