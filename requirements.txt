@@ -2,6 +2,6 @@ numpy
 scipy
 matplotlib
 xarray
-omfit-eqdsk
-omfit-gapy
+omfit_eqdsk
+omfit_gapy
 pexpect
