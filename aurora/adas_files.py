@@ -6,48 +6,60 @@ import urllib
 import shutil,os
 
 # location of the "adas_data" directory relative to this script:
-adas_data_dir = os.path.dirname(os.path.realpath(__file__))+'/../adas_data/adf11/'
+adas_data_dir = os.path.dirname(os.path.realpath(__file__))+'/../adas_data/'
 
-def get_adas_file_loc(filename):
+def get_adas_file_loc(filename, filetype='adf11'):
     '''Find location of requested atomic data file for the indicated ion. 
     The search proceeds with the following attempts, in this order:
 
-    #. If the file is available in Aurora/adas_data/adf11, always use this data.
+    #. If the file is available in Aurora/adas_data/*filetype*, with filetype given by the user, 
+       always use this data.
 
-    #. If the environmental variable "AURORA_ADAS_DIR" is defined, attempt to find the file there and copy it to Aurora/adas_data/adf11.
+    #. If the environmental variable "AURORA_ADAS_DIR" is defined, attempt to find the file there 
+       and copy it to Aurora/adas_data/*filetype*.
 
-    #. Attempt to fetch the file remotely via open.adas.ac.uk and save it in Aurora/adas_data/adf11/. 
+    #. Attempt to fetch the file remotely via open.adas.ac.uk and save it in Aurora/adas_data/*filetype*/. 
 
     Args:
         filename : str
-            Name of the ADAS ADF11 file of interest, e.g. 'plt89_ar.dat'
+            Name of the ADAS file of interest, e.g. 'plt89_ar.dat'
+        filetype : str
+            ADAS file type. Currently allowed: 'adf11' or 'adf15'
     
     Returns:
         file_loc : str
             Full path to the requested file. 
     '''
 
-    if os.path.exists(adas_data_dir+filename):
+    def fetch_file(filename,filetype):
+        if filetype=='adf11':
+            fetch_adf11_file(filename)
+        elif filetype=='adf15':
+            fetch_adf15_file(filename)
+        else:
+            raise ValueError('ADAS file type/format not recognized. Could not find it download it automatically!')
+        
+    if os.path.exists(adas_data_dir+filetype+'/'+filename):
         # file is available in adas_data:
         pass
     
     elif 'AURORA_ADAS_DIR' in os.environ:
         if os.path.exists(os.environ['AURORA_ADAS_DIR']+'/'+filename):
-            # copy file to adas_data_dir:
-            shutil.copyfile(os.environ['AURORA_ADAS_DIR']+'/'+filename, adas_data_dir+filename)
+            # copy file to adas_data_dir+filetype:
+            shutil.copyfile(os.environ['AURORA_ADAS_DIR']+'/'+filename, adas_data_dir+filetype+'/'+filename)
             pass
         else:
             # File could not be found. Download it and save it in adas_data:
-            fetch_adf11_file(filename)        
+            fetch_file(filename,filetype)
     else:
         # File could not be found. Download it and save it in adas_data:
-        fetch_adf11_file(filename)
+        fetch_file(filename,filetype)
 
-    return adas_data_dir+filename
+    return adas_data_dir+filetype+'/'+filename
 
 
 def fetch_adf11_file(filename):
-    '''Download ADF11 file from the OPEN-ADAS website and store it in the 'adas_data'
+    '''Download ADF11 file from the OPEN-ADAS website and store it in the 'adas_data/adf11'
     directory. 
 
     Args:
@@ -57,7 +69,34 @@ def fetch_adf11_file(filename):
     url = 'https://open.adas.ac.uk/download/adf11/'
     str1 =  filename.split('_')[0]
     local_filename,headers = urllib.request.urlretrieve(url+str1+'/'+filename, filename)
-    os.replace(filename,adas_data_dir+filename)
+    os.replace(filename,adas_data_dir+'adf11/'+filename)
+
+
+
+def fetch_adf15_file(filename):
+    '''Download ADF15 file from the OPEN-ADAS website and store it in the 'adas_data/adf15'
+    directory. 
+
+    Args:
+        filename : str
+            Name of ADF15 file to be downloaded, e.g. 'pec96#c_pju#c2.dat'.
+    '''
+    url = 'https://open.adas.ac.uk/download/adf15/'
+
+    if filename.startswith('pec'):
+        # more standard format, the following patterns should work fine:
+        num = filename[3:5]
+        spec = filename.split('#')[1].split('_')[0]
+        filename_mod = filename.replace('#','][').replace('_',f'/pec{num}][{spec}_')
+    elif filename.startswith('transport'):
+        # different link format for files with "transport" name:
+        filename_mod = 'transport/'+filename.replace('#','][')
+    else:
+        # patterns may be different, attempt simple guess:
+        filename_mod = filename.split('_')[0]+'/'+filename.replace('#','][')
+
+    local_filename,headers = urllib.request.urlretrieve(url+'/'+filename_mod, filename)
+    os.replace(filename,adas_data_dir+'adf15/'+filename)
 
 
 def adas_files_dict():
