@@ -141,7 +141,7 @@ aurora.janev_smith_rates module
 
 
 aurora.synth_diags module
--------------------------------
+-------------------------
 
 .. automodule:: aurora.synth_diags
     :members:

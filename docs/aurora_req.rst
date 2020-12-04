@@ -7,9 +7,9 @@ Python requirements
 
 Aurora uses the latest Python-3 distribution and requires a modern Fortran compiler, available on most Unix systems. Additionally, the following packages are automatically installed (from PyPI) when installing Aurora:::
 
-  numpy scipy matplotlib xarray omfit_eqdsk omfit_gapy
+  numpy scipy matplotlib xarray omfit-eqdsk omfit-gapy
 
-The latter two are part of the OMFIT distribution and will provide lots of capabilities to interact with tokamak modeling tools, with which Aurora can be integrated. Note that `omfit_eqdsk` and `omfit_gapy` will themselves bring a number of automatic requirements which may take some space on disk.
+The latter two are part of the OMFIT distribution and will provide lots of capabilities to interact with tokamak modeling tools, with which Aurora can be integrated. Note that `omfit-eqdsk` and `omfit-gapy` will themselves bring a number of automatic requirements which may take some space on disk.
 
 
 
