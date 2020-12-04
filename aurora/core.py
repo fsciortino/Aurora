@@ -6,9 +6,6 @@ import numpy as np
 from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.constants import e as q_electron, m_p
 
-import omfit_eqdsk
-from omfit_commonclasses.utils_math import atomic_element
-
 from . import interp
 from . import atomic
 from . import grids_utils
@@ -22,6 +19,9 @@ import xarray
 if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]) and\
    not np.any([('distutils' in k.split('.') and 'command' in k.split('.')) for k in sys.modules]):
     from ._aurora import run as fortran_run,time_steps
+
+    import omfit_eqdsk
+    from omfit_commonclasses.utils_math import atomic_element
 
 
 class aurora_sim:

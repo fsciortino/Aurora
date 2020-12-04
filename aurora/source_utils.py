@@ -8,7 +8,11 @@ import numpy as np
 import copy,sys
 from scipy.constants import m_p, e as q_electron
 from scipy.special import erfc
-from omfit_commonclasses.utils_math import atomic_element
+
+# don't try to import when building documentation or package
+if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]) and\
+   not np.any([('distutils' in k.split('.') and 'command' in k.split('.')) for k in sys.modules]):
+    from omfit_commonclasses.utils_math import atomic_element
 
 
 def get_source_time_history(namelist, Raxis_cm, time):
