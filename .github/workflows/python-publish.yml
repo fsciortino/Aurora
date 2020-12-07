@@ -23,6 +23,7 @@ jobs:
     - name: Build the package
       run: python setup.py sdist
     - name: Publish distribution 📦 to Test PyPI
+      if: startsWith(github.ref, 'refs/tags')
       uses: pypa/gh-action-pypi-publish@master
       with:
         password: ${{ secrets.TEST_PYPI_PASSWORD }}
