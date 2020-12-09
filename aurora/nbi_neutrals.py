@@ -16,7 +16,7 @@ from .janev_smith_rates import js_sigma
 
 def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
     """Compute charge exchange recombination for a given impurity with neutral beam components,
-    obtaining rates in [s^-1] units. This method expects all neutral components to be given in a
+    obtaining rates in [:math:`s^-1`] units. This method expects all neutral components to be given in a
     dictionary with a structure that is independent of NBI model (i.e. coming from FIDASIM, NUBEAM, 
     pencil calculations, etc.).
 
@@ -168,7 +168,7 @@ def get_ls_cycle():
 def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_prof, include_fast=True, include_halo=True, debug_plots=False):
     """Compute flux-surface-averaged (FSA) charge exchange recombination for a given impurity with
     neutral beam components, applying appropriate Maxwellian averaging of cross sections and
-    obtaining rates in [s^-1] units. This method expects all neutral components to be given in a
+    obtaining rates in [:math:`s^-1`] units. This method expects all neutral components to be given in a
     dictionary with a structure that is independent of NBI model.
 
     Note that while Ti may be time-dependent, with a time base given by times_Ti, the FSA
@@ -430,7 +430,7 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
 
     Args:
         sigma_fun: :py:meth
-            Function to compute a specific cross section [cm^2], function of energy/amu ONLY.
+            Function to compute a specific cross section [:math:`cm^2`], function of energy/amu ONLY.
             Expected call form: sigma_fun(erel/ared)
         Ti : float, 1D or 2D array
             Target temperature [keV]. Results will be computed for each Ti value in a vectorized manner.

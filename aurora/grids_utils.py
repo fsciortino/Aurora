@@ -10,8 +10,6 @@ if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules
    not np.any([('distutils' in k.split('.') and 'command' in k.split('.')) for k in sys.modules]):
     from . import _aurora
 
-    from omfit_mds import OMFITmdsValue
-
 def create_radial_grid(namelist,plot=False):
     r'''Create radial grid for Aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. 
     The lim_sep parameters is additionally used if plotting is requested. 
@@ -638,6 +636,9 @@ def estimate_boundary_distance(shot, device, time_ms):
             Estimate for the distance between the limiter and the separatrix [cm]. This is (quite arbitrarily)
             taken to be 2/3 of the bound_sep distance.    
     '''
+    # import this here, so that it is not required for the whole package
+    from omfit_mds import OMFITmdsValue
+
     try:
         tmp = OMFITmdsValue(server=device, treename='EFIT01', shot=shot,
                             TDI='\\EFIT01::TOP.RESULTS.A_EQDSK.ORIGHT')  # CMOD format, take ORIGHT
