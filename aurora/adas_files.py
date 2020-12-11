@@ -31,6 +31,13 @@ def get_adas_file_loc(filename, filetype='adf11'):
         file_loc : str
             Full path to the requested file. 
     '''
+    if not os.path.isdir(adas_data_dir):
+        # make sure that aurora/adas_data exists
+        os.makedirs(adas_data_dir)
+
+    if not os.path.isdir(adas_data_dir+filetype):
+        # make sure that aurora/adas_data/adf11 and aurora/adas_data/adf15 directories exist
+        os.makedirs(adas_data_dir+filetype)
 
     def fetch_file(filename,filetype):
         if filetype=='adf11':
