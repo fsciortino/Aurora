@@ -6,7 +6,7 @@ import urllib
 import shutil,os
 
 # location of the "adas_data" directory relative to this script:
-adas_data_dir = os.path.dirname(os.path.realpath(__file__))+'/../adas_data/'
+adas_data_dir = os.path.dirname(os.path.realpath(__file__))+'/adas_data/'
 
 def get_adas_file_loc(filename, filetype='adf11'):
     '''Find location of requested atomic data file for the indicated ion. 
@@ -16,9 +16,10 @@ def get_adas_file_loc(filename, filetype='adf11'):
        always use this data.
 
     #. If the environmental variable "AURORA_ADAS_DIR" is defined, attempt to find the file there 
-       and copy it to Aurora/adas_data/*filetype*.
+       and copy it to Aurora/aurora/adas_data/*filetype*.
 
-    #. Attempt to fetch the file remotely via open.adas.ac.uk and save it in Aurora/adas_data/*filetype*/. 
+    #. Attempt to fetch the file remotely via open.adas.ac.uk and save it in 
+       Aurora/aurora/adas_data/*filetype*/. 
 
     Args:
         filename : str

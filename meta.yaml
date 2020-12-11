@@ -28,4 +28,4 @@ test:
 about:
   home: https://github.com/fsciortino/aurora	
   license_file: USER_AGREEMENT.txt
-  summary: modern toolbox for impurity transport and radiation modeling in fusion plasmas
+  summary: modern toolbox for impurity transport, neutrals and radiation modeling in fusion plasmas

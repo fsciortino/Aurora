@@ -8,5 +8,4 @@ recursive-include aurora *
 recursive-include aurora.jl *
 recursive-include docs *
 recursive-include examples *
-recursive-include adas_data *
 
