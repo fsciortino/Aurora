@@ -33,7 +33,7 @@ install_requires = open('requirements.txt').read().split('\n')
 
 setup(
     name=package_name,
-    version='0.1.3',
+    version='0.1.4',
     description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/fsciortino/Aurora',
@@ -41,8 +41,10 @@ setup(
     author_email='sciortino@psfc.mit.edu',
     packages=['aurora'], #setuptools.find_packages(),
     #package_dir = {'aurora': 'aurora/adas_data'},
-    #package_data={'aurora': ['*']},
+    package_data={'aurora': ['adas_data/*', 'adas_data/adf11/*','adas_data/adf15/*']},
     include_package_data=True,
+    # https://stackoverflow.com/questions/13307408/python-packaging-data-files-are-put-properly-in-tar-gz-file-but-are-not-install
+    zip_safe=False,   
     data_files = [('aurora_examples', ['examples/basic.py',
                                        'examples/frac_abundances.py',
                                        'examples/example.gfile',
