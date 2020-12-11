@@ -5,6 +5,9 @@ include requirements.txt
 include USER_AGREEMENT.txt
 include README.md
 recursive-include aurora *
+recursive-include aurora/adas_data *
+recursive-include aurora/adas_data/adf11 *
+recursive-include aurora/adas_data/adf15 *
 recursive-include aurora.jl *
 recursive-include docs *
 recursive-include examples *
