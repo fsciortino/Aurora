@@ -9,12 +9,6 @@ import copy,sys
 from scipy.constants import m_p, e as q_electron
 from scipy.special import erfc
 
-# don't try to import when building documentation or package
-if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]) and\
-   not np.any([('distutils' in k.split('.') and 'command' in k.split('.')) for k in sys.modules]):
-    from omfit_commonclasses.utils_math import atomic_element
-
-
 def get_source_time_history(namelist, Raxis_cm, time):
     '''Load source time history based on current state of the namelist.
 
@@ -280,6 +274,9 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
                 E0 = copy.deepcopy(Ti_eV)
             else:
                 raise ValueError('Could not compute a valid energy of injected ions!')
+
+        # import here to avoid issues with omfit_commonclasses during docs and package creation
+        from omfit_commonclasses.utils_math import atomic_element
 
         # velocity of neutrals [cm/s]
         out = atomic_element(symbol=namelist['main_element'])

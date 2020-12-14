@@ -20,9 +20,6 @@ if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules
    not np.any([('distutils' in k.split('.') and 'command' in k.split('.')) for k in sys.modules]):
     from ._aurora import run as fortran_run,time_steps
 
-    import omfit_eqdsk
-    from omfit_commonclasses.utils_math import atomic_element
-
 
 class aurora_sim:
     '''
@@ -58,6 +55,8 @@ class aurora_sim:
         self.nbi_cxr = nbi_cxr
         self.imp = namelist['imp']
 
+        # import omfit_eqdsk here to avoid issues with docs and packaging
+        import omfit_eqdsk
         if geqdsk is None:
             # Fetch geqdsk from MDS+ (using EFIT01) and post-process it using the OMFIT geqdsk format.
             self.geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(
@@ -83,6 +82,9 @@ class aurora_sim:
         self.saw_times = np.array(input_saw_times)[input_saw_times<self.time_grid[-1]]
         if self.namelist['saw_model']['saw_flag'] and len(self.saw_times)>0:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
+
+        # import here to avoid issues when building docs or package
+        from omfit_commonclasses.utils_math import atomic_element
 
         # get nuclear charge Z and atomic mass number A
         out = atomic_element(symbol=self.imp)
@@ -304,6 +306,9 @@ class aurora_sim:
         in the SOL.
         
         '''
+        # import here to avoid issues when building docs or package
+        from omfit_commonclasses.utils_math import atomic_element
+
         # background mass number (=2 for D)
         out = atomic_element(symbol=self.namelist['main_element'])
         spec = list(out.keys())[0]
