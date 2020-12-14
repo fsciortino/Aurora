@@ -13,10 +13,20 @@ requirements:
     - {{ compiler('fortran') }}
   host:
     - python
+    - pip
     - numpy {{ numpy }}
+    - scipy
+    - matplotlib
+    - xarray
+    - pexpect
+
   run:
     - python
     - {{ pin_compatible('numpy') }}
+    - scipy
+    - matplotlib
+    - xarray
+    - pexpect
     
 test:
   imports:
