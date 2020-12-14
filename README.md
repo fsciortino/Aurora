@@ -15,27 +15,36 @@ Generally, we would appreciate if you could work with us to merge your features 
 
 # Installation
 
-We recommend installing from source, by git-cloning [this repo](https://github.com/fsciortino/aurora) from Github. This will ensure that you can access the latest version of the tools. Make sure to use the `master` branch to use a stable version. *Make use of the Makefile in the package directory to build the Fortran or Julia code* using 
+[![PyPI version](https://badge.fury.io/py/aurorafusion.svg)](https://badge.fury.io/py/aurorafusion) [![Anaconda-Server Badge](https://anaconda.org/sciortino/aurorafusion/badges/version.svg)](https://anaconda.org/sciortino/aurorafusion) [![Anaconda-Server Badge](https://anaconda.org/sciortino/aurorafusion/badges/latest_release_date.svg)](https://anaconda.org/sciortino/aurorafusion)
+
+Aurora can be installed from PyPI using
+```
+pip install aurorafusion
+```
+Add a `--user` flag to the command above if you don't have write-access to the default package directory on your system (i.e. if you don't have root permissions). 
+
+Installing via conda is now also possible using
+```
+conda install -c sciortino aurorafusion 
+```
+Note that the conda installation does NOT currently install dependencies on `omfit-eqdsk`, which users may need to install via `pip` (see the [PyPI repo](https://pypi.org/project/omfit-eqdsk/)). 
+
+To look at the code and contribute to the Aurora repository, it is recommended to install from source, by git-cloning the [Aurora repo](https://github.com/fsciortino/aurora) from Github. This will ensure that you can access the latest version of the tools. Make sure to use the `master` branch to use a stable, updated version. After git-cloning, users can make use of the `setup.py` file, e.g. using 
+```
+python setup.py -e .
+```
+or use the makefile in the package directory to build the Fortran code using 
 ```
 make clean; make aurora
 ```
-Note that the makefile will not install dependencies, listed in the `requirements.txt` file in the main directory. You can use this file to quickly install dependencies within a Python virtual environment, or install each dependency, one at a time.
+Note that the makefile will not install any of the dependencies, listed in the `requirements.txt` file in the main directory. You can use this file to quickly install dependencies within a Python virtual environment, or install each dependency one at a time.
 
 Note that the Julia version of the code is not built by default. If you have Julia installed on your system, you can do  
 ```
 make julia
 ```
-from the main package directory. See the documentation to read about interfacing Python3 and Julia. 
+from the main package directory. This will build a Julia `sysimage` to speed up access of Julia source code from Python, but it is not strictly necessary. See the documentation to read about interfacing Python3 and Julia. 
 
-You can now also install Aurora from PyPI using
-```
-pip install aurorafusion
-```
-[![PyPI version](https://badge.fury.io/py/aurorafusion.svg)](https://badge.fury.io/py/aurorafusion)
-
-The PyPI installation is still undergoing testing -- please let us know if you run into any problems. 
-
-We are working to make the latest release of the package also available via Anaconda Cloud.
 
 
 # License
