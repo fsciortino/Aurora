@@ -22,13 +22,13 @@ Some users may want to have greater control over which compiler is being used fo
 Installing via PyPI or Anaconda
 -------------------------------
 
-We are working to make the latest stable version of the code available via PyPI and Anaconda, but this process is not yet complete. In the near future, you should be able to do::
+The latest release is now available via PyPI using::
 
-    pip install aurorafusion
+  pip install aurorafusion
 
-or from Anaconda Cloud::
+[![PyPI version](https://badge.fury.io/py/aurorafusion.svg)](https://badge.fury.io/py/aurorafusion)
 
-    conda install aurorafusion
+We also working to make this available from Anaconda Cloud, but the process is not yet complete. 
 
 
 Running with Julia
