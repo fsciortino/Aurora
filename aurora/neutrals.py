@@ -37,9 +37,7 @@ class ehr5_file:
     - Neutral “n=3 / n=1”, :math:`N_3^{(i)}/N_1`
     - Continuum “n=3 / n=1”, :math:`N_3^{(ii)}/N_1`
     
-    ... and similarly for n=4 to 9. 
-
-    Refer to the DEGAS2 manual for details.
+    ... and similarly for n=4 to 9. Refer to the DEGAS2 manual for details.
     '''
 
     def __init__(self, filepath=None):
