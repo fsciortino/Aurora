@@ -32,10 +32,11 @@ You can now also install Aurora from PyPI using
 pip install aurorafusion
 ```
 [![PyPI version](https://badge.fury.io/py/aurorafusion.svg)](https://badge.fury.io/py/aurorafusion)
+
 The PyPI installation is still undergoing testing -- please let us know if you run into any problems. 
 
-We are working to make the latest release of the package also available via Anaconda Cloud:
-[![Anaconda-Server Badge](https://anaconda.org/sciortino/aurorafusion/badges/latest_release_date.svg)](https://anaconda.org/sciortino/aurorafusion)
+We are working to make the latest release of the package also available via Anaconda Cloud.
+
 
 # License
 
