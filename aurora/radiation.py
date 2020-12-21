@@ -188,15 +188,19 @@ def compute_rad(imp, nz, ne, Te,
 
         # SXR continuum radiation for each charge state
         res['sxr_cont_rad'] = nz[:,1:] * prs
-    
-        # impurity bremsstrahlung in SXR range -- already included in 'sxr_cont_rad'
-        if 'pbs' in adas_files_sub:
-            atom_data = atomic.get_atom_data(imp, ['pbs'],[adas_files_sub['pbs']])
-        else:
-            atom_data = atomic.get_atom_data(imp, ['pbs'])
-        pbs = atomic.interp_atom_prof(atom_data['pbs'],logne,logTe) # W
-        res['sxr_brems'] = nz[:,1:] * pbs 
 
+        try:
+            # impurity bremsstrahlung in SXR range -- already included in 'sxr_cont_rad'
+            if 'pbs' in adas_files_sub:
+                atom_data = atomic.get_atom_data(imp, ['pbs'],[adas_files_sub['pbs']])
+            else:
+                atom_data = atomic.get_atom_data(imp, ['pbs'])
+            pbs = atomic.interp_atom_prof(atom_data['pbs'],logne,logTe) # W
+            res['sxr_brems'] = nz[:,1:] * pbs 
+        except IndexError:
+            # pbs file not available by default for this ion. Users may specify it in adas_files_sub
+            pass
+        
         # SXR total radiation
         res['sxr_tot'] = res['sxr_line_rad'].sum(1) + res['sxr_cont_rad'].sum(1)
 

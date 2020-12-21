@@ -15,6 +15,10 @@ def get_adas_file_loc(filename, filetype='adf11'):
     #. If the file is available in Aurora/adas_data/*filetype*, with filetype given by the user, 
        always use this data.
 
+    #. If the input filename is actually a full path to the file on the local system, use this file 
+       and copy it to Aurora/aurora/adas_data/actual_filename, where actual_filename is the file
+       name rather than the full path. 
+
     #. If the environmental variable "AURORA_ADAS_DIR" is defined, attempt to find the file there 
        and copy it to Aurora/aurora/adas_data/*filetype*.
 
@@ -23,7 +27,7 @@ def get_adas_file_loc(filename, filetype='adf11'):
 
     Args:
         filename : str
-            Name of the ADAS file of interest, e.g. 'plt89_ar.dat'
+            Name of the ADAS file of interest, e.g. 'plt89_ar.dat'.
         filetype : str
             ADAS file type. Currently allowed: 'adf11' or 'adf15'
     
@@ -46,11 +50,17 @@ def get_adas_file_loc(filename, filetype='adf11'):
             fetch_adf15_file(filename)
         else:
             raise ValueError('ADAS file type/format not recognized. Could not find it download it automatically!')
-        
+
     if os.path.exists(adas_data_dir+filetype+'/'+filename):
         # file is available in adas_data:
         pass
-    
+
+    elif os.path.exists(filename):
+        # check if user actually gave a complete filepath. If so, copy file to adas_data directory
+        filepath = filename
+        filename = filepath.split('/')[-1]
+        shutil.copyfile(filepath, adas_data_dir+filetype+'/'+filename)
+
     elif 'AURORA_ADAS_DIR' in os.environ:
         if os.path.exists(os.environ['AURORA_ADAS_DIR']+'/'+filename):
             # copy file to adas_data_dir+filetype:
@@ -59,6 +69,7 @@ def get_adas_file_loc(filename, filetype='adf11'):
         else:
             # File could not be found. Download it and save it in adas_data:
             fetch_file(filename,filetype)
+
     else:
         # File could not be found. Download it and save it in adas_data:
         fetch_file(filename,filetype)

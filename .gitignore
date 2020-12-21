@@ -20,8 +20,8 @@ dist/*
 build/*
 
 # ADAS files should not be exported
-adas_data/adf11/*
-adas_data/adf15/*
+aurora/adas_data/adf11/*
+aurora/adas_data/adf15/*
 
 # the DEGAS2 ehr5.dat file should not be exported
 ehr5.dat

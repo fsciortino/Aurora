@@ -141,7 +141,7 @@ def get_atom_data(imp, filetypes=['acd','scd'], filenames=[]):
             and recombination rates (excluding CX).
         filenames : list or array-like, optional
             ADAS file names to be used in place of the defaults given by 
-            :py:meth:`~aurora.atomic.adas_file_dict`.
+            :py:meth:`~aurora.adas_files.adas_file_dict`.
             If left empty, such defaults are used. Note that the order of filenames must be 
             the same as the one in the "filetypes" list.
     
@@ -166,7 +166,7 @@ def get_atom_data(imp, filetypes=['acd','scd'], filenames=[]):
 
         # find location of required ADF11 file
         fileloc = adas_files.get_adas_file_loc(filename,filetype='adf11')
-        
+
         # load specific file and add it to output dictionary
         res = adas_file(fileloc)
         atom_data[filetype] = res.logNe, res.logT, res.data
