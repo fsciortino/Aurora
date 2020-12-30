@@ -1,8 +1,5 @@
-""":py:mod:`aurora` 
-"""
 name='aurora'
-
-from .version import version as __version__
+__version__="0.1.7"
 
 import numpy as np, sys
 

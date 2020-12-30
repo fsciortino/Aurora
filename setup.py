@@ -18,6 +18,17 @@ from numpy.distutils.core import setup, Extension
 
 package_name='aurorafusion'
 
+
+def get_version(relpath):
+    """read version info from file without importing it"""
+    from os.path import dirname, join
+    for line in open(join(dirname(__file__), relpath)):
+        if '__version__' in line:
+            if '"' in line:
+                return line.split('"')[1]
+            elif "'" in line:
+                return line.split("'")[1]
+
 with open('README.md', 'r') as fh:
     long_description = fh.read()
 #long_description='See documentation at https://aurora-fusion.readthedocs.io'
@@ -33,7 +44,7 @@ install_requires = open('requirements.txt').read().split('\n')
 
 setup(
     name=package_name,
-    version='0.1.7',
+    version=get_version('aurora/__init__.py'), #'0.1.7',  
     description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/fsciortino/Aurora',
