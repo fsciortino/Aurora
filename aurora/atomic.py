@@ -129,32 +129,72 @@ class adas_file():
                 ax.set_ylabel('$\log('+self.file_type+')\ \mathrm{[W\cdot cm^3]}$')
 
 
-def read_filter_response(filepath):
-    '''Read a filter response function over energy. The ADAS format is assumed.
+def read_filter_response(filepath, adas_format=True, plot=False):
+    '''Read a filter response function over energy. 
 
-    This is often given by a combination of a filter transmissivity and a detector absorption. 
-    Data is often obtained from http://xray.uu.se.
+    This function attempts to read the data checking for the following formats (in this order):
+    
+    #. The ADAS format. Typically, this data is from obtained from http://xray.uu.se and produced
+       via ADAS routines. 
+
+    #. The format returned by the `Center for X-Ray Optics website  <https://henke.lbl.gov/optical_constants/filter2.html>`__ .
+
+    Note that filter response functions are typically a combination of a filter transmissivity 
+    and a detector absorption. 
+
+    Args:
+        filepath : str
+            Path to filter file of interest.
+
+    Keyword Args:
+        plot : bool
+            If True, the filter response function is plotted. 
+    
     '''
     E_eV=[]
     response=[]
-    with open(filepath) as f:
-        header = f.readline()
-        num = int(header.split()[0])
+    try:
+        # Attempt to read ADAS format
+        with open(filepath) as f:
 
-        # *****
-        f.readline()
+            header = f.readline()
+            num = int(header.split()[0])
 
-        while len(E_eV)< num:
-            line = f.readline()
-            E_eV += [float(n) for n in line.split()]
-        while len(response)< num:
-            line = f.readline()
-            response += [float(t) for t in line.split()]
+            # *****
+            f.readline()
 
-    # energy and response function are written in natural logs
-    E_eV = np.array(np.exp(E_eV))
-    response = np.array(np.exp(response))
-        
+            while len(E_eV)< num:
+                line = f.readline()
+                E_eV += [float(n) for n in line.split()]
+            while len(response)< num:
+                line = f.readline()
+                response += [float(t) for t in line.split()]
+
+        # energy and response function are written in natural logs
+        E_eV = np.concatenate(([0.,], np.array(np.exp(E_eV))))
+        response = np.concatenate(([0.,], np.array(np.exp(response))))
+    except ValueError:
+        try:
+            # Attempt to read CXRO format
+            with open(filepath) as f:
+                contents = f.readlines()
+
+            for line in contents[2:]:
+                tmp = line.strip().split()
+                E_eV.append(float(tmp[0]))
+                response.append(float(tmp[1]))
+            E_eV=np.concatenate(([0.,], np.array(E_eV)))
+            response=np.concatenate(([0.,],np.array(response)))
+        except ValueError:
+            raise ValueError('Unrecognized filter function format...')
+    
+    if plot:
+        fig,ax = plt.subplots()
+        ax.semilogx(E_eV, response)
+        ax.set_xlabel('Photon energy [eV]')
+        ax.set_ylabel('Detector response efficiency')
+        plt.tight_layout()
+
     return E_eV, response
 
     
