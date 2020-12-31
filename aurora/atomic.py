@@ -38,7 +38,7 @@ def get_adas_file_types():
             'pbs':'impurity bremsstrahlung in SXR range, also included in prs files'
     }
 
-    
+
 class adas_file():
     '''Read ADAS file in ADF11 format over the given density and temperature grids. 
     Note that such grids vary between files, and the species they refer to may too.
@@ -129,6 +129,35 @@ class adas_file():
                 ax.set_ylabel('$\log('+self.file_type+')\ \mathrm{[W\cdot cm^3]}$')
 
 
+def read_filter_response(filepath):
+    '''Read a filter response function over energy. The ADAS format is assumed.
+
+    This is often given by a combination of a filter transmissivity and a detector absorption. 
+    Data is often obtained from http://xray.uu.se.
+    '''
+    E_eV=[]
+    response=[]
+    with open(filepath) as f:
+        header = f.readline()
+        num = int(header.split()[0])
+
+        # *****
+        f.readline()
+
+        while len(E_eV)< num:
+            line = f.readline()
+            E_eV += [float(n) for n in line.split()]
+        while len(response)< num:
+            line = f.readline()
+            response += [float(t) for t in line.split()]
+
+    # energy and response function are written in natural logs
+    E_eV = np.array(np.exp(E_eV))
+    response = np.array(np.exp(response))
+        
+    return E_eV, response
+
+    
 def get_atom_data(imp, filetypes=['acd','scd'], filenames=[]):
     ''' Collect atomic data for a given impurity from all types of ADAS files available or
     for only those requested. 
