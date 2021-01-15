@@ -61,7 +61,7 @@ class ehr5_file:
         else:
             self.filepath = filepath
 
-        self.ne = 10 ** np.array([10 + (jn - 1.0) / 2.0 for jn in np.arange(1, 16)])  # cm^-3
+        self.ne = 10 ** np.array([10 + (jn - 1.0) / 2.0 for jn in np.arange(1, 16)])  # cm^{-3}
         self.Te = 10 ** np.array([-1.2 + (jt - 1.0) / 10.0 for jt in np.arange(1, 61)])  # eV
 
         self.fields = [
@@ -133,14 +133,14 @@ class ehr5_file:
 
 
 def get_exc_state_ratio(m, N1, ni, ne, Te, rad_prof=None, rad_label=r'rmin [cm]', plot=False):
-    """Compute density of excited states in state `m` (m>1), given the density of ground state atoms.
+    r"""Compute density of excited states in state `m` (m>1), given the density of ground state atoms.
     This function is not l-resolved.
 
     The function returns
 
     .. math::
 
-        N_m/N_1 = \left( \frac{N_m^i}{N_1} \right) N_m + \left(\frac{N_m^{ii}}{n_i} \right) n_i
+        N_m/N_1 = \left(\frac{N_m^i}{N_1} \right) N_m + \left(\frac{N_m^{ii}}{n_i} \right) n_i
 
 
     where :math:`N_m` is the number of electrons in the excited state :math:`m`, :math:`N_1` 
@@ -153,12 +153,12 @@ def get_exc_state_ratio(m, N1, ni, ne, Te, rad_prof=None, rad_label=r'rmin [cm]'
     Args:
         m : int
             Principal quantum number of excited state of interest. 2<m<10
-        N1 : float, list or 1D-array [:math:`cm^-3`]
+        N1 : float, list or 1D-array [:math:`cm^{-3}`]
             Density of ions in the ground state. This must have the same shape as ni!
-        ni : float, list or 1D-array [:math:`cm^-3`]
+        ni : float, list or 1D-array [:math:`cm^{-3}`]
             Density of ions corresponding to the atom under consideration. This must
             have the same shape as N1!
-        ne : float, list or 1D-array [:math:`cm^-3`]
+        ne : float, list or 1D-array [:math:`cm^{-3}`]
             Electron density to evaluate atomic rates at.
         Te : float, list or 1D-array [:math:`eV`]
             Electron temperature to evaluate atomic rates at.
@@ -175,7 +175,7 @@ def get_exc_state_ratio(m, N1, ni, ne, Te, rad_prof=None, rad_label=r'rmin [cm]'
 
     Returns:
         Nm : array of shape [len(ni)=len(N1),len(ne),len(Te)]
-            Density of electrons in excited state `n`  [:math:`cm^-3`]
+            Density of electrons in excited state `n`  [:math:`cm^{-3}`]
     """
     if m < 1:
         raise ValueError('Excited state principal quantum number must be greater than 1!')
@@ -261,13 +261,13 @@ def plot_exc_ratios(n_list=[2, 3, 4, 5, 6, 7, 8, 9], ne=1e13, ni=1e13, Te=50, N1
         n_list : list of integers
             List of excited states (principal quantum numbers) to consider.
         ne : float
-            Electron density in :math:`cm^-3`.
+            Electron density in :math:`cm^{-3}`.
         ni : float
-            Ionized hydrogen density [:math:`cm^-3`]. This may be set equal to ne for a pure plasma.
+            Ionized hydrogen density [:math:`cm^{-3}`]. This may be set equal to ne for a pure plasma.
         Te : float
             Electron temperature in :math:`eV`.
         N1 : float
-            Density of ground state hydrogen [:math:`cm^-3`]. This is needed because the excited
+            Density of ground state hydrogen [:math:`cm^{-3}`]. This is needed because the excited
             state fractions depend on the balance of excitation from the ground state and
             coupling to the continuum.
 

@@ -1,6 +1,15 @@
 import numpy as np,sys,os
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, RectBivariateSpline
 from . import grids_utils
+
+def get_rhop_RZ(R,Z, geqdsk):
+    '''Find rhop at every R,Z [m] based on the equilibrium in the geqdsk dictionary.
+    '''
+    return RectBivariateSpline(geqdsk['AuxQuantities']['Z'],
+                               geqdsk['AuxQuantities']['R'],
+                               geqdsk['AuxQuantities']['RHOpRZ']).ev(Z,R)
+
+
 
 def vol_average(quant, rhop, method='omfit', geqdsk=None, device=None, shot=None, time=None, return_geqdsk=False):
     '''Calculate the volume average of the given radially-dependent quantity on a rhop grid. 

@@ -570,19 +570,20 @@ def get_main_ion_dens(ne_cm3, ions, rhop_plot=None):
 
 
 
-def read_adf15(path, order=1, plot_lines=[], ax=None, Te_max = None, ne_max = None,
-               plot_log=False, plot_3d=False, pec_plot_min=None,  pec_plot_max = None):
+def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
     """Read photon emissivity coefficients from an ADAS ADF15 file.
 
     Returns a dictionary whose keys are the wavelengths of the lines in
     angstroms. The value is an interp2d instance that will evaluate the PEC at
-    a desired density and temperature.
+    a desired density and temperature. 
+
+    Units for interpolation: :math::`cm^{-3}` for density; :math::`eV` for temperature.
 
     Args:
         path : str
             Path to adf15 file to read.
         order : int, opt
-            Parameter to control the order of interpolation.
+            Parameter to control the order of interpolation. Default is 1 (linear interpolation).
         
     Keyword Args:
         plot_lines : list
@@ -591,19 +592,9 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, Te_max = None, ne_max = No
             by first running this function ones, checking dictionary keys, and then requesting a
             plot of one (or more) of them.
         ax : matplotlib axes instance
-            If not None, plot on this set of axes
-        plot_log : bool
-            When plotting, set a log scale
+            If not None, plot on this set of axes.
         plot_3d : bool
-            Display PEC data as a 3D plot rather than a 2D one.
-        pec_plot_min : float
-            Minimum value of PEC to visualize in a plot
-        pec_plot_max : float
-            Maximum value of PEC to visualize in a plot
-        Te_max : float
-            Maximum Te value to plot when len(plot_lines)>1
-        ne_max : float
-            Maximum ne value to plot when len(plot_lines)>1
+            Display PEC data as 3D plots rather than 2D ones.
 
     Returns:
         pec_dict : dict
@@ -663,12 +654,6 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, Te_max = None, ne_max = No
             header = np.delete(header, 1)
 
         lam = float(header[0])
-        # try:
-        #     lam = float(header[0])
-        # except ValueError:
-        #     # These lines appear to occur when lam has more digits than the
-        #     # allowed field width. For the moment, ignore these.
-        #     continue
 
         if header[1]=='':
             # 2nd element was empty -- annoyingly, this happens sometimes
@@ -715,6 +700,7 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, Te_max = None, ne_max = No
             pec_dict[lam] = {}                
 
         # add a key to the pec_dict[lam] dictionary for each type of rate: recom, excit or chexc
+        # interpolate PEC on log dens,temp scales
         pec_fun = RectBivariateSpline(
             np.log10(dens),
             np.log10(temp),
@@ -722,7 +708,7 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, Te_max = None, ne_max = No
             kx=order,
             ky=order
         )
-
+        
         if meta_resolved:
             if rate_type not in pec_dict[lam]:
                 pec_dict[lam][rate_type] = {}
@@ -732,26 +718,17 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, Te_max = None, ne_max = No
             
         if lam in plot_lines:
 
-            # use log spacing for ne values
-            if ne_max is not None:
-                # avoid overflow inside of np.logspace
-                ne_eval = 10** np.linspace(np.log10(dens.min()), np.log10(ne_max), 10)
-            else:
-                ne_eval = 10** np.linspace(np.log10(dens.min()), np.log10(dens.max()), 10)
-
-            # linear spacing for Te values
-            if Te_max is not None:
-                Te_eval = np.linspace(temp.min(), Te_max*1000, 100)
-            else:
-                Te_eval = np.linspace(temp.min(), temp.max(), 100)
+            # use log spacing (important to match well low values)
+            ne_eval = 10** np.linspace(np.log10(dens.min()), np.log10(dens.max()), 10)
+            Te_eval = 10** np.linspace(np.log10(temp.min()), np.log10(temp.max()), 100)
 
             NE, TE = np.meshgrid(ne_eval, Te_eval)
-
+            
             PEC_eval = pec_fun.ev(np.log10(NE), np.log10(TE))
 
             # plot PEC rates
-            _ax = _plot_pec(dens,temp,ne_eval,Te_eval,PEC_eval,lam,cs,rate_type,
-                            ax, Te_max, ne_max, plot_log, plot_3d, pec_plot_min,  pec_plot_max)
+            _ax = _plot_pec(dens,temp,ne_eval,Te_eval,PEC_eval,PEC, lam,cs,rate_type,
+                            ax, plot_3d)
 
             meta_str = ''
             if meta_resolved: meta_str = f' , meta = {INDM}'
@@ -762,8 +739,8 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, Te_max = None, ne_max = No
 
 
 
-def _plot_pec(dens, temp, ne_eval, Te_eval, PEC_eval,lam,cs,rate_type,
-             ax=None, Te_max = None, ne_max = None, plot_log=False, plot_3d=False, pec_plot_min=None,  pec_plot_max = None):
+def _plot_pec(dens, temp, ne_eval, Te_eval, PEC_eval, PEC, lam,cs,rate_type,
+             ax=None, plot_3d=False):
     '''Private method to plot PEC data within :py:func:`~aurora.atomic.read_adf15` function.
     '''
 
@@ -779,41 +756,23 @@ def _plot_pec(dens, temp, ne_eval, Te_eval, PEC_eval,lam,cs,rate_type,
     if plot_3d:
         from mpl_toolkits.mplot3d import Axes3D
 
-        # linear scales (log doesn't work in matplotlib 3D)
-        # but can do all plotting on log quantities
-        if plot_log:
-            logNE, logTE = np.meshgrid(np.log10(ne_eval), np.log10(Te_eval))
-            ax1.plot_surface(logNE, logTE, PEC_eval, alpha=0.5)
-        else:
-            ax1.plot_surface(NE, TE, PEC_eval, alpha=0.5)
-
-        if plot_log:
-            dens = np.log10(dens); temp = np.log10(temp)
-
-        if Te_max is None and ne_max is None:
-            DENS, TEMP = np.meshgrid(dens, temp)
-            ax1.scatter(DENS.ravel(), TEMP.ravel(), PEC.T.ravel(), color='b')
-        elif Te_max is not None and ne_max is None:
-            Te_max_ind = np.argmin(np.abs(temp - Te_max*1000))
-            DENS, TEMP = np.meshgrid(dens, temp[:Te_max_ind+1])
-            ax1.scatter(DENS.ravel(), TEMP.ravel(), PEC[:,:Te_max_ind+1].T.ravel(), color='b')
-        elif Te_max is None and ne_max is not None:
-            ne_max_ind = np.argmin(np.abs(dens - ne_max))
-            DENS, TEMP = np.meshgrid(dens[:ne_max_ind+1], temp)
-            ax1.scatter(DENS.ravel(), TEMP.ravel(), PEC[:ne_max_ind+1,:].T.ravel(), color='b')
-        elif Te_max is not None and ne_max is not None:
-            Te_max_ind = np.argmin(np.abs(temp - Te_max*1000))
-            ne_max_ind = np.argmin(np.abs(dens - ne_max))
-            DENS, TEMP = np.meshgrid(dens[:ne_max_ind+1], temp[:Te_max_ind+1])
-            ax1.scatter(DENS.ravel(), TEMP.ravel(), PEC[:ne_max_ind+1,:Te_max_ind+1].T.ravel(), color='b')
+        # to plot on linear ne,Te scales:
+        #ax1.plot_surface(NE, TE, PEC_eval, alpha=0.5)
+        #DENS, TEMP = np.meshgrid(dens, temp)
+        
+        # log scales don't work in matplotlib 3D, so we plot log of each quantity
+        logNE, logTE = np.meshgrid(np.log10(ne_eval), np.log10(Te_eval))
+        ax1.plot_surface(logNE, logTE, PEC_eval, alpha=0.5)
+        DENS, TEMP = np.meshgrid(np.log10(dens), np.log10(temp))
+        
+        ax1.scatter(DENS.ravel(), TEMP.ravel(), PEC.T.ravel(), color='b')
 
         if ax is None:
-            ax1.set_xlabel('$n_e$ [cm$^{-3}$]')
-            ax1.set_ylabel('$T_e$ [eV]')
+            ax1.set_xlabel('$log_{10}(n_e)$ [cm$^{-3}$]')
+            ax1.set_ylabel('$log_{10}(T_e)$ [eV]')
             ax1.set_zlabel('PEC')
 
     else:
-
         # plot in 2D
         labels = ['{:.0e}'.format(ne)+r' $cm^{-3}$' for ne in ne_eval]
         for ine in np.arange(PEC_eval.shape[1]):
@@ -821,10 +780,6 @@ def _plot_pec(dens, temp, ne_eval, Te_eval, PEC_eval,lam,cs,rate_type,
         ax1.set_xlabel(r'$T_e$ [eV]')
         ax1.set_ylabel('PEC')
         ax1.set_yscale('log')
-        if pec_plot_min is not None:
-            ax1.set_ylim([pec_plot_min, ax1.get_ylim()[1]])
-        if pec_plot_max is not None:
-            ax1.set_ylim([ax1.get_ylim()[0], pec_plot_max ])
 
         ax1.legend(loc='best').set_draggable(True)
 
