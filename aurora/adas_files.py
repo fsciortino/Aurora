@@ -88,7 +88,7 @@ def fetch_adf11_file(filename):
     url = 'https://open.adas.ac.uk/download/adf11/'
     str1 =  filename.split('_')[0]
     local_filename,headers = urllib.request.urlretrieve(url+str1+'/'+filename, filename)
-    os.replace(filename,adas_data_dir+'adf11/'+filename)
+    shutil.move(filename,adas_data_dir+'adf11/'+filename)
 
 
 
@@ -115,7 +115,7 @@ def fetch_adf15_file(filename):
         filename_mod = filename.split('_')[0]+'/'+filename.replace('#','][')
 
     local_filename,headers = urllib.request.urlretrieve(url+'/'+filename_mod, filename)
-    os.replace(filename,adas_data_dir+'adf15/'+filename)
+    shutil.move(filename,adas_data_dir+'adf15/'+filename)
 
 
 def adas_files_dict():
