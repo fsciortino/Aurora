@@ -3,7 +3,7 @@ Questions and contributions
 
 For any questions on Aurora, to brainstorm on possible applications or request changes to the code, please contact sciortino-at-psfc.mit.edu.
 
-The code is developed and maintained by F. Sciortino (MIT-PSFC) in collaboration with T. Odstrcil (GA) and A. Cavallaro (MIT), with support from O. Linder (MPI-IPP) and C. Johnson (U. Auburn). The great wisdom (and patience) of S. Smith (GA) has allowed this code to be effectively shared and documented. Finally, the STRAHL documentation provided by R.Dux (MPI-IPP) was extremely helpful to guide code development.
+The code is developed and maintained by F. Sciortino (MIT-PSFC) in collaboration with T. Odstrcil (GA), A. Cavallaro (MIT) and R. Reksoatmodjo (W&M), with support from O. Linder (MPI-IPP) and C. Johnson (U. Auburn). R. The great wisdom (and patience) of S. Smith (GA) has allowed this code to be effectively shared and documented. Finally, the STRAHL documentation provided by R.Dux (MPI-IPP) was extremely helpful to guide code development.
 
 New contributors are more than welcome! Please get in touch via email or open a pull-request via Github. 
 
