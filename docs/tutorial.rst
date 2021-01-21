@@ -59,23 +59,24 @@ The :py:class:`~aurora.core.aurora_sim` class creates a Python object with spati
   D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
   V_z = -2e2 * np.ones(len(asim.rvol_grid)) # cm/s
 
-Here we have made use of the `rvol_grid` attribute of the `asim` object, whose name is self-explanatory. This grid has a 1-to-1 correspondence with `asim.rhop_grid`. In the lines above we have created flat profiles of :math:`D=10^4 cm^2/s` and :math:`V=-2\times 10^2 cm/s`, defined on our simulation grids. D's and V's could in principle (and, very often, in practice) be defined with more dimensions to represent a time-dependence and also different values for different charge states. Unless specifed otherwise, Aurora assumes all points of the time grid (now stored in `asim.time_grid`) and all charge states to have the same D and V. See the :py:meth:`~aurora.core.run_aurora` method for details on how to speficy further dependencies.
+Here we have made use of the `rvol_grid` attribute of the `asim` object, whose name is self-explanatory. This grid has a 1-to-1 correspondence with `asim.rhop_grid`. In the lines above we have created flat profiles of :math:`D=10^4 cm^2/s` and :math:`V=-2\times 10^2 cm/s`, defined on our simulation grids. D's and V's could in principle (and, very often, in practice) be defined with more dimensions to represent a time-dependence and also different values for different charge states. Unless specifed otherwise, Aurora assumes all points of the time grid (now stored in `asim.time_grid`) and all charge states to have the same D and V. See the :py:meth:`aurora.core.run_aurora` method for details on how to speficy further dependencies.
 
 At this point, we are ready to run an Aurora simulation, with::
 
   out = asim.run_aurora(D_z, V_z)
 
-Blazing fast! Depending on how many time and radial points you have requested (a few hundreds by default), how many charge states you are simulating, etc., a simulation could take as little as <50 ms, which is significantly faster than other code, as far as we know. If you add `use_julia=True` to the :py:meth:`~aurora.core.run_aurora` call the run will be even faster; wear your seatbelt!
+Blazing fast! Depending on how many time and radial points you have requested (a few hundreds by default), how many charge states you are simulating, etc., a simulation could take as little as <50 ms, which is significantly faster than other code, as far as we know. If you add `use_julia=True` to the :py:meth:`aurora.core.run_aurora` call the run will be even faster; wear your seatbelt!
 
 You can easily check the quality of particle conservation in the various reservoirs by using::
 
   reservoirs = asim.check_conservation()
 
-which will show the results in full detail. The `reservoirs` output list contains information about how many particles are in the plasma, in the wall reservoir, in the pump, etc.. Refer to the  :py:meth:`~aurora.core.run_aurora` docstring for details. 
+which will show the results in full detail. The `reservoirs` output list contains information about how many particles are in the plasma, in the wall reservoir, in the pump, etc.. Refer to the :py:meth:`aurora.core.run_aurora` docstring for details. 
 
-A plot is worth a thousand words, so let's make one for the charge state densities (on a nice slider!)::
+A plot is worth a thousand words, so let's make one for the charge state densities (on a nice slider!):::
 
-  aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
+  nz = out[0]  # charge state densities are stored first in the output of the run_aurora method
+  aurora.slider_plot(asim.rvol_grid, asim.time_out, nz.t.transpose(1,0,2),
                      xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]',
                      labels=[str(i) for i in np.arange(0,nz.shape[1])],
 		     plot_sum=True, x_line=asim.rvol_lcfs )
