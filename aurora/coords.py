@@ -131,7 +131,7 @@ def rad_coord_transform(x,name_in,name_out, geqdsk):
         name_in: str
             input x coordinate name ('rhon','r_V','rhop','rhov','Rmid','rmid','roa')
         name_out: str
-            input x coordinate ('rhon', 'r_V', 'rhop','rhov','Rmid','rmid','roa')
+            input x coordinate ('rhon','psin','r_V', 'rhop','rhov','Rmid','rmid','roa')
         geqdsk: dict
             gEQDSK dictionary, as obtained from the omfit-eqdsk package. 
     
