@@ -17,7 +17,7 @@ from . import plot_tools
 from . import coords
 
 class solps_case:
-    def __init__(self, path, geqdsk, solps_run='P29MW_n1.65e20_Rout0.9_Y2pc',
+    def __init__(self, path, geqdsk, solps_run='',
                  case_num=0, form='extracted'):
         '''Read SOLPS output and prepare for Aurora impurity-neutral analysis. 
 
