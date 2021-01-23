@@ -12,6 +12,7 @@ from scipy.interpolate import griddata
 from matplotlib import cm
 import matplotlib.tri as tri
 from heapq import nsmallest
+import warnings
 
 from . import plot_tools
 from . import coords
@@ -84,8 +85,8 @@ class solps_case:
     
         # Obtain indices for chosen radial regions
         R_idxs = np.array([],dtype=int)
-        R_idxs = np.concatenate((R_idxs, np.arange(self.unit_r+1)))
-        self.R_idxs = np.concatenate((R_idxs, np.arange(self.unit_r+1,2*self.unit_r+2)))
+        R_idxs = np.concatenate((R_idxs, np.arange(self.unit_r+1)))  # PFR and core
+        self.R_idxs = np.concatenate((R_idxs, np.arange(self.unit_r+1,2*self.unit_r+2))) # open-SOL
 
         # obtain indices for chosen poloidal regions
         P_idxs = np.array([],dtype=int)
@@ -374,9 +375,16 @@ class solps_case:
         cbar.connect()
 
     
-    def get_n0_profiles(self):
+    def get_n0_profiles(self, dz_mm=5):
         '''Extract atomic neutral density profiles from the SOLPS run and give profiles
         on the low- (LFS) and high-field-side (HFS) midplane, as well as flux surface averaged (FSA) ones. 
+
+        Keyword Args:
+            dz_mm : float
+                Vertical range [mm] over which neutral densities at the midplane should be averaged. 
+                Mean and standard deviation of profiles on the LFS and HFS will be returned based on
+                variations of atomic neutral density within these vertical span.
+                Note that this does not apply to the FSA calculation. Default is 5 mm.
 
         Returns:
             rhop_fsa : 1D array
@@ -386,11 +394,17 @@ class solps_case:
             rhop_LFS : 1D array
                 Sqrt of poloidal flux grid on which LFS atomic neutral density  (neut_LFS) is given.
             neut_LFS : 1D array
-                LFS atomic neutral density on rhop_LFS grid.
+                Mean LFS atomic neutral density on rhop_LFS grid.
+            neut_LFS_std : 1D array
+                Standard deviation of LFS atomic neutral density on rhop_LFS grid, based on variations 
+                within +/-`dz_mm`/2 millimeters from the midplane. 
             rhop_HFS : 1D array
                 Sqrt of poloidal flux grid on which HFS atomic neutral density (neut_HFS) is given.
             neut_HFS : 1D array
                 HFS atomic neutral density on rhop_HFS grid.
+            neut_HFS_std : 1D array
+                Standard deviation of HFS atomic neutral density on rhop_HFS grid, based on variations 
+                within +/-`dz_mm`/2 millimeters from the midplane.
         '''
         
         rhop_2D = coords.get_rhop_RZ(self.R,self.Z, self.geqdsk)
@@ -407,30 +421,64 @@ class solps_case:
         rhop_FSA = np.sqrt(self.geqdsk['fluxSurfaces']['geo']['psin'])
 
         # get R axes on the midplane on the LFS and HFS
-        dz = (np.max(self.Z) - np.min(self.Z))/((self.nx+self.ny)/10.) # rule-of-thumb to identify vertical resolution
-        mask = (self.Z.flatten()>-dz)&(self.Z.flatten()<dz)
+        _dz = (np.max(self.Z) - np.min(self.Z))/((self.nx+self.ny)/10.) # rule-of-thumb to identify vertical resolution
+        mask = (self.Z.flatten()>-_dz)&(self.Z.flatten()<_dz)
         R_midplane = self.R.flatten()[mask]
         
         R_midplane_lfs = R_midplane[R_midplane>self.geqdsk['RMAXIS']]
-        R_LFS = np.linspace(np.min(R_midplane_lfs), np.max(R_midplane_lfs),100)
+        _R_LFS = np.linspace(np.min(R_midplane_lfs), np.max(R_midplane_lfs),1000)
         
         R_midplane_hfs = R_midplane[R_midplane<self.geqdsk['RMAXIS']]
-        R_HFS = np.linspace(np.min(R_midplane_hfs), np.max(R_midplane_hfs),100)
-        
-        # get neutral densities at midradius (LFS and HFS)
-        neut_LFS = griddata((self.R.flatten(),self.Z.flatten()), self.quants['NeuDen'].flatten(),
-                                 (R_LFS,np.zeros_like(R_LFS)), method='cubic')
+        _R_HFS = np.linspace(np.min(R_midplane_hfs), np.max(R_midplane_hfs),1000)
+
+        # get neutral densities at midradius
+        # on the LFS:
+        _neut_LFS = griddata((self.R.flatten(),self.Z.flatten()), self.quants['NeuDen'].flatten(),
+                             (_R_LFS,0.5*dz_mm*1e-3*np.random.random(len(_R_LFS))),
+                             #(_R_LFS,np.zeros_like(_R_LFS)),
+                             method='linear')
+        _neut_LFS[_neut_LFS<0]=np.nan
+        R_LFS = np.linspace(np.min(R_midplane_lfs), np.max(R_midplane_lfs),100)
         rhop_LFS = coords.get_rhop_RZ(R_LFS,np.zeros_like(R_LFS), self.geqdsk)
-        
-        neut_HFS = griddata((self.R.flatten(),self.Z.flatten()), self.quants['NeuDen'].flatten(),
-                                 (R_HFS,np.zeros_like(R_HFS)), method='cubic')
+
+        # ... and on the HFS:
+        _neut_HFS = griddata((self.R.flatten(),self.Z.flatten()), self.quants['NeuDen'].flatten(),
+                             #(_R_HFS, np.zeros_like(_R_HFS)),
+                             (_R_HFS,0.5*dz_mm*1e-3*np.random.random(len(_R_HFS))),
+                             method='linear')
+        _neut_HFS[_neut_HFS<0]=np.nan
+        R_HFS = np.linspace(np.min(R_midplane_hfs), np.max(R_midplane_hfs),100)   
         rhop_HFS = coords.get_rhop_RZ(R_HFS,np.zeros_like(R_HFS), self.geqdsk)
+        
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore') # we might take the mean of slices with only nan's, but that's OK
+            neut_LFS = np.nanmean(_neut_LFS.reshape(-1,10),axis=1) # average across 10 near points
+            neut_HFS = np.nanmean(_neut_HFS.reshape(-1,10),axis=1)  # average across 10 near points
+
+        # now obtain also the simple poloidal grid slice near the midplane (LFS and HFS)
+        # These are commonly used for SOLPS analysis, using the JXA and JXI indices (which we re-compute here)
+        Z_core = self.Z[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
+        R_core = self.R[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
+
+        # find indeces of poloidal grid nearest to Z=0 in the innermost radial shell
+        midplane_LFS_idx = np.argmin(np.abs(Z_core[0,R_core[0,:]>self.geqdsk['RMAXIS']]))
+        midplane_HFS_idx = np.argmin(np.abs(Z_core[0,R_core[0,:]<self.geqdsk['RMAXIS']]))
+
+        # convert to indices on self.Z and self.R
+        HFS_mid_pol_idx = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]<self.geqdsk['RMAXIS']][midplane_HFS_idx]
+        LFS_mid_pol_idx = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]>self.geqdsk['RMAXIS']][midplane_LFS_idx]
+
+        # find rhop along midplane grid chords
+        rhop_chord_HFS = coords.get_rhop_RZ(self.R[:,HFS_mid_pol_idx],self.Z[:,HFS_mid_pol_idx], self.geqdsk)
+        rhop_chord_LFS = coords.get_rhop_RZ(self.R[:,LFS_mid_pol_idx],self.Z[:,LFS_mid_pol_idx], self.geqdsk)
         
         # compare FSA neutral densities with midplane ones
         fig,ax = plt.subplots()
         ax.plot(rhop_FSA, neut_FSA, label='FSA')
         ax.plot(rhop_LFS, neut_LFS, label='outboard midplane')
         ax.plot(rhop_HFS, neut_HFS, label='inboard midplane')
+        ax.plot(rhop_chord_LFS, self.quants['NeuDen'][:,LFS_mid_pol_idx], label='LFS midplane chord')
+        ax.plot(rhop_chord_HFS, self.quants['NeuDen'][:,HFS_mid_pol_idx], label='HFS midplane chord')
         ax.set_xlabel(r'$\rho_p$')
         ax.set_ylabel(r'$n_0$ [$m^{-3}$]')
         ax.legend(loc='best').set_draggable(True)

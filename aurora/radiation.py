@@ -465,14 +465,13 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         
     # total power is the last element of the cumulative integral
     out['Prad'] = out['rad_tot'][-1]
-
-    print('------------------------------------')
-    print(f'Total {imp} line radiation power: {out["line_rad_tot"][-1]/1e6:.3f} MW')
-    print(f'Total {imp} continuum radiation power: {out["cont_rad"].sum(0)[-1]/1e6:.3f} MW')
-    print(f'Total {imp} bremsstrahlung radiation power: {out["brems"].sum(0)[-1]/1e6:.3f} MW')
-    if n0_cm3 is not None:
-        print(f'Thermal CX power: {out["thermal_cx_rad"][-1]/1e6:.3f} MW')
-    print(f'Total radiated power: {out["Prad"]/1e6:.3f} MW')
+    
+    #print(f'Total {imp} line radiation power: {out["line_rad_tot"][-1]/1e6:.3f} MW')
+    #print(f'Total {imp} continuum radiation power: {out["cont_rad"].sum(0)[-1]/1e6:.3f} MW')
+    #print(f'Total {imp} bremsstrahlung radiation power: {out["brems"].sum(0)[-1]/1e6:.3f} MW')
+    #if n0_cm3 is not None:
+    #    print(f'Thermal CX power: {out["thermal_cx_rad"][-1]/1e6:.3f} MW')
+    #print(f'Total radiated power: {out["Prad"]/1e6:.3f} MW')
 
     # calculate average charge state Z across radius
     out['Z_avg'] = np.sum(np.arange(out['fz'].shape[1])[:,None] * out['fz'].T, axis=0)
