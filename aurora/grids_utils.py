@@ -357,7 +357,7 @@ def create_time_grid_new(timing, verbose=False, plot=False):
 def get_HFS_LFS(geqdsk, rho_pol=None):
     '''Get high-field-side (HFS) and low-field-side (LFS) major radii from the g-EQDSK data. 
     This is useful to define the rvol grid outside of the LCFS. 
-    See the :py:func:`~aurora.get_rhopol_rV_mapping` for an application. 
+    See the :py:func:`~aurora.grids_utils.get_rhopol_rvol_mapping` for an application. 
 
     Args:
         geqdsk : dict
@@ -535,7 +535,7 @@ def get_rhopol_rvol_mapping(geqdsk, rho_pol=None):
 
 def create_aurora_time_grid(timing, plot=False):
     '''Create time grid for simulations using a Fortran routine for definitions. 
-    The same functionality is offered by :py:func:`~aurora.create_time_grid`, which however
+    The same functionality is offered by :py:func:`~aurora.grids_utils.create_time_grid`, which however
     is written in Python. This method is legacy code; it is recommended to use the other. 
 
     Args:

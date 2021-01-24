@@ -139,12 +139,13 @@ def get_line_cycle():
 class DraggableColorbar:
     '''Create a draggable colorbar for matplotlib plots to enable quick changes in color scale. 
 
-    Example:
-    fig,ax = plt.subplots()
-    cntr = ax.contourf(R, Z, vals)
-    cbar = plt.colorbar(cntr, format='%.3g', ax=ax)
-    cbar = DraggableColorbar(cbar,cntr)
-    cbar.connect()
+    Example:::
+
+        fig,ax = plt.subplots()
+        cntr = ax.contourf(R, Z, vals)
+        cbar = plt.colorbar(cntr, format='%.3g', ax=ax)
+        cbar = DraggableColorbar(cbar,cntr)
+        cbar.connect()
     '''
     def __init__(self, cbar, mapimage):
         self.cbar = cbar

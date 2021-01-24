@@ -577,7 +577,7 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
     angstroms. The value is an interp2d instance that will evaluate the PEC at
     a desired density and temperature. 
 
-    Units for interpolation: :math::`cm^{-3}` for density; :math::`eV` for temperature.
+    Units for interpolation: :math:`cm^{-3}` for density; :math:`eV` for temperature.
 
     Args:
         path : str
@@ -612,13 +612,13 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
         # plot Lyman-alpha line at 1215.2 A. See available lines with pec_dict.keys() after calling without plot_lines argument
         pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
 
-    Another example, this time also with charge exchange:::
+    Another example, this time also with charge exchange::
 
         filename = 'pec96#c_pju#c2.dat'
         path = aurora.get_adas_file_loc(filename, filetype='adf15')
         pec_dict = aurora.read_adf15(path, plot_lines=[361.7])
 
-    Metastable-resolved files will be automatically identified and parsed accordingly, e.g.
+    Metastable-resolved files will be automatically identified and parsed accordingly, e.g.::
 
          filename = 'pec96#he_pjr#he0.dat'
          path = aurora.get_adas_file_loc(filename, filetype='adf15')
@@ -792,47 +792,47 @@ def adf04_files():
     '''
     files = {}
     files['Ca'] = {}
-    files['Ca']['Ca8+'] = 'mglike_lfm14#ca8.dat'
-    files['Ca']['Ca9+'] = 'nalike_lgy09#ca9.dat'
-    files['Ca']['Ca10+'] = 'nelike_lgy09#ca10.dat'
-    files['Ca']['Ca11+'] = 'flike_mcw06#ca11.dat'
-    files['Ca']['Ca14+'] = 'clike_jm19#ca14.dat'
-    files['Ca']['Ca15+'] = 'blike_lgy12#ca15.dat'
-    files['Ca']['Ca16+'] = 'belike_lfm14#ca16.dat'
-    files['Ca']['Ca17+'] = 'lilike_lgy10#ca17.dat'
-    files['Ca']['Ca18+'] = 'helike_adw05#ca18.dat'
+    files['Ca']['8'] = 'mglike_lfm14#ca8.dat'
+    files['Ca']['9'] = 'nalike_lgy09#ca9.dat'
+    files['Ca']['10'] = 'nelike_lgy09#ca10.dat'
+    files['Ca']['11'] = 'flike_mcw06#ca11.dat'
+    files['Ca']['14'] = 'clike_jm19#ca14.dat'
+    files['Ca']['15'] = 'blike_lgy12#ca15.dat'
+    files['Ca']['16'] = 'belike_lfm14#ca16.dat'
+    files['Ca']['17'] = 'lilike_lgy10#ca17.dat'
+    files['Ca']['18'] = 'helike_adw05#ca18.dat'
 
     # TODO: check quality
     files['Al'] = {}
-    files['Al']['Al11+'] = 'helike_adw05#al11.dat'
-    files['Al']['Al10+'] = 'lilike_lgy10#al10.dat'
-    files['Al']['Al9+'] = 'belike_lfm14#al9.dat'
-    files['Al']['Al8+'] = 'blike_lgy12#al8.dat'
-    files['Al']['Al7+'] = 'clike_jm19#al7.dat'
-    files['Al']['Al6+'] = ''
-    files['Al']['Al5+'] = ''
-    files['Al']['Al4+'] = 'flike_mcw06#al4.dat'
-    files['Al']['Al3+'] = 'nelike_lgy09#al3.dat'
-    files['Al']['Al2+'] = 'nalike_lgy09#al2.dat'
-    files['Al']['Al1+'] = 'mglike_lfm14#al1.dat'
+    files['Al']['11'] = 'helike_adw05#al11.dat'
+    files['Al']['10'] = 'lilike_lgy10#al10.dat'
+    files['Al']['9'] = 'belike_lfm14#al9.dat'
+    files['Al']['8'] = 'blike_lgy12#al8.dat'
+    files['Al']['7'] = 'clike_jm19#al7.dat'
+    files['Al']['6'] = ''
+    files['Al']['5'] = ''
+    files['Al']['4'] = 'flike_mcw06#al4.dat'
+    files['Al']['3'] = 'nelike_lgy09#al3.dat'
+    files['Al']['2'] = 'nalike_lgy09#al2.dat'
+    files['Al']['1'] = 'mglike_lfm14#al1.dat'
 
     # TODO: check quality
     files['F'] = {}
-    files['F']['F8+'] = 'copha#h_hah96f.dat'
-    files['F']['F7+'] = 'helike_adw05#f7.dat'
-    files['F']['F6+'] = 'lilike_lgy10#f6.dat'
-    files['F']['F5+'] = 'belike_lfm14#f5.dat'
-    files['F']['F4+'] = 'blike_lgy12#f4.dat'
-    files['F']['F3+'] = 'clike_jm19#f3.dat'
+    files['F']['8'] = 'copha#h_hah96f.dat'
+    files['F']['7'] = 'helike_adw05#f7.dat'
+    files['F']['6'] = 'lilike_lgy10#f6.dat'
+    files['F']['5'] = 'belike_lfm14#f5.dat'
+    files['F']['4'] = 'blike_lgy12#f4.dat'
+    files['F']['3'] = 'clike_jm19#f3.dat'
 
     return files
 
 
 
 
-def get_colradpy_pec_prof(ion, cs, rhop, ne_cm3, Te_eV, lam_nm=1.8705, lam_width_nm=0.002, meta_idxs=[0],
-                 adf04_repo = os.path.expanduser('~')+'/adf04_files/ca/ca_adf04_adas/',
-                 pec_threshold=1e-20, phot2energy=True, plot=True):
+def get_colradpy_pec_prof(ion, cs, rhop, ne_cm3, Te_eV, 
+                          lam_nm, lam_width_nm, adf04_loc,
+                          meta_idxs=[0], pec_threshold=1e-20, pec_units=2, plot=True):
     '''Compute radial profile for Photon Emissivity Coefficients (PEC) for lines within the chosen
     wavelength range using the ColRadPy package. This is an alternative to the option of using 
     the :py:func:`~aurora.radiation.read_adf15` function to read PEC data from an ADAS ADF-15 file and 
@@ -842,9 +842,9 @@ def get_colradpy_pec_prof(ion, cs, rhop, ne_cm3, Te_eV, lam_nm=1.8705, lam_width
         ion : str
             Ion atomic symbol
         cs : str
-            Charge state, given in format like 'Ca18+'
+            Charge state, given in format like '17', indicating total charge of ion (e.g. '17' would be for Li-like Ca)
         rhop : array (nr,)
-            Srt of normalized poloidal flux radial array
+            Sqrt of normalized poloidal flux radial array
         ne_cm3 : array (nr,)
             Electron density in :math:`cm^{-3}` units
         Te_eV : array (nr,)
@@ -853,21 +853,24 @@ def get_colradpy_pec_prof(ion, cs, rhop, ne_cm3, Te_eV, lam_nm=1.8705, lam_width
             Center of the wavelength region of interest [nm]
         lam_width_nm : float
             Width of the wavelength region of interest [nm]
+        adf04_loc : str
+            Location from which ADF04 files listed in :py:func:`adf04_files` should be fetched.
+
+    Keyword Args:
         meta_idxs : list of integers
-            List of levels in ADF04 file to be treated as metastable states. 
-        adf04_repo : str
-            Location where ADF04 file from :py:method:adf04_files() should be fetched.
+            List of levels in ADF04 file to be treated as metastable states. Default is [0] (only ground state).
         prec_threshold : float
             Minimum value of PECs to be considered, in :math:`photons \cdot cm^3/s`
-        phot2energy : bool
-            If True, results are converted from :math:`photons \cdot cm^3/s` to :math:`W.cm^3`
+        pec_units : int
+            If 1, results are given in :math:`photons \cdot cm^3/s`; if 2, they are given in :math:`W.cm^3`. 
+            Default is 2.
         plot : bool
-            If True, plot lines profiles and total
+            If True, plot lines profiles and total.
 
     Returns:
         pec_tot_prof : array (nr,)
-            Radial profile of PEC intensity, in units of :math:`photons \cdot cm^3/s` (if phot2energy=False) or 
-            :math:`W \cdot cm^3` depending (if phot2energy=True). 
+            Radial profile of PEC intensity, in units of :math:`photons \cdot cm^3/s` (if pec_units=1) or 
+            :math:`W \cdot cm^3` (if pec_units=2).
     '''
     try:
         # temporarily import this here, until ColRadPy dependency can be set up properly
@@ -901,7 +904,7 @@ def get_colradpy_pec_prof(ion, cs, rhop, ne_cm3, Te_eV, lam_nm=1.8705, lam_width
     # calculate total PEC profile
     pec_tot_prof = np.sum(pecs_sel,axis=0)
 
-    if phot2energy:
+    if pec_units==2:
         # convert from photons.cm^3/s to W.cm^3
         mults = constants.h * constants.c / (lam_sel_nm*1e-9)
         pecs_sel *= mults[:,None]

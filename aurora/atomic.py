@@ -429,6 +429,9 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, maxTe=10e3, include
     logR = interp_atom_prof(atom_data['acd'],logne, logTe,log_val=True, x_multiply=False)
     if include_cx:
         logcx = interp_atom_prof(atom_data['ccd'],logne, logTe,log_val=True, x_multiply=False)
+
+        # select appropriate number of charge states -- this allows use of CCD files from higher-Z ions because of simple CX scaling
+        logcx = logcx[:,:logS.shape[1]]
     else:
         logcx = None
 

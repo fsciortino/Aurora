@@ -1,14 +1,8 @@
-''' Method to load default namelist. This should be complemented with additional info 
-by each user. 
-
-sciortino, July 2020
-'''
-
 import numpy as np
 
 def load_default_namelist():
     ''' Load default namelist. 
-    Users should modify and complement this for a successful run.
+    Users should modify and complement this for a successful forward-model run.
     '''
 
     namelist = {
