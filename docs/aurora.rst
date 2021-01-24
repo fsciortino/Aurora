@@ -149,6 +149,15 @@ aurora.synth_diags module
     :show-inheritance:
 
 
+aurora.solps module
+-------------------------
+
+.. automodule:: aurora.solps
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
 Module contents
 ---------------
 
