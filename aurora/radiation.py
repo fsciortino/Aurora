@@ -608,7 +608,8 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
         # fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
         path = aurora.get_adas_file_loc(filename, filetype='adf15')  
 
-        # plot Lyman-alpha line at 1215.2 A. See available lines with pec_dict.keys() after calling without plot_lines argument
+        # plot Lyman-alpha line at 1215.2 A. 
+        # see available lines with pec_dict.keys() after calling without plot_lines argument
         pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
 
     Another example, this time also with charge exchange::

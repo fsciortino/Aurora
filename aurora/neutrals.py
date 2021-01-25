@@ -8,8 +8,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
 import urllib
-import shutil,os, copy
-from . plot_tools import get_ls_cycle
+import shutil, os, copy
+from scipy.constants import e,h,c as c_light,Rydberg
+
+from . import plot_tools
+from . import radiation
 
 def download_ehr5_file():
     '''Download the ehr5.dat file containing atomic data describing the multi-step ionization and 
@@ -120,7 +123,7 @@ class ehr5_file:
         if fig is None or axes is None:
             fig, ax = plt.subplots()
 
-        ls_cycle = get_ls_cycle()
+        ls_cycle = plot_tools.get_ls_cycle()
 
         labels = ['{:.2e}'.format(val) + ' cm${-3}$' for val in self.ne]
         for i in np.arange(len(labels)):
@@ -221,7 +224,7 @@ def get_exc_state_ratio(m, N1, ni, ne, Te, rad_prof=None, rad_label=r'rmin [cm]'
 
     if plot:
         # plot only the first provided value of value of N1 and ni
-        ls_style = get_ls_cycle()
+        ls_style = plot_tools.get_ls_cycle()
 
         if rad_prof is not None:
             fig, ax = plt.subplots()
@@ -250,6 +253,7 @@ def get_exc_state_ratio(m, N1, ni, ne, Te, rad_prof=None, rad_label=r'rmin [cm]'
         plt.tight_layout()
 
     return Nm, Nm_ground, Nm_cont
+
 
 
 def plot_exc_ratios(n_list=[2, 3, 4, 5, 6, 7, 8, 9], ne=1e13, ni=1e13, Te=50, N1=1e12, 
@@ -300,3 +304,117 @@ def plot_exc_ratios(n_list=[2, 3, 4, 5, 6, 7, 8, 9], ne=1e13, ni=1e13, Te=50, N1
     ax.set_ylim([0, np.max(Ns / N1) * 1.1])
 
     return Ns
+
+
+
+
+def Lya_to_neut_dens(emiss_prof, ne, Te, ni=None, plot=True, rhop=None,
+                     rates_source='adas', axs=None):
+    ''' Estimate ground state neutral density from measured emissivity profiles.
+    This ignores possible molecular dynamics and effects that may be captured via
+    forward modeling of neutral transport.
+
+    Args:
+        emiss_prof : 1D array
+            Emissivity profile, units of :math:`W/cm`
+        ne : 1D array
+            Electron density, units of :math:`cm^{-3}`
+        Te : 1D array
+            Electron temperature, units of :math:`eV`
+    
+    Keyword Args:
+        ni : 1D array
+            Main ion (H/D/T) density, units of :math:`cm^{-3}`. 
+            If left to None, this is internally set to ni=ne.
+        plot : bool
+            If True, plot some of the key density profiles.
+        rhop : 1D array
+            Sqrt of normalized poloidal flux radial coordinate. Used only for plotting.
+        rates_source : str
+            Source of atomic rates. Possible choices are 'adas' or 'colrad'
+        axs : Axes instance
+            If given, plot on these axes.
+
+    Returns:
+        N1 : 1D array
+            Radial profile of estimated ground state atomic neutral density on the same grid 
+            as the input arrays. Units of :math:`cm^{-3}`.
+
+    Example calls:::
+
+        N2_colrad,axs = Lya_to_neut_dens_basic(
+                             emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
+                             rates_source='colrad')
+
+        N2_adas,axs = Lya_to_neut_dens_basic(
+                             emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
+                             rates_source='adas',axs=axs)
+
+    '''
+    assert len(emiss_prof)==len(ne) and len(ne)==len(Te)
+    if ni is None:
+        ni = copy.deepcopy(ne)
+    else:
+        assert len(ne)==len(ni)
+
+    thirteenpointsix = h*c_light*Rydberg/e
+    A_21 = 4.699E8   # s^-1
+    E_21 = thirteenpointsix *(1.0 - 2.**(-2.)) * e # J
+
+    # n=2 population in cm^-3
+    N2 = emiss_prof/(A_21 * E_21)
+
+    if rates_source=='colrad':
+        # use rates from COLRAD code
+        atom = ehr5_file()
+        ground_coupling = atom.res['n2i_n1']
+        cont_coupling = atom.res['n2ii_n1']
+
+        # atomic data is on a grid in units of cm^-3, eV
+        gc_interp = interp2d(atom.ne,atom.Te,ground_coupling.T)
+        gc = np.array([float(gc_interp(XX,YY)) for XX,YY in zip(ne,Te)])  # Nm/N1 from exc
+        cc_interp = interp2d(atom.ne,atom.Te,cont_coupling.T)
+        cc = np.array([float(cc_interp(XX,YY)) for XX,YY in zip(ne,Te)])  # Nm/N1 from recomb
+
+        # ground state density
+        #N1 = (N2 - cc * ni)/gc
+        N1 = N2/gc # continuum recomb term not well constrained, but should be small. Ignore it
+
+
+    elif rates_source=='adas':
+        path = '/home/sciortino/atomAI/atomdat_master/adf15/h/pju#h0.dat'
+        pec_dict = radiation.read_adf15(path)[1215.2]
+
+        # evaluate these interpolations on our profiles
+        pec_recomb = pec_dict['recom'].ev(np.log10(ne), np.log10(Te))
+        pec_exc = pec_dict['excit'].ev(np.log10(ne), np.log10(Te))
+
+        N1 = emiss_prof/E_21/(ne*pec_exc+ni*pec_recomb)
+
+
+    if plot:
+        if rhop is None:
+            print('No rhop array was given!')
+            rhop = np.arange(len(N1))
+        if axs is None:
+            fig,ax = plt.subplots(2,1, figsize=(10,7))
+        else:
+            ax = axs
+        sel = np.argmin(np.abs(rhop - 0.9))
+        if axs is None:
+            # plot this only the first time
+            ax[0].plot(rhop[sel:], N2[sel:], label=r'$N_2$')
+        ax[0].semilogy(rhop[sel:], N1[sel:], label=fr'{rates_source} $N_1$')
+        ax[1].semilogy(rhop[sel:], N1[sel:]/ne[sel:], label=fr'{rates_source} $N_1/n_e$')
+        ax[0].set_ylim([1e10,None])
+        ax[1].set_ylim([1e-5,None])
+        ax[0].set_ylabel(r'Neutral density [$cm^{{-3}}$]')
+        ax[1].set_ylabel(r'Density ratio')
+        ax[0].legend()
+        ax[1].legend()
+        ax[1].set_xlabel(r'$\rho_p$')
+    else:
+        ax = None
+        
+    return N1,ax
+
