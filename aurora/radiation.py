@@ -641,6 +641,10 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
     pec_dict = {}
 
     for i in range(0, num_lines):
+        
+        if '----' in lines[0]: 
+            _ = lines.pop(0) # separator may exist before each transition
+
         # Get the wavelength, number of densities and number of temperatures
         # from the first line of the entry:
         l = lines.pop(0)

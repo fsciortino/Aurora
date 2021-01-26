@@ -1,12 +1,12 @@
 Aurora modules
-==============
+==========
 
 Submodules
-----------
+-------------------
 
 
 aurora.core module
-------------------
+-----------------------------
 
 .. automodule:: aurora.core
     :members:
@@ -15,7 +15,7 @@ aurora.core module
 
 
 aurora.atomic module
---------------------
+---------------------------------
 
 .. automodule:: aurora.atomic
     :members:
@@ -24,7 +24,7 @@ aurora.atomic module
 
        
 aurora.adas_files module
-------------------------
+--------------------------------------
 
 .. automodule:: aurora.adas_files
     :members:
@@ -33,7 +33,7 @@ aurora.adas_files module
 
 
 aurora.radiation module
------------------------
+------------------------------------
 
 .. automodule:: aurora.radiation
     :members:
@@ -42,7 +42,7 @@ aurora.radiation module
 
 
 aurora.grids_utils module
--------------------------
+---------------------------------------
 
 .. automodule:: aurora.grids_utils
     :members:
@@ -51,7 +51,7 @@ aurora.grids_utils module
 
 
 aurora.coords module
---------------------
+---------------------------------
 
 .. automodule:: aurora.coords
     :members:
@@ -60,7 +60,7 @@ aurora.coords module
 
 
 aurora.source_utils module
---------------------------
+-----------------------------------------
 
 .. automodule:: aurora.source_utils
     :members:
@@ -69,7 +69,7 @@ aurora.source_utils module
 
 
 aurora.plot_tools module
-------------------------
+--------------------------------------
 
 .. automodule:: aurora.plot_tools
     :members:
@@ -78,7 +78,7 @@ aurora.plot_tools module
 
 
 aurora.default_nml module
--------------------------
+-----------------------------------------
 
 .. automodule:: aurora.default_nml
     :members:
@@ -87,7 +87,7 @@ aurora.default_nml module
 
 
 aurora.interp module
---------------------
+--------------------------------
 
 .. automodule:: aurora.interp
     :members:
@@ -96,7 +96,7 @@ aurora.interp module
 
 
 aurora.animate module
----------------------
+------------------------------------
 
 .. automodule:: aurora.animate
     :members:
@@ -105,7 +105,7 @@ aurora.animate module
 
 
 aurora.particle_conserv module
-------------------------------
+------------------------------------------------
 
 .. automodule:: aurora.particle_conserv
     :members:
@@ -114,7 +114,7 @@ aurora.particle_conserv module
 
 
 aurora.neutrals module
---------------------------
+------------------------------------
 
 .. automodule:: aurora.neutrals
     :members:
@@ -123,7 +123,7 @@ aurora.neutrals module
 
 
 aurora.nbi_neutrals module
---------------------------
+------------------------------------------
 
 .. automodule:: aurora.nbi_neutrals
     :members:
@@ -132,7 +132,7 @@ aurora.nbi_neutrals module
 
 
 aurora.janev_smith_rates module
--------------------------------
+---------------------------------------------------
 
 .. automodule:: aurora.janev_smith_rates
     :members:
@@ -141,7 +141,7 @@ aurora.janev_smith_rates module
 
 
 aurora.synth_diags module
--------------------------
+------------------------------------------
 
 .. automodule:: aurora.synth_diags
     :members:
@@ -150,7 +150,7 @@ aurora.synth_diags module
 
 
 aurora.solps module
--------------------------
+-------------------------------
 
 .. automodule:: aurora.solps
     :members:
@@ -159,7 +159,7 @@ aurora.solps module
 
 
 Module contents
----------------
+-------------------------
 
 .. automodule:: aurora
     :members:

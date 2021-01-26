@@ -27,3 +27,5 @@ from .nbi_neutrals import *
 from .neutrals import *
 
 from .synth_diags import *
+
+from .solps import *
