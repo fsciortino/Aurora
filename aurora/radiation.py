@@ -572,9 +572,8 @@ def get_main_ion_dens(ne_cm3, ions, rhop_plot=None):
 def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
     """Read photon emissivity coefficients from an ADAS ADF15 file.
 
-    Returns a dictionary whose keys are the wavelengths of the lines in
-    angstroms. The value is an interp2d instance that will evaluate the PEC at
-    a desired density and temperature. 
+    Returns a dictionary whose keys are the wavelengths of the lines in angstroms. 
+    The value is an interpolant that will evaluate the PEC at a desired density and temperature. 
 
     Units for interpolation: :math:`cm^{-3}` for density; :math:`eV` for temperature.
 
@@ -690,15 +689,16 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
             while len(PEC[-1]) < num_temp:
                 PEC[-1] += [float(v) for v in lines.pop(0).split()]
         PEC = np.asarray(PEC)
-
+        
         # find what kind of rate we are dealing with
-        if 'recom' in l.lower():
-            rate_type = 'recom'
-        elif 'excit' in l.lower():
-            rate_type = 'excit'
-        elif 'chexc' in l.lower():
-            rate_type = 'chexc'
-            
+        if 'recom' in l.lower(): rate_type = 'recom'
+        elif 'excit' in l.lower(): rate_type = 'excit'
+        elif 'chexc' in l.lower(): rate_type = 'chexc'
+        elif 'drsat' in l.lower(): rate_type = 'drsat'
+        else:
+            # attempt to report unknown rate type -- this should be fairly robust
+            rate_type = l.replace(' ','').lower().split('type=')[1].split('/')[0]
+
         # create dictionary with keys for each wavelength:
         if lam not in pec_dict:
             pec_dict[lam] = {}                
