@@ -57,7 +57,7 @@ def line_int_weights(R_path, Z_path, rhop_path, dist_path, R_axis=None, rhop_out
 
 def centrifugal_asym(rhop, Rlfs, omega, Zeff, A_imp, Z_imp, Te, Ti, 
                           main_ion_A=2, plot=False, nz=None, geqdsk=None):
-    """Estimate impurity poloidal asymmetry effects from centrifugal forces. 
+    r"""Estimate impurity poloidal asymmetry effects from centrifugal forces. 
 
     The result of this function is :math:`\lambda`, defined such that
 
