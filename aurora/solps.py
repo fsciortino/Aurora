@@ -375,7 +375,7 @@ class solps_case:
         cbar.connect()
 
     
-    def get_n0_profiles(self, dz_mm=5):
+    def get_n0_profiles(self, dz_mm=5, plot=False):
         '''Extract atomic neutral density profiles from the SOLPS run and give profiles
         on the low- (LFS) and high-field-side (HFS) midplane, as well as flux surface averaged (FSA) ones. 
 
@@ -385,6 +385,8 @@ class solps_case:
                 Mean and standard deviation of profiles on the LFS and HFS will be returned based on
                 variations of atomic neutral density within these vertical span.
                 Note that this does not apply to the FSA calculation. Default is 5 mm.
+            plot : bool
+                If True, plot all neutral density profiles. 
 
         Returns:
             rhop_fsa : 1D array
@@ -472,17 +474,18 @@ class solps_case:
         rhop_chord_HFS = coords.get_rhop_RZ(self.R[:,HFS_mid_pol_idx],self.Z[:,HFS_mid_pol_idx], self.geqdsk)
         rhop_chord_LFS = coords.get_rhop_RZ(self.R[:,LFS_mid_pol_idx],self.Z[:,LFS_mid_pol_idx], self.geqdsk)
         
-        # compare FSA neutral densities with midplane ones
-        fig,ax = plt.subplots()
-        ax.plot(rhop_FSA, neut_FSA, label='FSA')
-        ax.plot(rhop_LFS, neut_LFS, label='LFS midplane')
-        ax.plot(rhop_HFS, neut_HFS, label='HFS midplane')
-        ax.plot(rhop_chord_LFS, self.quants['NeuDen'][:,LFS_mid_pol_idx], label='LFS grid midplane')
-        ax.plot(rhop_chord_HFS, self.quants['NeuDen'][:,HFS_mid_pol_idx], label='HFS grid midplane')
-        ax.set_xlabel(r'$\rho_p$')
-        ax.set_ylabel(r'$n_0$ [$m^{-3}$]')
-        ax.legend(loc='best').set_draggable(True)
-        plt.tight_layout()
+        if plot:
+            # compare FSA neutral densities with midplane ones
+            fig,ax = plt.subplots()
+            ax.plot(rhop_FSA, neut_FSA, label='FSA')
+            ax.plot(rhop_LFS, neut_LFS, label='LFS midplane')
+            ax.plot(rhop_HFS, neut_HFS, label='HFS midplane')
+            ax.plot(rhop_chord_LFS, self.quants['NeuDen'][:,LFS_mid_pol_idx], label='LFS grid midplane')
+            ax.plot(rhop_chord_HFS, self.quants['NeuDen'][:,HFS_mid_pol_idx], label='HFS grid midplane')
+            ax.set_xlabel(r'$\rho_p$')
+            ax.set_ylabel(r'$n_0$ [$m^{-3}$]')
+            ax.legend(loc='best').set_draggable(True)
+            plt.tight_layout()
 
         return rhop_FSA, neut_FSA, rhop_LFS, neut_LFS, rhop_HFS, neut_HFS
 
