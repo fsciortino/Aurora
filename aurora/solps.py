@@ -26,9 +26,8 @@ class solps_case:
             path : str
                 Path to output files. If these are "extracted" files from SOLPS (form='extracted'),
                 then this is the path to the disk location where each of the required files
-                can be found. These are currently expected to be named
-                [RadLoc, VertLoc, Ne, Te, NeuDen, NeuTemp, MolDen, MolTemp, Ti]{case_num}
-                Otherwise, if form='full', this path indicates where to find the directory named "baserun"
+                can be found. 
+                If form='full', this path indicates where to find the directory named "baserun"
                 and the 'solps_run' one.
             geqdsk : str or `omfit_geqdsk` class instance
                 Path to the geqdsk to load from disk, or instance of the `omfit_geqdsk` class that
