@@ -23,7 +23,7 @@ def download_ehr5_file():
     filename='ehr5.dat'
     url = 'https://w3.pppl.gov/degas2/ehr5.dat' 
     local_filename,headers = urllib.request.urlretrieve(url, filename)
-    os.rename(filename, os.path.dirname(os.path.realpath(__file__))+'/ehr5.dat')
+    shutil.move(filename, os.path.dirname(os.path.realpath(__file__))+'/ehr5.dat')
     print('Successfully downloaded the DEGAS2 ehr5.dat file.')
     
 
