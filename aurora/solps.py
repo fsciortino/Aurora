@@ -390,37 +390,39 @@ class solps_case:
         This function returns profiles on the low- (LFS) and high-field-side (HFS) midplane, 
         as well as flux surface averaged (FSA) ones. 
 
-        Keyword Args:
-            quant : str
-                Quantity of interest. Default is 'nn' (neutral atomic density). See self.labels.keys()
-                for other options.
-            dz_mm : float
-                Vertical range [mm] over which quantity should be averaged near the midplane. 
-                Mean and standard deviation of profiles on the LFS and HFS will be returned based on
-                variations of atomic neutral density within this vertical span.
-                Note that this does not apply to the FSA calculation. Default is 5 mm.
-            plot : bool
-                If True, plot radial profiles. 
+        Parameters
+        -----------------
+        quant : str
+            Quantity of interest. Default is 'nn' (neutral atomic density). See self.labels.keys()
+            for other options.
+        dz_mm : float
+            Vertical range [mm] over which quantity should be averaged near the midplane. 
+            Mean and standard deviation of profiles on the LFS and HFS will be returned based on
+            variations of atomic neutral density within this vertical span.
+            Note that this does not apply to the FSA calculation. Default is 5 mm.
+        plot : bool
+            If True, plot radial profiles. 
 
-        Returns:
-            rhop_fsa : 1D array
-                Sqrt of poloidal flux grid on which FSA profiles are given.
-            prof_fsa : 1D array
-                FSA profile on rhop_fsa grid.
-            rhop_LFS : 1D array
-                Sqrt of poloidal flux grid on which LFS profile  (prof_LFS) is given.
-            prof_LFS : 1D array
-                Mean LFS midpane profile on rhop_LFS grid.
-            prof_LFS_std : 1D array
-                Standard deviation of LFS midplane profile on the rhop_LFS grid, based on variations 
-                within +/-`dz_mm`/2 millimeters from the midplane. 
-            rhop_HFS : 1D array
-                Sqrt of poloidal flux grid on which the midplane HFS profile (prof_HFS) is given.
-            prof_HFS : 1D array
-                Mean HFS midplane profile on rhop_HFS grid.
-            prof_HFS_std : 1D array
-                Standard deviation of HFS midplane profile on rhop_HFS grid, based on variations 
-                within +/-`dz_mm`/2 millimeters from the midplane.
+        Returns
+        ------------
+        rhop_fsa : 1D array
+            Sqrt of poloidal flux grid on which FSA profiles are given.
+        prof_fsa : 1D array
+            FSA profile on rhop_fsa grid.
+        rhop_LFS : 1D array
+            Sqrt of poloidal flux grid on which LFS profile  (prof_LFS) is given.
+        prof_LFS : 1D array
+            Mean LFS midpane profile on rhop_LFS grid.
+        prof_LFS_std : 1D array
+            Standard deviation of LFS midplane profile on the rhop_LFS grid, based on variations 
+            within +/-`dz_mm`/2 millimeters from the midplane. 
+        rhop_HFS : 1D array
+            Sqrt of poloidal flux grid on which the midplane HFS profile (prof_HFS) is given.
+        prof_HFS : 1D array
+            Mean HFS midplane profile on rhop_HFS grid.
+        prof_HFS_std : 1D array
+            Standard deviation of HFS midplane profile on rhop_HFS grid, based on variations 
+            within +/-`dz_mm`/2 millimeters from the midplane.
         '''
         
         rhop_2D = coords.get_rhop_RZ(self.R,self.Z, self.geqdsk)
