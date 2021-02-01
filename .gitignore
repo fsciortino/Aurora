@@ -29,5 +29,7 @@ ehr5.dat
 # don't upload packaging egg-info
 *egg-info/
 
-# Don't upload KN1D source code, available via Github
+# Don't upload KN1D source code, available via Github, and temporary KN1D files
 aurora/KN1D
+*.sav
+*.pro
