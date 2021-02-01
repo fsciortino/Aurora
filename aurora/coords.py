@@ -129,9 +129,9 @@ def rad_coord_transform(x,name_in,name_out, geqdsk):
         x: array
             input x coordinate
         name_in: str
-            input x coordinate name ('rhon','r_V','rhop','rhov','Rmid','rmid','roa')
+            input x coordinate name ('rhon','r_V','rhop','rhov','Rmid','rmid','r/a')
         name_out: str
-            input x coordinate ('rhon','psin','r_V', 'rhop','rhov','Rmid','rmid','roa')
+            input x coordinate ('rhon','psin','r_V', 'rhop','rhov','Rmid','rmid','r/a')
         geqdsk: dict
             gEQDSK dictionary, as obtained from the omfit-eqdsk package. 
     
@@ -175,7 +175,7 @@ def rad_coord_transform(x,name_in,name_out, geqdsk):
         coord_in = Rmid
     elif name_in == 'rmid':
         coord_in = rmid
-    elif name_in == 'roa':
+    elif name_in == 'r/a':
         rmid_lcfs = np.interp(1, rhon_ref, rmid)
         coord_in = rmid/rmid_lcfs
     else:
@@ -196,7 +196,7 @@ def rad_coord_transform(x,name_in,name_out, geqdsk):
         coord_out = Rmid
     elif name_out == 'rmid':
         coord_out = rmid
-    elif name_out == 'roa':
+    elif name_out == 'r/a':
         rmid_lcfs = np.interp(1, rhon_ref, rmid)
         coord_out = rmid/rmid_lcfs
     else:
