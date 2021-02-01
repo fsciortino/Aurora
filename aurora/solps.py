@@ -22,34 +22,33 @@ class solps_case:
                  case_num=0, form='extracted', extracted_labels=None):
         '''Read SOLPS output and prepare for Aurora impurity-neutral analysis. 
 
-        Args:
-            path : str
-                Path to output files. If these are "extracted" files from SOLPS (form='extracted'),
-                then this is the path to the disk location where each of the required files
-                can be found. 
-                If form='full', this path indicates where to find the directory named "baserun"
-                and the 'solps_run' one.
-            geqdsk : str or `omfit_geqdsk` class instance
-                Path to the geqdsk to load from disk, or instance of the `omfit_geqdsk` class that
-                contains the processed gEQDSK file already. 
-
-        Keyword Args:
-            solps_run : str
-                If form='full', this string specifies the directory (relative to the given path)
-                where case-specific files for a SOLPS run can be found (e.g. 'b2fstate').
-            case_num : int
-                Index/integer identifying the SOLPS case of interest. 
-            form : str
-                Form of SOLPS output to be loaded, one of {'full','extracted'}. 
-                The 'full' output consists of 'b2fstate', 'b2fgmtry', 'fort.44', etc.
-                The 'extracted' output consists of individual files containing one quantity each.
-                If form='extracted', the 'extracted_labels' argument allows to specify files 
-                nomanclature. 
-            extracted_labels : dict
-                Only used if form='extracted', this dictionary allows specification of the names of
-                files/variables to be extracted. Default is to use
-                [RadLoc, VertLoc, Ne, Te, NeuDen, NeuTemp, MolDen, MolTemp, Ti]
-                each of which will be expected to have "case_num" appended to the name of the file.
+        Parameters
+        -----------------
+        path : str
+            Path to output files. If these are "extracted" files from SOLPS (form='extracted'),
+            then this is the path to the disk location where each of the required files
+            can be found. 
+            If form='full', this path indicates where to find the directory named "baserun"
+            and the 'solps_run' one.
+        geqdsk : str or `omfit_geqdsk` class instance
+            Path to the geqdsk to load from disk, or instance of the `omfit_geqdsk` class that
+            contains the processed gEQDSK file already. 
+        solps_run : str
+            If form='full', this string specifies the directory (relative to the given path)
+            where case-specific files for a SOLPS run can be found (e.g. 'b2fstate').
+        case_num : int
+            Index/integer identifying the SOLPS case of interest. 
+        form : str
+            Form of SOLPS output to be loaded, one of {'full','extracted'}. 
+            The 'full' output consists of 'b2fstate', 'b2fgmtry', 'fort.44', etc.
+            The 'extracted' output consists of individual files containing one quantity each.
+            If form='extracted', the 'extracted_labels' argument allows to specify files 
+            nomanclature. 
+        extracted_labels : dict
+            Only used if form='extracted', this dictionary allows specification of the names of
+            files/variables to be extracted. Default is to use
+            [RadLoc, VertLoc, Ne, Te, NeuDen, NeuTemp, MolDen, MolTemp, Ti]
+            each of which will be expected to have "case_num" appended to the name of the file.
         '''
 
         self.path = path
@@ -116,26 +115,28 @@ class solps_case:
                   Rmin=None, Rmax=None, Pmin=None, Pmax=None):
         '''Load SOLPS output for each of the needed quantities ('extracted' form)
 
-        Keyword Args:
-            fields : list or array
-                List of fields to fetch from SOLPS output. If left to None, by default uses
-                self.labels.keys(), i.e. ['ne','Te','nn','nT','nm','Tm','Ti']
-            P_idxs : list or array
-                Poloidal indices to load.
-            R_idxs : list or array
-                Radial indices to load.
-            Rmin : int or None.
-                Minimum major radius index to load, if R_idxs is not given
-            Rmax : int or None
-                Maximum major radius index to load, if R_idxs is not given
-            Pmin : int or None
-                Minimum poloidal index to load, if P_idxs is not given
-            Pmax : int or None
-                Maximum poloidal index to load, if P_idxs is not given
+        Parameters
+        -----------------
+        fields : list or array
+            List of fields to fetch from SOLPS output. If left to None, by default uses
+            self.labels.keys(), i.e. ['ne','Te','nn','nT','nm','Tm','Ti']
+        P_idxs : list or array
+            Poloidal indices to load.
+        R_idxs : list or array
+            Radial indices to load.
+        Rmin : int or None.
+            Minimum major radius index to load, if R_idxs is not given
+        Rmax : int or None
+            Maximum major radius index to load, if R_idxs is not given
+        Pmin : int or None
+            Minimum poloidal index to load, if P_idxs is not given
+        Pmax : int or None
+            Maximum poloidal index to load, if P_idxs is not given
         
-        Returns:
-            quants : dict
-                Dictionary containing 'R','Z' coordinates for 2D maps of each field requested by user.
+        Returns
+        ------------
+        quants : dict
+            Dictionary containing 'R','Z' coordinates for 2D maps of each field requested by user.
         '''
         if P_idxs is None:
             if Pmax is None: Pmax = self.ny
@@ -228,16 +229,15 @@ class solps_case:
         '''Load result from one of the fort.* files with EIRENE output, 
         as indicated by the "files" list argument.
 
-        Keyword Args:
-            files : list or array-like
-                EIRENE output files to read. Default is to load all
-                files for which this method has been tested. 
+        Parameters
+        -----------------
+        files : list or array-like
+            EIRENE output files to read. Default is to load all files for which this method has been tested. 
 
-        Returns:
-            eirene_out : dict
-                Dictionary for each loaded file containing a subdictionary
-                with keys for each loaded field from each file. 
-
+        Returns
+        ------------
+        eirene_out : dict
+            Dictionary for each loaded file containing a subdictionary with keys for each loaded field from each file. 
         '''
         eirene_out = {}
         
@@ -277,21 +277,23 @@ class solps_case:
     def process_solps_data(self, fields=None, P_idxs=None, R_idxs=None, plot=False):
         '''Load and process SOLPS to permit clear plotting. 
         
-        Keyword Args:
-            fields : dict
-                Dictionary containing SOLPS outputs to process. Keys indicate the quantity, value its label
-                (only used for plotting). If left to None, defaults fields of 'ne','Te','nn' and 'Tn' are used.
-            P_idxs : list or array
-                Poloidal indices to load.
-            R_idxs : list or array
-                Radial indices to load.
-            plot : bool
-                If True, plot results for all loaded 2D quantities. 
+        Parameters
+        -----------------
+        fields : dict
+            Dictionary containing SOLPS outputs to process. Keys indicate the quantity, value its label
+            (only used for plotting). If left to None, defaults fields of 'ne','Te','nn' and 'Tn' are used.
+        P_idxs : list or array
+            Poloidal indices to load.
+        R_idxs : list or array
+            Radial indices to load.
+        plot : bool
+            If True, plot results for all loaded 2D quantities. 
 
-        Returns:
-            quants : dict
-                Dictionary containing 'R','Z' coordinates for 2D maps of each field requested by user.
-                Quantities are processed and masked to facilitate plotting.
+        Returns
+        ------------
+        quants : dict
+            Dictionary containing 'R','Z' coordinates for 2D maps of each field requested by user.
+            Quantities are processed and masked to facilitate plotting.
         '''
         if fields is None:
             fields = ['ne','Te','nn','Tn'] #list(self.labels.keys())
@@ -340,24 +342,25 @@ class solps_case:
         '''Method to plot 2D fields over the R and Z grids. 
         Colorbars are set to be manually adjustable, allowing variable image saturation.
 
-        Args:
-            vals : array, (ny,nx)
-                2D array containing a variable of interest, on the same grid as the 
-                R and Z attributes. 
+        Parameters
+        -----------------
+        vals : array, (ny,nx)
+            2D array containing a variable of interest, on the same grid as the 
+            R and Z attributes. 
 
-        Keyword Args:
-            label : str
-                Label describing the quantity being plotted.
-            use_triang : bool
-                If True, use a triangulation to plot results on B2 grids, attempting
-                to mask unwanted spurious edges. Alternatively, use a simple filled 
-                contour plot, which however may show unphysical features at the edges
-                of the B2 grid. Default is True (use the triangulation).  
-            max_mask_len : float
-                Optional maximum length of triangulation segments to be masked. If left to 
-                None, the default rule-of-thumb length for this variable will be used, but 
-                this may need hand adjustments for specific use cases.
-
+        Returns
+        ------------
+        label : str
+            Label describing the quantity being plotted.
+        use_triang : bool
+            If True, use a triangulation to plot results on B2 grids, attempting
+            to mask unwanted spurious edges. Alternatively, use a simple filled 
+            contour plot, which however may show unphysical features at the edges
+            of the B2 grid. Default is True (use the triangulation).  
+        max_mask_len : float
+            Optional maximum length of triangulation segments to be masked. If left to 
+            None, the default rule-of-thumb length for this variable will be used, but 
+            this may need hand adjustments for specific use cases.
         '''
 
         fig,ax0 = plt.subplots(figsize=(8,11))
@@ -514,29 +517,29 @@ def apply_mask(triang, geqdsk, max_mask_len=0.4, mask_up=False, mask_down=False)
     is useful to avoid having triangulation edges going outside of the true simulation
     grid. 
 
-    Args:
-        triang : instance of matplotlib.tri.triangulation.Triangulation
-            Matplotlib triangulation object for the (R,Z) grid. 
-        geqdsk : dict
-            Dictionary containing gEQDSK file values as processed by the `omfit_eqdsk`
-            package. 
-
-    Keyword Args:
-        max_mask_len : float
-            Maximum length [m] of segments within the triangulation. Segments longer
-            than this value will not be plotted. This helps avoiding triangulation 
-            over regions where no data should be plotted, beyond the actual simulation
-            grid.
-        mask_up : bool
-            If True, values in the upper vertical half of the mesh are masked. 
-            Default is False.
-        mask_down : bool
-            If True, values in the lower vertical half of the mesh are masked. 
-            Default is False.
+    Parameters
+    -----------------
+    triang : instance of matplotlib.tri.triangulation.Triangulation
+        Matplotlib triangulation object for the (R,Z) grid. 
+    geqdsk : dict
+        Dictionary containing gEQDSK file values as processed by the `omfit_eqdsk`
+        package. 
+    max_mask_len : float
+        Maximum length [m] of segments within the triangulation. Segments longer
+        than this value will not be plotted. This helps avoiding triangulation 
+        over regions where no data should be plotted, beyond the actual simulation
+        grid.
+    mask_up : bool
+        If True, values in the upper vertical half of the mesh are masked. 
+        Default is False.
+    mask_down : bool
+        If True, values in the lower vertical half of the mesh are masked. 
+        Default is False.
       
-    Returns:
-        triang : instance of matplotlib.tri.triangulation.Triangulation
-            Masked instance of the input matplotlib triangulation object.
+    Returns
+    ------------
+    triang : instance of matplotlib.tri.triangulation.Triangulation
+        Masked instance of the input matplotlib triangulation object.
     '''
     triangles = triang.triangles
     x = triang.x; y = triang.y
