@@ -5,6 +5,8 @@ import copy,os,sys
 import numpy as np
 from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.constants import e as q_electron, m_p
+import xarray
+import pickle as pkl
 
 from . import interp
 from . import atomic
@@ -13,7 +15,6 @@ from . import source_utils
 from . import particle_conserv
 from . import plot_tools
 from . import synth_diags
-import xarray
 
 # don't try to import compiled Fortran if building documentation or package:
 if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]) and\
@@ -25,17 +26,17 @@ class aurora_sim:
     '''
     Class to setup and run aurora simulations.
     '''
-    def __init__(self, namelist, geqdsk=None, nbi_cxr=None):
+    def __init__(self, namelist={}, geqdsk=None, nbi_cxr=None, pickle2load=None):
         '''Setup aurora simulation input dictionary from the given namelist.
 
-        Args:
+        Keyword Args:
             namelist : dict
                 Dictionary containing aurora inputs. See default_nml.py for some defaults, 
                 which users should modify for their runs.
             geqdsk : dict, optional
                 EFIT gfile as returned after postprocessing by the :py:mod:`omfit_eqdsk` 
                 package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary 
-                is constructed starting from the gfile in the MDS+ tree.
+                is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
             nbi_cxr : array, optional
                 If namelist['nbi_cxr']=True, this array represents the charge exchange rates 
                 with NBI neutrals, fast and/or thermal, across the entire radius and on the 
@@ -47,9 +48,18 @@ class aurora_sim:
                 - thermal rates for the halo may be from ADAS CCD files or from the same methods used 
                 for fast neutrals
                 - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
-                This method still needs more testing within this class. Please contact author for details. 
+                This method still needs more testing within this class. 
+                Contact sciortino@psfc.mit.edu for details. 
+            setup2load : str, optional
+                Path to file from which Aurora simulation setup should be loaded. 
+                This is expected in pickle format, e.g. "test.pkl". Any `aurora_sim` instance
+                can be saved to file using the :py:meth:`~aurora.core.save` method.             
 
         '''
+        if pickle2load is not None:
+            self.load(pickle2load)
+            return
+        
         self.namelist = namelist
         self.kin_profs = namelist['kin_profs']
         self.nbi_cxr = nbi_cxr
@@ -116,8 +126,19 @@ class aurora_sim:
         self.cxr_flag = self.namelist['cxr_flag']
         self.nbi_cxr_flag = self.namelist['nbi_cxr_flag']
         
+    def save(self, filename):
+        '''Save state of `aurora_sim` object.
+        '''
+        with open(filename, 'wb') as f:
+            pkl.dump(self, f)
 
-        
+    def load(self, filename):
+        '''Load `aurora_sim` object.
+        '''
+        with open(filename,'rb') as f:
+            obj= pkl.load(f)
+        self.__dict__.update(obj.__dict__)
+            
     def setup_grids(self):
         '''Method to set up radial and temporal grids given namelist inputs.
         '''
