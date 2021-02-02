@@ -29,31 +29,31 @@ class aurora_sim:
     def __init__(self, namelist={}, geqdsk=None, nbi_cxr=None, pickle2load=None):
         '''Setup aurora simulation input dictionary from the given namelist.
 
-        Keyword Args:
-            namelist : dict
-                Dictionary containing aurora inputs. See default_nml.py for some defaults, 
-                which users should modify for their runs.
-            geqdsk : dict, optional
-                EFIT gfile as returned after postprocessing by the :py:mod:`omfit_eqdsk` 
-                package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary 
-                is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
-            nbi_cxr : array, optional
-                If namelist['nbi_cxr']=True, this array represents the charge exchange rates 
-                with NBI neutrals, fast and/or thermal, across the entire radius and on the 
-                time base of interest. 
-                Creating this input is not trivial and must be done externally to aurora. 
-                General steps:
-                - get density of fast NBI neutrals (both fast and thermal/halo) ---> n0_nbi, n0_halo
-                - get total rates (n-unresolved) for CX with NBI neutrals --> _alpha_CX_NBI_rates
-                - thermal rates for the halo may be from ADAS CCD files or from the same methods used 
-                for fast neutrals
-                - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
-                This method still needs more testing within this class. 
-                Contact sciortino@psfc.mit.edu for details. 
-            setup2load : str, optional
-                Path to file from which Aurora simulation setup should be loaded. 
-                This is expected in pickle format, e.g. "test.pkl". Any `aurora_sim` instance
-                can be saved to file using the :py:meth:`~aurora.core.save` method.             
+        Parameters
+        -----------------
+        namelist : dict
+            Dictionary containing aurora inputs. See default_nml.py for some defaults, 
+            which users should modify for their runs.
+        geqdsk : dict, optional
+            EFIT gfile as returned after postprocessing by the :py:mod:`omfit_eqdsk` 
+            package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary 
+            is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
+        nbi_cxr : array, optional
+            If namelist['nbi_cxr']=True, this array represents the charge exchange rates 
+            with NBI neutrals, fast and/or thermal, across the entire radius and on the 
+            time base of interest. 
+            Creating this input is not trivial and must be done externally to aurora. 
+            General steps:
+            - get density of fast NBI neutrals (both fast and thermal/halo) ---> n0_nbi, n0_halo
+            - get total rates (n-unresolved) for CX with NBI neutrals --> _alpha_CX_NBI_rates
+            - thermal rates for the halo may be from ADAS CCD files or from the same methods used 
+            for fast neutrals
+            - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
+            This method still needs more testing within this class. Contact sciortino@psfc.mit.edu for details. 
+        setup2load : str, optional
+            Path to file from which Aurora simulation setup should be loaded. 
+            This is expected in pickle format, e.g. "test.pkl". Any `aurora_sim` instance
+            can be saved to file using the :py:meth:`~aurora.core.save` method.             
 
         '''
         if pickle2load is not None:
@@ -380,60 +380,60 @@ class aurora_sim:
                                zlabel=r'$n_z$ [cm$^{-3}$]', plot_sum=True,
                                labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]])
 
-        Args:
-            D_z, V_z: arrays, shape of (space,time,nZ) or (space,time) or (space,)
-                Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
-                This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
-                the number of charge states. If D_z and V_z are found to be have only 2 dimensions, 
-                it is assumed that all charge states should have the same transport coefficients.
-                If they are only 1-D, it is further assumed that they are time-independent. 
-                Note that it is assumed that D_z and V_z profiles are already on the self.rvol_grid 
-                radial grid.
+        Parameters
+        -----------------
+        D_z, V_z: arrays, shape of (space,time,nZ) or (space,time) or (space,)
+            Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
+            This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
+            the number of charge states. If D_z and V_z are found to be have only 2 dimensions, 
+            it is assumed that all charge states should have the same transport coefficients.
+            If they are only 1-D, it is further assumed that they are time-independent. 
+            Note that it is assumed that D_z and V_z profiles are already on the self.rvol_grid 
+            radial grid.
+        times_DV : 1D array, optional
+            Array of times at which D_z and V_z profiles are given. By Default, this is None, 
+            which implies that D_z and V_z are time independent. 
+        nz_init: array, shape of (space, nZ)
+            Impurity charge states at the initial time of the simulation. If left to None, this is
+            internally set to an array of 0's.
+        alg_opt : int, optional
+            If alg_opt=1, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
+            If alg_opt=1, use the older finite-differences algorithm in the 2018 version of STRAHL.
+        evolneut : bool, optional
+            If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
+            which case neutrals are only taken as a source and those that are not ionized immediately after
+            injection are neglected.
+            This option is NOT CURRENTLY RECOMMENDED, because this method is still under development/
+            examination. 
+        use_julia : bool, optional
+            If True, run the Julia pre-compiled version of the code. Run the julia makefile option to set 
+            this up. Default is False (still under development)
+        plot : bool, optional
+            If True, plot density for each charge state using a convenient slides over time and check 
+            particle conservation in each particle reservoir. 
 
-        Keyword Args:
-            times_DV : 1D array, optional
-                Array of times at which D_z and V_z profiles are given. By Default, this is None, 
-                which implies that D_z and V_z are time independent. 
-            nz_init: array, shape of (space, nZ)
-                Impurity charge states at the initial time of the simulation. If left to None, this is
-                internally set to an array of 0's.
-            alg_opt : int, optional
-                If alg_opt=1, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
-                If alg_opt=1, use the older finite-differences algorithm in the 2018 version of STRAHL.
-            evolneut : bool, optional
-                If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
-                which case neutrals are only taken as a source and those that are not ionized immediately after
-                injection are neglected.
-                This option is NOT CURRENTLY RECOMMENDED, because this method is still under development/
-                examination. 
-            use_julia : bool, optional
-                If True, run the Julia pre-compiled version of the code. Run the julia makefile option to set 
-                this up. Default is False (still under development)
-            plot : bool, optional
-                If True, plot density for each charge state using a convenient slides over time and check 
-                particle conservation in each particle reservoir. 
-
-        Returns:
-            nz : array, (nr,nZ,nt)
-                Charge state densities [:math::`cm^{-3}`] over the space and time grids.
-            N_wall : array (nt,)
-                Number of particles at the wall reservoir over time.
-            N_div : array (nt,)
-                Number of particles in the divertor reservoir over time.
-            N_pump : array (nt,)
-                Number of particles in the pump reservoir over time.
-            N_ret : array (nt,)
-                 Number of particles temporarily held in the wall reservoirs. 
-            N_tsu : array (nt,)
-                 Edge particle loss [:math::`cm^{-3}`]
-            N_dsu : array (nt,)
-                 Parallel particle loss [:math::`cm^{-3}`]
-            N_dsul : array (nt,)
-                 Parallel particle loss at the limiter [:math::`cm^{-3}`]
-            rcld_rate : array (nt,)
-                 Recycling from the divertor [:math::`s^{-1} cm^{-3}`]
-            rclw_rate : array (nt,)
-                 Recycling from the wall [:math::`s^{-1} cm^{-3}`]
+        Returns
+        ------------
+        nz : array, (nr,nZ,nt)
+            Charge state densities [:math:`cm^{-3}`] over the space and time grids.
+        N_wall : array (nt,)
+            Number of particles at the wall reservoir over time.
+        N_div : array (nt,)
+            Number of particles in the divertor reservoir over time.
+        N_pump : array (nt,)
+            Number of particles in the pump reservoir over time.
+        N_ret : array (nt,)
+             Number of particles temporarily held in the wall reservoirs. 
+        N_tsu : array (nt,)
+             Edge particle loss [:math:`cm^{-3}`]
+        N_dsu : array (nt,)
+             Parallel particle loss [:math:`cm^{-3}`]
+        N_dsul : array (nt,)
+             Parallel particle loss at the limiter [:math:`cm^{-3}`]
+        rcld_rate : array (nt,)
+             Recycling from the divertor [:math:`s^{-1} cm^{-3}`]
+        rclw_rate : array (nt,)
+             Recycling from the wall [:math:`s^{-1} cm^{-3}`]
         '''
         # D_z and V_z must have the same shape
         assert np.array(D_z).shape == np.array(V_z).shape
@@ -553,18 +553,21 @@ class aurora_sim:
     def check_conservation(self, plot=True, axs=None, plot_resolutions=False):
         '''Check particle conservation for an aurora simulation.
 
-        Args : 
-            plot : bool, optional
-                If True, plot time histories in each particle reservoir and display quality of particle conservation.
-            axs : matplotlib.Axes instances, optional 
-                Axes to pass to :py:meth:`~aurora.particle_conserv.check_particle_conserv`
-                These may be the axes returned from a previous call to this function, to overlap 
-                results for different runs. 
-        Returns : 
-            out : dict
-                Dictionary containing density of particles in each reservoir.
-            axs : matplotlib.Axes instances , only returned if plot=True
-                New or updated axes returned by :py:meth:`~aurora.particle_conserv.check_particle_conserv`
+        Parameters
+        -----------------
+        plot : bool, optional
+            If True, plot time histories in each particle reservoir and display quality of particle conservation.
+        axs : matplotlib.Axes instances, optional 
+            Axes to pass to :py:meth:`~aurora.particle_conserv.check_particle_conserv`
+            These may be the axes returned from a previous call to this function, to overlap 
+            results for different runs. 
+        
+        Returns
+        ------------
+        out : dict
+            Dictionary containing density of particles in each reservoir.
+        axs : matplotlib.Axes instances , only returned if plot=True
+            New or updated axes returned by :py:meth:`~aurora.particle_conserv.check_particle_conserv`
         '''
         nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         nz = nz.transpose(2,1,0)   # time,nZ,space
@@ -613,21 +616,21 @@ class aurora_sim:
         In this function, we use the average Z of the impurity species in the Aurora simulation result, using only
         the last time slice to calculate fractional abundances. The CF lambda factor
 
-        Args:
-            omega : array (nt,nr) or (nr,) [ rad/s ] 
-                 Toroidal rotation on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
-            Zeff : array (nt,nr), (nr,) or float
-                 Effective plasma charge on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
-                 Alternatively, users may give Zeff as a float (taken constant over time and space).
+        Parameters
+        -----------------
+        omega : array (nt,nr) or (nr,) [ rad/s ] 
+             Toroidal rotation on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
+        Zeff : array (nt,nr), (nr,) or float
+             Effective plasma charge on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
+             Alternatively, users may give Zeff as a float (taken constant over time and space).
+        plot : bool
+            If True, plot asymmetry factor :math:`\lambda` vs. radius
 
-        Keyword Args:
-            plot : bool
-                If True, plot asymmetry factor :math:`\lambda` vs. radius
-
-        Returns:
-            CF_lambda : array (nr,)
-                Asymmetry factor, defined as :math:`\lambda` in the :py:func:`~aurora.synth_diags.centrifugal_asym` function
-                docstring.
+        Returns
+        ------------
+        CF_lambda : array (nr,)
+            Asymmetry factor, defined as :math:`\lambda` in the :py:func:`~aurora.synth_diags.centrifugal_asym` function
+            docstring.
         """
         fz = self.res[0][...,-1] / np.sum(self.res[0][...,-1],axis=1)[:,None]
         Z_ave_vec = np.mean(self.Z_imp * fz * np.arange(self.Z_imp+1)[None,:],axis=1)
