@@ -77,12 +77,15 @@ class solps_case:
                                       'R':'RadLoc','Z':'VertLoc'}
 
             tmp = np.loadtxt(path+f'/{self.ext_names_map["R"]}{case_num}')
-            self.unit_p = int(np.max(tmp[:,0])//4)
-            self.unit_r = int(np.max(tmp[:,1])//2)
 
-            self.nx = int(np.max(tmp[:,1]))
-            self.ny = int(np.max(tmp[:,0]))
-            
+            self.ny = int(np.max(tmp[:,1]))
+            self.nx = int(np.max(tmp[:,0]))
+
+            self.unit_p = self.nx//4
+            self.unit_r = self.ny//2
+
+            self.double_null = False # TODO: generalize for double null shapes!
+
         elif form=='full':
             import omfit_solps # import omfit_solps here to avoid issues with docs and packaging
             self.b2fstate = omfit_solps.OMFITsolps(path+os.sep+solps_run+os.sep+'b2fstate')
@@ -95,21 +98,40 @@ class solps_case:
             
             self.crx = self.geom['crx'].reshape(4,self.ny+2,self.nx+2)  # horizontal 
             self.cry = self.geom['cry'].reshape(4,self.ny+2,self.nx+2)  # vertical
+
+            # figure out if single or double null
+            self.double_null = self.cry.shape[2]%4==0
             
             # uncertain units for splitting of radial and poloidal regions...
-            self.unit_p = (self.cry.shape[2])//4
-            self.unit_r = (self.crx.shape[1])//2 - 1
-    
-        # Obtain indices for chosen radial regions
-        R_idxs = np.array([],dtype=int)
-        R_idxs = np.concatenate((R_idxs, np.arange(self.unit_r+1)))  # PFR and core
-        self.R_idxs = np.concatenate((R_idxs, np.arange(self.unit_r+1,2*self.unit_r+2))) # open-SOL
+            self.unit_p = (self.crx.shape[2]-4 if self.double_null else self.crx.shape[2]-2)//4
+            self.unit_r = (self.crx.shape[1]-2 if self.double_null else self.crx.shape[1])//2 
 
-        # obtain indices for chosen poloidal regions
-        P_idxs = np.array([],dtype=int)
-        P_idxs = np.concatenate((P_idxs, np.arange(self.unit_p)))  # Inner PFR
-        P_idxs = np.concatenate((P_idxs, np.arange(self.unit_p,3*self.unit_p)))  # core/open SOL
-        self.P_idxs = np.concatenate((P_idxs, np.arange(3*self.unit_p,4*self.unit_p)))  # outer PFR
+        if self.double_null:
+            # TODO: unlikely to be correct, double null generalization still incomplete!
+            
+            # Obtain indices for chosen radial regions
+            _R_idxs = np.array([],dtype=int)
+            _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r)))  # PFR and core
+            self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r,2*self.unit_r))) # open-SOL
+            
+            # obtain indices for chosen poloidal regions
+            _P_idxs = np.array([],dtype=int)
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
+            self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
+            
+        else:  # upper or lower single null
+            # Obtain indices for chosen radial regions
+            _R_idxs = np.array([],dtype=int)
+            _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1)))  # PFR and core
+            self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1,2*self.unit_r+2))) # open-SOL
+            
+            # obtain indices for chosen poloidal regions
+            _P_idxs = np.array([],dtype=int)
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
+            self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
+
 
 
     def load_data(self, fields=None, P_idxs=None, R_idxs=None,
@@ -157,17 +179,18 @@ class solps_case:
         self.quants = quants = {}
         
         if self.form=='extracted':
+
             self.R = np.atleast_2d(
                 np.loadtxt(self.path+f'/{self.ext_names_map["R"]}{self.case_num}',
-                           usecols=(3)).reshape((self.nx+2,self.ny+2))[R_idxs,:])[:,P_idxs+1]
+                           usecols=(3)).reshape((self.ny+2,self.nx+2))[:,P_idxs])[R_idxs,:]
             self.Z = np.atleast_2d(
                 np.loadtxt(self.path+f'/{self.ext_names_map["Z"]}{self.case_num}',
-                           usecols=(3)).reshape((self.nx+2,self.ny+2))[R_idxs,:])[:,P_idxs+1]
+                           usecols=(3)).reshape((self.ny+2,self.nx+2))[:,P_idxs])[R_idxs,:]
 
             for field in fields:
                 tmp =  np.loadtxt(self.path+f'/{self.ext_names_map[field]}{self.case_num}',
-                                  usecols=(3)).reshape((self.nx+2,self.ny+2))
-                quants[field] = np.atleast_2d(tmp[R_idxs,:])[:,P_idxs+1]
+                                  usecols=(3)).reshape((self.ny+2,self.nx+2))
+                quants[field] = np.atleast_2d(tmp[:,P_idxs])[R_idxs,:]
 
             self.triang_b2 = tri.Triangulation(self.R.flatten(), self.Z.flatten())
             self.triang_eirene = self.triang_b2 # triangulation for EIRENE is mapped to b2 grid
@@ -175,12 +198,12 @@ class solps_case:
         elif self.form=='full':
 
             # eliminate end (buffer) points of grid
-            self.R = np.mean(self.crx,axis=0)[1:-1,:][:,1:-1] #[R_idxs,:][:,P_idxs]
-            self.Z = np.mean(self.cry,axis=0)[1:-1,:][:,1:-1] #[R_idxs,:][:,P_idxs]
+            self.R = np.mean(self.crx,axis=0)[R_idxs,:][:,P_idxs]
+            self.Z = np.mean(self.cry,axis=0)[R_idxs,:][:,P_idxs]
 
-            for field in field_labels:
+            for field in fields:
                 if field in ['ne','Te','Ti']:
-                    quants[field] = self.b2fstate[field][1:-1,:][:,1:-1] #[R_idxs,:][:,P_idxs]
+                    quants[field] = self.b2fstate[field.lower()][R_idxs,:][:,P_idxs]
 
             self.eirene_out = self.load_eirene_output(files=['fort.44'])  #'fort.46'
 
@@ -201,21 +224,21 @@ class solps_case:
             #     axis=1)
             ####
 
-            tmp = self.eirene_out['fort.44']['dmb2'].reshape((self.nx,self.ny))
-            quants['nm'] = np.atleast_2d(tmp).T #[R_idxs[:-2],:][:,P_idxs[:-2]]
-            tmp = self.eirene_out['fort.44']['tmb2'].reshape((self.nx,self.ny))
-            quants['Tm'] = np.atleast_2d(tmp).T #[R_idxs[:-2],:][:,P_idxs[:-2]]
+            tmp = self.eirene_out['fort.44']['dmb2'].reshape((self.ny,self.nx))
+            quants['nm'] = np.atleast_2d(tmp)[R_idxs,:][:,P_idxs]
+            tmp = self.eirene_out['fort.44']['tmb2'].reshape((self.ny,self.nx))
+            quants['Tm'] = np.atleast_2d(tmp)[R_idxs,:][:,P_idxs]
 
             # group atomic neutral density from all H isotopes
             spmask = self.b2fstate['zn']==1
             tmp = np.sum(
                 self.eirene_out['fort.44']['dab2'].reshape(-1,sum(spmask)),
-                axis=1).reshape((self.nx,self.ny))
-            quants['nn'] = np.atleast_2d(tmp).T #[R_idxs[:-2],:][:,P_idxs[:-2]]
+                axis=1).reshape((self.ny,self.nx))
+            quants['nn'] = np.atleast_2d(tmp)[R_idxs,:][:,P_idxs]
             tmp = np.sum(
                 self.eirene_out['fort.44']['tab2'].reshape(-1,sum(spmask)),
-                axis=1).reshape((self.nx,self.ny))
-            quants['Tn'] = np.atleast_2d(tmp).T #[R_idxs[:-2],:][:,P_idxs[:-2]]
+                axis=1).reshape((self.ny,self.nx))
+            quants['Tn'] = np.atleast_2d(tmp)[R_idxs,:][:,P_idxs]
             
             self.triang_b2 = tri.Triangulation(self.R.flatten(), self.Z.flatten())
             self.triang_eirene = self.eirene_out['triang']
@@ -431,7 +454,7 @@ class solps_case:
                 return np.nan
             else:
                 return griddata((self.R.flatten(),self.Z.flatten()), self.quants[quant].flatten(),
-                                (r,z), method='cubic')
+                                (r,z), method='linear')
 
         prof_FSA = self.geqdsk['fluxSurfaces'].surfAvg(function=avg_function)
         rhop_FSA = np.sqrt(self.geqdsk['fluxSurfaces']['geo']['psin'])
@@ -452,7 +475,7 @@ class solps_case:
         _prof_LFS = griddata((self.R.flatten(),self.Z.flatten()), self.quants[quant].flatten(),
                              (_R_LFS,0.5*dz_mm*1e-3*np.random.random(len(_R_LFS))),
                              #(_R_LFS,np.zeros_like(_R_LFS)),
-                             method='cubic')
+                             method='linear')
         _prof_LFS[_prof_LFS<0]=np.nan
         R_LFS = np.linspace(np.min(R_midplane_lfs), np.max(R_midplane_lfs),100)
         rhop_LFS = coords.get_rhop_RZ(R_LFS,np.zeros_like(R_LFS), self.geqdsk)
@@ -461,7 +484,7 @@ class solps_case:
         _prof_HFS = griddata((self.R.flatten(),self.Z.flatten()), self.quants[quant].flatten(),
                              #(_R_HFS, np.zeros_like(_R_HFS)),
                              (_R_HFS,0.5*dz_mm*1e-3*np.random.random(len(_R_HFS))),
-                             method='cubic')
+                             method='linear')
         _prof_HFS[_prof_HFS<0]=np.nan
         R_HFS = np.linspace(np.min(R_midplane_hfs), np.max(R_midplane_hfs),100)   
         rhop_HFS = coords.get_rhop_RZ(R_HFS,np.zeros_like(R_HFS), self.geqdsk)
@@ -481,12 +504,12 @@ class solps_case:
         midplane_HFS_idx = np.argmin(np.abs(Z_core[0,R_core[0,:]<self.geqdsk['RMAXIS']]))
 
         # convert to indices on self.Z and self.R
-        HFS_mid_pol_idx = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]<self.geqdsk['RMAXIS']][midplane_HFS_idx]
-        LFS_mid_pol_idx = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]>self.geqdsk['RMAXIS']][midplane_LFS_idx]
+        JXI = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]<self.geqdsk['RMAXIS']][midplane_HFS_idx]  # HFS_mid_pol_idx
+        JXA = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]>self.geqdsk['RMAXIS']][midplane_LFS_idx] # LFS_mid_pol_idx
 
         # find rhop along midplane grid chords
-        rhop_chord_HFS = coords.get_rhop_RZ(self.R[:,HFS_mid_pol_idx],self.Z[:,HFS_mid_pol_idx], self.geqdsk)
-        rhop_chord_LFS = coords.get_rhop_RZ(self.R[:,LFS_mid_pol_idx],self.Z[:,LFS_mid_pol_idx], self.geqdsk)
+        rhop_chord_HFS = coords.get_rhop_RZ(self.R[:,JXI],self.Z[:,JXI], self.geqdsk)
+        rhop_chord_LFS = coords.get_rhop_RZ(self.R[:,JXA],self.Z[:,JXA], self.geqdsk)
 
         if plot:
             # plot quantties on linear scale -- need to adapt labels
@@ -497,8 +520,8 @@ class solps_case:
             ax.plot(rhop_FSA, prof_FSA, label='FSA')
             ax.plot(rhop_LFS, prof_LFS, label='LFS midplane')
             ax.plot(rhop_HFS, prof_HFS, label='HFS midplane')
-            ax.plot(rhop_chord_LFS, self.quants[quant][:,LFS_mid_pol_idx], label='LFS grid midplane')
-            ax.plot(rhop_chord_HFS, self.quants[quant][:,HFS_mid_pol_idx], label='HFS grid midplane')
+            ax.plot(rhop_chord_LFS, self.quants[quant][:,JXA], label='LFS grid midplane')
+            ax.plot(rhop_chord_HFS, self.quants[quant][:,JXI], label='HFS grid midplane')
             ax.set_xlabel(r'$\rho_p$')
             ax.set_ylabel(lab)
             ax.legend(loc='best').set_draggable(True)
