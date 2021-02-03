@@ -21,8 +21,9 @@ def get_adas_file_types():
        in dynamic finite density plasmas: I. The generalized collisional-radiative model for 
        light elements", Plasma Physics and Controlled Fusion, 48:2, 2006
 
-    Returns:
-        Dictionary with keys given by the ADAS file types and values giving a description for them.
+    Returns
+    -------
+    Dictionary with keys given by the ADAS file types and values giving a description for them.
     '''
     
     return {'acd':'effective recombination',
@@ -142,13 +143,12 @@ def read_filter_response(filepath, adas_format=True, plot=False):
     Note that filter response functions are typically a combination of a filter transmissivity 
     and a detector absorption. 
 
-    Args:
-        filepath : str
-            Path to filter file of interest.
-
-    Keyword Args:
-        plot : bool
-            If True, the filter response function is plotted. 
+    Parameters
+    ----------
+    filepath : str
+        Path to filter file of interest.
+    plot : bool
+        If True, the filter response function is plotted. 
     
     '''
     E_eV=[]
@@ -202,23 +202,25 @@ def get_atom_data(imp, filetypes=['acd','scd'], filenames=[]):
     ''' Collect atomic data for a given impurity from all types of ADAS files available or
     for only those requested. 
 
-    Args:
-        imp : str
-            Atomic symbol of impurity ion.
-        filetypes : list or array-like 
-            ADAS file types to be fetched. Default is ["acd","scd"] for effective ionization 
-            and recombination rates (excluding CX).
-        filenames : list or array-like, optional
-            ADAS file names to be used in place of the defaults given by 
-            :py:meth:`~aurora.adas_files.adas_file_dict`.
-            If left empty, such defaults are used. Note that the order of filenames must be 
-            the same as the one in the "filetypes" list.
+    Parameters
+    ----------
+    imp : str
+        Atomic symbol of impurity ion.
+    filetypes : list or array-like 
+        ADAS file types to be fetched. Default is ["acd","scd"] for effective ionization 
+        and recombination rates (excluding CX).
+    filenames : list or array-like, optional
+        ADAS file names to be used in place of the defaults given by 
+        :py:meth:`~aurora.adas_files.adas_file_dict`.
+        If left empty, such defaults are used. Note that the order of filenames must be 
+        the same as the one in the "filetypes" list.
     
-    Returns:
-        atom_data : dict
-           Dictionary containing data for each of the requested files. 
-           Each entry of the dictionary gives log-10 of ne, log-10 of Te and log-10 of the data
-           as attributes atom_data[key].logNe, atom_data[key].logT, atom_data[key].data
+    Returns
+    -------
+    atom_data : dict
+        Dictionary containing data for each of the requested files. 
+        Each entry of the dictionary gives log-10 of ne, log-10 of Te and log-10 of the data
+        as attributes atom_data[key].logNe, atom_data[key].logT, atom_data[key].data
     '''
     atom_data = {}
     
@@ -262,43 +264,44 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
     This method can work with ne,Te and n0_by_ne arrays of arbitrary dimension, but plotting 
     is only supported in 1D (defaults to flattened arrays).
 
-    Args:
-        atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
-            necessary only if include_cx=True
-        ne_cm3 : float or array
-            Electron density in units of cm^-3
-        Te_eV : float or array, optional
-            Electron temperature in units of eV. If left to None, the Te grid given in the 
-            atomic data is used.
-        n0_by_ne: float or array, optional
-            Ratio of background neutral hydrogen to electron density, used if include_cx=True. 
-        include_cx : bool
-            If True, charge exchange with background thermal neutrals is included. 
-        ne_tau : float, opt
-            Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
-            This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
-            Setting ne_tau=np.inf (default) corresponds to no effect from transport. 
-        plot : bool, optional
-            Show fractional abundances as a function of ne,Te profiles parameterization.
-        ax : matplotlib.pyplot Axes instance
-            Axes on which to plot if plot=True. If False, it creates new axes
-        rho : list or array, optional
-            Vector of radial coordinates on which ne,Te (and possibly n0_by_ne) are given. 
-            This is only used for plotting, if given. 
-        rho_lbl: str, optional
-            Label to be used for rho. If left to None, defaults to a general "rho".
-        ls : str, optional
-            Line style for plots. Continuous lines are used by default. 
+    Parameters
+    ----------
+    atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
+        necessary only if include_cx=True
+    ne_cm3 : float or array
+        Electron density in units of cm^-3
+    Te_eV : float or array, optional
+        Electron temperature in units of eV. If left to None, the Te grid given in the 
+        atomic data is used.
+    n0_by_ne: float or array, optional
+        Ratio of background neutral hydrogen to electron density, used if include_cx=True. 
+    include_cx : bool
+        If True, charge exchange with background thermal neutrals is included. 
+    ne_tau : float, opt
+        Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
+        This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
+        Setting ne_tau=np.inf (default) corresponds to no effect from transport. 
+    plot : bool, optional
+        Show fractional abundances as a function of ne,Te profiles parameterization.
+    ax : matplotlib.pyplot Axes instance
+        Axes on which to plot if plot=True. If False, it creates new axes
+    rho : list or array, optional
+        Vector of radial coordinates on which ne,Te (and possibly n0_by_ne) are given. 
+        This is only used for plotting, if given. 
+    rho_lbl: str, optional
+        Label to be used for rho. If left to None, defaults to a general "rho".
+    ls : str, optional
+        Line style for plots. Continuous lines are used by default. 
 
-    Returns:
-        logTe : array
-            log10 of electron temperatures as a function of which the fractional abundances and
-            rate coefficients are given.
-        fz : array, (space,nZ)
-            Fractional abundances across the same grid used by the input ne,Te values. 
-        rate_coeffs : array, (space, nZ)
-            Rate coefficients in units of [s^-1]. 
-
+    Returns
+    -------
+    logTe : array
+        log10 of electron temperatures as a function of which the fractional abundances and
+        rate coefficients are given.
+    fz : array, (space,nZ)
+        Fractional abundances across the same grid used by the input ne,Te values. 
+    rate_coeffs : array, (space, nZ)
+        Rate coefficients in units of [:math:`s^{-1}`]. 
     '''
     # if input arrays are multi-dimensional, flatten them here and restructure at the end
     if not isinstance(ne_cm3,float):
@@ -383,26 +386,28 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
 def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, maxTe=10e3, include_cx=True):
     '''Get S, R and cx on the same logTe grid. 
     
-    Args:
-        atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
-            necessary only if include_cx=True
-        ne_cm3 : float or array
-            Electron density in units of cm^-3
-        Te_eV : float or array
-            Electron temperature in units of eV. If left to None, the Te grid
-            given in the atomic data is used.
-        maxTe : float
-            Maximum temperature of interest; only used if Te is left to None. 
-        include_cx : bool
-            If True, obtain charge exchange terms as well. 
+    Parameters
+    ----------
+    atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
+        necessary only if include_cx=True
+    ne_cm3 : float or array
+        Electron density in units of cm^-3
+    Te_eV : float or array
+        Electron temperature in units of eV. If left to None, the Te grid
+        given in the atomic data is used.
+    maxTe : float
+        Maximum temperature of interest; only used if Te is left to None. 
+    include_cx : bool
+        If True, obtain charge exchange terms as well. 
     
-    Returns:
-        logTe : array (n_Te)
-            log10 Te grid on which atomic rates are given
-        logS, logR (,logcx): arrays (n_ne,n_Te)
-            atomic rates for effective ionization, radiative+dielectronic
-            recombination (+ charge exchange, if requested). After exponentiation, all terms
-            will be in units of s^-1. 
+    Returns
+    -------
+    logTe : array (n_Te)
+        log10 Te grid on which atomic rates are given
+    logS, logR (,logcx): arrays (n_ne,n_Te)
+        atomic rates for effective ionization, radiative+dielectronic
+        recombination (+ charge exchange, if requested). After exponentiation, all terms
+        will be in units of :math:`s^{-1}`. 
     '''
     if Te_eV is None:
         # find smallest Te grid from all files
@@ -443,17 +448,18 @@ def plot_relax_time(logTe, rate_coeff, ax = None):
     ''' Plot relaxation time of the ionization equilibrium corresponding
     to the inverse of the given rate coefficients.
 
-    Args:
-        logTe : array (nr,)
-            log-10 of Te [eV], on an arbitrary grid (same as other arguments, but not
-            necessarily radial)
-        rate_coeff : array (nr,)
-            Rate coefficients from ionization balance. See :py:meth:`~aurora.atomic.get_frac_abundances`
-            to obtain these via the "compute_rates" argument. 
-            N.B.: these rate coefficients will depend also on electron density, which does affect 
-            relaxation times. 
-        ax : matplotlib axes instance, optional
-            If provided, plot relaxation times on these axes.    
+    Parameters
+    ----------
+    logTe : array (nr,)
+        log-10 of Te [eV], on an arbitrary grid (same as other arguments, but not
+        necessarily radial)
+    rate_coeff : array (nr,)
+        Rate coefficients from ionization balance. See :py:meth:`~aurora.atomic.get_frac_abundances`
+        to obtain these via the "compute_rates" argument. 
+        N.B.: these rate coefficients will depend also on electron density, which does affect 
+        relaxation times. 
+    ax : matplotlib axes instance, optional
+        If provided, plot relaxation times on these axes.    
     '''
     if ax is None:
         ax = plt.subplot(111)
@@ -514,24 +520,26 @@ def interp_atom_prof(atom_table,x_prof, y_prof,log_val=False, x_multiply=True):
     This function assume that x_prof, y_prof, x,y, table are all base-10 logarithms,
     and x_prof, y_prof are equally spaced.
 
-    Args:
-        atom_table : list
-            List with x,y, table = atom_table, containing atomic data from one of the ADAS files. 
-        x_prof : array (nt,nr)
-            Spatio-temporal profiles of the first coordinate of the ADAS file table (usually 
-            electron density in cm^-3)
-        y_prof : array (nt,nr)
-            Spatio-temporal profiles of the second coordinate of the ADAS file table (usually 
-            electron temperature in eV)
-        log_val : bool
-            If True, return natural logarithm of the data
-        x_multiply : bool
-            If True, multiply output by 10**x_prof. 
+    Parameters
+    ----------
+    atom_table : list
+        List with x,y, table = atom_table, containing atomic data from one of the ADAS files. 
+    x_prof : array (nt,nr)
+        Spatio-temporal profiles of the first coordinate of the ADAS file table (usually 
+        electron density in cm^-3)
+    y_prof : array (nt,nr)
+        Spatio-temporal profiles of the second coordinate of the ADAS file table (usually 
+        electron temperature in eV)
+    log_val : bool
+        If True, return natural logarithm of the data
+    x_multiply : bool
+        If True, multiply output by 10**x_prof. 
 
-    Returns:
-        interp_vals : array (nt,nion,nr)
-            Interpolated atomic data on time,charge state and spatial grid that correspond to the 
-            ion of interest and the spatiotemporal grids of x_prof and y_prof. 
+    Returns
+    -------
+    interp_vals : array (nt,nion,nr)
+        Interpolated atomic data on time,charge state and spatial grid that correspond to the 
+        ion of interest and the spatiotemporal grids of x_prof and y_prof. 
     '''
     x,y, table = atom_table
 
@@ -604,17 +612,19 @@ def impurity_brems(nz, ne, Te):
     which uses a simpler interpolation of the Gaunt factor with weak ne-dependence. 
     Use with care!
 
-    Args:
-        nz : array (time,nZ,space)
-            Densities for each charge state [:math:`cm^{-3}`]
-        ne : array (time,space)
-            Electron density [:math:`cm^{-3}`]
-        Te : array (time,space)
-            Electron temperature [:math:`cm^{-3}`]
+    Parameters
+    ----------
+    nz : array (time,nZ,space)
+        Densities for each charge state [:math:`cm^{-3}`]
+    ne : array (time,space)
+        Electron density [:math:`cm^{-3}`]
+    Te : array (time,space)
+        Electron temperature [:math:`cm^{-3}`]
 
-    Returns:
-        brems : array (time,nZ,space)
-            Bremsstrahlung for each charge state 
+    Returns
+    -------
+    brems : array (time,nZ,space)
+        Bremsstrahlung for each charge state 
     '''
     # neutral stage doesn't produce brems
     Z_imp = nz.shape[1]-1
@@ -630,30 +640,32 @@ def impurity_brems(nz, ne, Te):
 def get_cooling_factors(atom_data, logTe_prof, fz, plot=True,ax=None):
     '''Calculate cooling coefficients for the given fractional abundances and kinetic profiles.
 
-    Args:
-        atom_data : dict
-            Dictionary containing atomic data as output by :py:meth:`~aurora.atomic.get_atom_data`
-            for the atomic processes of interest. "prs","pls","plt" and "prb" are required by this function.
-        logTe_prof : array (nt,nr)
-            Log-10 of electron temperature profile (in eV)
-        fz : array (nt,nr)
-            Fractional abundances for all charge states of the ion of "atom_data"
-        plot : bool
-            If True, plot all radiation components, summed over charge states.
-        ax : matplotlib.Axes instance
-            If provided, plot results on these axes. 
+    Parameters
+    ----------
+    atom_data : dict
+        Dictionary containing atomic data as output by :py:meth:`~aurora.atomic.get_atom_data`
+        for the atomic processes of interest. "prs","pls","plt" and "prb" are required by this function.
+    logTe_prof : array (nt,nr)
+        Log-10 of electron temperature profile (in eV)
+    fz : array (nt,nr)
+        Fractional abundances for all charge states of the ion of "atom_data"
+    plot : bool
+        If True, plot all radiation components, summed over charge states.
+    ax : matplotlib.Axes instance
+        If provided, plot results on these axes. 
     
-    Returns:
-        pls : array (nt,nr)
-            Line radiation in the SXR range for each charge state
-        prs : array (nt,nr)
-            Continuum radiation in the SXR range for each charge state
-        pltt : array (nt,nr)
-            Line radiation (unfiltered) for each charge state.
-            NB: this corresponds to the ADAS "plt" files. An additional "t" is added to the name to avoid
-            conflict with the common matplotlib.pyplot short form "plt"
-        prb : array (nt,nr)
-            Continuum radiation (unfiltered) for each charge state
+    Returns
+    -------
+    pls : array (nt,nr)
+        Line radiation in the SXR range for each charge state
+    prs : array (nt,nr)
+        Continuum radiation in the SXR range for each charge state
+    pltt : array (nt,nr)
+        Line radiation (unfiltered) for each charge state.
+        NB: this corresponds to the ADAS "plt" files. An additional "t" is added to the name to avoid
+        conflict with the common matplotlib.pyplot short form "plt"
+    prb : array (nt,nr)
+        Continuum radiation (unfiltered) for each charge state
     '''
     try:
         atom_data['prs']
@@ -742,33 +754,35 @@ def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
     rate averaged over all charge state densities is considered. This function avoids the 
     averaging over charge states, unless these are provided as an input. 
 
-    Args:
-        S_z : array (r,cs) [s^-1]
-             Effective ionization rates for each charge state as a function of radius. 
-             Note that, for convenience within aurora, cs includes the neutral stage.
-        q_prof : array (r,)
-             Radial profile of safety factor
-        R_prof : array (r,) or float [m]
-             Radial profile of major radius, either given as an average of HFS and LFS, or also
-             simply as a scalar (major radius on axis)
-        imp_A : float [amu]
-             Atomic mass number, i.e. number of protons + neutrons (e.g. 2 for D)
-        Ti_prof : array (r,)
-             Radial profile of ion temperature [eV]
-        nz_profs : array (r,cs), optional
-             Radial profile for each charge state. If provided, calculate average normalized 
-             ionization rate over all charge states.
-        rhop : array (r,), optional
-             Sqrt of poloidal flux radial grid. This is used only for (optional) plotting. 
-        plot : bool, optional
-             If True, plot results.
-        eps_prof : array (r,), optional
-             Radial profile of inverse aspect ratio, i.e. r/R, only used if plotting is requested.  
+    Parameters
+    ----------
+    S_z : array (r,cs) [s^-1]
+         Effective ionization rates for each charge state as a function of radius. 
+         Note that, for convenience within aurora, cs includes the neutral stage.
+    q_prof : array (r,)
+         Radial profile of safety factor
+    R_prof : array (r,) or float [m]
+         Radial profile of major radius, either given as an average of HFS and LFS, or also
+         simply as a scalar (major radius on axis)
+    imp_A : float [amu]
+         Atomic mass number, i.e. number of protons + neutrons (e.g. 2 for D)
+    Ti_prof : array (r,)
+         Radial profile of ion temperature [eV]
+    nz_profs : array (r,cs), optional
+         Radial profile for each charge state. If provided, calculate average normalized 
+         ionization rate over all charge states.
+    rhop : array (r,), optional
+         Sqrt of poloidal flux radial grid. This is used only for (optional) plotting. 
+    plot : bool, optional
+         If True, plot results.
+    eps_prof : array (r,), optional
+         Radial profile of inverse aspect ratio, i.e. r/R, only used if plotting is requested.  
 
-    Returns:
-        nu_ioniz_star : array (r,cs) or (r,)
-             Normalized ionization rate. If nz_profs is given as an input, this is an average over
-             all charge state; otherwise, it is given for each charge state.
+    Returns
+    -------
+    nu_ioniz_star : array (r,cs) or (r,)
+         Normalized ionization rate. If nz_profs is given as an input, this is an average over
+         all charge state; otherwise, it is given for each charge state.
     '''
 
     nu = np.zeros_like(S_z)
