@@ -231,24 +231,28 @@ def js_sigma(E, q, n1, n2=None, type='cx'):
     """Cross sections for collisional processes between beam neutrals and highly-charged 
     ions, from Janev & Smith 1993.
 
-    Args:
-        E : float
-            Normalized beam energy [keV/amu]
-        q : int
-            Impurity charge before interaction (interacting ion is A^{q+})
-        n1 : int
-            Principal quantum number of beam hydrogen.
-        n2: int
-            Principal quantum number of excited. This may not be needed for some transitions (if so, leave to None).
-        type : str
-            Type of interaction. Possible choices:
-            {'exc','ioniz','cx'}
-            where 'cx' refers to electron capture / charge exchange.
+    Parameters
+    ----------
+    E : float
+        Normalized beam energy [keV/amu]
+    q : int
+        Impurity charge before interaction (interacting ion is A^{q+})
+    n1 : int
+        Principal quantum number of beam hydrogen.
+    n2: int
+        Principal quantum number of excited. This may not be needed for some transitions (if so, leave to None).
+    type : str
+        Type of interaction. Possible choices:
+        {'exc','ioniz','cx'}
+        where 'cx' refers to electron capture / charge exchange.
 
-    Returns:
-        sigma : float
-            Cross section of selected process, in [cm^2] units.
+    Returns
+    -------
+    sigma : float
+        Cross section of selected process, in [cm^2] units.
 
+    Notes
+    -----
     See comments in Janev & Smith 1993 for uncertainty estimates.
     """
 
@@ -321,9 +325,9 @@ def js_sigma(E, q, n1, n2=None, type='cx'):
 
 
 def plot_js_sigma(q=18):
-    # check sensitivity to beam energy
-    # NB: cross section is taken to only depend on partially-screened ion charge
-
+    '''Plot/check sensitivity of JS cross sections to beam energy.
+    NB: cross section is taken to only depend on partially-screened ion charge
+    '''
     Ebeam = np.geomspace(10, 1e2, 1000)  # keV/amu
 
     sigma = np.array([js_sigma(E, q, n1=1, type='cx') for E in Ebeam])
