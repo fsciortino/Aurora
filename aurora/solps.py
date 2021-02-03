@@ -22,34 +22,33 @@ class solps_case:
                  case_num=0, form='extracted', extracted_labels=None):
         '''Read SOLPS output and prepare for Aurora impurity-neutral analysis. 
 
-        Args:
-            path : str
-                Path to output files. If these are "extracted" files from SOLPS (form='extracted'),
-                then this is the path to the disk location where each of the required files
-                can be found. 
-                If form='full', this path indicates where to find the directory named "baserun"
-                and the 'solps_run' one.
-            geqdsk : str or `omfit_geqdsk` class instance
-                Path to the geqdsk to load from disk, or instance of the `omfit_geqdsk` class that
-                contains the processed gEQDSK file already. 
-
-        Keyword Args:
-            solps_run : str
-                If form='full', this string specifies the directory (relative to the given path)
-                where case-specific files for a SOLPS run can be found (e.g. 'b2fstate').
-            case_num : int
-                Index/integer identifying the SOLPS case of interest. 
-            form : str
-                Form of SOLPS output to be loaded, one of {'full','extracted'}. 
-                The 'full' output consists of 'b2fstate', 'b2fgmtry', 'fort.44', etc.
-                The 'extracted' output consists of individual files containing one quantity each.
-                If form='extracted', the 'extracted_labels' argument allows to specify files 
-                nomanclature. 
-            extracted_labels : dict
-                Only used if form='extracted', this dictionary allows specification of the names of
-                files/variables to be extracted. Default is to use
-                [RadLoc, VertLoc, Ne, Te, NeuDen, NeuTemp, MolDen, MolTemp, Ti]
-                each of which will be expected to have "case_num" appended to the name of the file.
+        Parameters
+        -----------------
+        path : str
+            Path to output files. If these are "extracted" files from SOLPS (form='extracted'),
+            then this is the path to the disk location where each of the required files
+            can be found. 
+            If form='full', this path indicates where to find the directory named "baserun"
+            and the 'solps_run' one.
+        geqdsk : str or `omfit_geqdsk` class instance
+            Path to the geqdsk to load from disk, or instance of the `omfit_geqdsk` class that
+            contains the processed gEQDSK file already. 
+        solps_run : str
+            If form='full', this string specifies the directory (relative to the given path)
+            where case-specific files for a SOLPS run can be found (e.g. 'b2fstate').
+        case_num : int
+            Index/integer identifying the SOLPS case of interest. 
+        form : str
+            Form of SOLPS output to be loaded, one of {'full','extracted'}. 
+            The 'full' output consists of 'b2fstate', 'b2fgmtry', 'fort.44', etc.
+            The 'extracted' output consists of individual files containing one quantity each.
+            If form='extracted', the 'extracted_labels' argument allows to specify files 
+            nomanclature. 
+        extracted_labels : dict
+            Only used if form='extracted', this dictionary allows specification of the names of
+            files/variables to be extracted. Default is to use
+            [RadLoc, VertLoc, Ne, Te, NeuDen, NeuTemp, MolDen, MolTemp, Ti]
+            each of which will be expected to have "case_num" appended to the name of the file.
         '''
 
         self.path = path
@@ -77,12 +76,15 @@ class solps_case:
                                       'R':'RadLoc','Z':'VertLoc'}
 
             tmp = np.loadtxt(path+f'/{self.ext_names_map["R"]}{case_num}')
-            self.unit_p = int(np.max(tmp[:,0])//4)
-            self.unit_r = int(np.max(tmp[:,1])//2)
 
-            self.nx = int(np.max(tmp[:,1]))
-            self.ny = int(np.max(tmp[:,0]))
-            
+            self.ny = int(np.max(tmp[:,1]))
+            self.nx = int(np.max(tmp[:,0]))
+
+            self.unit_p = self.nx//4
+            self.unit_r = self.ny//2
+
+            self.double_null = False # TODO: generalize for double null shapes!
+
         elif form=='full':
             import omfit_solps # import omfit_solps here to avoid issues with docs and packaging
             self.b2fstate = omfit_solps.OMFITsolps(path+os.sep+solps_run+os.sep+'b2fstate')
@@ -95,47 +97,68 @@ class solps_case:
             
             self.crx = self.geom['crx'].reshape(4,self.ny+2,self.nx+2)  # horizontal 
             self.cry = self.geom['cry'].reshape(4,self.ny+2,self.nx+2)  # vertical
+
+            # figure out if single or double null
+            self.double_null = self.cry.shape[2]%4==0
             
             # uncertain units for splitting of radial and poloidal regions...
-            self.unit_p = (self.cry.shape[2])//4
-            self.unit_r = (self.crx.shape[1])//2 - 1
-    
-        # Obtain indices for chosen radial regions
-        R_idxs = np.array([],dtype=int)
-        R_idxs = np.concatenate((R_idxs, np.arange(self.unit_r+1)))  # PFR and core
-        self.R_idxs = np.concatenate((R_idxs, np.arange(self.unit_r+1,2*self.unit_r+2))) # open-SOL
+            self.unit_p = (self.crx.shape[2]-4 if self.double_null else self.crx.shape[2]-2)//4
+            self.unit_r = (self.crx.shape[1]-2 if self.double_null else self.crx.shape[1])//2 
 
-        # obtain indices for chosen poloidal regions
-        P_idxs = np.array([],dtype=int)
-        P_idxs = np.concatenate((P_idxs, np.arange(self.unit_p)))  # Inner PFR
-        P_idxs = np.concatenate((P_idxs, np.arange(self.unit_p,3*self.unit_p)))  # core/open SOL
-        self.P_idxs = np.concatenate((P_idxs, np.arange(3*self.unit_p,4*self.unit_p)))  # outer PFR
+        if self.double_null:
+            # TODO: unlikely to be correct, double null generalization still incomplete!
+            
+            # Obtain indices for chosen radial regions
+            _R_idxs = np.array([],dtype=int)
+            _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r)))  # PFR and core
+            self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r,2*self.unit_r))) # open-SOL
+            
+            # obtain indices for chosen poloidal regions
+            _P_idxs = np.array([],dtype=int)
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
+            self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
+            
+        else:  # upper or lower single null
+            # Obtain indices for chosen radial regions
+            _R_idxs = np.array([],dtype=int)
+            _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1)))  # PFR and core
+            self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1,2*self.unit_r+2))) # open-SOL
+            
+            # obtain indices for chosen poloidal regions
+            _P_idxs = np.array([],dtype=int)
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
+            self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
+
 
 
     def load_data(self, fields=None, P_idxs=None, R_idxs=None,
                   Rmin=None, Rmax=None, Pmin=None, Pmax=None):
         '''Load SOLPS output for each of the needed quantities ('extracted' form)
 
-        Keyword Args:
-            fields : list or array
-                List of fields to fetch from SOLPS output. If left to None, by default uses
-                self.labels.keys(), i.e. ['ne','Te','nn','nT','nm','Tm','Ti']
-            P_idxs : list or array
-                Poloidal indices to load.
-            R_idxs : list or array
-                Radial indices to load.
-            Rmin : int or None.
-                Minimum major radius index to load, if R_idxs is not given
-            Rmax : int or None
-                Maximum major radius index to load, if R_idxs is not given
-            Pmin : int or None
-                Minimum poloidal index to load, if P_idxs is not given
-            Pmax : int or None
-                Maximum poloidal index to load, if P_idxs is not given
+        Parameters
+        -----------------
+        fields : list or array
+            List of fields to fetch from SOLPS output. If left to None, by default uses
+            self.labels.keys(), i.e. ['ne','Te','nn','nT','nm','Tm','Ti']
+        P_idxs : list or array
+            Poloidal indices to load.
+        R_idxs : list or array
+            Radial indices to load.
+        Rmin : int or None.
+            Minimum major radius index to load, if R_idxs is not given
+        Rmax : int or None
+            Maximum major radius index to load, if R_idxs is not given
+        Pmin : int or None
+            Minimum poloidal index to load, if P_idxs is not given
+        Pmax : int or None
+            Maximum poloidal index to load, if P_idxs is not given
         
-        Returns:
-            quants : dict
-                Dictionary containing 'R','Z' coordinates for 2D maps of each field requested by user.
+        Returns
+        ------------
+        quants : dict
+            Dictionary containing 'R','Z' coordinates for 2D maps of each field requested by user.
         '''
         if P_idxs is None:
             if Pmax is None: Pmax = self.ny
@@ -157,17 +180,18 @@ class solps_case:
         self.quants = quants = {}
         
         if self.form=='extracted':
+
             self.R = np.atleast_2d(
                 np.loadtxt(self.path+f'/{self.ext_names_map["R"]}{self.case_num}',
-                           usecols=(3)).reshape((self.nx+2,self.ny+2))[R_idxs,:])[:,P_idxs+1]
+                           usecols=(3)).reshape((self.ny+2,self.nx+2))[:,P_idxs])[R_idxs,:]
             self.Z = np.atleast_2d(
                 np.loadtxt(self.path+f'/{self.ext_names_map["Z"]}{self.case_num}',
-                           usecols=(3)).reshape((self.nx+2,self.ny+2))[R_idxs,:])[:,P_idxs+1]
+                           usecols=(3)).reshape((self.ny+2,self.nx+2))[:,P_idxs])[R_idxs,:]
 
             for field in fields:
                 tmp =  np.loadtxt(self.path+f'/{self.ext_names_map[field]}{self.case_num}',
-                                  usecols=(3)).reshape((self.nx+2,self.ny+2))
-                quants[field] = np.atleast_2d(tmp[R_idxs,:])[:,P_idxs+1]
+                                  usecols=(3)).reshape((self.ny+2,self.nx+2))
+                quants[field] = np.atleast_2d(tmp[:,P_idxs])[R_idxs,:]
 
             self.triang_b2 = tri.Triangulation(self.R.flatten(), self.Z.flatten())
             self.triang_eirene = self.triang_b2 # triangulation for EIRENE is mapped to b2 grid
@@ -175,12 +199,12 @@ class solps_case:
         elif self.form=='full':
 
             # eliminate end (buffer) points of grid
-            self.R = np.mean(self.crx,axis=0)[1:-1,:][:,1:-1] #[R_idxs,:][:,P_idxs]
-            self.Z = np.mean(self.cry,axis=0)[1:-1,:][:,1:-1] #[R_idxs,:][:,P_idxs]
+            self.R = np.mean(self.crx,axis=0)[R_idxs,:][:,P_idxs]
+            self.Z = np.mean(self.cry,axis=0)[R_idxs,:][:,P_idxs]
 
-            for field in field_labels:
+            for field in fields:
                 if field in ['ne','Te','Ti']:
-                    quants[field] = self.b2fstate[field][1:-1,:][:,1:-1] #[R_idxs,:][:,P_idxs]
+                    quants[field] = self.b2fstate[field.lower()][R_idxs,:][:,P_idxs]
 
             self.eirene_out = self.load_eirene_output(files=['fort.44'])  #'fort.46'
 
@@ -201,21 +225,21 @@ class solps_case:
             #     axis=1)
             ####
 
-            tmp = self.eirene_out['fort.44']['dmb2'].reshape((self.nx,self.ny))
-            quants['nm'] = np.atleast_2d(tmp).T #[R_idxs[:-2],:][:,P_idxs[:-2]]
-            tmp = self.eirene_out['fort.44']['tmb2'].reshape((self.nx,self.ny))
-            quants['Tm'] = np.atleast_2d(tmp).T #[R_idxs[:-2],:][:,P_idxs[:-2]]
+            tmp = self.eirene_out['fort.44']['dmb2'].reshape((self.ny,self.nx))
+            quants['nm'] = np.atleast_2d(tmp)[R_idxs,:][:,P_idxs]
+            tmp = self.eirene_out['fort.44']['tmb2'].reshape((self.ny,self.nx))
+            quants['Tm'] = np.atleast_2d(tmp)[R_idxs,:][:,P_idxs]
 
             # group atomic neutral density from all H isotopes
             spmask = self.b2fstate['zn']==1
             tmp = np.sum(
                 self.eirene_out['fort.44']['dab2'].reshape(-1,sum(spmask)),
-                axis=1).reshape((self.nx,self.ny))
-            quants['nn'] = np.atleast_2d(tmp).T #[R_idxs[:-2],:][:,P_idxs[:-2]]
+                axis=1).reshape((self.ny,self.nx))
+            quants['nn'] = np.atleast_2d(tmp)[R_idxs,:][:,P_idxs]
             tmp = np.sum(
                 self.eirene_out['fort.44']['tab2'].reshape(-1,sum(spmask)),
-                axis=1).reshape((self.nx,self.ny))
-            quants['Tn'] = np.atleast_2d(tmp).T #[R_idxs[:-2],:][:,P_idxs[:-2]]
+                axis=1).reshape((self.ny,self.nx))
+            quants['Tn'] = np.atleast_2d(tmp)[R_idxs,:][:,P_idxs]
             
             self.triang_b2 = tri.Triangulation(self.R.flatten(), self.Z.flatten())
             self.triang_eirene = self.eirene_out['triang']
@@ -228,16 +252,15 @@ class solps_case:
         '''Load result from one of the fort.* files with EIRENE output, 
         as indicated by the "files" list argument.
 
-        Keyword Args:
-            files : list or array-like
-                EIRENE output files to read. Default is to load all
-                files for which this method has been tested. 
+        Parameters
+        -----------------
+        files : list or array-like
+            EIRENE output files to read. Default is to load all files for which this method has been tested. 
 
-        Returns:
-            eirene_out : dict
-                Dictionary for each loaded file containing a subdictionary
-                with keys for each loaded field from each file. 
-
+        Returns
+        ------------
+        eirene_out : dict
+            Dictionary for each loaded file containing a subdictionary with keys for each loaded field from each file. 
         '''
         eirene_out = {}
         
@@ -277,21 +300,23 @@ class solps_case:
     def process_solps_data(self, fields=None, P_idxs=None, R_idxs=None, plot=False):
         '''Load and process SOLPS to permit clear plotting. 
         
-        Keyword Args:
-            fields : dict
-                Dictionary containing SOLPS outputs to process. Keys indicate the quantity, value its label
-                (only used for plotting). If left to None, defaults fields of 'ne','Te','nn' and 'Tn' are used.
-            P_idxs : list or array
-                Poloidal indices to load.
-            R_idxs : list or array
-                Radial indices to load.
-            plot : bool
-                If True, plot results for all loaded 2D quantities. 
+        Parameters
+        -----------------
+        fields : dict
+            Dictionary containing SOLPS outputs to process. Keys indicate the quantity, value its label
+            (only used for plotting). If left to None, defaults fields of 'ne','Te','nn' and 'Tn' are used.
+        P_idxs : list or array
+            Poloidal indices to load.
+        R_idxs : list or array
+            Radial indices to load.
+        plot : bool
+            If True, plot results for all loaded 2D quantities. 
 
-        Returns:
-            quants : dict
-                Dictionary containing 'R','Z' coordinates for 2D maps of each field requested by user.
-                Quantities are processed and masked to facilitate plotting.
+        Returns
+        ------------
+        quants : dict
+            Dictionary containing 'R','Z' coordinates for 2D maps of each field requested by user.
+            Quantities are processed and masked to facilitate plotting.
         '''
         if fields is None:
             fields = ['ne','Te','nn','Tn'] #list(self.labels.keys())
@@ -340,24 +365,25 @@ class solps_case:
         '''Method to plot 2D fields over the R and Z grids. 
         Colorbars are set to be manually adjustable, allowing variable image saturation.
 
-        Args:
-            vals : array, (ny,nx)
-                2D array containing a variable of interest, on the same grid as the 
-                R and Z attributes. 
+        Parameters
+        -----------------
+        vals : array, (ny,nx)
+            2D array containing a variable of interest, on the same grid as the 
+            R and Z attributes. 
 
-        Keyword Args:
-            label : str
-                Label describing the quantity being plotted.
-            use_triang : bool
-                If True, use a triangulation to plot results on B2 grids, attempting
-                to mask unwanted spurious edges. Alternatively, use a simple filled 
-                contour plot, which however may show unphysical features at the edges
-                of the B2 grid. Default is True (use the triangulation).  
-            max_mask_len : float
-                Optional maximum length of triangulation segments to be masked. If left to 
-                None, the default rule-of-thumb length for this variable will be used, but 
-                this may need hand adjustments for specific use cases.
-
+        Returns
+        ------------
+        label : str
+            Label describing the quantity being plotted.
+        use_triang : bool
+            If True, use a triangulation to plot results on B2 grids, attempting
+            to mask unwanted spurious edges. Alternatively, use a simple filled 
+            contour plot, which however may show unphysical features at the edges
+            of the B2 grid. Default is True (use the triangulation).  
+        max_mask_len : float
+            Optional maximum length of triangulation segments to be masked. If left to 
+            None, the default rule-of-thumb length for this variable will be used, but 
+            this may need hand adjustments for specific use cases.
         '''
 
         fig,ax0 = plt.subplots(figsize=(8,11))
@@ -390,37 +416,39 @@ class solps_case:
         This function returns profiles on the low- (LFS) and high-field-side (HFS) midplane, 
         as well as flux surface averaged (FSA) ones. 
 
-        Keyword Args:
-            quant : str
-                Quantity of interest. Default is 'nn' (neutral atomic density). See self.labels.keys()
-                for other options.
-            dz_mm : float
-                Vertical range [mm] over which quantity should be averaged near the midplane. 
-                Mean and standard deviation of profiles on the LFS and HFS will be returned based on
-                variations of atomic neutral density within this vertical span.
-                Note that this does not apply to the FSA calculation. Default is 5 mm.
-            plot : bool
-                If True, plot radial profiles. 
+        Parameters
+        -----------------
+        quant : str
+            Quantity of interest. Default is 'nn' (neutral atomic density). See self.labels.keys()
+            for other options.
+        dz_mm : float
+            Vertical range [mm] over which quantity should be averaged near the midplane. 
+            Mean and standard deviation of profiles on the LFS and HFS will be returned based on
+            variations of atomic neutral density within this vertical span.
+            Note that this does not apply to the FSA calculation. Default is 5 mm.
+        plot : bool
+            If True, plot radial profiles. 
 
-        Returns:
-            rhop_fsa : 1D array
-                Sqrt of poloidal flux grid on which FSA profiles are given.
-            prof_fsa : 1D array
-                FSA profile on rhop_fsa grid.
-            rhop_LFS : 1D array
-                Sqrt of poloidal flux grid on which LFS profile  (prof_LFS) is given.
-            prof_LFS : 1D array
-                Mean LFS midpane profile on rhop_LFS grid.
-            prof_LFS_std : 1D array
-                Standard deviation of LFS midplane profile on the rhop_LFS grid, based on variations 
-                within +/-`dz_mm`/2 millimeters from the midplane. 
-            rhop_HFS : 1D array
-                Sqrt of poloidal flux grid on which the midplane HFS profile (prof_HFS) is given.
-            prof_HFS : 1D array
-                Mean HFS midplane profile on rhop_HFS grid.
-            prof_HFS_std : 1D array
-                Standard deviation of HFS midplane profile on rhop_HFS grid, based on variations 
-                within +/-`dz_mm`/2 millimeters from the midplane.
+        Returns
+        ------------
+        rhop_fsa : 1D array
+            Sqrt of poloidal flux grid on which FSA profiles are given.
+        prof_fsa : 1D array
+            FSA profile on rhop_fsa grid.
+        rhop_LFS : 1D array
+            Sqrt of poloidal flux grid on which LFS profile  (prof_LFS) is given.
+        prof_LFS : 1D array
+            Mean LFS midpane profile on rhop_LFS grid.
+        prof_LFS_std : 1D array
+            Standard deviation of LFS midplane profile on the rhop_LFS grid, based on variations 
+            within +/-`dz_mm`/2 millimeters from the midplane. 
+        rhop_HFS : 1D array
+            Sqrt of poloidal flux grid on which the midplane HFS profile (prof_HFS) is given.
+        prof_HFS : 1D array
+            Mean HFS midplane profile on rhop_HFS grid.
+        prof_HFS_std : 1D array
+            Standard deviation of HFS midplane profile on rhop_HFS grid, based on variations 
+            within +/-`dz_mm`/2 millimeters from the midplane.
         '''
         
         rhop_2D = coords.get_rhop_RZ(self.R,self.Z, self.geqdsk)
@@ -431,7 +459,7 @@ class solps_case:
                 return np.nan
             else:
                 return griddata((self.R.flatten(),self.Z.flatten()), self.quants[quant].flatten(),
-                                (r,z), method='cubic')
+                                (r,z), method='linear')
 
         prof_FSA = self.geqdsk['fluxSurfaces'].surfAvg(function=avg_function)
         rhop_FSA = np.sqrt(self.geqdsk['fluxSurfaces']['geo']['psin'])
@@ -452,7 +480,7 @@ class solps_case:
         _prof_LFS = griddata((self.R.flatten(),self.Z.flatten()), self.quants[quant].flatten(),
                              (_R_LFS,0.5*dz_mm*1e-3*np.random.random(len(_R_LFS))),
                              #(_R_LFS,np.zeros_like(_R_LFS)),
-                             method='cubic')
+                             method='linear')
         _prof_LFS[_prof_LFS<0]=np.nan
         R_LFS = np.linspace(np.min(R_midplane_lfs), np.max(R_midplane_lfs),100)
         rhop_LFS = coords.get_rhop_RZ(R_LFS,np.zeros_like(R_LFS), self.geqdsk)
@@ -461,7 +489,7 @@ class solps_case:
         _prof_HFS = griddata((self.R.flatten(),self.Z.flatten()), self.quants[quant].flatten(),
                              #(_R_HFS, np.zeros_like(_R_HFS)),
                              (_R_HFS,0.5*dz_mm*1e-3*np.random.random(len(_R_HFS))),
-                             method='cubic')
+                             method='linear')
         _prof_HFS[_prof_HFS<0]=np.nan
         R_HFS = np.linspace(np.min(R_midplane_hfs), np.max(R_midplane_hfs),100)   
         rhop_HFS = coords.get_rhop_RZ(R_HFS,np.zeros_like(R_HFS), self.geqdsk)
@@ -481,12 +509,12 @@ class solps_case:
         midplane_HFS_idx = np.argmin(np.abs(Z_core[0,R_core[0,:]<self.geqdsk['RMAXIS']]))
 
         # convert to indices on self.Z and self.R
-        HFS_mid_pol_idx = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]<self.geqdsk['RMAXIS']][midplane_HFS_idx]
-        LFS_mid_pol_idx = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]>self.geqdsk['RMAXIS']][midplane_LFS_idx]
+        JXI = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]<self.geqdsk['RMAXIS']][midplane_HFS_idx]  # HFS_mid_pol_idx
+        JXA = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]>self.geqdsk['RMAXIS']][midplane_LFS_idx] # LFS_mid_pol_idx
 
         # find rhop along midplane grid chords
-        rhop_chord_HFS = coords.get_rhop_RZ(self.R[:,HFS_mid_pol_idx],self.Z[:,HFS_mid_pol_idx], self.geqdsk)
-        rhop_chord_LFS = coords.get_rhop_RZ(self.R[:,LFS_mid_pol_idx],self.Z[:,LFS_mid_pol_idx], self.geqdsk)
+        rhop_chord_HFS = coords.get_rhop_RZ(self.R[:,JXI],self.Z[:,JXI], self.geqdsk)
+        rhop_chord_LFS = coords.get_rhop_RZ(self.R[:,JXA],self.Z[:,JXA], self.geqdsk)
 
         if plot:
             # plot quantties on linear scale -- need to adapt labels
@@ -497,8 +525,8 @@ class solps_case:
             ax.plot(rhop_FSA, prof_FSA, label='FSA')
             ax.plot(rhop_LFS, prof_LFS, label='LFS midplane')
             ax.plot(rhop_HFS, prof_HFS, label='HFS midplane')
-            ax.plot(rhop_chord_LFS, self.quants[quant][:,LFS_mid_pol_idx], label='LFS grid midplane')
-            ax.plot(rhop_chord_HFS, self.quants[quant][:,HFS_mid_pol_idx], label='HFS grid midplane')
+            ax.plot(rhop_chord_LFS, self.quants[quant][:,JXA], label='LFS grid midplane')
+            ax.plot(rhop_chord_HFS, self.quants[quant][:,JXI], label='HFS grid midplane')
             ax.set_xlabel(r'$\rho_p$')
             ax.set_ylabel(lab)
             ax.legend(loc='best').set_draggable(True)
@@ -512,29 +540,29 @@ def apply_mask(triang, geqdsk, max_mask_len=0.4, mask_up=False, mask_down=False)
     is useful to avoid having triangulation edges going outside of the true simulation
     grid. 
 
-    Args:
-        triang : instance of matplotlib.tri.triangulation.Triangulation
-            Matplotlib triangulation object for the (R,Z) grid. 
-        geqdsk : dict
-            Dictionary containing gEQDSK file values as processed by the `omfit_eqdsk`
-            package. 
-
-    Keyword Args:
-        max_mask_len : float
-            Maximum length [m] of segments within the triangulation. Segments longer
-            than this value will not be plotted. This helps avoiding triangulation 
-            over regions where no data should be plotted, beyond the actual simulation
-            grid.
-        mask_up : bool
-            If True, values in the upper vertical half of the mesh are masked. 
-            Default is False.
-        mask_down : bool
-            If True, values in the lower vertical half of the mesh are masked. 
-            Default is False.
+    Parameters
+    -----------------
+    triang : instance of matplotlib.tri.triangulation.Triangulation
+        Matplotlib triangulation object for the (R,Z) grid. 
+    geqdsk : dict
+        Dictionary containing gEQDSK file values as processed by the `omfit_eqdsk`
+        package. 
+    max_mask_len : float
+        Maximum length [m] of segments within the triangulation. Segments longer
+        than this value will not be plotted. This helps avoiding triangulation 
+        over regions where no data should be plotted, beyond the actual simulation
+        grid.
+    mask_up : bool
+        If True, values in the upper vertical half of the mesh are masked. 
+        Default is False.
+    mask_down : bool
+        If True, values in the lower vertical half of the mesh are masked. 
+        Default is False.
       
-    Returns:
-        triang : instance of matplotlib.tri.triangulation.Triangulation
-            Masked instance of the input matplotlib triangulation object.
+    Returns
+    ------------
+    triang : instance of matplotlib.tri.triangulation.Triangulation
+        Masked instance of the input matplotlib triangulation object.
     '''
     triangles = triang.triangles
     x = triang.x; y = triang.y
