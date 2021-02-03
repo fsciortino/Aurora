@@ -1,6 +1,15 @@
-"""
+r"""
 Aurora functionality to set up and run KN1D to extract atomic and neutral 
 background densities at the edge. 
+
+KN1D is a 1D kinetic neutral code originally developed by B.LaBombard (MIT). 
+For information, refer to the KN1D manual:
+https://github.com/fsciortino/kn1d/blob/master/kn1d_manual.pdf
+
+Note that this Aurora module is merely a wrapper of KN1D. Users require an
+IDL license on the computer where this module is called in order to be able to 
+run KN1D. The IDL (and Fortran) code themselves are automatically downloaded and
+compiled by this module.
 
 sciortino, January 2021
 """
@@ -11,9 +20,13 @@ import os
 import scipy.io
 from scipy.integrate import cumtrapz
 from scipy.interpolate import interp1d
+import matplotlib.pyplot as plt
+from scipy.constants import e, h, c as c_light, Rydberg
 
 from . import neutrals
 from . import coords
+
+from IPython import embed
 
 thisdir = os.path.dirname(os.path.realpath(__file__))
 
@@ -42,7 +55,7 @@ def _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV,
     ne_m3 = ne_cm3 * 1e6  # cm^-3 --> m^-3
 
     # convert radial coordinate to rmid
-    rmid = coords.rad_coord_transform(rhop, 'rhop', 'rmid', geqdsk)
+    rmid = coords.rad_coord_transform(rhop, 'rhop', 'rmid', geqdsk) # m
 
     # define radial regions in the SOL in coordinates centered on the mag axis
     rsep = coords.rad_coord_transform(1.0, 'rhop', 'rmid', geqdsk)
@@ -50,36 +63,36 @@ def _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV,
     rlim = rsep + lim_sep_cm * 1e-2  # cm-->m
 
     # interpolate profiles on grid extending to wall
-    rmid_to_wall_cm = np.linspace(np.min(rmid), rwall, 1001)  # 101) #201)
-    _ne = interp1d(rmid, ne_m3, bounds_error=False)(rmid_to_wall_cm)  # extrapolates to nan
-    _Te = interp1d(rmid, Te_eV, bounds_error=False)(rmid_to_wall_cm)  # extrapolates to nan
-    _Ti = interp1d(rmid, Ti_eV, bounds_error=False)(rmid_to_wall_cm)  # extrapolates to nan
+    rmid_to_wall_m = np.linspace(np.min(rmid), rwall, 1001)  # 101) #201)
+    _ne = interp1d(rmid, ne_m3, bounds_error=False)(rmid_to_wall_m)  # extrapolates to nan
+    _Te = interp1d(rmid, Te_eV, bounds_error=False)(rmid_to_wall_m)  # extrapolates to nan
+    _Ti = interp1d(rmid, Ti_eV, bounds_error=False)(rmid_to_wall_m)  # extrapolates to nan
 
-    indLCFS = np.searchsorted(rmid_to_wall_cm, rsep)
-    indLS = np.searchsorted(rmid_to_wall_cm, rlim)
-    ind_end = np.searchsorted(rmid_to_wall_cm, rmid[-1])
+    indLCFS = np.searchsorted(rmid_to_wall_m, rsep)
+    indLS = np.searchsorted(rmid_to_wall_m, rlim)
+    ind_end = np.searchsorted(rmid_to_wall_m, rmid[-1])
 
     # if kinetic profiles don't extend far enough in radius, we must set an exp decay depending on the radial region
     if ind_end < indLS:
         # decays in SOL (all the way to the wall)
-        ne_sol = _ne[ind_end-1] * np.exp(-(rmid_to_wall_cm[ind_end:]-rmid_to_wall_cm[ind_end-1])/(ne_decay_len_cm[0]/100.0))
+        ne_sol = _ne[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(ne_decay_len_cm[0]/100.0))
         ne_ = np.concatenate((_ne[:ind_end], ne_sol))
-        Te_sol = _Te[ind_end-1] * np.exp(-(rmid_to_wall_cm[ind_end:]-rmid_to_wall_cm[ind_end-1])/(Te_decay_len_cm[0]/100.0))
+        Te_sol = _Te[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(Te_decay_len_cm[0]/100.0))
         Te_ = np.concatenate((_Te[:ind_end], Te_sol))
-        Ti_sol = _Ti[ind_end-1] * np.exp(-(rmid_to_wall_cm[ind_end:]-rmid_to_wall_cm[ind_end-1])/(Ti_decay_len_cm[0]/100.0))
+        Ti_sol = _Ti[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(Ti_decay_len_cm[0]/100.0))
         Ti_ = np.concatenate((_Ti[:ind_end], Ti_sol))
     else:
         ne_ = copy.deepcopy(_ne)
         Te_ = copy.deepcopy(_Te)
         Ti_ = copy.deepcopy(_Ti)
 
-    if ind_end < len(rmid_to_wall_cm):
+    if ind_end < len(rmid_to_wall_m):
         # decays in the LS
-        ne_ls = ne_[ind_end-1] * np.exp(-(rmid_to_wall_cm[ind_end:]-rmid_to_wall_cm[ind_end-1])/(ne_decay_len_cm[1]/100.0))
+        ne_ls = ne_[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(ne_decay_len_cm[1]/100.0))
         ne = np.concatenate((ne_[:ind_end], ne_ls))
-        Te_ls = Te_[ind_end-1] * np.exp(-(rmid_to_wall_cm[ind_end:]-rmid_to_wall_cm[ind_end-1])/(Te_decay_len_cm[1]/100.0))
+        Te_ls = Te_[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(Te_decay_len_cm[1]/100.0))
         Te = np.concatenate((Te_[:ind_end], Te_ls))
-        Ti_ls = Ti_[ind_end-1] * np.exp(-(rmid_to_wall_cm[ind_end:]-rmid_to_wall_cm[ind_end-1])/(Ti_decay_len_cm[1]/100.0))
+        Ti_ls = Ti_[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(Ti_decay_len_cm[1]/100.0))
         Ti = np.concatenate((Ti_[:ind_end], Ti_ls))
     else:
         ne = copy.deepcopy(ne_)
@@ -91,27 +104,27 @@ def _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV,
     if kin_prof_exp_decay_SOL:
         # decays in the SOL
         ne[indLCFS:indLS] = ne[indLCFS - 1] * np.exp(
-            -(rmid_to_wall_cm[indLCFS:indLS] - rmid_to_wall_cm[indLCFS-1])/(ne_decay_len_cm[0]/100.0)
+            -(rmid_to_wall_m[indLCFS:indLS] - rmid_to_wall_m[indLCFS-1])/(ne_decay_len_cm[0]/100.0)
         )
         Te[indLCFS:indLS] = Te[indLCFS - 1] * np.exp(
-            -(rmid_to_wall_cm[indLCFS:indLS] - rmid_to_wall_cm[indLCFS-1])/(Te_decay_len_cm[0]/100.0)
+            -(rmid_to_wall_m[indLCFS:indLS] - rmid_to_wall_m[indLCFS-1])/(Te_decay_len_cm[0]/100.0)
         )
         Ti[indLCFS:indLS] = Ti[indLCFS - 1] * np.exp(
-            -(rmid_to_wall_cm[indLCFS:indLS] - rmid_to_wall_cm[indLCFS-1])/(Ti_decay_len_cm[0]/100.0)
+            -(rmid_to_wall_m[indLCFS:indLS] - rmid_to_wall_m[indLCFS-1])/(Ti_decay_len_cm[0]/100.0)
         )
 
     if kin_prof_exp_decay_LS:
         # decays in the LS
-        ne[indLS:] = ne[indLS-1] * np.exp(-(rmid_to_wall_cm[indLS:]-rmid_to_wall_cm[indLS-1])/(ne_decay_len_cm[1]/100.0))
-        Te[indLS:] = Te[indLS-1] * np.exp(-(rmid_to_wall_cm[indLS:]-rmid_to_wall_cm[indLS-1])/(Te_decay_len_cm[1]/100.0))
-        Ti[indLS:] = Ti[indLS-1] * np.exp(-(rmid_to_wall_cm[indLS:]-rmid_to_wall_cm[indLS-1])/(Ti_decay_len_cm[1]/100.0))
+        ne[indLS:] = ne[indLS-1] * np.exp(-(rmid_to_wall_m[indLS:]-rmid_to_wall_m[indLS-1])/(ne_decay_len_cm[1]/100.0))
+        Te[indLS:] = Te[indLS-1] * np.exp(-(rmid_to_wall_m[indLS:]-rmid_to_wall_m[indLS-1])/(Te_decay_len_cm[1]/100.0))
+        Ti[indLS:] = Ti[indLS-1] * np.exp(-(rmid_to_wall_m[indLS:]-rmid_to_wall_m[indLS-1])/(Ti_decay_len_cm[1]/100.0))
     
     # set minima across radial profiles
     ne[ne < ne_min_cm3] = ne_min_cm3
     Te[Te < Te_min_eV] = Te_min_eV
     Ti[Ti < Ti_min_eV] = Ti_min_eV
 
-    return rmid_to_wall_cm, ne, Te, Ti
+    return rmid_to_wall_m, ne, Te, Ti
 
 
 
@@ -121,7 +134,7 @@ def run_kn1d(rhop, ne_cm3, Te_eV, Ti_eV, geqdsk, p_H2_mTorr,
              innermost_rmid_cm=5.0, mu=2., pipe_diag_cm=0.0, vx=0.0, collisions={},
              kin_prof_exp_decay_SOL=False, kin_prof_exp_decay_LS=False,
              ne_decay_len_cm=[1.0,1.0], Te_decay_len_cm=[1.0,1.0], Ti_decay_len_cm=[1.,1.], 
-             ne_min_cm3=1e12, Te_min_eV=1.0, Ti_min_eV=1.0):
+             ne_min_cm3=1e12, Te_min_eV=1.0, Ti_min_eV=1.0, plot_kin_profs=False):
     '''Run KN1D for the given parameters. Refer to the KN1D manual for details. 
 
     Depending on the provided options, kinetic profiles are extended beyond the Last Closed
@@ -193,6 +206,8 @@ def run_kn1d(rhop, ne_cm3, Te_eV, Ti_eV, geqdsk, p_H2_mTorr,
         Minimum electron temperaure across profile. Default is :math:`eV`.
     Ti_min_eV : float
         Minimum main ion temperaure across profile. Default is :math:`eV`.
+    plot_kin_profs : bool
+        If True, kinetic profiles input to KN1D are plotted.
     
     For an example application, see the examples/aurora_kn1d.py script. 
     '''
@@ -241,30 +256,34 @@ def run_kn1d(rhop, ne_cm3, Te_eV, Ti_eV, geqdsk, p_H2_mTorr,
         kn1d['Simple_CX'] = False
 
 
-    rmid_to_wall_cm, ne,Te,Ti = _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV, 
+    rmid_to_wall_m, ne,Te,Ti = _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV, 
                                               geqdsk, bound_sep_cm, lim_sep_cm,
                                               kin_prof_exp_decay_SOL, kin_prof_exp_decay_LS,
                                               ne_decay_len_cm, Te_decay_len_cm, Ti_decay_len_cm, 
                                               ne_min_cm3, Te_min_eV, Ti_min_eV)
-    
-    rhop = coords.rad_coord_transform(rmid_to_wall_cm, 'rmid', 'rhop', geqdsk)
-    rwall = rmid_to_wall_cm[-1]
-    rsep = coords.rad_coord_transform(1.0, 'rhop', 'rmid', geqdsk)
-    rlim = rsep + lim_sep_cm * 1e-2  # m
+
+    if plot_kin_profs:
+        # show kinetic profiles going into KN1D modeling
+        plot_input_kin_prof(rmid_to_wall_m, ne, Te, Ti, innermost_rmid_cm, bound_sep_cm, lim_sep_cm)
+
+    rhop = coords.rad_coord_transform(rmid_to_wall_m, 'rmid', 'rhop', geqdsk)
+    rwall_m = rmid_to_wall_m[-1]  #m
+    rsep_m = coords.rad_coord_transform(1.0, 'rhop', 'rmid', geqdsk) # m
+    rlim_m = rsep_m + lim_sep_cm * 1e-2  # m
 
 
     # KN1D defines coordinates from the wall INWARD. Invert now:
-    r_kn1d = np.abs(rmid_to_wall_cm - rwall)[::-1]
-    rlim_kn1d = np.abs(rlim - rwall)
-    rsep_kn1d = np.abs(rsep - rwall)
+    r_kn1d_m = np.abs(rmid_to_wall_m - rwall_m)[::-1]
+    rlim_kn1d_m = np.abs(rlim_m - rwall_m)
+    rsep_kn1d_m = np.abs(rsep_m - rwall_m)
 
     # diameter of pressure gauge pipe. Allows collisions with side-walls to be simulated
-    dPipe = pipe_diag_cm*np.ones(len(rmid_to_wall_cm))*1e-2  # m  -- zero values are treated as infinity
+    dPipe = pipe_diag_cm*np.ones(len(rmid_to_wall_m))*1e-2  # m  -- zero values are treated as infinity
 
     # define the connection length vector
-    lc = np.zeros(len(rmid_to_wall_cm))
-    lc[(rsep < rmid_to_wall_cm) * (rmid_to_wall_cm < rlim)] = clen_divertor_cm * 1e-2  # m
-    lc[rmid_to_wall_cm > rlim] = clen_limiter_cm * 1e-2  # m
+    lc = np.zeros(len(rmid_to_wall_m))
+    lc[(rsep_m < rmid_to_wall_m) * (rmid_to_wall_m < rlim_m)] = clen_divertor_cm * 1e-2  # m
+    lc[rmid_to_wall_m > rlim_m] = clen_limiter_cm * 1e-2  # m
 
 
     def idl_array(arr, num):
@@ -276,23 +295,23 @@ def run_kn1d(rhop, ne_cm3, Te_eV, Ti_eV, geqdsk, p_H2_mTorr,
         return np.array([round(val, num) for val in arr], dtype=dtype)
     
     # cut all radial profiles to given innermost location
-    ind_in = np.searchsorted(r_kn1d, innermost_rmid_cm * 1e-2)  # r_kn1d is from wall inwards
+    ind_in = np.searchsorted(r_kn1d_m, innermost_rmid_cm * 1e-2)  # r_kn1d_m is from wall inwards
     
     # Save arrays in final forms for KN1D 
     num = 5  # digital point precision
-    kn1d['x'] = round_arr(r_kn1d[:ind_in], num, float)
+    kn1d['x'] = round_arr(r_kn1d_m[:ind_in], num, float)
     ne_ = ne[::-1]
-    kn1d['ne'] = round_arr(ne_[:ind_in], num, float)
+    kn1d['ne'] = round_arr(ne_[:ind_in], num, float) # m^-3
     Te_ = Te[::-1]
-    kn1d['Te'] = round_arr(Te_[:ind_in], num, float)
+    kn1d['Te'] = round_arr(Te_[:ind_in], num, float)  # eV
     Ti_ = Ti[::-1]
-    kn1d['Ti'] = round_arr(Ti_[:ind_in], num, float)
+    kn1d['Ti'] = round_arr(Ti_[:ind_in], num, float) # eV
     dPipe_ = dPipe[::-1]
     kn1d['dPipe'] = round_arr(dPipe_[:ind_in], num, float)
     lc_ = lc[::-1]
     kn1d['lc'] = round_arr(lc_[:ind_in], num, float)
-    kn1d['xlim'] = rlim_kn1d
-    kn1d['xsep'] = rsep_kn1d
+    kn1d['xlim'] = rlim_kn1d_m
+    kn1d['xsep'] = rsep_kn1d_m
     kn1d['p_H2_mTorr'] =  p_H2_mTorr  # mTorr
     kn1d['mu'] = mu
     
@@ -365,6 +384,7 @@ exit
 
     #### store all KN1D data for postprocessing  #####
     res = {}
+    res['ins'] = kn1d  # store inputs for plotting
     out = res['out'] = scipy.io.readsav(f'{thisdir}/KN1D/kn1d_out.sav')
     res['kn1d_input'] = scipy.io.readsav(f'{thisdir}/KN1D/.KN1D_input')
     res['kn1d_mesh'] = scipy.io.readsav(f'{thisdir}/KN1D/.KN1D_mesh')
@@ -375,7 +395,6 @@ exit
 
     # ---------------------------
     # Additional processed outputs
-
     # Compute ion flux by integrating over atomic ionization rate
     Sion = out['sion']
     Sion_interp = interp1d(out['xh'], Sion, bounds_error=False, fill_value=0.0)(kn1d['x'])
@@ -410,7 +429,7 @@ exit
         m=3, N1=N1/1e6, ni=out['ni']/1e6, ne=kn1d['ne'] / 1e6, Te=kn1d['Te'], plot=False, rad_prof=kn1d['x']
     )
 
-    out['N2'] = N2 * 1e6  # transform back to m^-3
+    out['N2'] = N2 * 1e6  # transform back to m^-3 (all KN1D units are in SI units)
     out['N2_ground'] = N2_ground * 1e6
     out['N2_cont'] = N2_cont * 1e6
     out['N3'] = N3 * 1e6
@@ -422,7 +441,7 @@ exit
     out_profs = res['kn1d_profs'] = {}
 
     # save profiles on (inverted) grid extending all the way to the axis (extrapolating)
-    _rhop = coords.rad_coord_transform(rwall - kn1d['x'][::-1], 'rmid', 'rhop', geqdsk)
+    _rhop = coords.rad_coord_transform(rwall_m - kn1d['x'][::-1], 'rmid', 'rhop', geqdsk)
     out_profs['rhop'] = np.linspace(0.0, 1.1, 200)
 
     out_profs['n0'] = np.exp(interp1d(_rhop, np.log(N1[::-1]), 
@@ -433,7 +452,7 @@ exit
                                          bounds_error=False, fill_value='extrapolate')(out_profs['rhop']))
 
     # also save profiles of Ly- and H/D-alpha
-    _rhop_emiss = coords.rad_coord_transform(rwall - out['xh'][::-1], 'rmid', 'rhop', geqdsk)
+    _rhop_emiss = coords.rad_coord_transform(rwall_m - out['xh'][::-1], 'rmid', 'rhop', geqdsk)
     out_profs['lyman'] = np.exp(
         interp1d(_rhop_emiss, np.log(out['lyman'][::-1]), 
                  bounds_error=False, fill_value='extrapolate')(out_profs['rhop'])
@@ -442,5 +461,308 @@ exit
         interp1d(_rhop_emiss, np.log(out['balmer'][::-1]), 
                  bounds_error=False, fill_value='extrapolate')(out_profs['rhop'])
     )
-    
+        
     return res
+
+
+
+
+
+
+    
+def plot_input_kin_prof(rmid_to_wall_m, ne, Te, Ti,
+                        innermost_rmid_cm, bound_sep_cm, lim_sep_cm):
+    '''Plot extent of kinetic profiles entering KN1D calculation
+    '''
+    fig,axs = plt.subplots(3,1, figsize=(8,8), sharex=True)
+    axs[0].plot(rmid_to_wall_m*1e2, ne)
+    axs[1].plot(rmid_to_wall_m*1e2, Te)
+    axs[2].plot(rmid_to_wall_m*1e2, Ti)
+    axs[-1].set_xlabel(r'$r_{mid}$ [cm]')
+    axs[0].set_ylabel(r'$n_e$ [$cm^{-3}$]')
+    axs[1].set_ylabel(r'$T_e$ [$eV$]')
+    axs[2].set_ylabel(r'$T_i$ [$eV$]')
+
+    indin = np.argmin(np.abs(rmid_to_wall_m*100 -(np.max(rmid_to_wall_m)*100.-innermost_rmid_cm)))
+    
+    axs[0].set_ylim([0,np.max(ne[indin:])]); axs[0].grid(True)
+    axs[1].set_ylim([0,np.max(Te[indin:])]); axs[1].grid(True)
+    axs[2].set_ylim([0,np.max(Ti[indin:])]); axs[2].grid(True)
+    axs[0].set_xlim([np.max(rmid_to_wall_m)*100.-innermost_rmid_cm, np.max(rmid_to_wall_m)*100.])
+    plt.subplots_adjust(hspace=0)
+
+    # also show location of limiter and LCFS:
+    axs[0].axvline(np.max(rmid_to_wall_m)*1e2-bound_sep_cm,c='m')
+    axs[1].axvline(np.max(rmid_to_wall_m)*1e2-bound_sep_cm,c='m')
+    axs[2].axvline(np.max(rmid_to_wall_m)*1e2-bound_sep_cm,c='m')
+
+    axs[0].axvline(np.max(rmid_to_wall_m)*1e2-(bound_sep_cm-lim_sep_cm),c='m')
+    axs[1].axvline(np.max(rmid_to_wall_m)*1e2-(bound_sep_cm-lim_sep_cm),c='m')
+    axs[2].axvline(np.max(rmid_to_wall_m)*1e2-(bound_sep_cm-lim_sep_cm),c='m')
+    
+
+
+
+
+
+
+
+def plot_overview(res):
+    '''Plot an overview of a KN1D run, showing both kinetic profile inputs and 
+    a small selection of the outputs. 
+
+    Parameters
+    ----------
+    res : dict
+        Output dictionary from function :py:fun:`~aurora.kn1d.run_kn1d`.
+    '''
+    
+    ins = res['ins']
+    outs = res['out']
+    
+    fig, ax = plt.subplots(4, 1, sharex=True, figsize=(10, 10))
+    
+    mu = int(ins['mu'])
+    species = 'H' if mu == 1 else 'D'
+
+    (line,) = ax[0].plot(ins['x'], ins['ne'] / 1e19, lw=2.0)
+
+    c = line.get_color()
+
+    ax[1].semilogy(ins['x'], ins['Te'], lw=2.0, c=c, ls='-', label=r'$T_e$')
+    ax[1].semilogy(ins['x'], ins['Ti'], lw=2.0, c=c, ls='--', label=r'$T_i$')
+    ax[1].semilogy(outs['xh'], outs['th'], lw=2.0, c=c, ls='-.', label=fr'$T_{species}$')
+
+    ax[2].semilogy(outs['xh'], outs['nh'], lw=2.0, c=c, ls='-', label=fr'$n_{species}$')
+    ax[2].semilogy(outs['xh2'], outs['nh2'], lw=2.0, c=c, ls='--', label=r'$n_{%s2}$'%species)
+    ax[2].semilogy(outs['xh2'], outs['nhp'], lw=2.0, c=c, ls='-.', label=r'$n_{%s2}^+$'%species)
+    
+    # quasineutrality in a pure plasma: nH+ = ne - nH2+ (NB: NH2+ is saved as nhp)
+    nhp_interp = interp1d(outs['xh2'], outs['nhp'], bounds_error=False, fill_value=0.0)(ins['x'])
+    ax[2].semilogy(ins['x'], ins['ne'] - nhp_interp, lw=2.0, c=c, ls=':', label=r'$n_e - n_{%s2}^+$'%species)
+
+    ax[3].semilogy(outs['xh'], outs['sion'] / 1e20, lw=2.0, c=c, label='Atomic ionization rate')
+
+    # annotate location of limiter and LCFS
+    ax[0].axvline(ins['xlim'])
+    ax[0].axvline(ins['xsep'])
+    ax[1].axvline(ins['xlim'])
+    ax[1].axvline(ins['xsep'])
+    ax[2].axvline(ins['xlim'])
+    ax[2].axvline(ins['xsep'])
+    ax[3].axvline(ins['xlim'])
+    ax[3].axvline(ins['xsep'])
+
+    dist = ins['xlim'] / 10.0  # convenient rule-of-thumb for plotting
+    ax[0].annotate('Limiter', (ins['xlim'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
+    ax[0].annotate('LCFS', (ins['xsep'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
+    
+    # reduce number of ticks from default
+    for n_ax in [0, 1, 2, 3]:
+        nyticks = len(ax[n_ax].get_yticks())
+        ax[n_ax].set_yticks(ax[n_ax].get_yticks()[::2])
+        
+    # set every other ylabel/ticks to the right
+    ax[1].yaxis.set_label_position("right")
+    ax[1].yaxis.tick_right()
+    ax[3].yaxis.set_label_position("right")
+    ax[3].yaxis.tick_right()
+
+    ax[0].set_ylabel(r'$n_e$ [$10^{19}$ $m^{-3}$]')
+    ax[1].set_ylabel(r'$eV$')
+    ax[2].set_ylabel(r'$m^{-3}$')
+    ax[3].set_ylabel(r'$10^{20}$ $m^{-3}$')
+    ax[-1].set_xlabel('Distance from the wall [m]')
+    
+    # legends
+    #ax[0].legend(fontsize=14, loc='best')
+    ax[1].legend(fontsize=14, loc='best')
+    ax[2].legend(fontsize=14, loc='best')
+    ax[3].legend(fontsize=14, loc='best')
+
+
+def plot_exc_states(res):
+    '''Plot excited state fractions of atomic neutral density from a KN1D run.
+
+    Parameters
+    ----------
+    res : dict
+        Output dictionary from function :py:fun:`~aurora.kn1d.run_kn1d`.
+    '''
+    ins = res['ins']
+    outs = res['out']
+
+    fig, ax = plt.subplots(4, 1, sharex=True, figsize=(10, 10))
+    
+    _ne = interp1d(ins['x'], ins['ne'])(outs['xh'])
+    (line,) = ax[0].semilogy(outs['xh'], outs['nh'] / _ne, lw=2.0)
+    c = line.get_color()
+
+    ax[1].plot(outs['xh'], outs['nh'], c=c, lw=2.0)
+
+    ax[2].plot(ins['x'], outs['N2'], c=c, lw=2.0, ls='-', label='total')
+    ax[2].plot(ins['x'], outs['N2_ground'], c=c, lw=2.0, ls='--', label='from ground')
+    ax[2].plot(ins['x'], outs['N2_cont'], c=c, lw=2.0, ls='-.', label='from cont.')
+
+    ax[3].plot(ins['x'], outs['N3'], c=c, ls='-', lw=2.0, label='total')
+    ax[3].plot(ins['x'], outs['N3_ground'], c=c, lw=2.0, ls='--', label='from ground')
+    ax[3].plot(ins['x'], outs['N3_cont'], c=c, lw=2.0, ls='-.', label='from cont.')
+
+    # annotate location of limiter and LCFS
+    ax[0].axvline(ins['xlim'])
+    ax[0].axvline(ins['xsep'])
+    ax[1].axvline(ins['xlim'])
+    ax[1].axvline(ins['xsep'])
+    ax[2].axvline(ins['xlim'])
+    ax[2].axvline(ins['xsep'])
+    ax[3].axvline(ins['xlim'])
+    ax[3].axvline(ins['xsep'])
+    
+    dist = ins['xlim'] / 10.0  # convenient rule-of-thumb for plotting
+    ax[0].annotate('Limiter', (ins['xlim'] + dist, 1e-3 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
+    ax[0].annotate('LCFS', (ins['xsep'] + dist, 1e-3 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
+    
+    ax[0].set_ylabel(r'$n_{n,1}/n_e$')
+    #ax[0].legend(loc='best')
+    
+    ax[1].set_ylabel(r'$n_{n,1}$ [m$^{-3}$]')
+    
+    ax[2].set_ylabel(r'$n_{n,2}$ [m$^{-3}$]')
+    ax[2].legend(loc='best')
+    
+    ax[3].set_ylabel(r'$n_{n,3}$ [m$^{-3}$]')
+    ax[3].legend(loc='best')
+    
+    ax[-1].set_xlabel('Distance from the wall [m]')
+
+
+
+    
+def plot_emiss(res, check_collrad=True):
+    '''Plot profiles of Ly-a and D-alpha emissivity from the KN1D output. 
+    KN1D internally computes Ly-a and D-alpha emission using the Johnson-Hinnov
+    coefficients; here we check the result of that calculation and compare it to the 
+    prediction from atomic data from the COLLRAD collisional-radiative model included
+    in DEGAS2. 
+
+    Parameters
+    ----------
+    res : dict
+        Output dictionary from function :py:fun:`~aurora.kn1d.run_kn1d`.
+    check_collrad : bool
+        If True, compare KN1D prediction of Ly-a and D-a emission using Johnson-Hinnov
+        rates using rates from COLLRAD. 
+    '''
+    
+    ins = res['ins'] 
+    outs = res['out']
+
+    mu = int(ins['mu'])
+    fig, ax = plt.subplots(2, 1, sharex=True, figsize=(10, 8))
+    (line,) = ax[0].plot(outs['xh'], outs['lyman'], ls='-')
+    c = line.get_color()
+
+    ax[1].plot(outs['xh'], outs['balmer'], '-', c=c, label='KN1D (JH)')
+
+    # annotate location of limiter and LCFS
+    ax[0].axvline(ins['xlim'])
+    ax[0].axvline(ins['xsep'])
+    ax[1].axvline(ins['xlim'])
+    ax[1].axvline(ins['xsep'])
+
+    dist = ins['xlim'] / 10.0  # convenient rule-of-thumb for plotting
+    ax[0].annotate('Limiter', (ins['xlim'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
+    ax[0].annotate('LCFS', (ins['xsep'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
+
+    ax[-1].set_xlabel('Distance from the wall [m]')
+    # ---------------
+    if check_collrad:
+        # test KN1D calculation of Ly-a and D-a
+
+        thirteenpointsix = h * c_light * Rydberg / e
+        E_32 = thirteenpointsix * (2.0 ** (-2.0) - 3.0 ** (-2.0)) * e  # J
+        E_21 = thirteenpointsix * (1.0 - 2.0 ** (-2.0)) * e  # J
+
+        # Balmer wavelengths from DEGAS2:
+        # \lambda_{H_\alpha} ~ 6562.80 A
+        # \lambda_{D_\alpha} ~ 6561.04 A
+        # \lambda_{T_\alpha} ~ 6560.45 A
+
+        # Lyman series spontaneous emission coeffs for n=2 to 1, 3 to 1, ... 16 to 1
+        A_lyman = [4.699e8, 5.575e7, 1.278e7, 4.125e6, 1.644e6, 7.568e5, 3.869e5, 2.143e5,
+                   1.263e5, 7.834e4, 5.066e4, 3.393e4, 2.341e4, 1.657e4, 1.200e4]
+        
+        # Balmer series spontaneous emission coeffs for n=3 to 2, 4 to 2, ... 17 to 2
+        A_balmer = [4.41e7, 8.42e6, 2.53e6, 9.732e5, 4.389e5, 2.215e5, 1.216e5, 7.122e4,
+                    4.397e4, 2.83e4, 18288.8, 12249.1, 8451.26, 5981.95, 4332.13]
+
+        A_21 = A_lyman[0]  # Ly-alpha
+        A_32 = A_balmer[0]  # D-alpha
+
+        Ly_alpha = interp1d(ins['x'], E_21 * outs['N2'] * A_21, kind='linear', bounds_error=False)(outs['xh'])  # J/s/m^3
+        D_alpha = interp1d(ins['x'], E_32 * outs['N3'] * A_32, kind='linear', bounds_error=False)(outs['xh'])  # J/s/m^3
+
+        ax[0].plot(outs['xh'], Ly_alpha, '--', c=c)
+        ax[1].plot(outs['xh'], D_alpha, '--', c=c, label='collrad')
+
+        ax[0].set_ylabel(r'Ly-alpha [W m$^{-3}$]')
+        ax[1].set_ylabel(fr'{"H" if mu == 1 else "D"}-alpha [W m$^{-3}$]')  # 656.28 nm in air
+        ax[-1].set_xlabel('Distance from the wall [m]')
+        
+        ax[0].legend(loc='best')
+        ax[1].legend(loc='best')
+        
+
+
+
+
+
+
+def plot_transport(res):
+    '''Make a simple set of plots of gradient scale lengths and effective diffusion coefficients
+    from the KN1D output.
+    
+    Parameters
+    ----------
+    res : dict
+        Output dictionary from function :py:fun:`~aurora.kn1d.run_kn1d`.
+    '''
+    ins = res['ins'] 
+    outs = res['out']
+
+    fig, ax = plt.subplots(3, 1, sharex=True, figsize=(10, 7.5))
+    
+    (line,) = ax[0].plot(ins['x'], outs['L_ne'], lw=2.0, label=r'$L_{n_e}$')
+    c = line.get_color()
+
+    ax[0].plot(ins['x'], outs['L_Te'], lw=2.0, c=c, ls='--', label=r'$L_{T_e}$')
+    ax[0].plot(ins['x'], outs['L_Ti'], lw=2.0, c=c, ls='-.', label=r'$L_{T_i}$')
+
+    # Effective diffusivity from Gamma_i/\nabla(n_e)
+    ax[1].plot(ins['x'], outs['D_eff'], lw=2.0, c=c)
+
+    # atomic and ion source profiles
+    ax[2].plot(outs['xH2'], outs['sh'], lw=2.0, c=c, ls='-', label='Atomic source')
+    ax[2].plot(outs['xH2'], outs['sp'], lw=2.0, c=c, ls='--', label='Ion source')
+
+    # annotate location of limiter and LCFS
+    ax[0].axvline(ins['xlim'])
+    ax[0].axvline(ins['xsep'])
+    ax[1].axvline(ins['xlim'])
+    ax[1].axvline(ins['xsep'])
+    ax[2].axvline(ins['xlim'])
+    ax[2].axvline(ins['xsep'])
+    
+    dist = ins['xlim'] / 10.0  # convenient rule-of-thumb for plotting
+    ax[0].annotate('Limiter', (ins['xlim'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
+    ax[0].annotate('LCFS', (ins['xsep'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
+
+    ax[0].legend(fontsize=16, loc='best')
+    
+    ax[1].set_ylabel(r'$D_{eff}$ [$m^2$ $s^{-1}$]', fontsize=16)
+    #ax[1].legend(fontsize=16, loc='best')
+
+    ax[2].set_ylabel(r'$m^{-3}$ $s^{-1}$', fontsize=16)
+    ax[2].legend(fontsize=16, loc='best')
+    
+    ax[-1].set_xlabel('Distance from the wall [m]')

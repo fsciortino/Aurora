@@ -1,7 +1,9 @@
 '''
-Script to test use of KN1D in an Aurora simulation.
+Script to test use of KN1D, also integrating it within an Aurora impurity transport simulation.
 
 It is recommended to run this in IPython.
+
+sciortino, Jan 2021
 '''
 
 import numpy as np
@@ -27,6 +29,8 @@ namelist = aurora.default_nml.load_default_namelist()
 examples_dir = os.path.dirname(os.path.abspath(__file__))
 geqdsk = omfit_eqdsk.OMFITgeqdsk(examples_dir+'/example.gfile')
 inputgacode = omfit_gapy.OMFITgacode(examples_dir+'/example.input.gacode')
+# NB: this example.input.gacode file does not contain edge kinetic profiles and does not have a reasonable Te at the LCFS
+# In this example, we will make up all kinetic data in the SOL based on exponential decay lengths.
 
 # save kinetic profiles on a rhop (sqrt of norm. pol. flux) grid
 kp = namelist['kin_profs']
@@ -42,17 +46,27 @@ namelist['Phi0'] = 2e20  # particles/s
 # setup Aurora simulation without neutrals and CXR
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
-# Run KN1D to get atomic neutral density
-p_H2_mTorr=1.0
-clen_divertor_cm=200.
-clen_limiter_cm=50.
-lim_sep_cm=2.
-bound_sep_cm=6.
-rmid_to_wall_cm=8.0
+# estimate connection lengths from the EFIT g-EQDSK
+clen_divertor_m, clen_limiter_m = aurora.estimate_clen(geqdsk)
+
+# Estimate radial separation of boundary to separatrix and limiter to separatrix.
+# This can be done by hand if desired, or using the following Aurora function for a specific device/shot/time
+# combination using the EFIT a-EQDSK
+#bound_sep_cm, lim_sep_cm = aurora.grids_utils.estimate_boundary_distance(my_shot, my_device, time_ms.)
+bound_sep_cm = 1.5
+lim_sep_cm = 1.0
+p_H2_mTorr=0.05 # mTorr
+innermost_rmid_cm=2.0
 
 kn1d_res = aurora.run_kn1d(kp['ne']['rhop'], kp['ne']['vals'][0,:], kp['Te']['vals'][0,:], kp['Te']['vals'][0,:],
-                           geqdsk, p_H2_mTorr, clen_divertor_cm, clen_limiter_cm,
-                           bound_sep_cm, lim_sep_cm, rmid_to_wall_cm)
+                           geqdsk, p_H2_mTorr, clen_divertor_m*1e2, clen_limiter_m*1e2,
+                           bound_sep_cm, lim_sep_cm, innermost_rmid_cm, plot_kin_profs=True)
+
+# series of plots to visualize (processed) KN1D output
+aurora.kn1d.plot_overview(kn1d_res)     # overview of inputs and outputs
+aurora.kn1d.plot_exc_states(kn1d_res)   # excited states
+aurora.kn1d.plot_emiss(kn1d_res)        # Ly-a and D-a emission profiles
+aurora.kn1d.plot_transport(kn1d_res)    # gradient scale lengths and "effective transport"
 
 # add atomic neutral density to inputs and turn on charge exchange recombination
 kp['n0']['rhop'] = kp['ne']['rhop']
@@ -109,7 +123,7 @@ ax.plot([],[],'k-', label='with CXR')
 ax.plot([],[],'k--', label='without CXR')
 ax.legend(loc='best').set_draggable(True)  
 ax.set_xlabel(r'$\rho_p$')
-ax.set_ylabel(r'$n_z$ [$cm^{-3}$]')
+ax.set_ylabel(r'$P_{rad}$ [$W/m^3$]')
 ax.set_xlim([0.85,np.max(asim.rhop_grid)])
 
 
