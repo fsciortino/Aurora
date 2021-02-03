@@ -10,20 +10,22 @@ def vol_int(Raxis_cm, ds, var, rhop_max=None):
     then the result is f(t). If the variable is f(t,*,x) then the result is f(t,charge)
     when "*" represents charge, line index, etc...
 
-    Args:
-        Raxis_cm : float 
-             Major radius on axis [cm]
-        ds: xarray dataset 
-             Dataset containing Aurora or STRAHL result
-        var: str
-             Name of the variable in the strahl_result.cdf file
-        rhop_max : float
-             Maximum normalized poloidal flux for integral. If not provided, integrate
-             over the entire simulation grid. 
+    Parameters
+    ----------
+    Raxis_cm : float 
+        Major radius on axis [cm]
+    ds: xarray dataset 
+        Dataset containing Aurora or STRAHL result
+    var: str
+        Name of the variable in the strahl_result.cdf file
+    rhop_max : float
+        Maximum normalized poloidal flux for integral. If not provided, integrate
+        over the entire simulation grid. 
 
-    Returns: 
-        var_volint : array (nt,)
-             Time history of volume integrated variable
+    Returns
+    -------
+    var_volint : array (nt,)
+        Time history of volume integrated variable
     """
     C = 2 * np.pi * Raxis_cm
     zvol = C * np.pi * ds['rvol_grid'].data / ds['pro'].data 
@@ -48,35 +50,37 @@ def vol_int(Raxis_cm, ds, var, rhop_max=None):
 def check_particle_conserv(Raxis_cm, ds=None, filepath=None, linestyle='-', plot=True, axs = None):
     ''' Check time evolution and particle conservation in Aurora or STRAHL output.
 
-    Args:
-         Raxis_cm : float
-             Major radius on axis [cm], used for volume integrals. 
-         ds : xarray dataset, optional
-             Dataset containing Aurora results, created using the xarray package. 
-             See :py:meth:`~aurora.core.check_conservation` for an illustration on how
-             to use this. 
-         filepath : str, optional
-             If provided, load results from STRAHL output file and check particle
-             particle conservation as for an Aurora run. 
-         linestyle : str, optional
-             matplotlib linestyle, default is '-' (continuous lines). Use this to 
-             overplot lines on the same plots using different linestyles, e.g. to check
-             whether some aurora option makes particle conservation better or worse. 
-         plot : bool, optional
-             If True, plot time histories of particle densities in each simulation reservoir.
-         axs : 2-tuple or array
-             array-like structure containing two matplotlib.Axes instances: the first one 
-             for the separate particle time variation in each reservoir, the second for 
-             the total particle-conservation check. This can be used to plot results 
-             from several aurora runs on the same axes. 
+    Parameters
+    ----------
+    Raxis_cm : float
+        Major radius on axis [cm], used for volume integrals. 
+    ds : xarray dataset, optional
+        Dataset containing Aurora results, created using the xarray package. 
+        See :py:meth:`~aurora.core.check_conservation` for an illustration on how
+        to use this. 
+    filepath : str, optional
+        If provided, load results from STRAHL output file and check particle
+        particle conservation as for an Aurora run. 
+    linestyle : str, optional
+        matplotlib linestyle, default is '-' (continuous lines). Use this to 
+        overplot lines on the same plots using different linestyles, e.g. to check
+        whether some aurora option makes particle conservation better or worse. 
+    plot : bool, optional
+        If True, plot time histories of particle densities in each simulation reservoir.
+    axs : 2-tuple or array
+        array-like structure containing two matplotlib.Axes instances: the first one 
+        for the separate particle time variation in each reservoir, the second for 
+        the total particle-conservation check. This can be used to plot results 
+        from several aurora runs on the same axes. 
 
-    Returns:
-         out : dict
-             Dictionary containing time histories across all reservoirs, useful for 
-             the assessment of particle conservation.
-         axs : 2-tuple or array, only returned if plot=True
-             array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
-             See optional input argument.
+    Returns
+    -------
+    out : dict
+        Dictionary containing time histories across all reservoirs, useful for 
+        the assessment of particle conservation.
+    axs : 2-tuple or array, only returned if plot=True
+        array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
+        See optional input argument.
     '''
     if filepath is not None:
         ds = xarray.open_dataset(filepath)  

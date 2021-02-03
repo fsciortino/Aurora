@@ -25,15 +25,17 @@ def get_adas_file_loc(filename, filetype='adf11'):
     #. Attempt to fetch the file remotely via open.adas.ac.uk and save it in 
        Aurora/aurora/adas_data/*filetype*/. 
 
-    Args:
-        filename : str
-            Name of the ADAS file of interest, e.g. 'plt89_ar.dat'.
-        filetype : str
-            ADAS file type. Currently allowed: 'adf11' or 'adf15'
+    Parameters
+    ----------
+    filename : str
+        Name of the ADAS file of interest, e.g. 'plt89_ar.dat'.
+    filetype : str
+        ADAS file type. Currently allowed: 'adf11' or 'adf15'
     
-    Returns:
-        file_loc : str
-            Full path to the requested file. 
+    Returns
+    -------
+    file_loc : str
+        Full path to the requested file. 
     '''
     if not os.path.isdir(adas_data_dir):
         # make sure that aurora/adas_data exists
@@ -96,9 +98,10 @@ def fetch_adf15_file(filename):
     '''Download ADF15 file from the OPEN-ADAS website and store it in the 'adas_data/adf15'
     directory. 
 
-    Args:
-        filename : str
-            Name of ADF15 file to be downloaded, e.g. 'pec96#c_pju#c2.dat'.
+    Parameters
+    ----------
+    filename : str
+        Name of ADF15 file to be downloaded, e.g. 'pec96#c_pju#c2.dat'.
     '''
     url = 'https://open.adas.ac.uk/download/adf15/'
 
@@ -123,15 +126,16 @@ def adas_files_dict():
     This function can be called to fetch a set of default files, which can then be modified (e.g. to 
     use a new file for a specific SXR filter) before running a calculation. 
 
-    Returns:
-        files : dict
-            Dictionary with keys equal to the atomic symbols of many of the most common ions of
-            interest in fusion research. For each ion, a sub-dictionary contains recommended file 
-            names for the relevant ADAS data types. Not all files types are available for all ions. 
-            Files types are usually a subset of 
-            'acd','scd','prb','plt','ccd','prc','pls','prs','fis','brs','pbs',prc'
-            Refer to :py:func:`~aurora.atomic.get_adas_file_types` for a description of the meaning of 
-            each file.
+    Returns
+    -------
+    files : dict
+        Dictionary with keys equal to the atomic symbols of many of the most common ions of
+        interest in fusion research. For each ion, a sub-dictionary contains recommended file 
+        names for the relevant ADAS data types. Not all files types are available for all ions. 
+        Files types are usually a subset of 
+        'acd','scd','prb','plt','ccd','prc','pls','prs','fis','brs','pbs',prc'
+        Refer to :py:func:`~aurora.atomic.get_adas_file_types` for a description of the meaning of 
+        each file.
     '''
             
     files={}

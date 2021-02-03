@@ -23,7 +23,8 @@ def get_adas_file_types():
 
     Returns
     -------
-    Dictionary with keys given by the ADAS file types and values giving a description for them.
+    dict
+        Dictionary with keys given by the ADAS file types and values giving a description for them.
     '''
     
     return {'acd':'effective recombination',
@@ -40,7 +41,7 @@ def get_adas_file_types():
     }
 
 
-class adas_file():
+class adas_file:
     '''Read ADAS file in ADF11 format over the given density and temperature grids. 
     Note that such grids vary between files, and the species they refer to may too.
 
@@ -258,7 +259,7 @@ def null_space(A):
 def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
                         include_cx=False, ne_tau=np.inf,
                         plot=True, ax = None, rho = None, rho_lbl=None,ls='-'):
-    '''Calculate fractional abundances from ionization and recombination equilibrium.
+    r'''Calculate fractional abundances from ionization and recombination equilibrium.
     If include_cx=True, radiative recombination and thermal charge exchange are summed.
 
     This method can work with ne,Te and n0_by_ne arrays of arbitrary dimension, but plotting 
@@ -267,9 +268,9 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
     Parameters
     ----------
     atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
-        necessary only if include_cx=True
+        necessary only if include_cx=True)
     ne_cm3 : float or array
-        Electron density in units of cm^-3
+        Electron density in units of :math:`cm^{-3}`
     Te_eV : float or array, optional
         Electron temperature in units of eV. If left to None, the Te grid given in the 
         atomic data is used.
@@ -454,10 +455,8 @@ def plot_relax_time(logTe, rate_coeff, ax = None):
         log-10 of Te [eV], on an arbitrary grid (same as other arguments, but not
         necessarily radial)
     rate_coeff : array (nr,)
-        Rate coefficients from ionization balance. See :py:meth:`~aurora.atomic.get_frac_abundances`
-        to obtain these via the "compute_rates" argument. 
-        N.B.: these rate coefficients will depend also on electron density, which does affect 
-        relaxation times. 
+        Rate coefficients from ionization balance, as returned by the :py:fun:`~aurora.atomic.get_frac_abundances` function.
+        N.B.: these rate coefficients will depend also on electron density, which does affect relaxation times. 
     ax : matplotlib axes instance, optional
         If provided, plot relaxation times on these axes.    
     '''
@@ -474,7 +473,7 @@ def plot_relax_time(logTe, rate_coeff, ax = None):
 
 
 
-class CartesianGrid(object):
+class CartesianGrid:
     """
     Linear multivariate Cartesian grid interpolation in arbitrary dimensions
     This is a regular grid with equal spacing.
@@ -516,7 +515,7 @@ class CartesianGrid(object):
 
 
 def interp_atom_prof(atom_table,x_prof, y_prof,log_val=False, x_multiply=True):
-    ''' Fast interpolate atomic data in atom_table onto the x_prof and y_prof profiles.
+    r''' Fast interpolate atomic data in atom_table onto the x_prof and y_prof profiles.
     This function assume that x_prof, y_prof, x,y, table are all base-10 logarithms,
     and x_prof, y_prof are equally spaced.
 
@@ -526,14 +525,14 @@ def interp_atom_prof(atom_table,x_prof, y_prof,log_val=False, x_multiply=True):
         List with x,y, table = atom_table, containing atomic data from one of the ADAS files. 
     x_prof : array (nt,nr)
         Spatio-temporal profiles of the first coordinate of the ADAS file table (usually 
-        electron density in cm^-3)
+        electron density in :math:`cm^{-3}`)
     y_prof : array (nt,nr)
         Spatio-temporal profiles of the second coordinate of the ADAS file table (usually 
-        electron temperature in eV)
+        electron temperature in :math:`eV`)
     log_val : bool
         If True, return natural logarithm of the data
     x_multiply : bool
-        If True, multiply output by 10**x_prof. 
+        If True, multiply output by :math:`10^{x_prof}`. 
 
     Returns
     -------
@@ -756,7 +755,7 @@ def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
 
     Parameters
     ----------
-    S_z : array (r,cs) [s^-1]
+    S_z : array (r,cs) [:math:`s^{-1}`]
          Effective ionization rates for each charge state as a function of radius. 
          Note that, for convenience within aurora, cs includes the neutral stage.
     q_prof : array (r,)
@@ -767,7 +766,7 @@ def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
     imp_A : float [amu]
          Atomic mass number, i.e. number of protons + neutrons (e.g. 2 for D)
     Ti_prof : array (r,)
-         Radial profile of ion temperature [eV]
+         Radial profile of ion temperature [:math:`eV`]
     nz_profs : array (r,cs), optional
          Radial profile for each charge state. If provided, calculate average normalized 
          ionization rate over all charge states.

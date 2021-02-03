@@ -3,8 +3,7 @@ Aurora functionality to set up and run KN1D to extract atomic and neutral
 background densities at the edge. 
 
 KN1D is a 1D kinetic neutral code originally developed by B.LaBombard (MIT). 
-For information, refer to the KN1D manual:
-https://github.com/fsciortino/kn1d/blob/master/kn1d_manual.pdf
+For information, refer to the `KN1D manual  <https://github.com/fsciortino/kn1d/blob/master/kn1d_manual.pdf>`__ .
 
 Note that this Aurora module is merely a wrapper of KN1D. Users require an
 IDL license on the computer where this module is called in order to be able to 
@@ -39,15 +38,52 @@ def _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV,
     This function returns ne, Te and Ti profiles on the rmid_to_wall_cm radial grid, 
     from the core to the wall. 
 
-    Returns:
-        rmid_to_wall_cm : 1D array
-            Midradius coordinate from the magnetic axis to the wall. Units of [:math:`cm`].
-        ne : 1D array
-            Electron density [:math:`cm^{-3}`] on the rmid_to_wall_cm grid.
-        Te : 1D array
-            Electron temperature [:math:`eV`] on the rmid_to_wall_cm grid.
-        Ti : 1D array
-            Main ion temperature [:math:`eV`] on the rmid_to_wall_cm grid.
+    Parameters
+    ----------
+    rhop : 1D array
+        Sqrt of poloidal flux grid on which ne_cm3, Te_eV and Ti_eV are given.
+    ne_cm3 : 1D array
+        Electron density on rhop grid [:math:`cm^{-3}`].
+    Te_eV : 1D array
+        Electron temperature on rhop grid [:math:`eV`].
+    Ti_eV : 1D array
+        Main ion temperature on rhop grid [:math:`eV`].
+    geqdsk : `omfit_eqdsk.OMFITgeqdsk` class instance
+        gEQDSK file as processed by the `omfit_eqdsk.OMFITgeqdsk` class.
+    bound_sep_cm : float
+        Distance between the wall/boundary and the separatrix [:math:`cm`].
+    lim_sep_cm : float
+        Distance between the limiter and the separatrix [:math:`cm`].
+    kin_prof_exp_decay_SOL : bool
+        If True, kinetic profiles are set to exponentially decay over the SOL region.
+    kin_prof_exp_decay_LS : bool
+        If True, kinetic profiles are set to exponentially decay over the LS region.
+    ne_decay_len_cm : list of 2 float
+        Exponential decay lengths of electron density in the SOL and LS regions. 
+        Default is [1,1] :math:`cm`.
+    Te_decay_len_cm : float
+        Exponential decay lengths of electron temperature in the SOL and LS regions. 
+        Default is [1,1] :math:`cm`.    
+    Ti_decay_len_cm : float
+        Exponential decay lengths of main ion temperature in the SOL and LS regions. 
+        Default is [1,1] :math:`cm`.
+    ne_min_cm3 : float
+        Minimum electron density across profile. Default is :math:`10^{12} cm^{-3}`.
+    Te_min_eV : float
+        Minimum electron temperaure across profile. Default is :math:`eV`.
+    Ti_min_eV : float
+        Minimum main ion temperaure across profile. Default is :math:`eV`.
+
+    Returns
+    -------
+    rmid_to_wall_cm : 1D array
+        Midradius coordinate from the magnetic axis to the wall. Units of [:math:`cm`].
+    ne : 1D array
+        Electron density [:math:`cm^{-3}`] on the rmid_to_wall_cm grid.
+    Te : 1D array
+        Electron temperature [:math:`eV`] on the rmid_to_wall_cm grid.
+    Ti : 1D array
+        Main ion temperature [:math:`eV`] on the rmid_to_wall_cm grid.
     '''
 
     ne_m3 = ne_cm3 * 1e6  # cm^-3 --> m^-3
@@ -146,7 +182,8 @@ def run_kn1d(rhop, ne_cm3, Te_eV, Ti_eV, geqdsk, p_H2_mTorr,
     Note that an IDL license must be available. Aurora does not currently include a Python
     translation of KN1D -- it only acts as a wrapper.
 
-    Args:
+    Parameters
+    ----------
     rhop : 1D array
         Sqrt of poloidal flux grid on which ne_cm3, Te_eV and Ti_eV are given.
     ne_cm3 : 1D array
@@ -169,8 +206,6 @@ def run_kn1d(rhop, ne_cm3, Te_eV, Ti_eV, geqdsk, p_H2_mTorr,
         Distance between the wall/boundary and the separatrix [:math:`cm`].
     lim_sep_cm : float
         Distance between the limiter and the separatrix [:math:`cm`].
-
-    Keyword Args:
     innermost_rmid_cm : float
         Distance from the wall to solve for. Default is 5 cm. 
     mu : float
@@ -207,6 +242,14 @@ def run_kn1d(rhop, ne_cm3, Te_eV, Ti_eV, geqdsk, p_H2_mTorr,
     plot_kin_profs : bool
         If True, kinetic profiles input to KN1D are plotted.
     
+    Returns
+    -------
+    dict
+        KN1D results and inputs, all collected into a dictionary. See example script for
+        an illustration of using this. 
+
+    Notes
+    -----
     For an example application, see the examples/aurora_kn1d.py script. 
     '''
     

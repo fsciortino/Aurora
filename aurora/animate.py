@@ -11,28 +11,29 @@ def animate_aurora(x,y,z, xlabel='', ylabel='', zlabel='',
                    uniform_y_spacing=True, save_filename=None):
     ''' Produce animation of time- and radially-dependent results from aurora.
 
-    Args:
-        x : array of float, (`M`,)
-            The abscissa. (in aurora, often this may be rhop)
-        y : array of float, (`N`,)
-            The variable to slide over. (in aurora, often this may be time)
-        z : array of float, (`P`, `M`, `N`)
-            The variables to plot.
-        xlabel : str, optional
-            The label for the abscissa.
-        ylabel : str, optional
-            The label for the animated coordinate. This is expected in a format such that ylabel.format(y_val)
-            will display a good moving label, e.g. ylabel='t={:.4f} s'.
-        zlabel : str, optional
-            The label for the ordinate.
-        labels : list of str with length `P`
-            The labels for each curve in `z`.
-        plot_sum : bool, optional
-            If True, will also plot the sum over all `P` cases. Default is False.
-        uniform_y_spacing : bool, optional
-           If True, interpolate values in z onto a uniformly-spaced y grid
-        save_filename : str
-           If a valid path/filename is provided, the animation will be saved here in mp4 format. 
+    Parameters
+    ----------
+    x : array of float, (`M`,)
+        The abscissa. (in aurora, often this may be rhop)
+    y : array of float, (`N`,)
+        The variable to slide over. (in aurora, often this may be time)
+    z : array of float, (`P`, `M`, `N`)
+        The variables to plot.
+    xlabel : str, optional
+        The label for the abscissa.
+    ylabel : str, optional
+        The label for the animated coordinate. This is expected in a format such that ylabel.format(y_val)
+        will display a good moving label, e.g. ylabel='t={:.4f} s'.
+    zlabel : str, optional
+        The label for the ordinate.
+    labels : list of str with length `P`
+        The labels for each curve in `z`.
+    plot_sum : bool, optional
+        If True, will also plot the sum over all `P` cases. Default is False.
+    uniform_y_spacing : bool, optional
+        If True, interpolate values in z onto a uniformly-spaced y grid
+    save_filename : str
+        If a valid path/filename is provided, the animation will be saved here in mp4 format. 
     '''
     if labels is None:
         labels = ['' for v in z]

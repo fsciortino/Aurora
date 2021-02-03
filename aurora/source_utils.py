@@ -37,19 +37,21 @@ def get_source_time_history(namelist, Raxis_cm, time):
     amplitude of the source (the number of particles corresponding to the integral over
     the source function. 
 
-    Args:
-        namelist : dict
-            Aurora namelist dictionary.
-        Raxis_cm : float
-            Major radius at the magnetic axis [cm]. This is needed to normalize the 
-            source such that it is treated as toroidally symmetric -- a necessary
-            idealization for 1.5D simulations. 
-        time : array (nt,), optional
-            Time array the source should be returned on.
+    Parameters
+    ----------
+    namelist : dict
+        Aurora namelist dictionary.
+    Raxis_cm : float
+        Major radius at the magnetic axis [cm]. This is needed to normalize the 
+        source such that it is treated as toroidally symmetric -- a necessary
+        idealization for 1.5D simulations. 
+    time : array (nt,), optional
+        Time array the source should be returned on.
 
-    Returns: 
-        source_time_history : array (nt,)
-            The source time history on the input time base.
+    Returns
+    -------
+    source_time_history : array (nt,)
+        The source time history on the input time base.
     '''
     imp = namelist['imp']
 
@@ -104,19 +106,21 @@ def write_source(t, s, shot, imp='Ca'):
         
     This will overwrite any {imp}flx{shot}.dat locally. 
         
-    Args:
-        t : array of float, (`n`,)
-            The timebase (in seconds).
-        s : array of float, (`n`,)
-            The source function (in particles/s).
-        shot : int
-            Shot number, only used for saving to a .dat file
-        imp : str, optional
-            Impurity species atomic symbol
+    Parameters
+    ----------
+    t : array of float, (`n`,)
+        The timebase (in seconds).
+    s : array of float, (`n`,)
+        The source function (in particles/s).
+    shot : int
+        Shot number, only used for saving to a .dat file
+    imp : str, optional
+        Impurity species atomic symbol
 
-    Returns:
-        contents : str
-            Content of the source file written to {imp}flx{shot}.dat
+    Returns
+    -------
+    contents : str
+        Content of the source file written to {imp}flx{shot}.dat
 
     """
     contents = '{.d}\n'.format(len(t),)
@@ -131,15 +135,17 @@ def write_source(t, s, shot, imp='Ca'):
 def read_source(filename):
     '''Read a STRAHL source file from {imp}flx{shot}.dat locally. 
     
-    Args:
-        filename : str 
-            Location of the file containing the STRAHL source file. 
+    Parameters
+    ----------
+    filename : str 
+        Location of the file containing the STRAHL source file. 
     
-    Returns:
-        t : array of float, (`n`,)
-            The timebase (in seconds).
-        s : array of float, (`n`,)
-            The source function (#/s).
+    Returns
+    -------
+    t : array of float, (`n`,)
+        The timebase (in seconds).
+    s : array of float, (`n`,)
+        The source function (#/s).
     '''
     t = []; s = []
     with open(filename,'r') as f:
@@ -160,26 +166,28 @@ def lbo_source_function(t_start, t_rise, t_fall, n_particles=1.0, time_vec=None)
     ''' Model for the expected shape of the time-dependent source function,
     using a convolution of a gaussian and an exponential decay.
 
-    Args:
-        t_start : float or array-like [ms]
-            Injection time, beginning of source rise. If multiple values are given, they are
-            used to create multiple source functions.
-        t_rise : float or array-like [ms]
-            Time scale of source rise. Similarly to t_start for multiple values.
-        t_fall : float or array-like [ms]
-            Time scale of source decay.Similarly to t_start for multiple values.
-        n_particles : float, opt
-            Total number of particles in source. Similarly to t_start for multiple values.
-            Defaults to 1.0.
-        time_vec : array-like
-            Time vector on which to create source function. If left to None,
-            use a linearly spaced time vector including the main features of the function.
+    Parameters
+    ----------
+    t_start : float or array-like [ms]
+        Injection time, beginning of source rise. If multiple values are given, they are
+        used to create multiple source functions.
+    t_rise : float or array-like [ms]
+        Time scale of source rise. Similarly to t_start for multiple values.
+    t_fall : float or array-like [ms]
+        Time scale of source decay.Similarly to t_start for multiple values.
+    n_particles : float, opt
+        Total number of particles in source. Similarly to t_start for multiple values.
+        Defaults to 1.0.
+    time_vec : array-like
+        Time vector on which to create source function. If left to None,
+        use a linearly spaced time vector including the main features of the function.
 
-    Returns:
-        time_vec : array
-            Times for the source function of each given impurity
-        source : array
-            Time history of the synthetized source function.
+    Returns
+    -------
+    time_vec : array
+        Times for the source function of each given impurity
+    source : array
+        Time history of the synthetized source function.
     '''
 
     t_start = np.atleast_1d(t_start)
@@ -218,26 +226,26 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
     If namelist['imp_source_energy_eV']<0, the neutrals speed is taken as the thermal speed based
     on Ti_eV, otherwise the value corresponding to namelist['imp_source_energy_eV'] is used.
 
-    Args:
-        namelist : dict
-            Aurora namelist. Only elements referring to the spatial distribution and energy of 
-            source atoms are accessed. 
-        rvol_grid : array (nr,)
-            Radial grid in volume-normalized coordinates [cm]
-        pro_grid : array (nr,)
-            Normalized first derivatives of the radial grid in volume-normalized coordinates. 
-        S_rates : array (nr,nt)
-            Ionization rate of neutral impurity over space and time.
+    Parameters
+    ----------
+    namelist : dict
+        Aurora namelist. Only elements referring to the spatial distribution and energy of 
+        source atoms are accessed. 
+    rvol_grid : array (nr,)
+        Radial grid in volume-normalized coordinates [cm]
+    pro_grid : array (nr,)
+        Normalized first derivatives of the radial grid in volume-normalized coordinates. 
+    S_rates : array (nr,nt)
+        Ionization rate of neutral impurity over space and time.
+    Ti_eV : array, optional (nr,nt)
+        Background ion temperature, only used if source_width_in=source_width_out=0.0 and 
+        imp_source_energy_eV<=0, in which case the source impurity neutrals are taken to 
+        have energy equal to the local Ti [eV]. 
 
-    Keyword Args:
-        Ti_eV : array, optional (nr,nt)
-            Background ion temperature, only used if source_width_in=source_width_out=0.0 and 
-            imp_source_energy_eV<=0, in which case the source impurity neutrals are taken to 
-            have energy equal to the local Ti [eV]. 
-
-    Returns:
-        source_rad_prof : array (nr,nt)
-            Radial profile of the impurity neutral source for each time step.
+    Returns
+    -------
+    source_rad_prof : array (nr,nt)
+        Radial profile of the impurity neutral source for each time step.
     '''
     r_src = namelist['rvol_lcfs'] + namelist['source_cm_out_lcfs']
 

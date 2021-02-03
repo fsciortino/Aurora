@@ -154,32 +154,32 @@ def get_exc_state_ratio(m, N1, ni, ne, Te, rad_prof=None, rad_label=r'rmin [cm]'
 
     Ref.: DEGAS2 manual.
 
-    Args:
-        m : int
-            Principal quantum number of excited state of interest. 2<m<10
-        N1 : float, list or 1D-array [:math:`cm^{-3}`]
-            Density of ions in the ground state. This must have the same shape as ni!
-        ni : float, list or 1D-array [:math:`cm^{-3}`]
-            Density of ions corresponding to the atom under consideration. This must
-            have the same shape as N1!
-        ne : float, list or 1D-array [:math:`cm^{-3}`]
-            Electron density to evaluate atomic rates at.
-        Te : float, list or 1D-array [:math:`eV`]
-            Electron temperature to evaluate atomic rates at.
+    Parameters
+    ----------
+    m : int
+        Principal quantum number of excited state of interest. 2<m<10
+    N1 : float, list or 1D-array [:math:`cm^{-3}`]
+        Density of ions in the ground state. This must have the same shape as ni!
+    ni : float, list or 1D-array [:math:`cm^{-3}`]
+        Density of ions corresponding to the atom under consideration. This must
+        have the same shape as N1!
+    ne : float, list or 1D-array [:math:`cm^{-3}`]
+        Electron density to evaluate atomic rates at.
+    Te : float, list or 1D-array [:math:`eV`]
+        Electron temperature to evaluate atomic rates at.
+    rad_prof : list, 1D array or None
+        If None, excited state densities are evaluated at all the combinations of ne,Te and zip(Ni,ni).
+        If a 1D array (same length as ne,Te,ni and N1), then this is taken to be a radial coordinate
+        for radial profiles of ne,Te,ni and N1.
+    rad_label : str
+        When rad_prof is not None, this is the label for the radial coordinate.
+    plot : bool
+        Display the excited state ratio
 
-    Keyword Args:
-        rad_prof : list, 1D array or None
-            If None, excited state densities are evaluated at all the combinations of ne,Te and zip(Ni,ni).
-            If a 1D array (same length as ne,Te,ni and N1), then this is taken to be a radial coordinate
-            for radial profiles of ne,Te,ni and N1.
-        rad_label : str
-            When rad_prof is not None, this is the label for the radial coordinate.
-        plot : bool
-            Display the excited state ratio
-
-    Returns:
-        Nm : array of shape [len(ni)=len(N1),len(ne),len(Te)]
-            Density of electrons in excited state `n`  [:math:`cm^{-3}`]
+    Returns
+    -------
+    Nm : array of shape [len(ni)=len(N1),len(ne),len(Te)]
+        Density of electrons in excited state `n`  [:math:`cm^{-3}`]
     """
     if m < 1:
         raise ValueError('Excited state principal quantum number must be greater than 1!')
@@ -262,34 +262,34 @@ def plot_exc_ratios(n_list=[2, 3, 4, 5, 6, 7, 8, 9], ne=1e13, ni=1e13, Te=50, N1
     """Plot :math:`N_i/N_1`, the ratio of hydrogen neutral density in the excited state `i`
     and the ground state, for given electron density and temperature.
 
-    Args:
-        n_list : list of integers
-            List of excited states (principal quantum numbers) to consider.
-        ne : float
-            Electron density in :math:`cm^{-3}`.
-        ni : float
-            Ionized hydrogen density [:math:`cm^{-3}`]. This may be set equal to ne for a pure plasma.
-        Te : float
-            Electron temperature in :math:`eV`.
-        N1 : float
-            Density of ground state hydrogen [:math:`cm^{-3}`]. This is needed because the excited
-            state fractions depend on the balance of excitation from the ground state and
-            coupling to the continuum.
+    Parameters
+    ----------
+    n_list : list of integers
+        List of excited states (principal quantum numbers) to consider.
+    ne : float
+        Electron density in :math:`cm^{-3}`.
+    ni : float
+        Ionized hydrogen density [:math:`cm^{-3}`]. This may be set equal to ne for a pure plasma.
+    Te : float
+        Electron temperature in :math:`eV`.
+    N1 : float
+        Density of ground state hydrogen [:math:`cm^{-3}`]. This is needed because the excited
+        state fractions depend on the balance of excitation from the ground state and
+        coupling to the continuum.
+    ax : matplotlib.axes instance, optional
+        Axes instance on which results should be plotted. 
+    ls : str
+        Line style to use
+    c : str or other matplotlib color specification
+        Color to use in plots
+    label : str
+        Label to use in scatter plot. 
 
-    Keyword Args:
-        ax : matplotlib.axes instance, optional
-            Axes instance on which results should be plotted. 
-        ls : str
-            Line style to use
-        c : str or other matplotlib color specification
-            Color to use in plots
-        label : str
-            Label to use in scatter plot. 
-
-    Returns:
-        Ns : list of arrays
-            List of arrays for each of the n-levels requested, each containing excited state 
-            densities at the chosen densities and temperatures for the given ground state density.
+    Returns
+    -------
+    Ns : list of arrays
+        List of arrays for each of the n-levels requested, each containing excited state 
+        densities at the chosen densities and temperatures for the given ground state density.
     """
 
     Ns = np.zeros(len(n_list))
@@ -315,41 +315,42 @@ def Lya_to_neut_dens(emiss_prof, ne, Te, ni=None, plot=True, rhop=None,
     This ignores possible molecular dynamics and effects that may be captured via
     forward modeling of neutral transport.
 
-    Args:
-        emiss_prof : 1D array
-            Emissivity profile, units of :math:`W/cm`
-        ne : 1D array
-            Electron density, units of :math:`cm^{-3}`
-        Te : 1D array
-            Electron temperature, units of :math:`eV`
-    
-    Keyword Args:
-        ni : 1D array
-            Main ion (H/D/T) density, units of :math:`cm^{-3}`. 
-            If left to None, this is internally set to ni=ne.
-        plot : bool
-            If True, plot some of the key density profiles.
-        rhop : 1D array
-            Sqrt of normalized poloidal flux radial coordinate. Used only for plotting.
-        rates_source : str
-            Source of atomic rates. Possible choices are 'adas' or 'colrad'
-        axs : Axes instance
-            If given, plot on these axes.
+    Parameters
+    ----------
+    emiss_prof : 1D array
+        Emissivity profile, units of :math:`W/cm`
+    ne : 1D array
+        Electron density, units of :math:`cm^{-3}`
+    Te : 1D array
+        Electron temperature, units of :math:`eV`
+    ni : 1D array
+        Main ion (H/D/T) density, units of :math:`cm^{-3}`. 
+        If left to None, this is internally set to ni=ne.
+    plot : bool
+        If True, plot some of the key density profiles.
+    rhop : 1D array
+        Sqrt of normalized poloidal flux radial coordinate. Used only for plotting.
+    rates_source : str
+        Source of atomic rates. Possible choices are 'adas' or 'colrad'
+    axs : Axes instance
+        If given, plot on these axes.
 
-    Returns:
-        N1 : 1D array
-            Radial profile of estimated ground state atomic neutral density on the same grid 
-            as the input arrays. Units of :math:`cm^{-3}`.
+    Returns
+    -------
+    N1 : 1D array
+        Radial profile of estimated ground state atomic neutral density on the same grid 
+        as the input arrays. Units of :math:`cm^{-3}`.
 
-    Example calls:::
+    Examples
+    --------
 
         N2_colrad,axs = Lya_to_neut_dens_basic(
-                             emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
-                             rates_source='colrad')
+                            emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
+                            rates_source='colrad')
 
         N2_adas,axs = Lya_to_neut_dens_basic(
-                             emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
-                             rates_source='adas',axs=axs)
+                            emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
+                            rates_source='adas',axs=axs)
 
     '''
     assert len(emiss_prof)==len(ne) and len(ne)==len(Te)

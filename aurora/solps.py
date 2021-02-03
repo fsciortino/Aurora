@@ -23,7 +23,7 @@ class solps_case:
         '''Read SOLPS output and prepare for Aurora impurity-neutral analysis. 
 
         Parameters
-        -----------------
+        ----------
         path : str
             Path to output files. If these are "extracted" files from SOLPS (form='extracted'),
             then this is the path to the disk location where each of the required files
@@ -253,12 +253,12 @@ class solps_case:
         as indicated by the "files" list argument.
 
         Parameters
-        -----------------
+        ----------
         files : list or array-like
             EIRENE output files to read. Default is to load all files for which this method has been tested. 
 
         Returns
-        ------------
+        -------
         eirene_out : dict
             Dictionary for each loaded file containing a subdictionary with keys for each loaded field from each file. 
         '''
@@ -301,7 +301,7 @@ class solps_case:
         '''Load and process SOLPS to permit clear plotting. 
         
         Parameters
-        -----------------
+        ----------
         fields : dict
             Dictionary containing SOLPS outputs to process. Keys indicate the quantity, value its label
             (only used for plotting). If left to None, defaults fields of 'ne','Te','nn' and 'Tn' are used.
@@ -313,7 +313,7 @@ class solps_case:
             If True, plot results for all loaded 2D quantities. 
 
         Returns
-        ------------
+        -------
         quants : dict
             Dictionary containing 'R','Z' coordinates for 2D maps of each field requested by user.
             Quantities are processed and masked to facilitate plotting.
@@ -366,13 +366,13 @@ class solps_case:
         Colorbars are set to be manually adjustable, allowing variable image saturation.
 
         Parameters
-        -----------------
+        ----------
         vals : array, (ny,nx)
             2D array containing a variable of interest, on the same grid as the 
             R and Z attributes. 
 
         Returns
-        ------------
+        -------
         label : str
             Label describing the quantity being plotted.
         use_triang : bool
@@ -417,7 +417,7 @@ class solps_case:
         as well as flux surface averaged (FSA) ones. 
 
         Parameters
-        -----------------
+        ----------
         quant : str
             Quantity of interest. Default is 'nn' (neutral atomic density). See self.labels.keys()
             for other options.
@@ -430,7 +430,7 @@ class solps_case:
             If True, plot radial profiles. 
 
         Returns
-        ------------
+        -------
         rhop_fsa : 1D array
             Sqrt of poloidal flux grid on which FSA profiles are given.
         prof_fsa : 1D array
@@ -541,7 +541,7 @@ def apply_mask(triang, geqdsk, max_mask_len=0.4, mask_up=False, mask_down=False)
     grid. 
 
     Parameters
-    -----------------
+    ----------
     triang : instance of matplotlib.tri.triangulation.Triangulation
         Matplotlib triangulation object for the (R,Z) grid. 
     geqdsk : dict
@@ -560,7 +560,7 @@ def apply_mask(triang, geqdsk, max_mask_len=0.4, mask_up=False, mask_down=False)
         Default is False.
       
     Returns
-    ------------
+    -------
     triang : instance of matplotlib.tri.triangulation.Triangulation
         Masked instance of the input matplotlib triangulation object.
     '''

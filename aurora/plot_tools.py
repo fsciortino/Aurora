@@ -11,27 +11,28 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
                 x_line=None, y_line=None, **kwargs):
     """Make a plot to explore multidimensional data.
 
-    Args:
-        x : array of float, (`M`,)
-            The abscissa. (in aurora, often this may be rhop)
-        y : array of float, (`N`,)
-            The variable to slide over. (in aurora, often this may be time)
-        z : array of float, (`P`, `M`, `N`)
-            The variables to plot.
-        xlabel : str, optional
-            The label for the abscissa.
-        ylabel : str, optional
-            The label for the slider.
-        zlabel : str, optional
-            The label for the ordinate.
-        labels : list of str with length `P`
-            The labels for each curve in `z`.
-        plot_sum : bool, optional
-            If True, will also plot the sum over all `P` cases. Default is False.
-        x_line : float, optional
-            x coordinate at which a vertical line will be drawn. 
-        y_line : float, optional
-            y coordinate at which a horizontal line will be drawn.
+    Parameters
+    ----------
+    x : array of float, (`M`,)
+        The abscissa. (in aurora, often this may be rhop)
+    y : array of float, (`N`,)
+        The variable to slide over. (in aurora, often this may be time)
+    z : array of float, (`P`, `M`, `N`)
+        The variables to plot.
+    xlabel : str, optional
+        The label for the abscissa.
+    ylabel : str, optional
+        The label for the slider.
+    zlabel : str, optional
+        The label for the ordinate.
+    labels : list of str with length `P`
+        The labels for each curve in `z`.
+    plot_sum : bool, optional
+        If True, will also plot the sum over all `P` cases. Default is False.
+    x_line : float, optional
+        x coordinate at which a vertical line will be drawn. 
+    y_line : float, optional
+        y coordinate at which a horizontal line will be drawn.
     """
     if labels is None:
         labels = ['' for v in z]

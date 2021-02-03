@@ -33,77 +33,79 @@ def compute_rad(imp, nz, ne, Te,
     All radiation outputs are given in :math:`W cm^{-3}`, consistently with units of :math:`cm^{-3}`
     given for inputs.
 
-    Args:
-        imp : str
-             Impurity symbol, e.g. Ca, F, W
-        nz : array (time, nZ, space) [:math:`cm^{-3}`]
-            Dictionary with impurity density result, as given by :py:func:`~aurora.core.run_aurora` method.
-        ne : array (time,space) [:math:`cm^{-3}`]
-            Electron density on the output grids.
-        Te : array (time,space) [eV]
-            Electron temperature on the output grids.
+    Parameters
+    ----------
+    imp : str
+        Impurity symbol, e.g. Ca, F, W
+    nz : array (time, nZ, space) [:math:`cm^{-3}`]
+        Dictionary with impurity density result, as given by :py:func:`~aurora.core.run_aurora` method.
+    ne : array (time,space) [:math:`cm^{-3}`]
+        Electron density on the output grids.
+    Te : array (time,space) [eV]
+        Electron temperature on the output grids.
+    n0 : array(time,space), optional [:math:`cm^{-3}`]
+        Background neutral density (assumed of hydrogen-isotopes).
+        This is only used if thermal_cx_rad_flag=True.
+    Ti : array (time,space) [eV]
+        Main ion temperature (assumed of hydrogen-isotopes). This is only used
+        if thermal_cx_rad_flag=True. If not set, Ti is taken equal to Te. 
+    adas_files_sub : dict
+        Dictionary containing ADAS file names for radiation calculations, possibly including keys
+        "plt","prb","prc","pls","prs","pbs","brs"
+        Any file names that are needed and not provided will be searched in the 
+        :py:meth:`~aurora.adas_files.adas_files_dict` dictionary. 
+    prad_flag : bool, optional
+        If True, total radiation is computed (for each charge state and their sum)
+    sxr_flag : bool, optional
+        If True, soft x-ray radiation is computed (for the given 'pls','prs' ADAS files)
+    thermal_cx_rad_flag : bool, optional
+        If True, thermal charge exchange radiation is computed.
+    spectral_brem_flag : bool, optional
+        If True, spectral bremstrahlung is computed (based on available 'brs' ADAS file)
 
+    Returns
+    -------
+    res : dict
+        Dictionary containing radiation terms, depending on the activated flags. 
 
-    Keyword Args:
-        n0 : array(time,space), optional [:math:`cm^{-3}`]
-             Background neutral density (assumed of hydrogen-isotopes).
-             This is only used if thermal_cx_rad_flag=True.
-        Ti : array (time,space) [eV]
-            Main ion temperature (assumed of hydrogen-isotopes). This is only used
-            if thermal_cx_rad_flag=True. If not set, Ti is taken equal to Te. 
-        adas_files_sub : dict
-            Dictionary containing ADAS file names for radiation calculations, possibly including keys
-            "plt","prb","prc","pls","prs","pbs","brs"
-            Any file names that are needed and not provided will be searched in the 
-            :py:meth:`~aurora.adas_files.adas_files_dict` dictionary. 
-        prad_flag : bool, optional
-            If True, total radiation is computed (for each charge state and their sum)
-        sxr_flag : bool, optional
-            If True, soft x-ray radiation is computed (for the given 'pls','prs' ADAS files)
-        thermal_cx_rad_flag : bool, optional
-            If True, thermal charge exchange radiation is computed.
-        spectral_brem_flag : bool, optional
-            If True, spectral bremstrahlung is computed (based on available 'brs' ADAS file)
+    Notes
+    -----
+    The structure of the "res" dictionary is as follows.
+    
+    If prad_flag=True,
+    
+    res['line_rad'] : array (nt,nZ,nr)- from ADAS "plt" files
+        Excitation-driven line radiation for each impurity charge state.
+    res['cont_rad'] : array (nt,nZ,nr)- from ADAS "prb" files
+        Continuum and line power driven by recombination and bremsstrahlung for impurity ions.
+    res['brems'] : array (nt,nr)- analytic formula. 
+        Bremsstrahlung produced by electron scarrering at fully ionized impurity 
+        This is only an approximate calculation and is more accurately accounted for in the 
+        'cont_rad' component.
+    res['thermal_cx_cont_rad'] : array (nt,nZ,nr)- from ADAS "prc" files
+        Radiation deriving from charge transfer from thermal neutral hydrogen to impurity ions.
+        Returned only if thermal_cx_rad_flag=True.
+    res['tot'] : array (nt,nZ,nr)
+        Total unfilted radiation, summed over all charge states, given by the sum of all known 
+        radiation components.
+    
+    If sxr_flag=True,
 
-    Returns:
-        res : dict
-            Dictionary containing radiation terms, depending on the activated flags. 
-            The structure of the "res" dictionary is as follows.
+    res['sxr_line_rad'] : array (nt,nZ,nr)- from ADAS "pls" files
+        Excitation-driven line radiation for each impurity charge state in the SXR range.
+    res['sxr_cont_rad'] : array (nt,nZ,nr)- from ADAS "prs" files
+        Continuum and line power driven by recombination and bremsstrahlung for impurity ions
+        in the SXR range. 
+    res['sxr_brems'] : array (nt,nZ,nr)- from ADAS "pbs" files
+        Bremsstrahlung produced by electron scarrering at fully ionized impurity in the SXR range.
+    res['sxr_tot'] : array (nt,nZ,nr)
+        Total radiation in the SXR range, summed over all charge states, given by the sum of all known 
+        radiation components in the SXR range. 
 
-        If prad_flag=True,
+    If spectral_brem_flag,
 
-        res['line_rad'] : array (nt,nZ,nr)- from ADAS "plt" files
-            Excitation-driven line radiation for each impurity charge state.
-        res['cont_rad'] : array (nt,nZ,nr)- from ADAS "prb" files
-            Continuum and line power driven by recombination and bremsstrahlung for impurity ions.
-        res['brems'] : array (nt,nr)- analytic formula. 
-            Bremsstrahlung produced by electron scarrering at fully ionized impurity 
-            This is only an approximate calculation and is more accurately accounted for in the 
-            'cont_rad' component.
-        res['thermal_cx_cont_rad'] : array (nt,nZ,nr)- from ADAS "prc" files
-            Radiation deriving from charge transfer from thermal neutral hydrogen to impurity ions.
-            Returned only if thermal_cx_rad_flag=True.
-        res['tot'] : array (nt,nZ,nr)
-            Total unfilted radiation, summed over all charge states, given by the sum of all known 
-            radiation components.
-
-        If sxr_flag=True,
-
-        res['sxr_line_rad'] : array (nt,nZ,nr)- from ADAS "pls" files
-            Excitation-driven line radiation for each impurity charge state in the SXR range.
-        res['sxr_cont_rad'] : array (nt,nZ,nr)- from ADAS "prs" files
-            Continuum and line power driven by recombination and bremsstrahlung for impurity ions
-            in the SXR range. 
-        res['sxr_brems'] : array (nt,nZ,nr)- from ADAS "pbs" files
-            Bremsstrahlung produced by electron scarrering at fully ionized impurity in the SXR range.
-        res['sxr_tot'] : array (nt,nZ,nr)
-            Total radiation in the SXR range, summed over all charge states, given by the sum of all known 
-            radiation components in the SXR range. 
-
-        If spectral_brem_flag,
-
-        res['spectral_brems'] : array (nt,nZ,nr) -- from ADAS "brs" files
-            Bremsstrahlung at a specific wavelength, depending on provided "brs" file. 
+    res['spectral_brems'] : array (nt,nZ,nr) -- from ADAS "brs" files
+        Bremsstrahlung at a specific wavelength, depending on provided "brs" file. 
     '''
     res = {}
 
@@ -239,33 +241,35 @@ def plot_radiation_profs(imp, nz_prof, logne_prof, logTe_prof, xvar_prof,
     (e.g. the output of aurora), or profiles of fractional abundances from ionization 
     equilibrium.
 
-    Args: 
-        imp : str, optional
-            Impurity ion atomic symbol.
-        nz_prof : array (TODO for docs: check dimensions)
-            Impurity charge state densities
-        logne_prof : array (TODO for docs: check dimensions)
-            Electron density profiles in :math:`cm^{-3}`
-        logTe_prof : array (TODO for docs: check dimensions)
-            Electron temperature profiles in eV
-        xvar_prof : array (TODO for docs: check dimensions)
-            Profiles of a variable of interest, on the same grid as kinetic profiles. 
-        xvar_label : str, optional
-            Label for x-axis. 
-        atom_data : dict, optional
-            Dictionary containing atomic data as output by :py:meth:`~aurora.atomic.get_atom_data`
-            for the atomic processes of interest. "prs","pls","plt" and "prb" are required by this function.
-            If not provided, this function loads these files internally. 
+    Parameters
+    ----------
+    imp : str, optional
+        Impurity ion atomic symbol.
+    nz_prof : array (TODO for docs: check dimensions)
+        Impurity charge state densities
+    logne_prof : array (TODO for docs: check dimensions)
+        Electron density profiles in :math:`cm^{-3}`
+    logTe_prof : array (TODO for docs: check dimensions)
+        Electron temperature profiles in eV
+    xvar_prof : array (TODO for docs: check dimensions)
+        Profiles of a variable of interest, on the same grid as kinetic profiles. 
+    xvar_label : str, optional
+        Label for x-axis. 
+    atom_data : dict, optional
+        Dictionary containing atomic data as output by :py:meth:`~aurora.atomic.get_atom_data`
+        for the atomic processes of interest. "prs","pls","plt" and "prb" are required by this function.
+        If not provided, this function loads these files internally. 
 
-    Returns:
-        pls : array (TODO for docs: check dimensions)
-            SXR line radiation.
-        prs : array (TODO for docs: check dimensions)
-            SXR continuum radiation.
-        pltt : array (TODO for docs: check dimensions)
-            Unfiltered line radiation.
-        prb : array (TODO for docs: check dimensions)
-            Unfiltered continuum radiation.        
+    Returns
+    -------
+    pls : array (TODO for docs: check dimensions)
+        SXR line radiation.
+    prs : array (TODO for docs: check dimensions)
+        SXR continuum radiation.
+    pltt : array (TODO for docs: check dimensions)
+        Unfiltered line radiation.
+    prb : array (TODO for docs: check dimensions)
+        Unfiltered continuum radiation.        
     '''
     if atom_data is None:
         # if atom_data dictionary was not given, load appropriate default files
@@ -332,48 +336,48 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), 
     calculating radiation terms over the radius and integrated over the plasma cross section. 
 
-    Args:
-        imp : str (nr,)
-            Impurity ion symbol, e.g. W
-        rhop : array (nr,)
-            Sqrt of normalized poloidal flux array from the axis outwards
-        ne_cm3 : array (nr,)
-            Electron density in :math:`cm^{-3}` units.
-        Te_eV : array (nr,)
-            Electron temperature in eV
-        vol : array (nr,)
-            Volume of each flux surface in :math:`m^3`. Note the units! We use :math:`m^3` here
-            rather than :math:`cm^3` because it is more common to work with :math:`m^3` for 
-            flux surface volumes of fusion devices.
+    Parameters
+    ----------
+    imp : str (nr,)
+        Impurity ion symbol, e.g. W
+    rhop : array (nr,)
+        Sqrt of normalized poloidal flux array from the axis outwards
+    ne_cm3 : array (nr,)
+        Electron density in :math:`cm^{-3}` units.
+    Te_eV : array (nr,)
+        Electron temperature in eV
+    vol : array (nr,)
+        Volume of each flux surface in :math:`m^3`. Note the units! We use :math:`m^3` here
+        rather than :math:`cm^3` because it is more common to work with :math:`m^3` for 
+        flux surface volumes of fusion devices.
+    adas_files_sub : dict
+        Dictionary containing ADAS file names for forward modeling and/or radiation calculations.
+        Possibly useful keys include
+        "scd","acd","ccd","plt","prb","prc","pls","prs","pbs","brs"
+        Any file names that are needed and not provided will be searched in the 
+        :py:meth:`~aurora.adas_files.adas_files_dict` dictionary. 
+    n0_cm3 : array (nr,), optional
+        Background ion density (H,D or T). If provided, charge exchange (CX) 
+        recombination is included in the calculation of charge state fractional 
+        abundances.
+    Ti_eV : array (nr,), optional
+        Background ion density (H,D or T). This is only used if CX recombination is 
+        requested, i.e. if n0_cm3 is not None. If not given, Ti is set equal to Te. 
+    nz_cm3 : array (nr,nz), optional
+        Impurity charge state densities in :math:`cm^{-3}` units. Fractional abundancies can 
+        alternatively be specified via the :param:frac parameter for a constant-fraction
+        impurity model across the radius. If provided, nz_cm3 is used. 
+    frac : float, optional
+        Fractional abundance, with respect to ne, of the chosen impurity. 
+        The same fraction is assumed across the radial profile. If left to None,
+        nz_cm3 must be given. 
+    plot : bool, optional
+        If True, plot a number of diagnostic figures. 
 
-    Keyword Args:
-        adas_files_sub : dict
-            Dictionary containing ADAS file names for forward modeling and/or radiation calculations.
-            Possibly useful keys include
-            "scd","acd","ccd","plt","prb","prc","pls","prs","pbs","brs"
-            Any file names that are needed and not provided will be searched in the 
-            :py:meth:`~aurora.adas_files.adas_files_dict` dictionary. 
-        n0_cm3 : array (nr,), optional
-            Background ion density (H,D or T). If provided, charge exchange (CX) 
-            recombination is included in the calculation of charge state fractional 
-            abundances.
-        Ti_eV : array (nr,), optional
-            Background ion density (H,D or T). This is only used if CX recombination is 
-            requested, i.e. if n0_cm3 is not None. If not given, Ti is set equal to Te. 
-        nz_cm3 : array (nr,nz), optional
-            Impurity charge state densities in :math:`cm^{-3}` units. Fractional abundancies can 
-            alternatively be specified via the :param:frac parameter for a constant-fraction
-            impurity model across the radius. If provided, nz_cm3 is used. 
-        frac : float, optional
-            Fractional abundance, with respect to ne, of the chosen impurity. 
-            The same fraction is assumed across the radial profile. If left to None,
-            nz_cm3 must be given. 
-        plot : bool, optional
-            If True, plot a number of diagnostic figures. 
-
-    Returns:
-        res : dict
-            Dictionary containing results of radiation model.     
+    Returns
+    -------
+    res : dict
+        Dictionary containing results of radiation model.     
     '''
     if nz_cm3 is None:
         assert frac is not None
@@ -531,21 +535,23 @@ def get_main_ion_dens(ne_cm3, ions, rhop_plot=None):
     This requires subtracting from ne the impurity charge state density times Z for each 
     charge state of every impurity present in the plasma in significant amounts. 
     
-    Args:
-        ne_cm3 : array (time,space)
-            Electron density in :math:`cm^{-3}`
-        ions : dict
-            Dictionary with keys corresponding to the atomic symbol of each impurity under 
-            consideration. The values in ions[key] should correspond to the charge state 
-            densities for the selected impurity ion in :math:`cm^{-3}`, with shape 
-            (time,nZ,space). 
-        rhop_plot : array (space), optional
-            rhop radial grid on which densities are given. If provided, plot densities of 
-            all species at the last time slice over this radial grid. 
+    Parameters
+    ----------
+    ne_cm3 : array (time,space)
+        Electron density in :math:`cm^{-3}`
+    ions : dict
+        Dictionary with keys corresponding to the atomic symbol of each impurity under 
+        consideration. The values in ions[key] should correspond to the charge state 
+        densities for the selected impurity ion in :math:`cm^{-3}`, with shape 
+        (time,nZ,space). 
+    rhop_plot : array (space), optional
+        rhop radial grid on which densities are given. If provided, plot densities of 
+        all species at the last time slice over this radial grid. 
 
-    Returns:
-        ni_cm3 : array (time,space)
-            Estimated main ion density in :math:`cm^{-3}`.
+    Returns
+    -------
+    ni_cm3 : array (time,space)
+        Estimated main ion density in :math:`cm^{-3}`.
     '''
     ni_cm3 = copy.deepcopy(ne_cm3)
 
@@ -577,29 +583,29 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
 
     Units for interpolation: :math:`cm^{-3}` for density; :math:`eV` for temperature.
 
-    Args:
-        path : str
-            Path to adf15 file to read.
-        order : int, opt
-            Parameter to control the order of interpolation. Default is 1 (linear interpolation).
-        
-    Keyword Args:
-        plot_lines : list
-            List of lines whose PEC data should be displayed. Lines should be identified
-            by their wavelengths. The list of available wavelengths in a given file can be retrieved
-            by first running this function ones, checking dictionary keys, and then requesting a
-            plot of one (or more) of them.
-        ax : matplotlib axes instance
-            If not None, plot on this set of axes.
-        plot_3d : bool
-            Display PEC data as 3D plots rather than 2D ones.
+    Parameters
+    ----------
+    path : str
+        Path to adf15 file to read.
+    order : int, opt
+        Parameter to control the order of interpolation. Default is 1 (linear interpolation).
+    plot_lines : list
+        List of lines whose PEC data should be displayed. Lines should be identified
+        by their wavelengths. The list of available wavelengths in a given file can be retrieved
+        by first running this function ones, checking dictionary keys, and then requesting a
+        plot of one (or more) of them.
+    ax : matplotlib axes instance
+        If not None, plot on this set of axes.
+    plot_3d : bool
+        Display PEC data as 3D plots rather than 2D ones.
 
-    Returns:
-        pec_dict : dict
-            Dictionary containing interpolation functions for each of the available lines of the
-            indicated type (ionization or recombination). Each interpolation function takes as arguments
-            the log-10 of ne and Te.
-
+    Returns
+    -------
+    pec_dict : dict
+        Dictionary containing interpolation functions for each of the available lines of the
+        indicated type (ionization or recombination). Each interpolation function takes as arguments
+        the log-10 of ne and Te.
+    
     Minimal Working Example (MWE)::
 
         filename = 'pec96#h_pju#h0.dat' # for D Ly-alpha
@@ -623,7 +629,9 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
          path = aurora.get_adas_file_loc(filename, filetype='adf15')
          pec_dict = aurora.read_adf15(path, plot_lines=[584.4])
 
-    This function should work with PEC files produced via adas810 or adas218.
+    Notes
+    -----
+    This function expects the format of PEC files produced via the ADAS adas810 or adas218 routines.
 
     """
     # find out whether file is metastable resolved
@@ -842,39 +850,39 @@ def get_colradpy_pec_prof(ion, cs, rhop, ne_cm3, Te_eV,
     the :py:func:`~aurora.radiation.read_adf15` function to read PEC data from an ADAS ADF-15 file and 
     interpolate results on ne,Te grids. 
 
-    Args:
-        ion : str
-            Ion atomic symbol
-        cs : str
-            Charge state, given in format like '17', indicating total charge of ion (e.g. '17' would be for Li-like Ca)
-        rhop : array (nr,)
-            Sqrt of normalized poloidal flux radial array
-        ne_cm3 : array (nr,)
-            Electron density in :math:`cm^{-3}` units
-        Te_eV : array (nr,)
-            Electron temperature in eV units
-        lam_nm : float
-            Center of the wavelength region of interest [nm]
-        lam_width_nm : float
-            Width of the wavelength region of interest [nm]
-        adf04_loc : str
-            Location from which ADF04 files listed in :py:func:`adf04_files` should be fetched.
+    Parameters
+    ----------
+    ion : str
+        Ion atomic symbol
+    cs : str
+        Charge state, given in format like '17', indicating total charge of ion (e.g. '17' would be for Li-like Ca)
+    rhop : array (nr,)
+        Sqrt of normalized poloidal flux radial array
+    ne_cm3 : array (nr,)
+        Electron density in :math:`cm^{-3}` units
+    Te_eV : array (nr,)
+        Electron temperature in eV units
+    lam_nm : float
+        Center of the wavelength region of interest [nm]
+    lam_width_nm : float
+        Width of the wavelength region of interest [nm]
+    adf04_loc : str
+        Location from which ADF04 files listed in :py:func:`adf04_files` should be fetched.
+    meta_idxs : list of integers
+        List of levels in ADF04 file to be treated as metastable states. Default is [0] (only ground state).
+    prec_threshold : float
+        Minimum value of PECs to be considered, in :math:`photons \cdot cm^3/s`
+    pec_units : int
+        If 1, results are given in :math:`photons \cdot cm^3/s`; if 2, they are given in :math:`W.cm^3`. 
+        Default is 2.
+    plot : bool
+        If True, plot lines profiles and total.
 
-    Keyword Args:
-        meta_idxs : list of integers
-            List of levels in ADF04 file to be treated as metastable states. Default is [0] (only ground state).
-        prec_threshold : float
-            Minimum value of PECs to be considered, in :math:`photons \cdot cm^3/s`
-        pec_units : int
-            If 1, results are given in :math:`photons \cdot cm^3/s`; if 2, they are given in :math:`W.cm^3`. 
-            Default is 2.
-        plot : bool
-            If True, plot lines profiles and total.
-
-    Returns:
-        pec_tot_prof : array (nr,)
-            Radial profile of PEC intensity, in units of :math:`photons \cdot cm^3/s` (if pec_units=1) or 
-            :math:`W \cdot cm^3` (if pec_units=2).
+    Returns
+    -------
+    pec_tot_prof : array (nr,)
+        Radial profile of PEC intensity, in units of :math:`photons \cdot cm^3/s` (if pec_units=1) or 
+        :math:`W \cdot cm^3` (if pec_units=2).
     '''
     try:
         # temporarily import this here, until ColRadPy dependency can be set up properly
