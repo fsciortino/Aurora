@@ -148,6 +148,15 @@ aurora.synth_diags module
     :undoc-members:
     :show-inheritance:
 
+       
+aurora.kn1d module
+-------------------------------
+
+.. automodule:: aurora.kn1d
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 aurora.solps module
 -------------------------------

@@ -591,9 +591,9 @@ def estimate_clen(geqdsk):
 
     Returns:
         clen_divertor : float
-            Estimate of the connection length to the divertor
+            Estimate of the connection length to the divertor [m]
         clen_limiter : float
-            Estimate of the connection length to the limiter
+            Estimate of the connection length to the limiter [m]
     '''
     # estimate connection legnth in divertor
     q = geqdsk['QPSI']

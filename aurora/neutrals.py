@@ -10,6 +10,7 @@ plt.ion()
 import urllib
 import shutil, os, copy
 from scipy.constants import e,h,c as c_light,Rydberg
+from scipy.interpolate import interp2d
 
 from . import plot_tools
 from . import radiation
@@ -23,7 +24,7 @@ def download_ehr5_file():
     filename='ehr5.dat'
     url = 'https://w3.pppl.gov/degas2/ehr5.dat' 
     local_filename,headers = urllib.request.urlretrieve(url, filename)
-    os.rename(filename, os.path.dirname(os.path.realpath(__file__))+'/ehr5.dat')
+    shutil.move(filename, os.path.dirname(os.path.realpath(__file__))+'/ehr5.dat')
     print('Successfully downloaded the DEGAS2 ehr5.dat file.')
     
 
@@ -57,7 +58,7 @@ class ehr5_file:
         '''
 
         if filepath is None:
-            if not os.path.exists('ehr5.dat'):
+            if not os.path.exists(os.path.dirname(os.path.realpath(__file__))+'/ehr5.dat'):
                 # if ehr5.dat file is not available, download it
                 download_ehr5_file()
             self.filepath = os.path.dirname(os.path.realpath(__file__))+'/ehr5.dat'
