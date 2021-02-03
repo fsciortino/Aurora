@@ -26,8 +26,6 @@ from scipy.constants import e, h, c as c_light, Rydberg
 from . import neutrals
 from . import coords
 
-from IPython import embed
-
 thisdir = os.path.dirname(os.path.realpath(__file__))
 
 def _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV, 
