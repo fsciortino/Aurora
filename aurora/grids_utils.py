@@ -29,24 +29,26 @@ def create_radial_grid(namelist,plot=False):
 
     See the STRAHL manual for details. 
 
-    Args:
-        namelist : dict
-             Dictionary containing Aurora namelist. This function uses the K, dr_0, dr_1, rvol_lcfs 
-             and bound_sep parameters. Additionally, lim_sep is used if plotting is requested. 
-        plot : bool, optional
-             If True, plot the radial grid spacing vs. radial location. 
+    Parameters
+    ----------
+    namelist : dict
+        Dictionary containing Aurora namelist. This function uses the K, dr_0, dr_1, rvol_lcfs 
+        and bound_sep parameters. Additionally, lim_sep is used if plotting is requested. 
+    plot : bool, optional
+        If True, plot the radial grid spacing vs. radial location. 
 
-    Returns:
-        rvol_grid : array
-            Volume-normalized grid used for Aurora simulations.
-        pro : array
-            Normalized first derivatives of the radial grid, defined as 
-            pro = (drho/dr)/(2 d_rho) = rho'/(2 d_rho)
-        qpr : array
-            Normalized second derivatives of the radial grid, defined as 
-            qpr = (d^2 rho/dr^2)/(2 d_rho) = rho''/(2 d_rho)
-        prox_param : float
-            Grid parameter used for perpendicular loss rate at the last radial grid point. 
+    Returns
+    -------
+    rvol_grid : array
+        Volume-normalized grid used for Aurora simulations.
+    pro : array
+        Normalized first derivatives of the radial grid, defined as 
+        pro = (drho/dr)/(2 d_rho) = rho'/(2 d_rho)
+    qpr : array
+        Normalized second derivatives of the radial grid, defined as 
+        qpr = (d^2 rho/dr^2)/(2 d_rho) = rho''/(2 d_rho)
+    prox_param : float
+        Grid parameter used for perpendicular loss rate at the last radial grid point. 
     '''
     
     K = namelist['K']
@@ -145,19 +147,21 @@ def create_time_grid(timing=None, plot=False):
     '''Create time grid for simulations using the Fortran implementation
     of the time grid generator. 
 
-    Args:
-        timing : dict
-            Dictionary containing timing elements: 'times', 'dt_start', 'steps_per_cycle','dt_increase'
-            As in STRAHL, the last element in each of these arrays refers to sawtooth events. 
-        plot : bool
-            If True, plot time grid. 
+    Parameters
+    ----------
+    timing : dict
+        Dictionary containing timing elements: 'times', 'dt_start', 'steps_per_cycle','dt_increase'
+        As in STRAHL, the last element in each of these arrays refers to sawtooth events. 
+    plot : bool
+        If True, plot time grid. 
 
-    Returns:
-        time : array
-            Computational time grid corresponding to :param:timing input.
-        save : array
-            Array of zeros and ones, where ones indicate that the time step will be stored in memory
-            in Aurora simulations. Points corresponding to zeros will not be returned to spare memory. 
+    Returns
+    -------
+    time : array
+        Computational time grid corresponding to :param:timing input.
+    save : array
+        Array of zeros and ones, where ones indicate that the time step will be stored in memory
+        in Aurora simulations. Points corresponding to zeros will not be returned to spare memory. 
     '''
 
     _time, _save = _aurora.time_steps(
@@ -189,25 +193,27 @@ def create_time_grid_new(timing, verbose=False, plot=False):
     This function reproduces the functionality of STRAHL's time_steps.f
     Refer to the STRAHL manual for definitions of the time grid
     
-    Args:
-        n : int
-            Number of elements in time definition arrays
-        t : array
-            Time vector of the time base changes
-        dtstart : array
-            dt value at the start of a cycle
-        itz : array
-            cycle length, i.e. number of time steps before increasing dt
-        tinc :
-            factor by which time steps should be increasing within a cycle
-        verbose : bool
-            If Trueprint to terminal a few extra info
+    Parameters
+    ----------
+    n : int
+        Number of elements in time definition arrays
+    t : array
+        Time vector of the time base changes
+    dtstart : array
+        dt value at the start of a cycle
+    itz : array
+        cycle length, i.e. number of time steps before increasing dt
+    tinc :
+        factor by which time steps should be increasing within a cycle
+    verbose : bool
+        If Trueprint to terminal a few extra info
     
-    Returns:
-        t_vals : array
-            Times in the time base [s]
-        i_save : array
-            Array of 0,1 values indicating at which times internal arrays should be stored/returned. 
+    Returns
+    -------
+    t_vals : array
+        Times in the time base [s]
+    i_save : array
+        Array of 0,1 values indicating at which times internal arrays should be stored/returned. 
 
     
     ~~~~~~~~~~~ THIS ISN'T FUNCTIONAL YET! ~~~~~~~~~~~~
@@ -359,20 +365,22 @@ def get_HFS_LFS(geqdsk, rho_pol=None):
     This is useful to define the rvol grid outside of the LCFS. 
     See the :py:func:`~aurora.grids_utils.get_rhopol_rvol_mapping` for an application. 
 
-    Args:
-        geqdsk : dict
-            Dictionary containing the g-EQDSK file as processed by the *omfit_eqdsk*
-            package. 
-        rho_pol : array, optional
-            Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
-            corresponding rvol grid should be found. If left to None, an arbitrary grid will be 
-            created internally. 
-
-    Returns:
-        Rhfs : array
-            Major radius [m] on the HFS
-        Rlfs : array
-            Major radius [m] on the LFS
+    Parameters
+    ----------
+    geqdsk : dict
+        Dictionary containing the g-EQDSK file as processed by the *omfit_eqdsk*
+        package. 
+    rho_pol : array, optional
+        Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
+        corresponding rvol grid should be found. If left to None, an arbitrary grid will be 
+        created internally. 
+    
+    Returns
+    -------
+    Rhfs : array
+        Major radius [m] on the HFS
+    Rlfs : array
+        Major radius [m] on the LFS
 
     '''
     if rho_pol is None:
@@ -421,20 +429,22 @@ def get_rhopol_rvol_mapping(geqdsk, rho_pol=None):
     The mapping between rho_pol and rvol allows one to interpolate inputs on a
     rho_pol grid onto the rvol grid (in cm) used internally by the code.
 
-    Args:
-        geqdsk : dict
-            Dictionary containing the g-EQDSK file as processed by the *omfit_eqdsk*
-            package. 
-        rho_pol : array, optional
-            Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
-            corresponding rvol grid should be found. If left to None, an arbitrary grid will be 
-            created internally. 
+    Parameters
+    ----------
+    geqdsk : dict
+        Dictionary containing the g-EQDSK file as processed by the *omfit_eqdsk*
+        package. 
+    rho_pol : array, optional
+        Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
+        corresponding rvol grid should be found. If left to None, an arbitrary grid will be 
+        created internally. 
 
-    Returns:
-         rho_pol : array
-             Sqrt of normalized poloidal flux grid
-         rvol : array
-             Mapping of rho_pol to a radial grid defined in terms of normalized flux surface volume.
+    Returns
+    -------
+    rho_pol : array
+        Sqrt of normalized poloidal flux grid
+    rvol : array
+        Mapping of rho_pol to a radial grid defined in terms of normalized flux surface volume.
     '''
 
     if rho_pol is None:
@@ -538,23 +548,25 @@ def create_aurora_time_grid(timing, plot=False):
     The same functionality is offered by :py:func:`~aurora.grids_utils.create_time_grid`, which however
     is written in Python. This method is legacy code; it is recommended to use the other. 
 
-    Args:
-        timing : dict
-            Dictionary containing 
-            timing['times'],timing['dt_start'],timing['steps_per_cycle'],timing['dt_increase']
-            which define the start times to change dt values at, the dt values to start with,
-            the number of time steps before increasing the dt by dt_increase. 
-            The last value in each of these arrays is used for sawteeth, whenever these are
-            modelled, or else are ignored. This is the same time grid definition as used in STRAHL.
-        plot : bool, optional
-            If True, display the created time grid.
+    Parameters
+    ----------
+    timing : dict
+        Dictionary containing 
+        timing['times'],timing['dt_start'],timing['steps_per_cycle'],timing['dt_increase']
+        which define the start times to change dt values at, the dt values to start with,
+        the number of time steps before increasing the dt by dt_increase. 
+        The last value in each of these arrays is used for sawteeth, whenever these are
+        modelled, or else are ignored. This is the same time grid definition as used in STRAHL.
+    plot : bool, optional
+        If True, display the created time grid.
 
-    Returns:
-        time : array
-            Computational time grid corresponding to `timing` input.
-        save : array
-            Array of zeros and ones, where ones indicate that the time step will be stored in memory
-            in aurora simulations. Points corresponding to zeros will not be returned to spare memory.    
+    Returns
+    -------
+    time : array
+        Computational time grid corresponding to `timing` input.
+    save : array
+        Array of zeros and ones, where ones indicate that the time step will be stored in memory
+        in aurora simulations. Points corresponding to zeros will not be returned to spare memory.    
     '''
 
     _time, _save = _aurora.time_steps(
@@ -585,15 +597,17 @@ def estimate_clen(geqdsk):
     '''Estimate average connection length in the open SOL and in the limiter shadow
     NB: these are just rough numbers!
 
-    Args:
-        geqdsk : dict
-            EFIT g-EQDSK as processed by the omfit_eqdsk package.
+    Parameters
+    ----------
+    geqdsk : dict
+        EFIT g-EQDSK as processed by the omfit_eqdsk package.
 
-    Returns:
-        clen_divertor : float
-            Estimate of the connection length to the divertor [m]
-        clen_limiter : float
-            Estimate of the connection length to the limiter [m]
+    Returns
+    -------
+    clen_divertor : float
+        Estimate of the connection length to the divertor [m]
+    clen_limiter : float
+        Estimate of the connection length to the limiter [m]
     '''
     # estimate connection legnth in divertor
     q = geqdsk['QPSI']
@@ -621,20 +635,22 @@ def estimate_boundary_distance(shot, device, time_ms):
     This requires access to the A_EQDSK on the EFIT01 tree on MDS+. Users who may find that this call
     does not work for their device may try to adapt the OMFITmdsValue TDI string.
 
-    Args: 
-        shot : int
-             Discharge/experiment number
-        device : str
-             Name of device, e.g. 'C-Mod', 'DIII-D', etc.
-        time_ms : int or float
-            Time at which results for the outer gap should be taken.
+    Parameters
+    ----------
+    shot : int
+        Discharge/experiment number
+    device : str
+        Name of device, e.g. 'C-Mod', 'DIII-D', etc.
+    time_ms : int or float
+        Time at which results for the outer gap should be taken.
 
-    Returns:
-        bound_sep : float
-            Estimate for the distance between the wall boundary and the separatrix [cm]
-        lim_sep : float
-            Estimate for the distance between the limiter and the separatrix [cm]. This is (quite arbitrarily)
-            taken to be 2/3 of the bound_sep distance.    
+    Returns
+    -------
+    bound_sep : float
+        Estimate for the distance between the wall boundary and the separatrix [cm]
+    lim_sep : float
+        Estimate for the distance between the limiter and the separatrix [cm]. This is (quite arbitrarily)
+        taken to be 2/3 of the bound_sep distance.    
     '''
     # import this here, so that it is not required for the whole package
     from omfit_mds import OMFITmdsValue
