@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 plt.ion()
 from scipy import constants
 import warnings, copy
+from scipy.constants import e as q_electron,k as k_B, h, m_p, c as c_speed
 
 from . import atomic
 from . import adas_files
@@ -695,6 +696,173 @@ def _plot_pec(dens, temp, ne_eval, Te_eval, PEC_eval, PEC, lam,cs,rate_type,
         ax1.legend(loc='best').set_draggable(True)
 
     return ax1
+
+
+def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
+                       ion_exc_rec_dens=None, plot=True, ax=None, plot_spec_tot=True, no_leg=False):
+    '''Plot spectrum based on the lines contained in an ADAS ADF15 file
+    at specific values of electron density and temperature. Charge state densities
+    can be given explicitely, or alternatively charge state fractions will be automatically 
+    computed from ionization equilibrium (no transport). 
+
+    Parameters
+    ----------
+    adf15_filepath : str
+        Path on disk to the ADAS ADF15 file of interest. All wavelengths and radiating
+        components will be read. 
+    ion : str
+        Atomic symbol of ion of interest, e.g. 'Ar'
+    ne_cm3 : float
+        Local value of electron density, in units of :math:`cm^{-3}`.
+    Te_eV : float
+        Local value of electron temperature, in units of :math:`eV`.
+    n0_cm3 : float, optional
+        Local density of atomic neutral hydrogen isotopes. This is only used if the provided
+        ADF15 file contains charge exchange contributions.
+    ion_exc_rec_dens : list of 3 floats or None
+        Density of ionizing, excited and recombining charge states that may contribute to 
+        emission from the given ADF15 file. If left to None, ionization equilibrium is assumed.
+    plot : bool
+        If True, all spectral emission components are plotted.
+    ax : matplotlib Axes instance
+        Axes to plot on if plot=True. If left to None, a new figure is created.
+    plot_spec_tot : bool
+        If True, plot total spectrum (sum over all components) from given ADF15 file. 
+    no_leg : bool
+        If True, no plot legend is shown. Default is False, i.e. show legend.
+
+    Returns
+    -------
+    wave_final_A : 1D array
+        Array of wavelengths in units of :math:`\AA` on which the total spectrum is returned. 
+    spec_ion : 1D array
+        Spectrum from ionizing components of the input ADF15 file as a function of wave_final_A.
+    spec_exc : 1D array
+        Spectrum from excitation components of the input ADF15 file as a function of wave_final_A.
+    spec_rr : 1D array
+        Spectrum from radiative recombination components of the input ADF15 file as a function of wave_final_A.
+    spec_dr : 1D array
+        Spectrum from dielectronic recombination components of the input ADF15 file as a function of wave_final_A.
+    spec_cx : 1D array
+        Spectrum from charge exchange recombination components of the input ADF15 file as a function of wave_final_A.
+    ax : matplotlib Axes instance
+        Axes on which the plot is returned.
+
+    Notes
+    -----
+    Including ionizing, excited and recombining charge states allows for a complete description
+    of spectral lines that may derive from various atomic processes in a plasma.
+    '''
+    # ensure input ne,Te,n0 are floats
+    ne_cm3=float(ne_cm3)
+    Te_eV=float(Te_eV)
+    n0_cm3=float(n0_cm3)
+    
+    # read ADF15 file
+    pec_dict = read_adf15(adf15_filepath)
+
+    # get charge state from file name -- assumes standard nomenclature, {classifier}#{ion}{charge}.dat
+    cs = adf15_filepath.split('#')[-1].split('.dat')[0]
+    
+    # import here to avoid issues when building docs or package
+    from omfit_commonclasses.utils_math import atomic_element
+    
+    # get nuclear charge Z and atomic mass number A
+    out = atomic_element(symbol=ion)
+    spec = list(out.keys())[0]
+    ion_Z = int(out[spec]['Z'])
+    ion_A = int(out[spec]['A'])
+
+    if ion_exc_rec_dens is None: 
+        # use ionization equilibrium fractional abundances as densities
+
+        # get charge state distributions from ionization equilibrium
+        files = ['scd','acd','ccd']
+        atom_data = atomic.get_atom_data(ion,files)
+
+        # always include charge exchange, although n0_cm3 may be 0
+        logTe, fz, rates = atomic.get_frac_abundances(
+            atom_data, np.array([ne_cm3,]), np.array([Te_eV,]),
+            n0_by_ne=np.array([n0_cm3/ne_cm3,]), include_cx=True, plot=False)
+        ion_exc_rec_dens = [fz[0][-4], fz[0][-3], fz[0][-2]] # Li-like, He-like, H-like
+
+    wave_A = np.zeros((len(list(pec_dict.keys()))))
+    pec_ion = np.zeros((len(list(pec_dict.keys()))))
+    pec_exc = np.zeros((len(list(pec_dict.keys()))))
+    pec_rr = np.zeros((len(list(pec_dict.keys()))))
+    pec_cx = np.zeros((len(list(pec_dict.keys()))))
+    pec_dr = np.zeros((len(list(pec_dict.keys()))))
+    for ii,lam in enumerate(pec_dict):
+        wave_A[ii] = lam
+        if 'ioniz' in pec_dict[lam]:
+            pec_ion[ii] = pec_dict[lam]['ioniz'].ev(np.log10(ne_cm3),np.log10(Te_eV))
+        if 'excit' in pec_dict[lam]:
+            pec_exc[ii] = pec_dict[lam]['excit'].ev(np.log10(ne_cm3),np.log10(Te_eV))
+        if 'recom' in pec_dict[lam]:
+            pec_rr[ii] = pec_dict[lam]['recom'].ev(np.log10(ne_cm3),np.log10(Te_eV))
+        if 'chexc' in pec_dict[lam]:
+            pec_cx[ii] = pec_dict[lam]['checx'].ev(np.log10(ne_cm3),np.log10(Te_eV))
+        if 'drsat' in pec_dict[lam]:
+            pec_dr[ii] = pec_dict[lam]['drsat'].ev(np.log10(ne_cm3),np.log10(Te_eV))
+    
+    # Doppler broadening
+    mass = m_p * ion_A
+    dnu_g = np.sqrt(2.*(Te_eV*q_electron)/mass)*(c_speed/wave_A)/c_speed
+    
+    # set a variable delta lambda based on the width of the broadening
+    dlam_A = wave_A**2/c_speed* dnu_g * 5 # 5 standard deviations
+    
+    lams_profs_A =np.linspace(wave_A-dlam_A, wave_A + dlam_A, 100, axis=1) 
+    
+    theta_tmp = 1./(np.sqrt(np.pi)*dnu_g[:,None])*\
+                np.exp(-((c_speed/lams_profs_A-c_speed/wave_A[:,None])/dnu_g[:,None])**2)
+
+    # Normalize Gaussian profile
+    theta = np.einsum('ij,i->ij', theta_tmp, 1./np.trapz(theta_tmp,x=lams_profs_A,axis=1))
+    
+    wave_final_A = np.linspace(np.min(lams_profs_A), np.max(lams_profs_A), 100000)
+    
+    # contributions to spectrum
+    spec_ion = np.zeros_like(wave_final_A)
+    for ii in np.arange(lams_profs_A.shape[0]):
+        spec_ion += interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[0]*pec_ion[ii]*theta[ii,:],
+                               bounds_error=False, fill_value=0.0)(wave_final_A)
+    spec_exc = np.zeros_like(wave_final_A)
+    for ii in np.arange(lams_profs_A.shape[0]):
+        spec_exc += interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[1]*pec_exc[ii]*theta[ii,:],
+                               bounds_error=False, fill_value=0.0)(wave_final_A)
+    spec_rr = np.zeros_like(wave_final_A)
+    for ii in np.arange(lams_profs_A.shape[0]):
+        spec_rr += interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[2]*pec_rr[ii]*theta[ii,:],
+                               bounds_error=False, fill_value=0.0)(wave_final_A)
+    spec_dr = np.zeros_like(wave_final_A)
+    for ii in np.arange(lams_profs_A.shape[0]):
+        spec_dr += interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[2]*pec_dr[ii]*theta[ii,:],
+                               bounds_error=False, fill_value=0.0)(wave_final_A)
+    spec_cx = np.zeros_like(wave_final_A)
+    for ii in np.arange(lams_profs_A.shape[0]):
+        spec_cx += interp1d(lams_profs_A[ii,:], n0_cm3*ion_exc_rec_dens[2]*pec_cx[ii]*theta[ii,:],
+                               bounds_error=False, fill_value=0.0)(wave_final_A)
+
+    spec_tot = spec_ion+spec_exc+spec_rr+spec_dr+spec_cx
+    
+    # plot all contributions
+    if ax is None:
+        fig,ax = plt.subplots()
+    ax.plot(wave_final_A, spec_ion, c='r', label='' if no_leg else 'ionization')
+    ax.plot(wave_final_A, spec_exc, c='b', label='' if no_leg else 'excitation')
+    ax.plot(wave_final_A, spec_rr, c='g', label='' if no_leg else 'radiative recomb')
+    ax.plot(wave_final_A, spec_dr, c='m', label='' if no_leg else 'dielectronic recomb')
+    ax.plot(wave_final_A, spec_cx, c='c', label='' if no_leg else 'charge exchange recomb')
+    if plot_spec_tot:
+        ax.plot(wave_final_A, spec_tot, c='k', label='' if no_leg else 'total')
+        
+    if no_leg:
+        ax.legend(loc='best').set_draggable(True)
+    ax.set_xlabel(r'$\lambda$ [$\AA$]')
+    ax.set_ylabel(r'$\epsilon$ [A.U.]')
+
+    return wave_final_A, spec_ion, spec_exc, spec_rr, spec_dr, spec_cx, ax
 
 
 def adf04_files():

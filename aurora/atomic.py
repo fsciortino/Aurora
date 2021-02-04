@@ -636,7 +636,8 @@ def impurity_brems(nz, ne, Te):
 
 
 
-def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, sxr=False, plot=True, show_components=False, ax=None):
+def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
+                        sxr=False, plot=True, show_components=False, ax=None):
     '''Calculate cooling coefficients for the given fractional abundances and kinetic profiles.
 
     Parameters
@@ -648,8 +649,9 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, sxr=False, plot=True, sh
     Te_eV : 1D array
         Electron temperature [:math:`eV`] at which cooling factors should be obtained. 
     n0_cm3 : 1D array or float
-        Background H/D/T neutral density [:math:`cm^{-3}`] used to account for charge exchange when calculating
-        ionization equilibrium. If left to 0, charge exchange effects are not included.
+        Background H/D/T neutral density [:math:`cm^{-3}`] used to account for charge exchange 
+        when calculating ionization equilibrium. 
+        If left to 0, charge exchange effects are not included.
     sxr : bool
         If True, plot SXR-filtered radiation instead of unfiltered radiation. Default is False. 
     plot : bool
@@ -660,11 +662,13 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, sxr=False, plot=True, sh
     Returns
     -------
     line_rad_tot : 1D array
-        Cooling coefficient from line radiation [:math:`W\cdot m^3`]. Depending on whether :param:`sxr`=True or False,
-        this indicates filtered or unfiltered radiation, respectively.
+        Cooling coefficient from line radiation [:math:`W\cdot m^3`]. 
+        Depending on whether :param:`sxr`=True or False, this indicates filtered 
+        or unfiltered radiation, respectively.
     cont_rad_tot : 1D array
-        Cooling coefficient from continuum radiation [:math:`W\cdot m^3`]. Depending on whether :param:`sxr`=True or False,
-        this indicates filtered or unfiltered radiation, respectively. 
+        Cooling coefficient from continuum radiation [:math:`W\cdot m^3`]. 
+        Depending on whether :param:`sxr`=True or False, this indicates filtered
+        or unfiltered radiation, respectively. 
 
     '''
     files = ['scd','acd']
@@ -696,21 +700,21 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, sxr=False, plot=True, sh
             fig, ax = plt.subplots()
 
         # total radiation (includes hard X-ray, visible, UV, etc.)
-        l, = ax.loglog(Te_eV/1e3, cont_rad_tot+line_rad_tot, ls='-', label=f'{imp} $L_z$ (total)' if show_components else f'{imp}')
+        l, = ax.loglog(Te_eV/1e3, cont_rad_tot+line_rad_tot, ls='-',
+                       label=f'{imp} $L_z$ (total)' if show_components else f'{imp}')
         col = l.get_color()
         
         if show_components:
+            # show line and continuum recombination components separately
             ax.loglog(Te_eV/1e3, line_rad_tot,c=col, ls='--',label='line radiation')
             ax.loglog(Te_eV/1e3, cont_rad_tot,c=col, ls='-.',label='continuum radiation')
     
         ax.legend(loc='best')
-
         ax.grid('on')
         ax.set_xlabel('T$_e$ [keV]')
         ax.set_ylabel('Cooling factor $L_z$ [$W$ $m^3$]')
         plt.tight_layout()
-        
-    # ion-resolved radiation terms:
+
     return line_rad_tot, cont_rad_tot
 
         
