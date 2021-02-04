@@ -16,11 +16,6 @@ from . import particle_conserv
 from . import plot_tools
 from . import synth_diags
 
-# don't try to import compiled Fortran if building documentation or package:
-if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]) and\
-   not np.any([('distutils' in k.split('.') and 'command' in k.split('.')) for k in sys.modules]):
-    from ._aurora import run as fortran_run,time_steps
-
 
 class aurora_sim:
     '''
@@ -435,6 +430,9 @@ class aurora_sim:
         rclw_rate : array (nt,)
              Recycling from the wall [:math:`s^{-1} cm^{-3}`]
         '''
+        # import here to avoid import when building documentation or package (negligible slow down)
+        from ._aurora import run
+        
         # D_z and V_z must have the same shape
         assert np.array(D_z).shape == np.array(V_z).shape
         

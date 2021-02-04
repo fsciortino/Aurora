@@ -4,11 +4,7 @@
 import matplotlib.pyplot as plt
 import numpy as np, sys, os
 from scipy.interpolate import interp1d
-
-# don't try to import when building documentation or package
-if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]) and\
-   not np.any([('distutils' in k.split('.') and 'command' in k.split('.')) for k in sys.modules]):
-    from . import _aurora
+import warnings
 
 def create_radial_grid(namelist,plot=False):
     r'''Create radial grid for Aurora based on K, dr_0, dr_1, rvol_lcfs and bound_sep parameters. 
@@ -142,7 +138,9 @@ def create_radial_grid(namelist,plot=False):
 
 
 
-
+class MissingAuroraBuild(UserWarning):
+    pass
+    
 def create_time_grid(timing=None, plot=False):
     '''Create time grid for simulations using the Fortran implementation
     of the time grid generator. 
@@ -163,7 +161,13 @@ def create_time_grid(timing=None, plot=False):
         Array of zeros and ones, where ones indicate that the time step will be stored in memory
         in Aurora simulations. Points corresponding to zeros will not be returned to spare memory. 
     '''
-
+    # import here to avoid import when building documentation or package
+    try:
+        from ._aurora import time_steps
+    except ModuleNotFoundError:
+        raise MissingAuroraBuild('Could not load particle transport forward model!'+\
+                      'Use the makefile or setup.py to build sources.')
+    
     _time, _save = _aurora.time_steps(
         timing['times'],timing['dt_start'],timing['steps_per_cycle'],timing['dt_increase'])
 
@@ -568,7 +572,9 @@ def create_aurora_time_grid(timing, plot=False):
         Array of zeros and ones, where ones indicate that the time step will be stored in memory
         in aurora simulations. Points corresponding to zeros will not be returned to spare memory.    
     '''
-
+    # import here to avoid import when building documentation or package
+    from ._aurora import time_steps
+    
     _time, _save = _aurora.time_steps(
         timing['times'],timing['dt_start'],timing['steps_per_cycle'],timing['dt_increase'])
 

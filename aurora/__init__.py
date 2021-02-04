@@ -2,11 +2,19 @@ name='aurora'
 __version__="0.1.9"
 
 import numpy as np, sys
+import warnings
 
-# don't try to import compiled Fortran if building documentation or package:
-if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]) and\
-   not np.any([('distutils' in k.split('.') and 'command' in k.split('.')) for k in sys.modules]):
-    from ._aurora import run,time_steps
+# class MissingAuroraBuild(UserWarning):
+#     pass
+
+# # don't try to import compiled Fortran if building documentation or package:
+# if not np.any([('sphinx' in k and not 'sphinxcontrib' in k) for k in sys.modules]) and\
+#    not np.any([('distutils' in k.split('.') and 'command' in k.split('.')) for k in sys.modules]):
+#     try:
+#         from ._aurora import run,time_steps
+#     except ModuleNotFoundError:
+#         warnings.warn('Could not load particle transport forward model!'+\
+#                       'Use the makefile or setup.py to build sources.', MissingAuroraBuild)
 
 from .core import *
 from .atomic import *
