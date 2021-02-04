@@ -636,18 +636,22 @@ def impurity_brems(nz, ne, Te):
 
 
 
-def get_cooling_factors(atom_data, logTe_prof, fz, plot=True,ax=None):
+def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, sxr=False, plot=True, show_components=False, ax=None):
     '''Calculate cooling coefficients for the given fractional abundances and kinetic profiles.
 
     Parameters
     ----------
-    atom_data : dict
-        Dictionary containing atomic data as output by :py:meth:`~aurora.atomic.get_atom_data`
-        for the atomic processes of interest. "prs","pls","plt" and "prb" are required by this function.
-    logTe_prof : array (nt,nr)
-        Log-10 of electron temperature profile (in eV)
-    fz : array (nt,nr)
-        Fractional abundances for all charge states of the ion of "atom_data"
+    imp : str
+        Atomic symbol of ion of interest
+    ne_cm3 : 1D array
+        Electron density [:math:`cm^{-3}`], used to find charge state fractions at ionization equilibrium.
+    Te_eV : 1D array
+        Electron temperature [:math:`eV`] at which cooling factors should be obtained. 
+    n0_cm3 : 1D array or float
+        Background H/D/T neutral density [:math:`cm^{-3}`] used to account for charge exchange when calculating
+        ionization equilibrium. If left to 0, charge exchange effects are not included.
+    sxr : bool
+        If True, plot SXR-filtered radiation instead of unfiltered radiation. Default is False. 
     plot : bool
         If True, plot all radiation components, summed over charge states.
     ax : matplotlib.Axes instance
@@ -655,69 +659,59 @@ def get_cooling_factors(atom_data, logTe_prof, fz, plot=True,ax=None):
     
     Returns
     -------
-    pls : array (nt,nr)
-        Line radiation in the SXR range for each charge state
-    prs : array (nt,nr)
-        Continuum radiation in the SXR range for each charge state
-    pltt : array (nt,nr)
-        Line radiation (unfiltered) for each charge state.
-        NB: this corresponds to the ADAS "plt" files. An additional "t" is added to the name to avoid
-        conflict with the common matplotlib.pyplot short form "plt"
-    prb : array (nt,nr)
-        Continuum radiation (unfiltered) for each charge state
+    line_rad_tot : 1D array
+        Cooling coefficient from line radiation [:math:`W\cdot m^3`]. Depending on whether :param:`sxr`=True or False,
+        this indicates filtered or unfiltered radiation, respectively.
+    cont_rad_tot : 1D array
+        Cooling coefficient from continuum radiation [:math:`W\cdot m^3`]. Depending on whether :param:`sxr`=True or False,
+        this indicates filtered or unfiltered radiation, respectively. 
+
     '''
-    try:
-        atom_data['prs']
-        atom_data['pls']
-        atom_data['plt']
-        atom_data['prb']
-    except:
-        raise ValueError('prs, plt and/or prb files not available!')
+    files = ['scd','acd']
+    if n0_cm3 is not 0.0: files+=['ccd']
+    atom_data_eq = get_atom_data(imp,files)
 
-    prs = interp_atom_prof(atom_data['prs'],None,logTe_prof)#continuum radiation in SXR range
-    pls = interp_atom_prof(atom_data['pls'],None,logTe_prof)#line radiation in SXR range
-    pltt= interp_atom_prof(atom_data['plt'],None,logTe_prof) #line radiation
-    prb = interp_atom_prof(atom_data['prb'],None,logTe_prof)#continuum radiation
+    logTe, fz, rates = get_frac_abundances(atom_data_eq, ne_cm3, Te_eV,plot=False,
+                                           n0_by_ne=n0_cm3/ne_cm3,
+                                           include_cx=True if n0_cm3!=0.0 else False)
+    if sxr:
+        line_file = 'pls'
+        cont_file = 'prs'
+    else:
+        line_file = 'plt'
+        cont_file = 'prb'
 
-    pls *= fz[:,:-1]
-    prs *= fz[:, 1:]
+    atom_data = get_atom_data(imp,[line_file,cont_file])
+    pltt= interp_atom_prof(atom_data[line_file],None, np.log10(Te_eV)) # line radiation [W.cm^3]
+    prb = interp_atom_prof(atom_data[cont_file],None, np.log10(Te_eV)) # continuum radiation [W.cm^3]
+
     pltt*= fz[:,:-1]
     prb *= fz[:, 1:]
 
-    line_rad_sxr  = pls.sum(1)
-    brems_rad_sxr = prs.sum(1)
-    line_rad_tot  = pltt.sum(1)
-    brems_rad_tot = prb.sum(1)
+    line_rad_tot  = pltt.sum(1) *1e-6  # W.cm^3-->W.m^3
+    cont_rad_tot = prb.sum(1) *1e-6    # W.cm^3-->W.m^3
 
     if plot:
-        # plot cooling factors
         if ax is None:
-            ax = plt.subplot(111)
-
-        # SXR radiation components
-        ax.loglog(10**logTe_prof, line_rad_sxr,'b',label='SXR line radiation')   
-        ax.loglog(10**logTe_prof, brems_rad_sxr,'r',label='SXR bremsstrahlung and recombination')
-        ax.loglog(10**logTe_prof, brems_rad_sxr+line_rad_sxr,'k',label='total SXR radiation',lw=2)
+            fig, ax = plt.subplots()
 
         # total radiation (includes hard X-ray, visible, UV, etc.)
-        ax.loglog(10**logTe_prof, line_rad_tot,'g--',label='Unfiltered line radiation')
-        ax.loglog(10**logTe_prof, brems_rad_tot,'y--',label='Unfiltered continuum radiation')
-        ax.loglog(10**logTe_prof, brems_rad_tot+line_rad_tot,'y--',
-                  label='Unfiltered total continuum radiation')
-
-        ax.legend(loc='best')
+        l, = ax.loglog(Te_eV/1e3, cont_rad_tot+line_rad_tot, ls='-', label=f'{imp} $L_z$ (total)' if show_components else f'{imp}')
+        col = l.get_color()
         
-        # Set xlims to visualize scales better
-        ax.set_xlim(50,10**logTe_prof[-1])
-        ax.set_ylim(line_rad_sxr[np.argmin(np.abs(10**logTe_prof - 50))], np.nanmax( line_rad_tot)*10)
+        if show_components:
+            ax.loglog(Te_eV/1e3, line_rad_tot,c=col, ls='--',label='line radiation')
+            ax.loglog(Te_eV/1e3, cont_rad_tot,c=col, ls='-.',label='continuum radiation')
+    
+        ax.legend(loc='best')
 
         ax.grid('on')
-        ax.set_xlabel('T$_e$ [eV]')
-        ax.set_ylabel('L$_z$ [Wm$^3$]')
-        ax.set_title('Cooling factors')
-
+        ax.set_xlabel('T$_e$ [keV]')
+        ax.set_ylabel('Cooling factor $L_z$ [$W$ $m^3$]')
+        plt.tight_layout()
+        
     # ion-resolved radiation terms:
-    return pls, prs, pltt,prb
+    return line_rad_tot, cont_rad_tot
 
         
         
