@@ -157,7 +157,7 @@ def adas_files_dict():
     files["He"]['scd'] = "scd96_he.dat"
     files["He"]['prb'] = "prb96_he.dat"
     files["He"]['plt'] = "plt96_he.dat"
-    files["He"]['ccd'] = "ccd07_he.dat"
+    files["He"]['ccd'] = "ccd96_he.dat"
     files["He"]['pls'] = "pls_He_14.dat"
     files["He"]['prs'] = "prs_He_14.dat"
     files["He"]['fis'] = "sxrfil14.dat"
@@ -224,7 +224,7 @@ def adas_files_dict():
     files["O"] = {}    #8
     files["O"]['acd'] = "acd96_o.dat"
     files["O"]['scd'] = "scd96_o.dat"
-    files["O"]['ccd'] = "ccd96_o.dat"
+    files["O"]['ccd'] = "ccd89_o.dat"
     files["O"]['prb'] = "prb96_o.dat"
     files["O"]['plt'] = "plt96_o.dat"
     files["O"]['pls'] = "plsx5_o.dat"

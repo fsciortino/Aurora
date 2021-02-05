@@ -709,10 +709,10 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
             ax.loglog(Te_eV/1e3, line_rad_tot,c=col, ls='--',label='line radiation')
             ax.loglog(Te_eV/1e3, cont_rad_tot,c=col, ls='-.',label='continuum radiation')
     
-        ax.legend(loc='best')
-        ax.grid('on')
+        ax.legend(loc='best').set_draggable(True)
+        ax.grid('on', which='both')
         ax.set_xlabel('T$_e$ [keV]')
-        ax.set_ylabel('Cooling factor $L_z$ [$W$ $m^3$]')
+        ax.set_ylabel('$L_z$ [$W$ $m^3$]')
         plt.tight_layout()
 
     return line_rad_tot, cont_rad_tot
