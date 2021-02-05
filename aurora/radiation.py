@@ -846,23 +846,27 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
 
     spec_tot = spec_ion+spec_exc+spec_rr+spec_dr+spec_cx
     
-    # plot all contributions
-    if ax is None:
-        fig,ax = plt.subplots()
-    ax.plot(wave_final_A, spec_ion, c='r', label='' if no_leg else 'ionization')
-    ax.plot(wave_final_A, spec_exc, c='b', label='' if no_leg else 'excitation')
-    ax.plot(wave_final_A, spec_rr, c='g', label='' if no_leg else 'radiative recomb')
-    ax.plot(wave_final_A, spec_dr, c='m', label='' if no_leg else 'dielectronic recomb')
-    ax.plot(wave_final_A, spec_cx, c='c', label='' if no_leg else 'charge exchange recomb')
-    if plot_spec_tot:
-        ax.plot(wave_final_A, spec_tot, c='k', label='' if no_leg else 'total')
-        
-    if no_leg:
-        ax.legend(loc='best').set_draggable(True)
-    ax.set_xlabel(r'$\lambda$ [$\AA$]')
-    ax.set_ylabel(r'$\epsilon$ [A.U.]')
+    if plot:
+        # plot all contributions
+        if ax is None:
+            fig,ax = plt.subplots()
+        ax.plot(wave_final_A, spec_ion, c='r', label='' if no_leg else 'ionization')
+        ax.plot(wave_final_A, spec_exc, c='b', label='' if no_leg else 'excitation')
+        ax.plot(wave_final_A, spec_rr, c='g', label='' if no_leg else 'radiative recomb')
+        ax.plot(wave_final_A, spec_dr, c='m', label='' if no_leg else 'dielectronic recomb')
+        ax.plot(wave_final_A, spec_cx, c='c', label='' if no_leg else 'charge exchange recomb')
+        if plot_spec_tot:
+            ax.plot(wave_final_A, spec_tot, c='k', label='' if no_leg else 'total')
+
+        if no_leg:
+            ax.legend(loc='best').set_draggable(True)
+        ax.set_xlabel(r'$\lambda$ [$\AA$]')
+        ax.set_ylabel(r'$\epsilon$ [A.U.]')
+    else:
+        ax=None
 
     return wave_final_A, spec_ion, spec_exc, spec_rr, spec_dr, spec_cx, ax
+
 
 
 def adf04_files():

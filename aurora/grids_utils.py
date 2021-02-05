@@ -168,7 +168,7 @@ def create_time_grid(timing=None, plot=False):
         raise MissingAuroraBuild('Could not load particle transport forward model!'+\
                       'Use the makefile or setup.py to build sources.')
     
-    _time, _save = _aurora.time_steps(
+    _time, _save = time_steps(
         timing['times'],timing['dt_start'],timing['steps_per_cycle'],timing['dt_increase'])
 
     # eliminate trailing 0's:

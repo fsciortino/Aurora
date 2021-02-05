@@ -431,7 +431,7 @@ class aurora_sim:
              Recycling from the wall [:math:`s^{-1} cm^{-3}`]
         '''
         # import here to avoid import when building documentation or package (negligible slow down)
-        from ._aurora import run
+        from ._aurora import run as fortran_run
         
         # D_z and V_z must have the same shape
         assert np.array(D_z).shape == np.array(V_z).shape
