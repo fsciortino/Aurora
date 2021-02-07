@@ -699,7 +699,8 @@ def _plot_pec(dens, temp, ne_eval, Te_eval, PEC_eval, PEC, lam,cs,rate_type,
 
 
 def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
-                       ion_exc_rec_dens=None, plot=True, ax=None, plot_spec_tot=True, no_leg=False):
+                       ion_exc_rec_dens=None, dlam_A=0.0,
+                       plot=True, ax=None, plot_spec_tot=True, no_leg=False):
     '''Plot spectrum based on the lines contained in an ADAS ADF15 file
     at specific values of electron density and temperature. Charge state densities
     can be given explicitely, or alternatively charge state fractions will be automatically 
@@ -722,6 +723,10 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
     ion_exc_rec_dens : list of 3 floats or None
         Density of ionizing, excited and recombining charge states that may contribute to 
         emission from the given ADF15 file. If left to None, ionization equilibrium is assumed.
+    dlam_A : float or 1D array
+        Doppler shift in A. This can either be a scalar or an array of the same shape as the 
+        output wavelength array. For the latter option, it is recommended to call this function
+        twice to find the wave_final_A array first.         
     plot : bool
         If True, all spectral emission components are plotted.
     ax : matplotlib Axes instance
@@ -752,6 +757,31 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
     -----
     Including ionizing, excited and recombining charge states allows for a complete description
     of spectral lines that may derive from various atomic processes in a plasma.
+
+    Doppler broadening depends on the local electron temperature and mass of the emitting species. 
+    It is modeled here using
+
+    .. math::
+
+        \theta(\nu) = \frac{1}{\sqrt{\pi}\Delta \nu_D} e^{-\left(\frac{\nu - \nu_0}{\Delta \nu_D}\right)^2}
+
+    with the Doppler profile half-width being
+
+    .. math::
+
+        \Delta \nu_D = \frac{1}{\nu_0} \sqrt{\frac{2 T_e}{m}}
+
+    The Doppler shift dlam_A can be calculated from
+
+    .. math::
+
+        \Delta \lambda_v = \lambda \cdot \left( 1 - \frac{v\cdot \cos(\alpha)}{c}\right
+
+    where :math:`v` is the plasma velocity and :math:`\alpha` is the angle between the line-of-sight 
+    and the direction of plasma rotation.
+
+    Refs: S.Loch's and C.Johnson's PhD theses.
+
     '''
     # ensure input ne,Te,n0 are floats
     ne_cm3=float(ne_cm3)
@@ -810,9 +840,9 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
     dnu_g = np.sqrt(2.*(Te_eV*q_electron)/mass)*(c_speed/wave_A)/c_speed
     
     # set a variable delta lambda based on the width of the broadening
-    dlam_A = wave_A**2/c_speed* dnu_g * 5 # 5 standard deviations
+    _dlam_A = wave_A**2/c_speed* dnu_g * 5 # 5 standard deviations
     
-    lams_profs_A =np.linspace(wave_A-dlam_A, wave_A + dlam_A, 100, axis=1) 
+    lams_profs_A =np.linspace(wave_A-_dlam_A, wave_A + _dlam_A, 100, axis=1) 
     
     theta_tmp = 1./(np.sqrt(np.pi)*dnu_g[:,None])*\
                 np.exp(-((c_speed/lams_profs_A-c_speed/wave_A[:,None])/dnu_g[:,None])**2)
@@ -850,13 +880,13 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
         # plot all contributions
         if ax is None:
             fig,ax = plt.subplots()
-        ax.plot(wave_final_A, spec_ion, c='r', label='' if no_leg else 'ionization')
-        ax.plot(wave_final_A, spec_exc, c='b', label='' if no_leg else 'excitation')
-        ax.plot(wave_final_A, spec_rr, c='g', label='' if no_leg else 'radiative recomb')
-        ax.plot(wave_final_A, spec_dr, c='m', label='' if no_leg else 'dielectronic recomb')
-        ax.plot(wave_final_A, spec_cx, c='c', label='' if no_leg else 'charge exchange recomb')
+        ax.plot(wave_final_A+dlam_A, spec_ion, c='r', label='' if no_leg else 'ionization')
+        ax.plot(wave_final_A+dlam_A, spec_exc, c='b', label='' if no_leg else 'excitation')
+        ax.plot(wave_final_A+dlam_A, spec_rr, c='g', label='' if no_leg else 'radiative recomb')
+        ax.plot(wave_final_A+dlam_A, spec_dr, c='m', label='' if no_leg else 'dielectronic recomb')
+        ax.plot(wave_final_A+dlam_A, spec_cx, c='c', label='' if no_leg else 'charge exchange recomb')
         if plot_spec_tot:
-            ax.plot(wave_final_A, spec_tot, c='k', label='' if no_leg else 'total')
+            ax.plot(wave_final_A+dlam_A, spec_tot, c='k', label='' if no_leg else 'total')
 
         if no_leg:
             ax.legend(loc='best').set_draggable(True)
@@ -865,7 +895,8 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
     else:
         ax=None
 
-    return wave_final_A, spec_ion, spec_exc, spec_rr, spec_dr, spec_cx, ax
+    # return Doppler-shifted wavelength if dlam_A was given as non-zero
+    return wave_final_A+dlam_A, spec_ion, spec_exc, spec_rr, spec_dr, spec_cx, ax
 
 
 
