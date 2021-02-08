@@ -505,7 +505,7 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
     log10pec_dict : dict
         Dictionary containing interpolation functions for each of the available lines of the
         indicated type (ionization or recombination). Each interpolation function takes as arguments
-        the log-10 of ne and Te and returns the log10 of the chosen PEC.
+        the log-10 of ne and Te and returns the log-10 of the chosen PEC.
     
     Examples
     --------
@@ -698,7 +698,7 @@ def _plot_pec(dens, temp, PEC, PEC_eval, lam,cs,rate_type, ax=None, plot_3d=Fals
 def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
                        ion_exc_rec_dens=None, dlam_A=0.0,
                        plot=True, ax=None, plot_spec_tot=True, no_leg=False):
-    '''Plot spectrum based on the lines contained in an ADAS ADF15 file
+    r'''Plot spectrum based on the lines contained in an ADAS ADF15 file
     at specific values of electron density and temperature. Charge state densities
     can be given explicitely, or alternatively charge state fractions will be automatically 
     computed from ionization equilibrium (no transport). 
@@ -736,7 +736,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
     Returns
     -------
     wave_final_A : 1D array
-        Array of wavelengths in units of :math:`\AA` on which the total spectrum is returned. 
+        Array of wavelengths in units of :math:`$\AA$` on which the total spectrum is returned. 
     spec_ion : 1D array
         Spectrum from ionizing components of the input ADF15 file as a function of wave_final_A.
     spec_exc : 1D array
@@ -894,6 +894,89 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
 
     # return Doppler-shifted wavelength if dlam_A was given as non-zero
     return wave_final_A+dlam_A, spec_ion, spec_exc, spec_rr, spec_dr, spec_cx, ax
+
+
+
+def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
+                        sxr=False, plot=True, show_components=False, ax=None):
+    '''Calculate cooling coefficients for the given fractional abundances and kinetic profiles.
+
+    Parameters
+    ----------
+    imp : str
+        Atomic symbol of ion of interest
+    ne_cm3 : 1D array
+        Electron density [:math:`cm^{-3}`], used to find charge state fractions at ionization equilibrium.
+    Te_eV : 1D array
+        Electron temperature [:math:`eV`] at which cooling factors should be obtained. 
+    n0_cm3 : 1D array or float
+        Background H/D/T neutral density [:math:`cm^{-3}`] used to account for charge exchange 
+        when calculating ionization equilibrium. 
+        If left to 0, charge exchange effects are not included.
+    sxr : bool
+        If True, plot SXR-filtered radiation instead of unfiltered radiation. Default is False. 
+    plot : bool
+        If True, plot all radiation components, summed over charge states.
+    ax : matplotlib.Axes instance
+        If provided, plot results on these axes. 
+    
+    Returns
+    -------
+    line_rad_tot : 1D array
+        Cooling coefficient from line radiation [:math:`W\cdot m^3`]. 
+        Depending on whether :param:`sxr`=True or False, this indicates filtered 
+        or unfiltered radiation, respectively.
+    cont_rad_tot : 1D array
+        Cooling coefficient from continuum radiation [:math:`W\cdot m^3`]. 
+        Depending on whether :param:`sxr`=True or False, this indicates filtered
+        or unfiltered radiation, respectively. 
+
+    '''
+    files = ['scd','acd']
+    if n0_cm3 is not 0.0: files+=['ccd']
+    atom_data_eq = get_atom_data(imp,files)
+
+    logTe, fz, rates = get_frac_abundances(atom_data_eq, ne_cm3, Te_eV,plot=False,
+                                           n0_by_ne=n0_cm3/ne_cm3,
+                                           include_cx=True if n0_cm3!=0.0 else False)
+    if sxr:
+        line_file = 'pls'
+        cont_file = 'prs'
+    else:
+        line_file = 'plt'
+        cont_file = 'prb'
+
+    atom_data = get_atom_data(imp,[line_file,cont_file])
+    pltt= interp_atom_prof(atom_data[line_file],None, np.log10(Te_eV)) # line radiation [W.cm^3]
+    prb = interp_atom_prof(atom_data[cont_file],None, np.log10(Te_eV)) # continuum radiation [W.cm^3]
+
+    pltt*= fz[:,:-1]
+    prb *= fz[:, 1:]
+
+    line_rad_tot  = pltt.sum(1) *1e-6  # W.cm^3-->W.m^3
+    cont_rad_tot = prb.sum(1) *1e-6    # W.cm^3-->W.m^3
+
+    if plot:
+        if ax is None:
+            fig, ax = plt.subplots()
+
+        # total radiation (includes hard X-ray, visible, UV, etc.)
+        l, = ax.loglog(Te_eV/1e3, cont_rad_tot+line_rad_tot, ls='-',
+                       label=f'{imp} $L_z$ (total)' if show_components else f'{imp}')
+        col = l.get_color()
+        
+        if show_components:
+            # show line and continuum recombination components separately
+            ax.loglog(Te_eV/1e3, line_rad_tot,c=col, ls='--',label='line radiation')
+            ax.loglog(Te_eV/1e3, cont_rad_tot,c=col, ls='-.',label='continuum radiation')
+    
+        ax.legend(loc='best').set_draggable(True)
+        ax.grid('on', which='both')
+        ax.set_xlabel('T$_e$ [keV]')
+        ax.set_ylabel('$L_z$ [$W$ $m^3$]')
+        plt.tight_layout()
+
+    return line_rad_tot, cont_rad_tot
 
 
 
