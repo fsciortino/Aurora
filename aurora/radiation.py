@@ -507,28 +507,29 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
         indicated type (ionization or recombination). Each interpolation function takes as arguments
         the log-10 of ne and Te and returns the log10 of the chosen PEC.
     
-    Minimal Working Example (MWE)::
+    Examples
+    --------
+    To plot the Lyman-alpha photon emissivity coefficients for H (or its isotopes), you can use:
 
-        filename = 'pec96#h_pju#h0.dat' # for D Ly-alpha
-
-        # fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
-        path = aurora.get_adas_file_loc(filename, filetype='adf15')  
-
-        # plot Lyman-alpha line at 1215.2 A. 
-        # see available lines with log10pec_dict.keys() after calling without plot_lines argument
-        log10pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
+    >>> filename = 'pec96#h_pju#h0.dat' # for D Ly-alpha
+    >>> # fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
+    >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')  
+    >>>
+    >>> # plot Lyman-alpha line at 1215.2 A. 
+    >>> # see available lines with log10pec_dict.keys() after calling without plot_lines argument
+    >>> log10pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
 
     Another example, this time also with charge exchange::
 
-        filename = 'pec96#c_pju#c2.dat'
-        path = aurora.get_adas_file_loc(filename, filetype='adf15')
-        log10pec_dict = aurora.read_adf15(path, plot_lines=[361.7])
+    >>> filename = 'pec96#c_pju#c2.dat'
+    >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')
+    >>> log10pec_dict = aurora.read_adf15(path, plot_lines=[361.7])
 
     Metastable-resolved files will be automatically identified and parsed accordingly, e.g.::
 
-         filename = 'pec96#he_pjr#he0.dat'
-         path = aurora.get_adas_file_loc(filename, filetype='adf15')
-         log10pec_dict = aurora.read_adf15(path, plot_lines=[584.4])
+    >>> filename = 'pec96#he_pjr#he0.dat'
+    >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')
+    >>> log10pec_dict = aurora.read_adf15(path, plot_lines=[584.4])
 
     Notes
     -----
