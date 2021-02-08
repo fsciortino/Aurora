@@ -641,7 +641,7 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
 
             meta_str = ''
             if meta_resolved: meta_str = f' , meta = {INDM}'
-            _ax.set_title(cs + r' , $\lambda$ = '+str(lam) +' A, '+rate_type+meta_str)
+            _ax.set_title(cs + r' , $\lambda$ = '+str(lam) +' $\AA$, '+rate_type+meta_str)
             plt.tight_layout()
 
     return pec_dict
