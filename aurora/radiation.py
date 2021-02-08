@@ -603,6 +603,7 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
         elif 'excit' in l.lower(): rate_type = 'excit'
         elif 'chexc' in l.lower(): rate_type = 'chexc'
         elif 'drsat' in l.lower(): rate_type = 'drsat'
+        elif 'ion' in l.lower(): rate_type = 'ioniz'
         else:
             # attempt to report unknown rate type -- this should be fairly robust
             rate_type = l.replace(' ','').lower().split('type=')[1].split('/')[0]
@@ -630,17 +631,13 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
             
         if lam in plot_lines:
 
-            # use log spacing (important to match well low values)
-            ne_eval = 10** np.linspace(np.log10(dens.min()), np.log10(dens.max()), 10)
-            Te_eval = 10** np.linspace(np.log10(temp.min()), np.log10(temp.max()), 100)
-
-            NE, TE = np.meshgrid(ne_eval, Te_eval)
+            # plot PEC values over ne,Te grid given by ADAS, showing interpolation quality
+            NE, TE = np.meshgrid(dens, temp)
             
-            PEC_eval = pec_fun.ev(np.log10(NE), np.log10(TE))
+            PEC_eval = pec_fun.ev(np.log10(NE), np.log10(TE)).T
 
             # plot PEC rates
-            _ax = _plot_pec(dens,temp,ne_eval,Te_eval,PEC_eval,PEC, lam,cs,rate_type,
-                            ax, plot_3d)
+            _ax = _plot_pec(dens,temp, PEC, PEC_eval, lam,cs,rate_type, ax, plot_3d)
 
             meta_str = ''
             if meta_resolved: meta_str = f' , meta = {INDM}'
@@ -651,13 +648,11 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
 
 
 
-def _plot_pec(dens, temp, ne_eval, Te_eval, PEC_eval, PEC, lam,cs,rate_type,
-             ax=None, plot_3d=False):
+def _plot_pec(dens, temp, PEC, PEC_eval, lam,cs,rate_type, ax=None, plot_3d=False):
     '''Private method to plot PEC data within :py:func:`~aurora.atomic.read_adf15` function.
     '''
-
     if ax is None:
-        f1 = plt.figure()
+        f1 = plt.figure(figsize=(9,8))
         if plot_3d:
             ax1 = f1.add_subplot(1,1,1, projection='3d')
         else:
@@ -667,30 +662,30 @@ def _plot_pec(dens, temp, ne_eval, Te_eval, PEC_eval, PEC, lam,cs,rate_type,
 
     if plot_3d:
         from mpl_toolkits.mplot3d import Axes3D
-
-        # to plot on linear ne,Te scales:
-        #ax1.plot_surface(NE, TE, PEC_eval, alpha=0.5)
-        #DENS, TEMP = np.meshgrid(dens, temp)
         
-        # log scales don't work in matplotlib 3D, so we plot log of each quantity
-        logNE, logTE = np.meshgrid(np.log10(ne_eval), np.log10(Te_eval))
-        ax1.plot_surface(logNE, logTE, PEC_eval, alpha=0.5)
         DENS, TEMP = np.meshgrid(np.log10(dens), np.log10(temp))
+
+        # plot interpolation surface
+        ax1.plot_surface(DENS, TEMP, PEC_eval.T, alpha=0.5)
         
+        # overplot ADAS data points
         ax1.scatter(DENS.ravel(), TEMP.ravel(), PEC.T.ravel(), color='b')
 
         if ax is None:
             ax1.set_xlabel('$log_{10}(n_e)$ [cm$^{-3}$]')
             ax1.set_ylabel('$log_{10}(T_e)$ [eV]')
-            ax1.set_zlabel('PEC')
+            ax1.set_zlabel('PEC [phot$\cdot cm^3/s$]')
 
     else:
         # plot in 2D
-        labels = ['{:.0e}'.format(ne)+r' $cm^{-3}$' for ne in ne_eval]
-        for ine in np.arange(PEC_eval.shape[1]):
-            ax1.plot(Te_eval, PEC_eval[:,ine], label=labels[ine])
+        labels = ['{:.0e}'.format(ne)+r' $cm^{-3}$' for ne in dens] #ne_eval]
+            
+        for ine in np.arange(PEC.shape[0]):
+            l, = ax1.plot(temp, PEC_eval[ine,:], label=labels[ine])
+            ax1.plot(temp, PEC[ine,:], color=l.get_color(), marker='o', mfc=l.get_color(), ms=5.)
+
         ax1.set_xlabel(r'$T_e$ [eV]')
-        ax1.set_ylabel('PEC')
+        ax1.set_ylabel('PEC [phot$\cdot cm^3/s$]')
         ax1.set_yscale('log')
 
         ax1.legend(loc='best').set_draggable(True)
