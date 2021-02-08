@@ -479,7 +479,8 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
     """Read photon emissivity coefficients from an ADAS ADF15 file.
 
     Returns a dictionary whose keys are the wavelengths of the lines in angstroms. 
-    The value is an interpolant that will evaluate the PEC at a desired density and temperature. 
+    The value is an interpolant that will evaluate the log10 of the PEC at a desired density 
+    and temperature. The power-10 exponentiation of this PEC has units of :math:`photons \cdot cm^3/s`
 
     Units for interpolation: :math:`cm^{-3}` for density; :math:`eV` for temperature.
 
@@ -501,10 +502,10 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
 
     Returns
     -------
-    pec_dict : dict
+    log10pec_dict : dict
         Dictionary containing interpolation functions for each of the available lines of the
         indicated type (ionization or recombination). Each interpolation function takes as arguments
-        the log-10 of ne and Te.
+        the log-10 of ne and Te and returns the log10 of the chosen PEC.
     
     Minimal Working Example (MWE)::
 
@@ -514,20 +515,20 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
         path = aurora.get_adas_file_loc(filename, filetype='adf15')  
 
         # plot Lyman-alpha line at 1215.2 A. 
-        # see available lines with pec_dict.keys() after calling without plot_lines argument
-        pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
+        # see available lines with log10pec_dict.keys() after calling without plot_lines argument
+        log10pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
 
     Another example, this time also with charge exchange::
 
         filename = 'pec96#c_pju#c2.dat'
         path = aurora.get_adas_file_loc(filename, filetype='adf15')
-        pec_dict = aurora.read_adf15(path, plot_lines=[361.7])
+        log10pec_dict = aurora.read_adf15(path, plot_lines=[361.7])
 
     Metastable-resolved files will be automatically identified and parsed accordingly, e.g.::
 
          filename = 'pec96#he_pjr#he0.dat'
          path = aurora.get_adas_file_loc(filename, filetype='adf15')
-         pec_dict = aurora.read_adf15(path, plot_lines=[584.4])
+         log10pec_dict = aurora.read_adf15(path, plot_lines=[584.4])
 
     Notes
     -----
@@ -545,7 +546,7 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
     header = lines.pop(0)
     # Get the expected number of lines by reading the header:
     num_lines = int(header.split()[0])
-    pec_dict = {}
+    log10pec_dict = {}
 
     for i in range(0, num_lines):
         
@@ -609,32 +610,32 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
             rate_type = l.replace(' ','').lower().split('type=')[1].split('/')[0]
 
         # create dictionary with keys for each wavelength:
-        if lam not in pec_dict:
-            pec_dict[lam] = {}                
+        if lam not in log10pec_dict:
+            log10pec_dict[lam] = {}                
 
-        # add a key to the pec_dict[lam] dictionary for each type of rate: recom, excit or chexc
+        # add a key to the log10pec_dict[lam] dictionary for each type of rate: recom, excit or chexc
         # interpolate PEC on log dens,temp scales
         pec_fun = RectBivariateSpline(
             np.log10(dens),
             np.log10(temp),
-            PEC,
+            np.log10(PEC),   # NB: interpolation of log10 of PEC to avoid issues at low ne or Te
             kx=order,
             ky=order
         )
         
         if meta_resolved:
-            if rate_type not in pec_dict[lam]:
-                pec_dict[lam][rate_type] = {}
-            pec_dict[lam][rate_type][f'meta{INDM}'] = pec_fun
+            if rate_type not in log10pec_dict[lam]:
+                log10pec_dict[lam][rate_type] = {}
+            log10pec_dict[lam][rate_type][f'meta{INDM}'] = pec_fun
         else:
-            pec_dict[lam][rate_type] = pec_fun
+            log10pec_dict[lam][rate_type] = pec_fun
             
         if lam in plot_lines:
 
             # plot PEC values over ne,Te grid given by ADAS, showing interpolation quality
             NE, TE = np.meshgrid(dens, temp)
             
-            PEC_eval = pec_fun.ev(np.log10(NE), np.log10(TE)).T
+            PEC_eval = 10**pec_fun.ev(np.log10(NE), np.log10(TE)).T
 
             # plot PEC rates
             _ax = _plot_pec(dens,temp, PEC, PEC_eval, lam,cs,rate_type, ax, plot_3d)
@@ -644,7 +645,7 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
             _ax.set_title(cs + r' , $\lambda$ = '+str(lam) +' $\AA$, '+rate_type+meta_str)
             plt.tight_layout()
 
-    return pec_dict
+    return log10pec_dict
 
 
 
@@ -674,7 +675,7 @@ def _plot_pec(dens, temp, PEC, PEC_eval, lam,cs,rate_type, ax=None, plot_3d=Fals
         if ax is None:
             ax1.set_xlabel('$log_{10}(n_e)$ [cm$^{-3}$]')
             ax1.set_ylabel('$log_{10}(T_e)$ [eV]')
-            ax1.set_zlabel('PEC [phot$\cdot cm^3/s$]')
+            ax1.set_zlabel('PEC [photons $\cdot cm^3/s$]')
 
     else:
         # plot in 2D
@@ -685,7 +686,7 @@ def _plot_pec(dens, temp, PEC, PEC_eval, lam,cs,rate_type, ax=None, plot_3d=Fals
             ax1.plot(temp, PEC[ine,:], color=l.get_color(), marker='o', mfc=l.get_color(), ms=5.)
 
         ax1.set_xlabel(r'$T_e$ [eV]')
-        ax1.set_ylabel('PEC [phot$\cdot cm^3/s$]')
+        ax1.set_ylabel('PEC [photons $\cdot cm^3/s$]')
         ax1.set_yscale('log')
 
         ax1.legend(loc='best').set_draggable(True)
@@ -784,7 +785,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
     n0_cm3=float(n0_cm3)
     
     # read ADF15 file
-    pec_dict = read_adf15(adf15_filepath)
+    log10pec_dict = read_adf15(adf15_filepath)
 
     # get charge state from file name -- assumes standard nomenclature, {classifier}#{ion}{charge}.dat
     cs = adf15_filepath.split('#')[-1].split('.dat')[0]
@@ -811,24 +812,24 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
             n0_by_ne=np.array([n0_cm3/ne_cm3,]), include_cx=True, plot=False)
         ion_exc_rec_dens = [fz[0][-4], fz[0][-3], fz[0][-2]] # Li-like, He-like, H-like
 
-    wave_A = np.zeros((len(list(pec_dict.keys()))))
-    pec_ion = np.zeros((len(list(pec_dict.keys()))))
-    pec_exc = np.zeros((len(list(pec_dict.keys()))))
-    pec_rr = np.zeros((len(list(pec_dict.keys()))))
-    pec_cx = np.zeros((len(list(pec_dict.keys()))))
-    pec_dr = np.zeros((len(list(pec_dict.keys()))))
-    for ii,lam in enumerate(pec_dict):
+    wave_A = np.zeros((len(list(log10pec_dict.keys()))))
+    pec_ion = np.zeros((len(list(log10pec_dict.keys()))))
+    pec_exc = np.zeros((len(list(log10pec_dict.keys()))))
+    pec_rr = np.zeros((len(list(log10pec_dict.keys()))))
+    pec_cx = np.zeros((len(list(log10pec_dict.keys()))))
+    pec_dr = np.zeros((len(list(log10pec_dict.keys()))))
+    for ii,lam in enumerate(log10pec_dict):
         wave_A[ii] = lam
-        if 'ioniz' in pec_dict[lam]:
-            pec_ion[ii] = pec_dict[lam]['ioniz'].ev(np.log10(ne_cm3),np.log10(Te_eV))
-        if 'excit' in pec_dict[lam]:
-            pec_exc[ii] = pec_dict[lam]['excit'].ev(np.log10(ne_cm3),np.log10(Te_eV))
-        if 'recom' in pec_dict[lam]:
-            pec_rr[ii] = pec_dict[lam]['recom'].ev(np.log10(ne_cm3),np.log10(Te_eV))
-        if 'chexc' in pec_dict[lam]:
-            pec_cx[ii] = pec_dict[lam]['checx'].ev(np.log10(ne_cm3),np.log10(Te_eV))
-        if 'drsat' in pec_dict[lam]:
-            pec_dr[ii] = pec_dict[lam]['drsat'].ev(np.log10(ne_cm3),np.log10(Te_eV))
+        if 'ioniz' in log10pec_dict[lam]:
+            pec_ion[ii] = 10**log10pec_dict[lam]['ioniz'].ev(np.log10(ne_cm3),np.log10(Te_eV))
+        if 'excit' in log10pec_dict[lam]:
+            pec_exc[ii] = 10**log10pec_dict[lam]['excit'].ev(np.log10(ne_cm3),np.log10(Te_eV))
+        if 'recom' in log10pec_dict[lam]:
+            pec_rr[ii] = 10**log10pec_dict[lam]['recom'].ev(np.log10(ne_cm3),np.log10(Te_eV))
+        if 'chexc' in log10pec_dict[lam]:
+            pec_cx[ii] = 10**log10pec_dict[lam]['checx'].ev(np.log10(ne_cm3),np.log10(Te_eV))
+        if 'drsat' in log10pec_dict[lam]:
+            pec_dr[ii] = 10**log10pec_dict[lam]['drsat'].ev(np.log10(ne_cm3),np.log10(Te_eV))
     
     # Doppler broadening
     mass = m_p * ion_A
