@@ -55,8 +55,15 @@ def js_sigma_cx_n1_q1(E):
 
 def js_sigma_cx_ng1_q1(E, n1):
     """Electron capture cross section for
-    H^{+} + H(n) --> H + H^+ , n>1
-    Section 2.3.2"""
+
+    .. math::
+
+        H^{+} + H(n) --> H + H^+ , n>1
+
+    Notes
+    ---------
+    Section 2.3.2 of Janev & Smith, NF 1993. 
+    """
     assert n1 > 1
     if n1 == 2:
         A1 = 0.92750
@@ -80,8 +87,15 @@ def js_sigma_cx_ng1_q1(E, n1):
 
 def js_sigma_cx_n1_q2(E):
     """Electron capture cross section for
-    He^{2+} + H(1s) --> He^+ + H^+
-    Section 3.3.1"""
+
+    .. math::
+
+        He^{2+} + H(1s) --> He^+ + H^+
+
+    Notes
+    ---------
+    Section 3.3.1 of Janev & Smith, NF 1993. 
+    """
     A1 = 17.438
     A2 = 2.1263
     A3 = 2.1401e-3
@@ -97,8 +111,14 @@ def js_sigma_cx_n1_q2(E):
 
 def js_sigma_cx_n2_q2(E):
     """Electron capture cross section for
-    He^{2+} + H(n=2) --> He^+ + H^+
-    Section 3.3.2
+
+    .. math::
+    
+        He^{2+} + H(n=2) --> He^+ + H^+
+
+    Notes
+    ---------
+    Section 3.3.2 of Janev & Smith, NF 1993. 
     """
     A1 = 88.508
     A2 = 0.78429
@@ -116,8 +136,14 @@ def js_sigma_cx_n2_q2(E):
 
 def js_sigma_cx_ng2_q2(E, n1):
     """Electron capture cross section for
-    He^{2+} + H*(n) --> He^+ + H^+ , n>2
-    Section 3.2.3"""
+
+    .. math::
+        He^{2+} + H*(n) --> He^+ + H^+ , n>2
+
+    Notes
+    ---------
+    Section 3.2.3 of Janev & Smith, NF 1993. 
+    """
     A1 = 2.0032e2
     A2 = 1.4591
     A3 = 2.0384e-4
@@ -135,8 +161,15 @@ def js_sigma_cx_ng2_q2(E, n1):
 
 def js_sigma_cx_n1_q4(E):
     """Electron capture cross section for
-    Be^{4+} + H(1s) --> Be^{3+} + H^+
-    Section 4.3.1"""
+
+    .. math::
+
+        Be^{4+} + H(1s) --> Be^{3+} + H^+
+
+    Notes
+    ---------
+    Section 4.3.1 of Janev & Smith, NF 1993. 
+    """
     A1 = 19.952
     A2 = 0.20036
     A3 = 1.7295e-4
@@ -157,8 +190,15 @@ def js_sigma_cx_n1_q4(E):
 
 def js_sigma_cx_n1_q5(E):
     """Electron capture cross section for
-    B^{5+} + H(1s) --> B^{4+} + H^+
-    Section 4.3.2"""
+
+    .. math::
+
+        B^{5+} + H(1s) --> B^{4+} + H^+
+
+    Notes
+    ---------
+    Section 4.3.2 of Janev & Smith, NF 1993. 
+    """
     A1 = 31.226
     A2 = 1.1442
     A3 = 4.8372e-8
@@ -179,8 +219,15 @@ def js_sigma_cx_n1_q5(E):
 
 def js_sigma_cx_n1_q6(E):
     """Electron capture cross section for
-    C^{6+} + H(1s) --> C^{5+} + H^+
-    Section 4.3.3"""
+
+    .. math::
+    
+        C^{6+} + H(1s) --> C^{5+} + H^+
+
+    Notes
+    ---------
+    Section 4.3.3 of Janev & Smith, NF 1993. 
+    """
     A1 = 418.18
     A2 = 2.1585
     A3 = 3.4808e-4
@@ -201,8 +248,15 @@ def js_sigma_cx_n1_q6(E):
 
 def js_sigma_cx_n1_q8(E):
     """Electron capture cross section for
-    O^{8+} + H(1s) --> O^{7+} + H^+
-    Section 4.3.4"""
+
+    .. math::
+
+        O^{8+} + H(1s) --> O^{7+} + H^+
+
+    Notes
+    ---------
+    Section 4.3.4 of Janev & Smith, NF 1993. 
+    """
     A1 = 1244.44
     A2 = 249.36
     A3 = 30.892
@@ -216,8 +270,15 @@ def js_sigma_cx_n1_q8(E):
 
 def js_sigma_cx_n1_qg8(E, q):
     """Electron capture cross section for
-    A^{q+} + H(1s) --> A^{(q-1)+} + H^+,   q>8
-    Section 4.3.5, p.172"""
+
+    .. math::
+
+        A^{q+} + H(1s) --> A^{(q-1)+} + H^+,   q>8
+
+    Notes
+    ---------
+    Section 4.3.5, p.172, of Janev & Smith, NF 1993. 
+    """
     Ew = E / q ** (3.0 / 7.0)
     A1 = 0.73362
     A2 = 2.9391e4
@@ -230,8 +291,14 @@ def js_sigma_cx_n1_qg8(E, q):
 
 def js_sigma_cx_ng1_qg3(E, n1, q):
     """Electron capture cross section for
-    A^{q+} + H^*(n) --> A^{(q-1)+}+H^+ , q>3
-    Section 4.3.6, p.174
+
+    .. math::
+
+        A^{q+} + H^*(n) --> A^{(q-1)+}+H^+ , q>3
+
+    Notes
+    ---------
+    Section 4.3.6, p.174, of Janev & Smith, NF 1993. 
     """
     A = 1.507e5
     B = 1.974e-5
@@ -250,7 +317,7 @@ def js_sigma(E, q, n1, n2=None, type='cx'):
     E : float
         Normalized beam energy [keV/amu]
     q : int
-        Impurity charge before interaction (interacting ion is A^{q+})
+        Impurity charge before interaction (interacting ion is :math:`A^{q+}`)
     n1 : int
         Principal quantum number of beam hydrogen.
     n2: int
@@ -263,7 +330,7 @@ def js_sigma(E, q, n1, n2=None, type='cx'):
     Returns
     -------
     sigma : float
-        Cross section of selected process, in [cm^2] units.
+        Cross section of selected process, in [:math:`cm^2`] units.
 
     Notes
     -----
