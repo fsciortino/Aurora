@@ -227,11 +227,11 @@ Note that in order to find the photon emissivity coefficient of specific neutral
   # fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
   path = aurora.get_adas_file_loc(filename, filetype='adf15')  
   
-  # plot Lyman-alpha line at 1215.2 A. See available lines with pec_dict.keys() after calling without plot_lines argument
-  pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
+  # plot Lyman-alpha line at 1215.2 A. See available lines with log10pec_dict.keys() after calling without plot_lines argument
+  log10pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
   
 
-This will plot the Lyman-alpha photon emissivity coefficients (both the components due to excitation and recombination) as a function of temperature in eV. Some files (e.g. try `pec96#c_pju#c2.dat`) may also have charge exchange components.
+This will plot the Lyman-alpha photon emissivity coefficients (both the components due to excitation and recombination) as a function of temperature in eV. Some files (e.g. try `pec96#c_pju#c2.dat`) may also have charge exchange components. Note that both the inputs and outputs of the :py:func:`~aurora.atomic.read_adf15` function act on log-10 values, i.e. interpolants should be called on log-10 values of :math:`$n_e$` and :math:`$T_e$`, and the result of interpolation will only be in units of :math:`photons \cdot cm^3/s` after one takes the power of 10 of it.
 
 Analysis routines to work with fast and halo neutrals are also provided in Aurora. Atomic rates for charge exchange of impurities with NBI neutrals are taken from Janev & Smith NF 1993 and can be obtained from :py:func:`~aurora.janev_smith_rates.js_sigma`, which wraps a number of functions for specific atomic processes. To compute charge exchange rates between NBI neutrals (fast or thermal) and any ions in the plasma, users need to provide a prediction of neutral densities, likely from an external code like `FIDASIM`_.
 
