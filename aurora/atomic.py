@@ -499,7 +499,7 @@ class CartesianGrid:
         coords /= self.scales
         coords = coords.T
 
-        #clip dimension - it will extrapolation by a nearest value
+        #clip dimension - gives extrapolation by nearest value
         for coord, n in zip(coords, self.N):
             np.clip(coord,0,n-1,coord)
 

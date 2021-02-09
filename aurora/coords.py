@@ -210,7 +210,12 @@ def rad_coord_transform(x,name_in,name_out, geqdsk):
 
     ind = coord_in != 0
 
-    #trick for better extrapolation
-    return np.interp(x,coord_in[ind],coord_out[ind]/coord_in[ind])*x
+    if isinstance(x, (float,int)) and float(x)==0.:
+        # interpolation trick below doesn't play nicely with magnetic axis
+        return np.interp(x,coord_in[ind],coord_out[ind])
+    else:
+        #trick for better extrapolation
+        return np.interp(x,coord_in[ind],coord_out[ind]/coord_in[ind])*x
 
+        
 
