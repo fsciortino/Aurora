@@ -398,9 +398,9 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, maxTe=10e3, include
     Parameters
     ----------
     atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
-        necessary only if include_cx=True
+        necessary only if include_cx=True)
     ne_cm3 : float or array
-        Electron density in units of cm^-3
+        Electron density in units of :math:`cm^-3`
     Te_eV : float or array
         Electron temperature in units of eV. If left to None, the Te grid
         given in the atomic data is used.
@@ -522,52 +522,52 @@ class CartesianGrid:
         return inter_out
 
 
-def interp_atom_prof(atom_table,x_prof, y_prof,log_val=False, x_multiply=True):
-    r''' Fast interpolate atomic data in atom_table onto the x_prof and y_prof profiles.
-    This function assume that x_prof, y_prof, x,y, table are all base-10 logarithms,
-    and x_prof, y_prof are equally spaced.
+def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
+    r''' Fast interpolate atomic data in atom_table onto the xprof and yprof profiles.
+    This function assume that xprof, yprof, x,y, table are all base-10 logarithms,
+    and xprof, yprof are equally spaced.
 
     Parameters
     ----------
     atom_table : list
         List with x,y, table = atom_table, containing atomic data from one of the ADAS files. 
-    x_prof : array (nt,nr)
+    xprof : array (nt,nr)
         Spatio-temporal profiles of the first coordinate of the ADAS file table (usually 
         electron density in :math:`cm^{-3}`)
-    y_prof : array (nt,nr)
+    yprof : array (nt,nr)
         Spatio-temporal profiles of the second coordinate of the ADAS file table (usually 
         electron temperature in :math:`eV`)
     log_val : bool
         If True, return natural logarithm of the data
     x_multiply : bool
-        If True, multiply output by :math:`10^{x_prof}`. 
+        If True, multiply output by :math:`10^{xprof}`. 
 
     Returns
     -------
     interp_vals : array (nt,nion,nr)
         Interpolated atomic data on time,charge state and spatial grid that correspond to the 
-        ion of interest and the spatiotemporal grids of x_prof and y_prof. 
+        ion of interest and the spatiotemporal grids of xprof and yprof. 
     '''
     x,y, table = atom_table
 
-    if (abs(table-table[...,[0]]).all()  < 0.05) or x_prof is None:
+    if (abs(table-table[...,[0]]).all()  < 0.05) or xprof is None:
         # 1D interpolation if independent of the last dimension - like SXR radiation data
 
         reg_interp = CartesianGrid((y, ),table[:,:,0]*np.log(10))
-        interp_vals = reg_interp(y_prof) 
+        interp_vals = reg_interp(yprof) 
 
         # multipling of logarithms is just adding
-        if x_multiply and x_prof is not None:
-            interp_vals += x_prof*np.log(10)
+        if x_multiply and xprof is not None:
+            interp_vals += xprof*np.log(10)
 
     else: # 2D interpolation
         if x_multiply: #multipling of logarithms is just adding
             table += x
         # broadcast both variables in the sae shape
-        x_prof, y_prof = np.broadcast_arrays(x_prof, y_prof)
+        xprof, yprof = np.broadcast_arrays(xprof, yprof)
         #perform fast linear interpolation
         reg_interp = CartesianGrid((x, y),table.swapaxes(1,2)*np.log(10))
-        interp_vals = reg_interp(x_prof,y_prof) 
+        interp_vals = reg_interp(xprof,yprof) 
     
     # reshape to shape(nt,nion,nr)
     interp_vals = interp_vals.swapaxes(0,1)
