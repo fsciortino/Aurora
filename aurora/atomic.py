@@ -15,16 +15,24 @@ from . import adas_files
 
 def get_adas_file_types():
     '''Obtain a description of each ADAS file type and its meaning in the context of Aurora.
-    For background, refer to::
 
-       Summers et al., "Ionization state, excited populations and emission of impurities 
+    Returns
+    ------------
+    dict
+        Dictionary with keys given by the ADAS file types and values giving a description for them.
+
+    Notes
+    ---------
+    For background on ADAS generalized collisional-radiative modeling and data formats, refer to 
+    [1]_.
+
+    References
+    -----------------
+    
+    .. [1] Summers et al., "Ionization state, excited populations and emission of impurities 
        in dynamic finite density plasmas: I. The generalized collisional-radiative model for 
        light elements", Plasma Physics and Controlled Fusion, 48:2, 2006
 
-    Returns
-    -------
-    dict
-        Dictionary with keys given by the ADAS file types and values giving a description for them.
     '''
     
     return {'acd':'effective recombination',

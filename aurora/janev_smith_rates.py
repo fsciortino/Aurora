@@ -13,8 +13,15 @@ import copy
 
 def js_sigma_ioniz_n1_q8(E):
     """Ionization cross section for
-    O^{8+} + H(1s) --> O^{8+} + H^+ +e^-
-    Section 4.2.4"""
+
+    .. math::
+    
+        O^{8+} + H(1s) --> O^{8+} + H^+ +e^-
+
+    Notes
+    ---------
+    Section 4.2.4 of Janev & Smith, NF 1993. 
+    """
     A1 = 1244.44
     A2 = 249.36
     A3 = 30.892
@@ -28,8 +35,15 @@ def js_sigma_ioniz_n1_q8(E):
 
 def js_sigma_cx_n1_q1(E):
     """Electron capture cross section for
-    H^{+} + H(1s) --> H + H^+
-    Section 2.3.1"""
+
+    .. math::
+
+        H^{+} + H(1s) --> H + H^+
+
+    Notes
+    ---------
+    Section 2.3.1 of Janev & Smith, NF 1993. 
+    """
     A1 = 3.2345
     A2 = 235.88
     A3 = 0.038371
