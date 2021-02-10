@@ -269,13 +269,32 @@ class solps_case:
             # load each of these files into dictionary structures
             with open(self.path +os.sep+self.solps_run+os.sep+filename, 'r') as f:
                 contents = f.readlines()
-            ii=6
+            
+            print(len(contents))
+            
+            if filename=='fort.44':
+                XX=int(contents[0].split()[0])
+                YY=int(contents[0].split()[1])
+                eirene_out[filename]['XX']=XX
+                eirene_out[filename]['YY']=YY
+                eirene_out[filename]['DIM']=XX*YY
+            elif filename=='fort.46':
+                eirene_out[filename]['DIM']=contents[0].split()[0]
+                
+            ii=1
+            eirene_out[filename]['species']=[]
+            while not contents[ii].startswith('*eirene'):
+                if not contents[ii].split()[0].isnumeric():
+                    eirene_out[filename]['species'].append(contents[ii].split()[0])
+                ii+=1                    
 
-            while ii<len(contents[ii:]):
+            while ii<len(contents):
                 if  contents[ii].startswith('*eirene'):
-                    key = contents[ii].split()[3]
+                    key = ''.join(contents[ii].split()[3:-3])
+                    dim = contents[ii].split()[-1]
+                    print(key)
                     eirene_out[filename][key] = []
-                else:
+                elif not contents[ii].split()[0][0].isalpha():
                     [eirene_out[filename][key].append(float(val)) for val in contents[ii].strip().split()]
                 ii+=1
 
@@ -293,7 +312,7 @@ class solps_case:
             self.path+os.sep+'baserun'+os.sep+'fort.34',skiprows=1, usecols=(1,2,3))
 
         eirene_out['triang'] =tri.Triangulation(XNodes,YNodes,triangles=(Triangles-1))
-
+        
         return eirene_out
 
 
