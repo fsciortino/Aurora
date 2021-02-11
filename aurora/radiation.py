@@ -736,7 +736,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
     Returns
     -------
     wave_final_A : 1D array
-        Array of wavelengths in units of :math:`$\AA$` on which the total spectrum is returned. 
+        Array of wavelengths in units of :math:`\r{A}` on which the total spectrum is returned. 
     spec_ion : 1D array
         Spectrum from ionizing components of the input ADF15 file as a function of wave_final_A.
     spec_exc : 1D array
@@ -928,7 +928,7 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
         or unfiltered radiation, respectively.
     cont_rad_tot : 1D array
         Cooling coefficient from continuum radiation [:math:`W\cdot m^3`]. 
-        Depending on whether :param:`sxr`=True or False, this indicates filtered
+        Depending on whether `sxr`=True or False, this indicates filtered
         or unfiltered radiation, respectively. 
 
     '''

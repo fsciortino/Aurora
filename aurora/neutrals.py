@@ -336,22 +336,21 @@ def Lya_to_neut_dens(emiss_prof, ne, Te, ni=None, plot=True, rhop=None,
         If given, plot on these axes.
 
     Returns
-    -------
+    ------------
     N1 : 1D array
         Radial profile of estimated ground state atomic neutral density on the same grid 
         as the input arrays. Units of :math:`cm^{-3}`.
 
     Examples
-    --------
-
-        N2_colrad,axs = Lya_to_neut_dens_basic(
-                            emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
-                            rates_source='colrad')
-
-        N2_adas,axs = Lya_to_neut_dens_basic(
-                            emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
-                            rates_source='adas',axs=axs)
-
+    --------------
+    
+    >>> N2_colrad,axs = Lya_to_neut_dens_basic(emiss_prof, ne, Te, ni, 
+    >>>                                  plot=True, rhop=rhop, rates_source='colrad')
+    
+    >>> N2_adas,axs = Lya_to_neut_dens_basic(
+    >>>                       emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
+    >>>                       rates_source='adas',axs=axs)
+    
     '''
     assert len(emiss_prof)==len(ne) and len(ne)==len(Te)
     if ni is None:
