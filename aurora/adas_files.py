@@ -6,7 +6,7 @@ import urllib
 import shutil,os
 
 # location of the "adas_data" directory relative to this script:
-adas_data_dir = os.path.dirname(os.path.realpath(__file__))+'/adas_data/'
+adas_data_dir = os.path.dirname(os.path.realpath(__file__))+os.sep+'adas_data'+os.sep
 
 def get_adas_file_loc(filename, filetype='adf11'):
     '''Find location of requested atomic data file for the indicated ion. 
@@ -19,8 +19,10 @@ def get_adas_file_loc(filename, filetype='adf11'):
        and copy it to Aurora/aurora/adas_data/actual_filename, where actual_filename is the file
        name rather than the full path. 
 
-    #. If the environmental variable "AURORA_ADAS_DIR" is defined, attempt to find the file there 
-       and copy it to Aurora/aurora/adas_data/*filetype*.
+    #. If the environmental variable "AURORA_ADAS_DIR" is defined, attempt to find the file there, 
+       under adf11/ and adf15/ directories. AURORA_ADAS_DIR may for example be the path to a central
+       repository of ADAS files for Aurora on a cluster where not everyone may have write-permissions.
+       For this option, files are not copied at all.
 
     #. Attempt to fetch the file remotely via open.adas.ac.uk and save it in 
        Aurora/aurora/adas_data/*filetype*/. 
@@ -45,56 +47,65 @@ def get_adas_file_loc(filename, filetype='adf11'):
         # make sure that aurora/adas_data/adf11 and aurora/adas_data/adf15 directories exist
         os.makedirs(adas_data_dir+filetype)
 
-    def fetch_file(filename,filetype):
+    def fetch_file(filename,filetype, loc):
         if filetype=='adf11':
-            fetch_adf11_file(filename)
+            fetch_adf11_file(filename, loc)
         elif filetype=='adf15':
-            fetch_adf15_file(filename)
+            fetch_adf15_file(filename, loc)
         else:
-            raise ValueError('ADAS file type/format not recognized. Could not find it download it automatically!')
+            raise ValueError('ADAS file type/format not recognized. Could not find it or download it automatically!')
 
-    if os.path.exists(adas_data_dir+filetype+'/'+filename):
+    if os.path.exists(adas_data_dir+filetype+os.sep+filename):
         # file is available in adas_data:
-        pass
+        return adas_data_dir+filetype+os.sep+filename
 
     elif os.path.exists(filename):
         # check if user actually gave a complete filepath. If so, copy file to adas_data directory
         filepath = filename
         filename = filepath.split('/')[-1]
-        shutil.copyfile(filepath, adas_data_dir+filetype+'/'+filename)
-
+        shutil.copyfile(filepath, adas_data_dir+filetype+os.sep+filename)
+        return adas_data_dir+filetype+os.sep+filename
+    
     elif 'AURORA_ADAS_DIR' in os.environ:
-        if os.path.exists(os.environ['AURORA_ADAS_DIR']+'/'+filename):
-            # copy file to adas_data_dir+filetype:
-            shutil.copyfile(os.environ['AURORA_ADAS_DIR']+'/'+filename, adas_data_dir+filetype+'/'+filename)
+        loc = os.environ['AURORA_ADAS_DIR']+os.sep+filetype+os.sep+filename
+        if os.path.exists(loc):
             pass
         else:
             # File could not be found. Download it and save it in adas_data:
-            fetch_file(filename,filetype)
+            fetch_file(filename, filetype, loc=loc)
+        return loc
 
     else:
         # File could not be found. Download it and save it in adas_data:
-        fetch_file(filename,filetype)
+        loc = adas_data_dir+filetype+os.sep+filename
+        fetch_file(filename,filetype, loc=loc)
+        return loc
 
-    return adas_data_dir+filetype+'/'+filename
+    
 
 
-def fetch_adf11_file(filename):
+def fetch_adf11_file(filename, loc):
     '''Download ADF11 file from the OPEN-ADAS website and store it in the 'adas_data/adf11'
     directory. 
 
-    Args:
-        filename : str
-            Name of ADF11 file to be downloaded, e.g. 'plt89_ar.dat'.
+    Parameters
+    ----------
+    filename : str
+        Name of ADF11 file to be downloaded, e.g. 'plt89_ar.dat'.
+    loc : str
+        Location to save fetched ADF11 in.
     '''
     url = 'https://open.adas.ac.uk/download/adf11/'
     str1 =  filename.split('_')[0]
-    local_filename,headers = urllib.request.urlretrieve(url+str1+'/'+filename, filename)
-    shutil.move(filename,adas_data_dir+'adf11/'+filename)
+    
+    local_filename,headers = urllib.request.urlretrieve(
+        url+str1+'/'+filename,
+        filename = loc
+    )
 
 
 
-def fetch_adf15_file(filename):
+def fetch_adf15_file(filename, loc):
     '''Download ADF15 file from the OPEN-ADAS website and store it in the 'adas_data/adf15'
     directory. 
 
@@ -102,6 +113,8 @@ def fetch_adf15_file(filename):
     ----------
     filename : str
         Name of ADF15 file to be downloaded, e.g. 'pec96#c_pju#c2.dat'.
+    loc : str
+        Location to save fetched ADF15 file in.
     '''
     url = 'https://open.adas.ac.uk/download/adf15/'
 
@@ -117,9 +130,11 @@ def fetch_adf15_file(filename):
         # patterns may be different, attempt simple guess:
         filename_mod = filename.split('_')[0]+'/'+filename.replace('#','][')
 
-    local_filename,headers = urllib.request.urlretrieve(url+'/'+filename_mod, filename)
-    shutil.move(filename,adas_data_dir+'adf15/'+filename)
-
+    local_filename,headers = urllib.request.urlretrieve(
+        url+'/'+filename_mod,
+        filename=loc
+    )
+    
 
 def adas_files_dict():
     '''Selections for ADAS files for Aurora runs and radiation calculations.
@@ -140,10 +155,10 @@ def adas_files_dict():
             
     files={}
     files["H"] = {}   #1
-    files["H"]['acd'] = "acd96_h.dat"
-    files["H"]['scd'] = "scd96_h.dat"
-    files["H"]['prb'] = "prb96_h.dat"
-    files["H"]['plt'] = "plt96_h.dat"
+    files["H"]['acd'] = "acd12_h.dat" #"acd96_h.dat"
+    files["H"]['scd'] = "scd12_h.dat" #"scd96_h.dat"
+    files["H"]['prb'] = "prb12_h.dat" #"prb96_h.dat"
+    files["H"]['plt'] = "plt12_h.dat" #"plt96_h.dat"
     files["H"]['ccd'] = "ccd96_h.dat"
     files["H"]['prc'] = "prc96_h.dat"
     files["H"]['pls'] = "pls_H_14.dat"
