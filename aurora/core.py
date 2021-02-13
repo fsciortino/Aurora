@@ -61,7 +61,7 @@ class aurora_sim:
         self.imp = namelist['imp']
 
         # import omfit_eqdsk here to avoid issues with docs and packaging
-        import omfit_eqdsk
+        from omfit_classes import omfit_eqdsk
         if geqdsk is None:
             # Fetch geqdsk from MDS+ (using EFIT01) and post-process it using the OMFIT geqdsk format.
             self.geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(
@@ -93,7 +93,7 @@ class aurora_sim:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
 
         # import here to avoid issues when building docs or package
-        from omfit_commonclasses.utils_math import atomic_element
+        from omfit_classes.utils_math import atomic_element
 
         # get nuclear charge Z and atomic mass number A
         out = atomic_element(symbol=self.imp)
@@ -320,7 +320,7 @@ class aurora_sim:
         
         '''
         # import here to avoid issues when building docs or package
-        from omfit_commonclasses.utils_math import atomic_element
+        from omfit_classes.utils_math import atomic_element
 
         # background mass number (=2 for D)
         out = atomic_element(symbol=self.namelist['main_element'])

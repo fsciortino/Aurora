@@ -284,7 +284,7 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
                 raise ValueError('Could not compute a valid energy of injected ions!')
 
         # import here to avoid issues with omfit_commonclasses during docs and package creation
-        from omfit_commonclasses.utils_math import atomic_element
+        from omfit_classes.utils_math import atomic_element
 
         # velocity of neutrals [cm/s]
         out = atomic_element(symbol=namelist['main_element'])

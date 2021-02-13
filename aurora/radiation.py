@@ -792,7 +792,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
     cs = adf15_filepath.split('#')[-1].split('.dat')[0]
     
     # import here to avoid issues when building docs or package
-    from omfit_commonclasses.utils_math import atomic_element
+    from omfit_classes.utils_math import atomic_element
     
     # get nuclear charge Z and atomic mass number A
     out = atomic_element(symbol=ion)

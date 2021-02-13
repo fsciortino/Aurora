@@ -96,7 +96,7 @@ def centrifugal_asym(rhop, Rlfs, omega, Zeff, A_imp, Z_imp, Te, Ti,
     nz : array (nr,nZ)
         Impurity charge state densities (output of Aurora at a specific time slice), only used for 2D plotting.
     geqdsk : dict
-        Dictionary containing the `omfit_eqdsk` reading of the EFIT g-file. 
+        Dictionary containing the `omfit_classes.omfit_eqdsk` reading of the EFIT g-file. 
 
     Returns
     -------

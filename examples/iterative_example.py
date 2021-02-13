@@ -10,7 +10,7 @@ jmcclena and sciortino, Nov 2020
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-import omfit_eqdsk, omfit_gapy
+from omfit_classes import omfit_eqdsk, omfit_gapy
 import sys, copy, os
 from scipy.interpolate import interp1d
 

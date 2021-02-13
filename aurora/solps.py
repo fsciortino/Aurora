@@ -30,9 +30,9 @@ class solps_case:
             can be found. 
             If form='full', this path indicates where to find the directory named "baserun"
             and the 'solps_run' one.
-        geqdsk : str or `omfit_geqdsk` class instance
-            Path to the geqdsk to load from disk, or instance of the `omfit_geqdsk` class that
-            contains the processed gEQDSK file already. 
+        geqdsk : str or `omfit_classes.omfit_geqdsk.OMFITgeqdsk` class instance
+            Path to the geqdsk to load from disk, or instance of the `omfit_classes.omfit_geqdsk.omfit_geqdsk` 
+            class that contains the processed gEQDSK file already. 
         solps_run : str
             If form='full', this string specifies the directory (relative to the given path)
             where case-specific files for a SOLPS run can be found (e.g. 'b2fstate').
@@ -57,7 +57,7 @@ class solps_case:
         self.form = form
         
         if isinstance(geqdsk, str): # user passed a path to a gfile on disk
-            import omfit_eqdsk # import omfit_eqdsk here to avoid issues with docs and packaging
+            from omfit_classes import omfit_eqdsk # import omfit_eqdsk here to avoid issues with docs and packaging
             self.geqdsk = omfit_eqdsk.OMFITgeqdsk(geqdsk)
         else:
             self.geqdsk = geqdsk
@@ -86,7 +86,7 @@ class solps_case:
             self.double_null = False # TODO: generalize for double null shapes!
 
         elif form=='full':
-            import omfit_solps # import omfit_solps here to avoid issues with docs and packaging
+            from omfit_classes import omfit_solps # import omfit_solps here to avoid issues with docs and packaging
             self.b2fstate = omfit_solps.OMFITsolps(path+os.sep+solps_run+os.sep+'b2fstate')
             self.geom = omfit_solps.OMFITsolps(path+os.sep+'baserun'+os.sep+'b2fgmtry')
 
@@ -545,8 +545,7 @@ def apply_mask(triang, geqdsk, max_mask_len=0.4, mask_up=False, mask_down=False)
     triang : instance of matplotlib.tri.triangulation.Triangulation
         Matplotlib triangulation object for the (R,Z) grid. 
     geqdsk : dict
-        Dictionary containing gEQDSK file values as processed by the `omfit_eqdsk`
-        package. 
+        Dictionary containing gEQDSK file values as processed by `omfit_classes.omfit_eqdsk`. 
     max_mask_len : float
         Maximum length [m] of segments within the triangulation. Segments longer
         than this value will not be plotted. This helps avoiding triangulation 

@@ -4,7 +4,7 @@ Script to benchmark basic Julia version against Fortran one.
 
 import numpy as np
 import matplotlib.pyplot as plt
-import omfit_eqdsk, omfit_gapy
+from omfit_classes import omfit_eqdsk, omfit_gapy
 import pickle as pkl
 import scipy,sys,os
 import time
