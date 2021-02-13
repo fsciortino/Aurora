@@ -38,7 +38,7 @@ about:
   license_file: USER_AGREEMENT.txt
   summary: 'Modern toolbox for impurity transport, neutrals and radiation modeling in fusion plasmas'
   description: |
-    Aurora is a package to simulate heavy-ion transport and radiation in magnetically-confined plasmas. 
+    Aurora is a package to simulate heavy-ion transport, neutrals and radiation in magnetically-confined plasmas. 
     It offers a 1.5D impurity transport forward model inheriting from the historical STRAHL code, 
     with which it has been thoroughly benchmarked. Routines to analyze neutral states of hydrogen 
     isotopes, both from the edge of fusion plasmas and from neutral beam injection, allow integration 
