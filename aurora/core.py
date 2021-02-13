@@ -18,39 +18,36 @@ from . import synth_diags
 
 
 class aurora_sim:
-    '''
-    Class to setup and run aurora simulations.
+    '''Setup the input dictionary for an Aurora ion transport simulation from the given namelist.
+
+    Parameters
+    ----------
+    namelist : dict
+        Dictionary containing aurora inputs. See default_nml.py for some defaults, 
+        which users should modify for their runs.
+    geqdsk : dict, optional
+        EFIT gfile as returned after postprocessing by the :py:mod:`omfit_eqdsk` 
+        package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary 
+        is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
+    nbi_cxr : array, optional
+        If namelist['nbi_cxr']=True, this array represents the charge exchange rates 
+        with NBI neutrals, fast and/or thermal, across the entire radius and on the 
+        time base of interest. 
+        Creating this input is not trivial and must be done externally to aurora. 
+        General steps:
+        - get density of fast NBI neutrals (both fast and thermal/halo) ---> n0_nbi, n0_halo
+        - get total rates (n-unresolved) for CX with NBI neutrals --> _alpha_CX_NBI_rates
+        - thermal rates for the halo may be from ADAS CCD files or from the same methods used 
+        for fast neutrals
+        - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
+        This method still needs more testing within this class. Contact sciortino@psfc.mit.edu for details. 
+    setup2load : str, optional
+        Path to file from which Aurora simulation setup should be loaded. 
+        This is expected in pickle format, e.g. "test.pkl". Any `aurora_sim` instance
+        can be saved to file using the :py:meth:`~aurora.core.save` method.             
+
     '''
     def __init__(self, namelist={}, geqdsk=None, nbi_cxr=None, pickle2load=None):
-        '''Setup aurora simulation input dictionary from the given namelist.
-
-        Parameters
-        -----------------
-        namelist : dict
-            Dictionary containing aurora inputs. See default_nml.py for some defaults, 
-            which users should modify for their runs.
-        geqdsk : dict, optional
-            EFIT gfile as returned after postprocessing by the :py:mod:`omfit_eqdsk` 
-            package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary 
-            is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
-        nbi_cxr : array, optional
-            If namelist['nbi_cxr']=True, this array represents the charge exchange rates 
-            with NBI neutrals, fast and/or thermal, across the entire radius and on the 
-            time base of interest. 
-            Creating this input is not trivial and must be done externally to aurora. 
-            General steps:
-            - get density of fast NBI neutrals (both fast and thermal/halo) ---> n0_nbi, n0_halo
-            - get total rates (n-unresolved) for CX with NBI neutrals --> _alpha_CX_NBI_rates
-            - thermal rates for the halo may be from ADAS CCD files or from the same methods used 
-            for fast neutrals
-            - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
-            This method still needs more testing within this class. Contact sciortino@psfc.mit.edu for details. 
-        setup2load : str, optional
-            Path to file from which Aurora simulation setup should be loaded. 
-            This is expected in pickle format, e.g. "test.pkl". Any `aurora_sim` instance
-            can be saved to file using the :py:meth:`~aurora.core.save` method.             
-
-        '''
         if pickle2load is not None:
             self.load(pickle2load)
             return

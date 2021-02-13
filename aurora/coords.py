@@ -59,7 +59,7 @@ def vol_average(quant, rhop, method='omfit', geqdsk=None, device=None, shot=None
         try:
             from omfit_classes import omfit_eqdsk
         except:
-            raise ValueError('Could not import omfit_eqdsk! Install with pip install omfit_eqdsk')
+            raise ValueError('Could not import omfit_classes.omfit_eqdsk! Install with pip install omfit_classes')
         geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(
             device=device, shot=shot, time=time, SNAPfile='EFIT01',
             fail_if_out_of_range=False,time_diff_warning_threshold=20)
