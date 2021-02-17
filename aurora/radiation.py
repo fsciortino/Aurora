@@ -695,8 +695,8 @@ def _plot_pec(dens, temp, PEC, PEC_eval, lam,cs,rate_type, ax=None, plot_3d=Fals
     return ax1
 
 
-def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, Ti_eV, n0_cm3=0.0,
-                       ion_exc_rec_dens=None, dlam_A=0.0,
+def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
+                       Ti_eV=None, n0_cm3=0.0, ion_exc_rec_dens=None, dlam_A=0.0,
                        plot=True, ax=None, plot_spec_tot=True, no_leg=False):
     r'''Plot spectrum based on the lines contained in an ADAS ADF15 file
     at specific values of electron density and temperature. Charge state densities
@@ -717,7 +717,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, Ti_eV, n0_cm3=0.0,
         local values of photon emissivity coefficients.
     Ti_eV : float
         Local value of ion temperature, in units of :math:`eV`. This is used to represent the 
-        effect of Doppler broadening.
+        effect of Doppler broadening. If left to None, it is internally set equal to `Te_eV`.
     n0_cm3 : float, optional
         Local density of atomic neutral hydrogen isotopes. This is only used if the provided
         ADF15 file contains charge exchange contributions.
@@ -787,7 +787,10 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, Ti_eV, n0_cm3=0.0,
     # ensure input ne,Te,n0 are floats
     ne_cm3=float(ne_cm3)
     Te_eV=float(Te_eV)
-    Ti_eV=float(Ti_eV)
+    if Ti_eV is None:
+        Ti_eV = copy.deepcopy(Te_eV)
+    else:
+        Ti_eV=float(Ti_eV)
     n0_cm3=float(n0_cm3)
     
     # read ADF15 file
