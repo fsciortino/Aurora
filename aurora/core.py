@@ -20,7 +20,7 @@ from . import synth_diags
 class aurora_sim:
     '''
     Class to setup and run aurora simulations.
-    '''
+    '''        
     def __init__(self, namelist={}, geqdsk=None, nbi_cxr=None, pickle2load=None):
         '''Setup aurora simulation input dictionary from the given namelist.
 
@@ -378,22 +378,22 @@ class aurora_sim:
         Parameters
         -----------------
         D_z, V_z: arrays, shape of (space,time,nZ) or (space,time) or (space,)
-            Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
+            Diffusion and convection coefficients, in units of :math:`cm^2/s` and :math:`cm/s`, respectively.
             This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
-            the number of charge states. If D_z and V_z are found to be have only 2 dimensions, 
+            the number of charge states. If `D_z` and `V_z` are found to be have only 2 dimensions, 
             it is assumed that all charge states should have the same transport coefficients.
             If they are only 1-D, it is further assumed that they are time-independent. 
-            Note that it is assumed that D_z and V_z profiles are already on the self.rvol_grid 
+            Note that it is assumed that `D_z` and `V_z` profiles are already on the self.rvol_grid 
             radial grid.
         times_DV : 1D array, optional
-            Array of times at which D_z and V_z profiles are given. By Default, this is None, 
-            which implies that D_z and V_z are time independent. 
+            Array of times at which `D_z` and `V_z` profiles are given. By Default, this is None, 
+            which implies that `D_z` and `V_z` are time independent. 
         nz_init: array, shape of (space, nZ)
             Impurity charge states at the initial time of the simulation. If left to None, this is
             internally set to an array of 0's.
         alg_opt : int, optional
-            If alg_opt=1, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
-            If alg_opt=1, use the older finite-differences algorithm in the 2018 version of STRAHL.
+            If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
+            If `alg_opt=1`, use the older finite-differences algorithm in the 2018 version of STRAHL.
         evolneut : bool, optional
             If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
             which case neutrals are only taken as a source and those that are not ionized immediately after
