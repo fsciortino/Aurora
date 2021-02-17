@@ -695,7 +695,7 @@ def _plot_pec(dens, temp, PEC, PEC_eval, lam,cs,rate_type, ax=None, plot_3d=Fals
     return ax1
 
 
-def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
+def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, Ti_eV, n0_cm3=0.0,
                        ion_exc_rec_dens=None, dlam_A=0.0,
                        plot=True, ax=None, plot_spec_tot=True, no_leg=False):
     r'''Plot spectrum based on the lines contained in an ADAS ADF15 file
@@ -713,7 +713,11 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
     ne_cm3 : float
         Local value of electron density, in units of :math:`cm^{-3}`.
     Te_eV : float
-        Local value of electron temperature, in units of :math:`eV`.
+        Local value of electron temperature, in units of :math:`eV`. This is used to evaluate 
+        local values of photon emissivity coefficients.
+    Ti_eV : float
+        Local value of ion temperature, in units of :math:`eV`. This is used to represent the 
+        effect of Doppler broadening.
     n0_cm3 : float, optional
         Local density of atomic neutral hydrogen isotopes. This is only used if the provided
         ADF15 file contains charge exchange contributions.
@@ -783,6 +787,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
     # ensure input ne,Te,n0 are floats
     ne_cm3=float(ne_cm3)
     Te_eV=float(Te_eV)
+    Ti_eV=float(Ti_eV)
     n0_cm3=float(n0_cm3)
     
     # read ADF15 file
@@ -834,7 +839,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
     
     # Doppler broadening
     mass = m_p * ion_A
-    dnu_g = np.sqrt(2.*(Te_eV*q_electron)/mass)*(c_speed/wave_A)/c_speed
+    dnu_g = np.sqrt(2.*(Ti_eV*q_electron)/mass)*(c_speed/wave_A)/c_speed
     
     # set a variable delta lambda based on the width of the broadening
     _dlam_A = wave_A**2/c_speed* dnu_g * 5 # 5 standard deviations
@@ -898,7 +903,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, n0_cm3=0.0,
 
 
 def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
-                        sxr=False, plot=True, show_components=False, ax=None):
+                        line_rad_file=None, cont_rad_file=None, sxr=False, plot=True, show_components=False, ax=None):
     '''Calculate cooling coefficients for the given fractional abundances and kinetic profiles.
 
     Parameters
@@ -913,8 +918,18 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
         Background H/D/T neutral density [:math:`cm^{-3}`] used to account for charge exchange 
         when calculating ionization equilibrium. 
         If left to 0, charge exchange effects are not included.
+    line_rad_file : str or None
+        Location of ADAS ADF11 file containing line radiation data. This can be a PLT (unfiltered) or 
+        PLS (filtered) file. If left to None, the default file given in :py:func:`~aurora.adas_files.adas_files_dict` 
+        will be used.
+    cont_rad_file : str or None
+        Location of ADAS ADF11 file containing recombination and bremsstrahlung radiation data. 
+        This can be a PRB (unfiltered) or PRS (filtered) file. 
+        If left to None, the default file given in :py:func:`~aurora.adas_files.adas_files_dict` 
+        will be used.
     sxr : bool
-        If True, plot SXR-filtered radiation instead of unfiltered radiation. Default is False. 
+        If True, line radiation, recombination and bremsstrahlung radiation are taken to be from SXR-filtered
+        ADAS ADF11 files, rather than from unfiltered files. 
     plot : bool
         If True, plot all radiation components, summed over charge states.
     ax : matplotlib.Axes instance
@@ -934,21 +949,21 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
     '''
     files = ['scd','acd']
     if n0_cm3 is not 0.0: files+=['ccd']
-    atom_data_eq = get_atom_data(imp,files)
+    atom_data_eq = atomic.get_atom_data(imp,files)
 
-    logTe, fz, rates = get_frac_abundances(atom_data_eq, ne_cm3, Te_eV,plot=False,
+    logTe, fz, rates = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV,plot=False,
                                            n0_by_ne=n0_cm3/ne_cm3,
                                            include_cx=True if n0_cm3!=0.0 else False)
-    if sxr:
-        line_file = 'pls'
-        cont_file = 'prs'
-    else:
-        line_file = 'plt'
-        cont_file = 'prb'
 
-    atom_data = get_atom_data(imp,[line_file,cont_file])
-    pltt= interp_atom_prof(atom_data[line_file],None, np.log10(Te_eV)) # line radiation [W.cm^3]
-    prb = interp_atom_prof(atom_data[cont_file],None, np.log10(Te_eV)) # continuum radiation [W.cm^3]
+    # line radiation
+    atom_data = atomic.get_atom_data(imp,['pls' if sxr else 'plt'], 
+                                     filenames=[] if line_rad_file is None else [line_rad_file])
+    pltt= atomic.interp_atom_prof(atom_data['pls' if sxr else 'plt'],None, np.log10(Te_eV)) # line radiation [W.cm^3]
+
+    # recombination and bremsstrahlung radiation
+    atom_data = atomic.get_atom_data(imp,['prs' if sxr else 'prb'], 
+                                     filenames=[] if cont_rad_file is None else [cont_rad_file])
+    prb = atomic.interp_atom_prof(atom_data['prs' if sxr else 'prb'],None, np.log10(Te_eV)) # continuum radiation [W.cm^3]
 
     pltt*= fz[:,:-1]
     prb *= fz[:, 1:]
