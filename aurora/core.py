@@ -26,7 +26,7 @@ class aurora_sim:
         Dictionary containing aurora inputs. See default_nml.py for some defaults, 
         which users should modify for their runs.
     geqdsk : dict, optional
-        EFIT gfile as returned after postprocessing by the :py:mod:`omfit_eqdsk` 
+        EFIT gfile as returned after postprocessing by the :py:mod:`omfit_classes.omfit_eqdsk` 
         package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary 
         is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
     nbi_cxr : array, optional
