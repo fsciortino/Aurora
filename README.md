@@ -7,7 +7,7 @@ Documentation is available at https://aurora-fusion.readthedocs.io.
 
 # Development 
 
-The code is developed and maintained by F. Sciortino (MIT-PSFC) in collaboration with T. Odstrcil (GA) and A. Cavallaro (MIT), with support from O. Linder (MPI-IPP), C. Johnson (U. Auburn), D. Stanczak (IPPLM) and S. Smith (GA). The STRAHL documentation provided by R.Dux (MPI-IPP) was extremely helpful to guide the initial development of Aurora.
+The code is developed and maintained by F. Sciortino (MIT-PSFC) in collaboration with T. Odstrcil (GA), A. Cavallaro (MIT) and R. Reksoatmodjo (W&M), with support from O. Linder (MPI-IPP), C. Johnson (U. Auburn), D. Stanczak (IPPLM) and S. Smith (GA). The STRAHL documentation provided by R.Dux (MPI-IPP) was extremely helpful to guide the initial development of Aurora.
 
 New contributors are more than welcome! Please get in touch at sciortino-at-psfc.mit.edu or open a pull-request via Github. 
 
@@ -27,15 +27,17 @@ Installing via conda is now also possible using
 ```
 conda install -c sciortino aurorafusion 
 ```
-Note that the conda installation does NOT currently install dependencies on `omfit-eqdsk`, which users may need to install via `pip` (see the [PyPI repo](https://pypi.org/project/omfit-eqdsk/)). 
+Note that the conda version is NOT updated very regularly. If this kind of installation is your preference, feel free to contact the F.Sciortino to request an update. The conda installation does not currently install dependencies on `omfit_classes`, which users may need to install via `pip` (see the [PyPI repo](https://pypi.org/project/omfit-classes/)). 
 
-To look at the code and contribute to the Aurora repository, it is recommended to install from source, by git-cloning the [Aurora repo](https://github.com/fsciortino/aurora) from Github. This will ensure that you can access the latest version of the tools. Make sure to use the `master` branch to use a stable, updated version. After git-cloning, users can make use of the `setup.py` file, e.g. using 
+To look at the code and contribute to the Aurora repository, it is recommended to install from source, by git-cloning the [Aurora repo](https://github.com/fsciortino/aurora) from Github. This will ensure that you can access the latest version of the tools. Make sure to use the `master` branch to use a stable, updated version. Currently, only particle transport simulation capabilities (for heavy ions and neutrals) require compilation; most of the code related to atomic rates and radiation predictions is pure-Python and therefore does not require pre-compilation. Compilation isn't difficult or long anyway, so it is recommended.
+
+For compilation after git-cloning, users can make use of the `setup.py` file, e.g. using 
 ```
 python setup.py -e .
 ```
 or use the makefile in the package directory to build the Fortran code using 
 ```
-make clean; make aurora
+make clean; make
 ```
 Note that the makefile will not install any of the dependencies, listed in the `requirements.txt` file in the main directory. You can use this file to quickly install dependencies within a Python virtual environment, or install each dependency one at a time.
 
