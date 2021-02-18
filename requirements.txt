@@ -3,3 +3,4 @@ scipy
 matplotlib
 xarray
 pexpect
+omfit_classes

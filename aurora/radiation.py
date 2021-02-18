@@ -738,6 +738,8 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
         If True, no plot legend is shown. Default is False, i.e. show legend.
     plot_all_lines : bool
         If True, plot all individual lines, rather than just the profiles due to different atomic processes.
+        If more than 50 lines are included, a down-selection is automatically made to avoid excessive
+        memory consumption.
 
     Returns
     -------
@@ -802,7 +804,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
     cs = adf15_filepath.split('#')[-1].split('.dat')[0]
     
     # import here to avoid issues when building docs or package
-    from omfit_commonclasses.utils_math import atomic_element
+    from omfit_classes.utils_math import atomic_element
     
     # get nuclear charge Z and atomic mass number A
     out = atomic_element(symbol=ion)
@@ -862,40 +864,49 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
     if plot and ax is None:
         fig,ax = plt.subplots()
 
+    many_lines=False
+    if len(wave_A)>50:
+        many_lines=True
+
     # contributions to spectrum
     spec_ion = np.zeros_like(wave_final_A)
     for ii in np.arange(lams_profs_A.shape[0]):
         comp_ion = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[0]*pec_ion[ii]*theta[ii,:],
                                bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines: ax.plot(wave_final_A, comp_ion, c='r')
+        if plot_all_lines and many_lines and pec_ion[ii]>np.max(pec_ion)/100:
+            ax.plot(wave_final_A+dlam_A, comp_ion, c='r')
         spec_ion += comp_ion
 
     spec_exc = np.zeros_like(wave_final_A)
     for ii in np.arange(lams_profs_A.shape[0]):
         comp_exc = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[1]*pec_exc[ii]*theta[ii,:],
                                bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines: ax.plot(wave_final_A, comp_exc, c='b')
+        if plot_all_lines and many_lines and pec_exc[ii]>np.max(pec_exc)/100:
+            ax.plot(wave_final_A+dlam_A, comp_exc, c='b')
         spec_exc += comp_exc
 
     spec_rr = np.zeros_like(wave_final_A)
     for ii in np.arange(lams_profs_A.shape[0]):
         comp_rr = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[2]*pec_rr[ii]*theta[ii,:],
                                bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines: ax.plot(wave_final_A, comp_rr, c='g')
+        if plot_all_lines and many_lines and pec_rr[ii]>np.max(pec_rr)/100:
+            ax.plot(wave_final_A+dlam_A, comp_rr, c='g')
         spec_rr += comp_rr
 
     spec_dr = np.zeros_like(wave_final_A)
     for ii in np.arange(lams_profs_A.shape[0]):
         comp_dr = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[2]*pec_dr[ii]*theta[ii,:],
                                bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines: ax.plot(wave_final_A, comp_dr, c='g')
+        if plot_all_lines and many_lines and pec_dr[ii]>np.max(pec_dr)/100:
+            ax.plot(wave_final_A+dlam_A, comp_dr, c='g')
         spec_dr += comp_dr
 
     spec_cx = np.zeros_like(wave_final_A)
     for ii in np.arange(lams_profs_A.shape[0]):
         comp_cx = interp1d(lams_profs_A[ii,:], n0_cm3*ion_exc_rec_dens[2]*pec_cx[ii]*theta[ii,:],
                                bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines: ax.plot(wave_final_A, comp_cx, c='g')
+        if plot_all_lines and many_lines and pec_cx[ii]>np.max(pec_cx)/100:
+            ax.plot(wave_final_A+dlam_A, comp_cx, c='g')
         spec_cx += comp_cx
 
     spec_tot = spec_ion+spec_exc+spec_rr+spec_dr+spec_cx

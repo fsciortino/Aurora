@@ -6,7 +6,7 @@ It is recommended to run this in IPython.
 
 import numpy as np
 import matplotlib.pyplot as plt; plt.ion()
-import omfit_eqdsk, omfit_gapy
+from omfit_classes import omfit_eqdsk, omfit_gapy
 import pickle as pkl
 import scipy,sys,os
 import time

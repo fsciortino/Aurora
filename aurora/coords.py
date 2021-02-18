@@ -27,18 +27,18 @@ def vol_average(quant, rhop, method='omfit', geqdsk=None, device=None, shot=None
         coordinates. The methods only slightly differ in their results. Note that 'omfit' will fail if 
         rhop extends beyond the LCFS, while method 'fs' can estimate volume averages also into the SOL.
         Default is method='omfit'. 
-    geqdsk : output of the omfit_eqdsk.OMFITgeqdsk class, postprocessing the EFIT geqdsk file
+    geqdsk : output of the :py:class:`omfit_classes.omfit_eqdsk.OMFITgeqdsk` class, postprocessing the EFIT geqdsk file
         containing the magnetic geometry. If this is left to None, the function internally tries to fetch
-        it using MDS+ and omfit_eqdsk. In this case, device, shot and time to fetch the equilibrium 
+        it using MDS+ and `omfit_classes.omfit_eqdsk`. In this case, device, shot and time to fetch the equilibrium 
         are required. 
     device : str
-        Device name. Note that routines for this device must be implemented in omfit_eqdsk for this to work. 
+        Device name. Note that routines for this device must be implemented in `omfit_classes.omfit_eqdsk` for this to work. 
     shot : int
         Shot number of the above device, e.g. 1101014019 for C-Mod.
     time : float
         Time at which equilibrium should be fetched in units of ms. 
     return_geqdsk : bool
-        If True, omfit_eqdsk dictionary is also returned
+        If True, `omfit_classes.omfit_eqdsk` dictionary is also returned
 
     Returns
     -------
@@ -57,12 +57,12 @@ def vol_average(quant, rhop, method='omfit', geqdsk=None, device=None, shot=None
     if geqdsk is None:
         # Fetch device geqdsk from MDS+ and post-process it using the OMFIT geqdsk format.
         try:
-                import omfit_eqdsk
+            from omfit_classes import omfit_eqdsk
         except:
-                raise ValueError('Could not import omfit_eqdsk! Install with pip install omfit_eqdsk')
-        geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(device=device, shot=shot,
-                                                          time=time, SNAPfile='EFIT01',
-                                                          fail_if_out_of_range=False,time_diff_warning_threshold=20)
+            raise ValueError('Could not import omfit_classes.omfit_eqdsk! Install with pip install omfit_classes')
+        geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(
+            device=device, shot=shot, time=time, SNAPfile='EFIT01',
+            fail_if_out_of_range=False,time_diff_warning_threshold=20)
 
     if method=='fs':
         # obtain mapping between rhop and r_V coordinates

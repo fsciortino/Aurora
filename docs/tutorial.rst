@@ -18,13 +18,17 @@ Note that you can always look at where this function is defined in the package b
 
   aurora.load_default_namelist.__module__
 
-Once you have loaded the default namelist, have a look at the `namelist` dictionary. It contains a number of parameters that are needed for Aurora runs. Some of them, like the name of the device, are only important if automatic fetching of the EFIT equilibrium through `MDSplus` is required, or else it can be ignored (leaving it to its default value). Most of the parameter names should be fairly self-descriptive, but a detailed description will be available soon. In the meantime, please refer to docstrings through the code documentation.
+Once you have loaded the default namelist, have a look at the `namelist` dictionary. It contains a number of parameters that are needed for Aurora runs. Some of them, like the name of the device, are only important if automatic fetching of the EFIT equilibrium through `MDSplus` is required, or else it can be ignored (leaving it to its default value). Most of the parameter names should be fairly self-descriptive. Please refer to docstrings throughout the code documentation.
 
-Next, read in a magnetic equilibrium. You can find an example from a C-Mod discharge in the `examples` directory::
+Aurora leverages the `omfit_classes` package to interface with MDS+, EFIT, and a number of other codes. Thanks to this, users can focus more on their applications of interest, and less on re-inventing the wheel to write code that the OMFIT Team has kindly made public! To follow the rest of this tutorial, do::
+
+  from omfit_classes import omfit_eqdsk, omfit_gapy
+
+Next, we read in a magnetic equilibrium. You can find an example from a C-Mod discharge in the `examples` directory::
   
   geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
 
-The output `geqdsk` dictionary contains the contents of the EFIT geqdsk file, with additional processing done by the `omfit_eqdsk` package for flux surfaces. Only some of the dictionary fields are used; refer to the :py:mod:`~aurora.grids_utils` methods for details. The `geqdsk` dictionary is used to create a mapping between the `rhop` grid (square root of normalized poloidal flux) and a `rvol` grid, defined by the normalized volume of each flux surface. Aurora, like STRAHL, runs its simulations on the `rvol` grid. 
+The output `geqdsk` dictionary contains the contents of the EFIT geqdsk file, with additional processing done by the `omfit_classes` package for flux surfaces. Only some of the dictionary fields are used; refer to the :py:mod:`~aurora.grids_utils` methods for details. The `geqdsk` dictionary is used to create a mapping between the `rhop` grid (square root of normalized poloidal flux) and a `rvol` grid, defined by the normalized volume of each flux surface. Aurora, like STRAHL, runs its simulations on the `rvol` grid. 
 
 We next need to read in some kinetic profiles, for example from an `input.gacode` file (available in the `examples` directory)::
   

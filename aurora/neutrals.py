@@ -387,8 +387,8 @@ def Lya_to_neut_dens(emiss_prof, ne, Te, ni=None, plot=True, rhop=None,
         log10pec_dict = radiation.read_adf15(path)[1215.2]
 
         # evaluate these interpolations on our profiles
-        pec_recomb = log10pec_dict['recom'].ev(np.log10(ne), np.log10(Te))
-        pec_exc = log10pec_dict['excit'].ev(np.log10(ne), np.log10(Te))
+        pec_recomb = 10**log10pec_dict['recom'].ev(np.log10(ne), np.log10(Te))
+        pec_exc = 10**log10pec_dict['excit'].ev(np.log10(ne), np.log10(Te))
 
         N1 = emiss_prof/E_21/(ne*pec_exc+ni*pec_recomb)
 

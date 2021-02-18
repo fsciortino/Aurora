@@ -372,8 +372,7 @@ def get_HFS_LFS(geqdsk, rho_pol=None):
     Parameters
     ----------
     geqdsk : dict
-        Dictionary containing the g-EQDSK file as processed by the *omfit_eqdsk*
-        package. 
+        Dictionary containing the g-EQDSK file as processed by the `omfit_classes.omfit_eqdsk`. 
     rho_pol : array, optional
         Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
         corresponding rvol grid should be found. If left to None, an arbitrary grid will be 
@@ -436,8 +435,7 @@ def get_rhopol_rvol_mapping(geqdsk, rho_pol=None):
     Parameters
     ----------
     geqdsk : dict
-        Dictionary containing the g-EQDSK file as processed by the *omfit_eqdsk*
-        package. 
+        Dictionary containing the g-EQDSK file as processed by `omfit_classes.omfit_eqdsk`. 
     rho_pol : array, optional
         Array corresponding to a grid in sqrt of normalized poloidal flux for which a 
         corresponding rvol grid should be found. If left to None, an arbitrary grid will be 
@@ -606,7 +604,7 @@ def estimate_clen(geqdsk):
     Parameters
     ----------
     geqdsk : dict
-        EFIT g-EQDSK as processed by the omfit_eqdsk package.
+        EFIT g-EQDSK as processed by `omfit_classes.omfit_eqdsk`.
 
     Returns
     -------
@@ -659,7 +657,7 @@ def estimate_boundary_distance(shot, device, time_ms):
         taken to be 2/3 of the bound_sep distance.    
     '''
     # import this here, so that it is not required for the whole package
-    from omfit_mds import OMFITmdsValue
+    from omfit_classes.omfit_mds import OMFITmdsValue
 
     try:
         tmp = OMFITmdsValue(server=device, treename='EFIT01', shot=shot,
