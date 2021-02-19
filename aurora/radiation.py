@@ -921,8 +921,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
         if plot_spec_tot:
             ax.plot(wave_final_A+dlam_A, spec_tot, c='k', label='' if no_leg else 'total')
 
-        if no_leg:
-            ax.legend(loc='best').set_draggable(True)
+        if not no_leg: ax.legend(loc='best').set_draggable(True)
         ax.set_xlabel(r'$\lambda$ [$\AA$]')
         ax.set_ylabel(r'$\epsilon$ [A.U.]')
     else:

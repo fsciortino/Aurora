@@ -247,8 +247,8 @@ def adas_files_dict():
     files["O"]["pbs"] = "pbsx5_o.dat"
     files["O"]["prc"] = "prc89_o.dat"
     files["F"] = {}    #9
-    files["F"]['acd'] = "acd85_f.dat"  # sub with Puetterich data when available from OPEN-ADAS
-    files["F"]['scd'] = "scd85_f.dat"  # sub with Puetterich data when available from OPEN-ADAS
+    files["F"]['acd'] = "acd89_f.dat"  # sub with Puetterich data when available from OPEN-ADAS
+    files["F"]['scd'] = "scd89_f.dat"  # sub with Puetterich data when available from OPEN-ADAS
     files["F"]['ccd'] = "ccd89_f.dat"
     files["F"]['prb'] = "prb89_f.dat"
     files["F"]['plt'] = "plt89_f.dat"
