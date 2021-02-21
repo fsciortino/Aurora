@@ -763,7 +763,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
     Including ionizing, excited and recombining charge states allows for a complete description
     of spectral lines that may derive from various atomic processes in a plasma.
 
-    Doppler broadening depends on the local electron temperature and mass of the emitting species. 
+    Doppler broadening depends on the local ion temperature and mass of the emitting species. 
     It is modeled here using
 
     .. math::
@@ -774,18 +774,18 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
 
     .. math::
 
-        \Delta \nu_D = \frac{1}{\nu_0} \sqrt{\frac{2 T_e}{m}}
+        \Delta \nu_D = \frac{1}{\nu_0} \sqrt{\frac{2 T_i}{m}}
 
     The Doppler shift dlam_A can be calculated from
 
     .. math::
 
-        \Delta \lambda_v = \lambda \cdot \left( 1 - \frac{v\cdot \cos(\alpha)}{c}\right
+        \Delta \lambda_v = \lambda \cdot \left( 1 - \frac{v\cdot \cos(\alpha)}{c}\right)
 
     where :math:`v` is the plasma velocity and :math:`\alpha` is the angle between the line-of-sight 
     and the direction of plasma rotation.
 
-    Refs: S.Loch's and C.Johnson's PhD theses.
+    Refs: S. Loch's and C. Johnson's PhD theses.
 
     '''
     # ensure input ne,Te,n0 are floats
