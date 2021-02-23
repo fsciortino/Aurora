@@ -248,7 +248,7 @@ class solps_case:
             
 
 
-    def load_eirene_output(self, files = ['fort.44','fort.46']):
+    def load_eirene_output(self, files = ['fort.44']):
         '''Load result from one of the fort.* files with EIRENE output, 
         as indicated by the "files" list argument.
 
@@ -270,7 +270,7 @@ class solps_case:
             with open(self.path +os.sep+self.solps_run+os.sep+filename, 'r') as f:
                 contents = f.readlines()
             
-            print(len(contents))
+            #print(len(contents))
             
             if filename=='fort.44':
                 XX=int(contents[0].split()[0])
@@ -292,7 +292,7 @@ class solps_case:
                 if  contents[ii].startswith('*eirene'):
                     key = ''.join(contents[ii].split()[3:-3])
                     dim = contents[ii].split()[-1]
-                    print(key)
+                    #print(key)
                     eirene_out[filename][key] = []
                 elif not contents[ii].split()[0][0].isalpha():
                     [eirene_out[filename][key].append(float(val)) for val in contents[ii].strip().split()]
