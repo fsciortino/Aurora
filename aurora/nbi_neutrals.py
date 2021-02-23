@@ -16,7 +16,7 @@ from .janev_smith_rates import js_sigma
 
 def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
     """Compute charge exchange recombination for a given impurity with neutral beam components,
-    obtaining rates in [:math:`s^-1`] units. This method expects all neutral components to be given in a
+    obtaining rates in [:math:`s^{-1}`] units. This method expects all neutral components to be given in a
     dictionary with a structure that is independent of NBI model (i.e. coming from FIDASIM, NUBEAM, 
     pencil calculations, etc.).
 
@@ -36,8 +36,8 @@ def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
 
         It is currently assumed that n=0,1 and 2 beam components are provided by the user. 
 
-    geqdsk : dictionary output of `omfit_eqdsk.OMFITgeqdsk` class
-        gEQDSK post-processed dictionary, as given by the omfit_eqdsk package. 
+    geqdsk : dictionary output of `omfit_classes.omfit_eqdsk.OMFITgeqdsk` class
+        gEQDSK post-processed dictionary, as given by `omfit_classes.omfit_eqdsk`. 
     debug_plots : bool, optional
         If True, various plots are displayed. 
 
@@ -518,7 +518,7 @@ def tt_rate_maxwell_average(sigma_fun, Ti, m_i, m_n, n_level):
     Parameters
     ----------
     sigma_fun: python function
-        Function to compute a specific cross section [cm^2], function of energy/amu ONLY.
+        Function to compute a specific cross section [:math:`cm^2`], function of energy/amu ONLY.
         Expected call form: sigma_fun(erel/ared)
     Ti: float or 1D array
         background ion and halo temperature [keV]
@@ -533,7 +533,7 @@ def tt_rate_maxwell_average(sigma_fun, Ti, m_i, m_n, n_level):
     Returns
     -------
     rate : float or 1D array
-        output reaction rate in [cm^3/s] units
+        output reaction rate in [:math:`cm^3/s`] units
 
     Notes
     -----

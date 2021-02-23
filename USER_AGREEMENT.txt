@@ -1,22 +1,22 @@
-Aurora User Agreement (2020.10.31) 
+Aurora User Agreement (2021.02.13) 
 
 By cloning, downloading or otherwise using Aurora sources, the recipient
 agrees:
 
 1. To compile/use the Software source code AS IS for publication
    purposes; users however are welcome to request changes, to make
-   code modifications for testing purposes, or issue pull requests.
+   code modifications for testing purposes, or open pull requests.
 
 2. If the authorized user’s copy of Software is made available to third
    parties, to ensure that the user agreement is followed by the third
    parties.
 
-3. To email a draft of any article/letter/note based on the Software
-   use to sciortino@psfc.mit.edu.
-
-4. To include in published results or presentations the code name
-   and appropriate references for both Aurora [1] and STRAHL [2], on which 
-   part of the Aurora code was originally based. 
+3. To appropriately reference in any publications, talks and posters the key works
+   that led to the current version of Aurora [1] as well as STRAHL [2], on which 
+   part of the package was originally based. Aurora is also integrated
+   with Python tools developed by the OMFIT community; Python users should
+   therefore also cite [3].
 
 [1] F. Sciortino et al 2020 Nucl. Fusion 60 126014, https://doi.org/10.1088/1741-4326/abae85
 [2] R. Dux, IPP Report, 2004, https://pure.mpg.de/rest/items/item_2136655/component/file_2136654/content 
+[3] O. Meneghini and L. Lao, 2013, Plasma Fusion Res. 8, 2403009, http://www.jspf.or.jp/PFR/PFR_articles/pfr2013S1/pfr2013_08-2403009.html

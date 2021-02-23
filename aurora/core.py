@@ -18,39 +18,35 @@ from . import synth_diags
 
 
 class aurora_sim:
-    '''
-    Class to setup and run aurora simulations.
+    '''Setup the input dictionary for an Aurora ion transport simulation from the given namelist.
+
+    Parameters
+    ----------
+    namelist : dict
+        Dictionary containing aurora inputs. See default_nml.py for some defaults, 
+        which users should modify for their runs.
+    geqdsk : dict, optional
+        EFIT gfile as returned after postprocessing by the :py:mod:`omfit_classes.omfit_eqdsk` 
+        package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary 
+        is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
+    nbi_cxr : array, optional
+        If namelist['nbi_cxr']=True, this array represents the charge exchange rates 
+        with NBI neutrals, fast and/or thermal, across the entire radius and on the 
+        time base of interest. 
+        Creating this input is not trivial and must be done externally to aurora. 
+        General steps:
+        - get density of fast NBI neutrals (both fast and thermal/halo) ---> n0_nbi, n0_halo
+        - get total rates (n-unresolved) for CX with NBI neutrals --> _alpha_CX_NBI_rates
+        - thermal rates for the halo may be from ADAS CCD files or from the same methods used 
+        for fast neutrals
+        - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
+        This method still needs more testing within this class. Contact sciortino@psfc.mit.edu for details. 
+    setup2load : str, optional
+        Path to file from which Aurora simulation setup should be loaded. 
+        This is expected in pickle format, e.g. "test.pkl". Any `aurora_sim` instance
+        can be saved to file using the :py:meth:`~aurora.core.save` method.             
     '''
     def __init__(self, namelist={}, geqdsk=None, nbi_cxr=None, pickle2load=None):
-        '''Setup aurora simulation input dictionary from the given namelist.
-
-        Parameters
-        -----------------
-        namelist : dict
-            Dictionary containing aurora inputs. See default_nml.py for some defaults, 
-            which users should modify for their runs.
-        geqdsk : dict, optional
-            EFIT gfile as returned after postprocessing by the :py:mod:`omfit_eqdsk` 
-            package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary 
-            is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
-        nbi_cxr : array, optional
-            If namelist['nbi_cxr']=True, this array represents the charge exchange rates 
-            with NBI neutrals, fast and/or thermal, across the entire radius and on the 
-            time base of interest. 
-            Creating this input is not trivial and must be done externally to aurora. 
-            General steps:
-            - get density of fast NBI neutrals (both fast and thermal/halo) ---> n0_nbi, n0_halo
-            - get total rates (n-unresolved) for CX with NBI neutrals --> _alpha_CX_NBI_rates
-            - thermal rates for the halo may be from ADAS CCD files or from the same methods used 
-            for fast neutrals
-            - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
-            This method still needs more testing within this class. Contact sciortino@psfc.mit.edu for details. 
-        setup2load : str, optional
-            Path to file from which Aurora simulation setup should be loaded. 
-            This is expected in pickle format, e.g. "test.pkl". Any `aurora_sim` instance
-            can be saved to file using the :py:meth:`~aurora.core.save` method.             
-
-        '''
         if pickle2load is not None:
             self.load(pickle2load)
             return
@@ -61,7 +57,7 @@ class aurora_sim:
         self.imp = namelist['imp']
 
         # import omfit_eqdsk here to avoid issues with docs and packaging
-        import omfit_eqdsk
+        from omfit_classes import omfit_eqdsk
         if geqdsk is None:
             # Fetch geqdsk from MDS+ (using EFIT01) and post-process it using the OMFIT geqdsk format.
             self.geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(
@@ -93,7 +89,7 @@ class aurora_sim:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
 
         # import here to avoid issues when building docs or package
-        from omfit_commonclasses.utils_math import atomic_element
+        from omfit_classes.utils_math import atomic_element
 
         # get nuclear charge Z and atomic mass number A
         out = atomic_element(symbol=self.imp)
@@ -320,7 +316,7 @@ class aurora_sim:
         
         '''
         # import here to avoid issues when building docs or package
-        from omfit_commonclasses.utils_math import atomic_element
+        from omfit_classes.utils_math import atomic_element
 
         # background mass number (=2 for D)
         out = atomic_element(symbol=self.namelist['main_element'])
@@ -378,22 +374,22 @@ class aurora_sim:
         Parameters
         -----------------
         D_z, V_z: arrays, shape of (space,time,nZ) or (space,time) or (space,)
-            Diffusion and convection coefficients, in units of cm^2/s and cm/s, respectively.
+            Diffusion and convection coefficients, in units of :math:`cm^2/s` and :math:`cm/s`, respectively.
             This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
-            the number of charge states. If D_z and V_z are found to be have only 2 dimensions, 
+            the number of charge states. If `D_z` and `V_z` are found to be have only 2 dimensions, 
             it is assumed that all charge states should have the same transport coefficients.
             If they are only 1-D, it is further assumed that they are time-independent. 
-            Note that it is assumed that D_z and V_z profiles are already on the self.rvol_grid 
+            Note that it is assumed that `D_z` and `V_z` profiles are already on the self.rvol_grid 
             radial grid.
         times_DV : 1D array, optional
-            Array of times at which D_z and V_z profiles are given. By Default, this is None, 
-            which implies that D_z and V_z are time independent. 
+            Array of times at which `D_z` and `V_z` profiles are given. By Default, this is None, 
+            which implies that `D_z` and `V_z` are time independent. 
         nz_init: array, shape of (space, nZ)
             Impurity charge states at the initial time of the simulation. If left to None, this is
             internally set to an array of 0's.
         alg_opt : int, optional
-            If alg_opt=1, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
-            If alg_opt=1, use the older finite-differences algorithm in the 2018 version of STRAHL.
+            If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
+            If `alg_opt=1`, use the older finite-differences algorithm in the 2018 version of STRAHL.
         evolneut : bool, optional
             If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
             which case neutrals are only taken as a source and those that are not ionized immediately after
@@ -431,7 +427,7 @@ class aurora_sim:
              Recycling from the wall [:math:`s^{-1} cm^{-3}`]
         '''
         # import here to avoid import when building documentation or package (negligible slow down)
-        from ._aurora import run
+        from ._aurora import run as fortran_run
         
         # D_z and V_z must have the same shape
         assert np.array(D_z).shape == np.array(V_z).shape

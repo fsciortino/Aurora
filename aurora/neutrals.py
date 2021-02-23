@@ -336,22 +336,21 @@ def Lya_to_neut_dens(emiss_prof, ne, Te, ni=None, plot=True, rhop=None,
         If given, plot on these axes.
 
     Returns
-    -------
+    ------------
     N1 : 1D array
         Radial profile of estimated ground state atomic neutral density on the same grid 
         as the input arrays. Units of :math:`cm^{-3}`.
 
     Examples
-    --------
-
-        N2_colrad,axs = Lya_to_neut_dens_basic(
-                            emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
-                            rates_source='colrad')
-
-        N2_adas,axs = Lya_to_neut_dens_basic(
-                            emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
-                            rates_source='adas',axs=axs)
-
+    --------------
+    
+    >>> N2_colrad,axs = Lya_to_neut_dens_basic(emiss_prof, ne, Te, ni, 
+    >>>                                  plot=True, rhop=rhop, rates_source='colrad')
+    
+    >>> N2_adas,axs = Lya_to_neut_dens_basic(
+    >>>                       emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
+    >>>                       rates_source='adas',axs=axs)
+    
     '''
     assert len(emiss_prof)==len(ne) and len(ne)==len(Te)
     if ni is None:
@@ -385,11 +384,11 @@ def Lya_to_neut_dens(emiss_prof, ne, Te, ni=None, plot=True, rhop=None,
 
     elif rates_source=='adas':
         path = '/home/sciortino/atomAI/atomdat_master/adf15/h/pju#h0.dat'
-        pec_dict = radiation.read_adf15(path)[1215.2]
+        log10pec_dict = radiation.read_adf15(path)[1215.2]
 
         # evaluate these interpolations on our profiles
-        pec_recomb = pec_dict['recom'].ev(np.log10(ne), np.log10(Te))
-        pec_exc = pec_dict['excit'].ev(np.log10(ne), np.log10(Te))
+        pec_recomb = 10**log10pec_dict['recom'].ev(np.log10(ne), np.log10(Te))
+        pec_exc = 10**log10pec_dict['excit'].ev(np.log10(ne), np.log10(Te))
 
         N1 = emiss_prof/E_21/(ne*pec_exc+ni*pec_recomb)
 
