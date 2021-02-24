@@ -51,8 +51,8 @@ setup(
     author='F. Sciortino',
     author_email='sciortino@psfc.mit.edu',
     packages=['aurora'], #setuptools.find_packages(),
-    #package_dir = {'aurora': 'aurora/adas_data'},
-    #package_data={'aurora': ['adas_data/*', 'adas_data/adf11/*','adas_data/adf15/*']},
+    package_dir = {'aurora': 'aurora/adas_data'},
+    package_data={'aurora': ['adas_data/adf11/placeholder','adas_data/adf15/placeholder']},
     include_package_data=True,
     # https://stackoverflow.com/questions/13307408/python-packaging-data-files-are-put-properly-in-tar-gz-file-but-are-not-install
     zip_safe=False,   
