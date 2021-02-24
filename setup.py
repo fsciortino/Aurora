@@ -29,12 +29,12 @@ def get_version(relpath):
             elif "'" in line:
                 return line.split("'")[1]
 
-#with open('README.md', 'r') as fh:
+#with open('README.rst', 'r') as fh:
 #    long_description = fh.read()
 #long_description='See documentation at https://aurora-fusion.readthedocs.io'
 
 ####
-with open('README.md') as f:
+with open('README.rst') as f:
     long_description = '\n' + '\n'.join(f.read().strip().split('\n')[2:])
 
 # Package adas_data and subdirectories together with license and readme
