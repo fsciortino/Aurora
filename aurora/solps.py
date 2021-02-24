@@ -225,21 +225,20 @@ class solps_case:
             #     axis=1)
             ####
 
-            tmp = self.eirene_out['fort.44']['dmb2'].reshape((self.ny,self.nx))
-            quants['nm'] = np.atleast_2d(tmp)[R_idxs,:][:,P_idxs]
-            tmp = self.eirene_out['fort.44']['tmb2'].reshape((self.ny,self.nx))
-            quants['Tm'] = np.atleast_2d(tmp)[R_idxs,:][:,P_idxs]
+            NATM = int(self.eirene_out['fort.44']['NATM'])
+            NMOL = int(self.eirene_out['fort.44']['NMOL'])
+            NION = int(self.eirene_out['fort.44']['NION'])
+
+            tmp = self.eirene_out['fort.44']['dmb2'].reshape(-1,NMOL,order='F')[:,0].reshape((self.ny,self.nx))
+            quants['nm'] = tmp[R_idxs,:][:,P_idxs]
+            tmp = self.eirene_out['fort.44']['tmb2'].reshape(-1,NMOL,order='F')[:,0].reshape((self.ny,self.nx))
+            quants['Tm'] = tmp[R_idxs,:][:,P_idxs]
 
             # group atomic neutral density from all H isotopes
-            spmask = self.b2fstate['zn']==1
-            tmp = np.sum(
-                self.eirene_out['fort.44']['dab2'].reshape(-1,sum(spmask)),
-                axis=1).reshape((self.ny,self.nx))
-            quants['nn'] = np.atleast_2d(tmp)[R_idxs,:][:,P_idxs]
-            tmp = np.sum(
-                self.eirene_out['fort.44']['tab2'].reshape(-1,sum(spmask)),
-                axis=1).reshape((self.ny,self.nx))
-            quants['Tn'] = np.atleast_2d(tmp)[R_idxs,:][:,P_idxs]
+            tmp = self.eirene_out['fort.44']['dab2'].reshape(-1,NATM,order='F')[:,0].reshape((self.ny,self.nx))
+            quants['nn'] = tmp[R_idxs,:][:,P_idxs]
+            tmp = self.eirene_out['fort.44']['tab2'].reshape(-1,NATM,order='F')[:,0].reshape((self.ny,self.nx))
+            quants['Tn'] = tmp[R_idxs,:][:,P_idxs]
             
             self.triang_b2 = tri.Triangulation(self.R.flatten(), self.Z.flatten())
             self.triang_eirene = self.eirene_out['triang']
@@ -248,7 +247,7 @@ class solps_case:
             
 
 
-    def load_eirene_output(self, files = ['fort.44','fort.46']):
+    def load_eirene_output(self, files = ['fort.44']):
         '''Load result from one of the fort.* files with EIRENE output, 
         as indicated by the "files" list argument.
 
@@ -269,13 +268,34 @@ class solps_case:
             # load each of these files into dictionary structures
             with open(self.path +os.sep+self.solps_run+os.sep+filename, 'r') as f:
                 contents = f.readlines()
-            ii=6
+            
+            if filename=='fort.44':
+                XX=int(contents[0].split()[0])
+                YY=int(contents[0].split()[1])
+                eirene_out[filename]['XX']=XX
+                eirene_out[filename]['YY']=YY
+                eirene_out[filename]['DIM']=XX*YY
+            elif filename=='fort.46':
+                eirene_out[filename]['DIM']=contents[0].split()[0]
 
-            while ii<len(contents[ii:]):
+            eirene_out[filename]['NATM'] = int(contents[1].split()[0])
+            eirene_out[filename]['NMOL'] = int(contents[1].split()[1])
+            eirene_out[filename]['NION'] = int(contents[1].split()[2])
+
+            ii=2
+            eirene_out[filename]['species']=[]
+            while not contents[ii].startswith('*eirene'):
+                if not contents[ii].split()[0].isnumeric():
+                    eirene_out[filename]['species'].append(contents[ii].split()[0])
+                ii+=1                    
+
+            while ii<len(contents):
                 if  contents[ii].startswith('*eirene'):
-                    key = contents[ii].split()[3]
+                    key = ''.join(contents[ii].split()[3:-3])
+                    dim = contents[ii].split()[-1]
+
                     eirene_out[filename][key] = []
-                else:
+                elif not contents[ii].split()[0][0].isalpha():
                     [eirene_out[filename][key].append(float(val)) for val in contents[ii].strip().split()]
                 ii+=1
 
@@ -293,7 +313,7 @@ class solps_case:
             self.path+os.sep+'baserun'+os.sep+'fort.34',skiprows=1, usecols=(1,2,3))
 
         eirene_out['triang'] =tri.Triangulation(XNodes,YNodes,triangles=(Triangles-1))
-
+        
         return eirene_out
 
 
@@ -343,7 +363,7 @@ class solps_case:
 
             cbars = [];
             for ii,field in enumerate(fields):
-                label = fields[field]
+                label = self.labels[field]
 
                 ax[ii].plot(self.geqdsk['RBBBS'],self.geqdsk['ZBBBS'],c='k')
                 cntr = ax[ii].tricontourf(self.triang_b2, np.log10(self.quants[field]).flatten(),
