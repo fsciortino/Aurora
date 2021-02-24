@@ -21,15 +21,14 @@ Installation
     :target: https://badge.fury.io/py/aurorafusion
     
 Aurora can be installed from PyPI using
-```
-pip install aurorafusion
-```
+
+    pip install aurorafusion
+    
 Add a `--user` flag to the command above if you don't have write-access to the default package directory on your system (i.e. if you don't have root permissions). 
 
 Installing via conda is now also possible using
-```
-conda install -c sciortino aurorafusion 
-```
+
+    conda install -c sciortino aurorafusion 
 
 .. image:: https://anaconda.org/sciortino/aurorafusion/badges/version.svg
     :target: https://anaconda.org/sciortino/aurorafusion
@@ -39,22 +38,22 @@ conda install -c sciortino aurorafusion
 
 Note that the conda version is NOT updated very regularly. If this kind of installation is your preference, feel free to contact the F.Sciortino to request an update. The conda installation does not currently install dependencies on `omfit_classes`, which users may need to install via `pip` (see the `PyPI repo <https://pypi.org/project/omfit-classes/>`_). 
 
-To look at the code and contribute to the Aurora repository, it is recommended to install from source, by git-cloning the  `Aurora repo <https://github.com/fsciortino/aurora>`_ from Github. This will ensure that you can access the latest version of the tools. Make sure to use the `master` branch to use a stable, updated version. Currently, only particle transport simulation capabilities (for heavy ions and neutrals) require compilation; most of the code related to atomic rates and radiation predictions is pure-Python and therefore does not require pre-compilation. Compilation isn't difficult or long anyway, so it is recommended.
+To look at the code and contribute to the Aurora repository, it is recommended to install from source, by git-cloning the  `Aurora repo <https://github.com/fsciortino/aurora>`_ from Github. This will ensure that you can access the latest version of the tools. 
 
 For compilation after git-cloning, users can make use of the `setup.py` file, e.g. using 
-```
-python setup.py -e .
-```
+
+    python setup.py -e .
+
 or use the makefile in the package directory to build the Fortran code using 
-```
-make clean; make
-```
+
+    make clean; make
+   
 Note that the makefile will not install any of the dependencies, listed in the `requirements.txt` file in the main directory. You can use this file to quickly install dependencies within a Python virtual environment, or install each dependency one at a time.
 
 Note that the Julia version of the code is not built by default. If you have Julia installed on your system, you can do  
-```
-make julia
-```
+
+    make julia
+
 from the main package directory. This will build a Julia `sysimage` to speed up access of Julia source code from Python, but it is not strictly necessary. See the documentation to read about interfacing Python3 and Julia. 
 
 
