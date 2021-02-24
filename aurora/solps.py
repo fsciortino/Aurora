@@ -206,47 +206,53 @@ class solps_case:
                 if field in ['ne','Te','Ti']:
                     quants[field] = self.b2fstate[field.lower()][R_idxs,:][:,P_idxs]
 
-            self.eirene_out = self.load_eirene_output(files=['fort.44'])  #'fort.46'
+            eirene_out = self.load_eirene_output(files=['fort.44','fort.46'])
+            self.fort44 = eirene_out['fort.44']
+            self.fort46 = eirene_out['fort.46']
+            self.triang_eirene = eirene_out['triang']
 
-            ########
-            ## Read on EIRENE mesh
-            # molecular density and temperature
-            # quants['nm'] = self.eirene_out['fort.46']['pdenm']
-            # quants['Tm']= self.eirene_out['fort.46']['edenm']
+            NATM = int(self.fort44['NATM'])
+            NMOL = int(self.fort44['NMOL'])
+            NION = int(self.fort44['NION'])
 
-            # # group atomic neutral density from all H isotopes
-            # spmask = self.b2fstate['zn']==1
-            # quants['nn'] = np.sum(
-            #     self.eirene_out['fort.46']['pdena'].reshape(-1,sum(spmask)),
-            #     axis=1)
+            # Read neutral densities and energies on EIRENE grid...
+            quants['pdenm'] = self.fort46['pdenm'].reshape(-1,NMOL,order='F')  # molecular density
+            quants['edenm'] = self.fort46['edenm'].reshape(-1,NMOL,order='F')  # molecular energy
+            quants['pdena'] = self.fort46['pdena'].reshape(-1,NATM,order='F')  # atomic density
+            quants['edena'] = self.fort46['edena'].reshape(-1,NATM,order='F')  # atomic energy
+            
+            # ... and on B2 grid -- C order seems required
+            quants['dmb2'] = self.fort44['dmb2'].reshape(self.ny,self.nx,NMOL,order='C')[R_idxs,:,:][:,P_idxs,:]
+            quants['tmb2'] = self.fort44['tmb2'].reshape(self.ny,self.nx,NMOL,order='C')[R_idxs,:,:][:,P_idxs,:]
+            quants['dab2'] = self.fort44['dab2'].reshape(self.ny,self.nx,NATM,order='C')[R_idxs,:,:][:,P_idxs,:]
+            quants['tab2'] = self.fort44['tab2'].reshape(self.ny,self.nx,NATM,order='C')[R_idxs,:,:][:,P_idxs,:]
 
-            # quants['Tn'] = np.sum(
-            #     self.eirene_out['fort.46']['edena'].reshape(-1,sum(spmask)),
-            #     axis=1)
-            ####
-
-            NATM = int(self.eirene_out['fort.44']['NATM'])
-            NMOL = int(self.eirene_out['fort.44']['NMOL'])
-            NION = int(self.eirene_out['fort.44']['NION'])
-
-            tmp = self.eirene_out['fort.44']['dmb2'].reshape(-1,NMOL,order='F')[:,0].reshape((self.ny,self.nx))
-            quants['nm'] = tmp[R_idxs,:][:,P_idxs]
-            tmp = self.eirene_out['fort.44']['tmb2'].reshape(-1,NMOL,order='F')[:,0].reshape((self.ny,self.nx))
-            quants['Tm'] = tmp[R_idxs,:][:,P_idxs]
-
-            # group atomic neutral density from all H isotopes
-            tmp = self.eirene_out['fort.44']['dab2'].reshape(-1,NATM,order='F')[:,0].reshape((self.ny,self.nx))
-            quants['nn'] = tmp[R_idxs,:][:,P_idxs]
-            tmp = self.eirene_out['fort.44']['tab2'].reshape(-1,NATM,order='F')[:,0].reshape((self.ny,self.nx))
-            quants['Tn'] = tmp[R_idxs,:][:,P_idxs]
+            # save some useful quantities for background neutrals
+            quants['nn'] = quants['dab2'][:,:,0]
+            quants['Tn'] = quants['tab2'][:,:,0]
+            quants['nm'] = quants['dmb2'][:,:,0]
+            quants['Tm'] = quants['tmb2'][:,:,0]
             
             self.triang_b2 = tri.Triangulation(self.R.flatten(), self.Z.flatten())
-            self.triang_eirene = self.eirene_out['triang']
-            
-            
-            
 
 
+
+            
+            
+    def load_mesh_extra(self):
+        '''Load the mesh.extra file.
+        '''
+        with open(path+os.sep+'baserun'+os.sep, 'r') as f:
+            contents = f.readlines()
+
+        mesh_extra = np.zeros((len(contents),4))
+        ii=0
+        while ii<len(contents):
+            mesh_extra[ii,:] = [float(val) for val in contents[ii].split()]
+            ii+=1
+
+        return mesh_extra
+    
     def load_eirene_output(self, files = ['fort.44']):
         '''Load result from one of the fort.* files with EIRENE output, 
         as indicated by the "files" list argument.
@@ -365,7 +371,7 @@ class solps_case:
             for ii,field in enumerate(fields):
                 label = self.labels[field]
 
-                ax[ii].plot(self.geqdsk['RBBBS'],self.geqdsk['ZBBBS'],c='k')
+                #ax[ii].plot(self.geqdsk['RBBBS'],self.geqdsk['ZBBBS'],c='k')
                 cntr = ax[ii].tricontourf(self.triang_b2, np.log10(self.quants[field]).flatten(),
                                            cmap=cm.magma,levels=300)
 
@@ -375,7 +381,7 @@ class solps_case:
                 cbars[-1] = plot_tools.DraggableColorbar(cbars[-1],cntr)
                 cbars[-1].connect()
 
-                ax[ii].axis('equal')
+                ax[ii].axis('scaled')
                 ax[ii].set_xlabel('R [m]')
                 ax[ii].set_ylabel('Z [m]')
 
