@@ -29,17 +29,30 @@ def get_version(relpath):
             elif "'" in line:
                 return line.split("'")[1]
 
-with open('README.md', 'r') as fh:
-    long_description = fh.read()
+#with open('README.md', 'r') as fh:
+#    long_description = fh.read()
 #long_description='See documentation at https://aurora-fusion.readthedocs.io'
 
+####
+with open('README.md') as f:
+    long_description = '\n' + '\n'.join(f.read().strip().split('\n')[2:])
+
+# Package adas_data and subdirectories together with license and readme
+package_data = ['../USER_AGREEMENT.txt', '../README.md', '*']
+for root, dir, files in os.walk("aurora"):
+    if root == 'aurora':
+        continue
+    if '__pycache__' in root:
+        continue
+    package_data.append(root[len('aurora') + 1 :] + os.sep + '*')
+
+# For Fortran code:
 wrapper = Extension(name='aurora._aurora', 
                     sources=['aurora/main.f90',
                              'aurora/grids.f90',
                              'aurora/impden.f90',
                              'aurora/math.f90'])
 
-aurora_dir = os.path.dirname(os.path.abspath(__file__))
 install_requires = open('requirements.txt').read().split('\n')
 
 setup(
@@ -50,17 +63,14 @@ setup(
     url='https://github.com/fsciortino/Aurora',
     author='F. Sciortino',
     author_email='sciortino@psfc.mit.edu',
-    packages=['aurora'], #setuptools.find_packages(),
-    #package_dir = {'': 'aurora'},
-    package_data={'aurora': ['aurora/adas_data/adf11/placeholder','aurora/adas_data/adf15/placeholder']},
-    include_package_data=True,
-    # https://stackoverflow.com/questions/13307408/python-packaging-data-files-are-put-properly-in-tar-gz-file-but-are-not-install
-    zip_safe=False,   
+    packages=['aurora'],
+    keywords='particle and impurity transport, neutrals, radiation, magnetic confinement fusion',
+    package_dir={'aurora': 'aurora'},
+    package_data={'aurora': package_data},
     data_files = [('aurora_examples', ['examples/basic.py',
                                        'examples/frac_abundances.py',
                                        'examples/example.gfile',
                                        'examples/example.input.gacode'])],
-    #setup_requires=["numpy"],
     install_requires=install_requires,
     ext_modules=[wrapper],
     classifiers=['Programming Language :: Python :: 3',
