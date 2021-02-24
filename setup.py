@@ -38,7 +38,7 @@ with open('README.md') as f:
     long_description = '\n' + '\n'.join(f.read().strip().split('\n')[2:])
 
 # Package adas_data and subdirectories together with license and readme
-package_data = ['../USER_AGREEMENT.txt', '../README.md', '*']
+package_data = ['../USER_AGREEMENT.txt', '../README.rst', '*']
 for root, dir, files in os.walk("aurora"):
     if root == 'aurora':
         continue
