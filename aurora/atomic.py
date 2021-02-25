@@ -54,8 +54,12 @@ class adas_file:
     Note that such grids vary between files, and the species they refer to may too.
 
     Refer to ADAS documentation for details on each file.
-    '''
 
+    Parameters
+    ----------
+    filepath : str
+        Path to location where ADAS file is located.
+    '''
     def __init__(self, filepath):
         
         self.filepath = filepath
@@ -110,13 +114,25 @@ class adas_file:
 
 
     def plot(self, fig=None, axes=None):
+        '''Plot data from input ADAS file. If provided, the arguments allow users to overplot
+        and compare data from multiple files. 
 
+        Parameters
+        ----------
+        fig : matplotlib Figure object
+            If provided, add specification as to which ADAS file is being plotted.
+        axes : matplotlib Axes object (or equivalent)
+            If provided, plot on these axes. Note that this typically needs to be a set of axes
+            for each plotted charge state. Users may want to call this function once first to get
+            some axes, and then pass those same axes to a second call for another file to compare with.
+        '''
         if fig is None or axes is None:
             fig,axes = plt.subplots(int(self.ncol),int(self.nrow), sharex=True, sharey=True)
 
         axes = np.atleast_2d(axes)
         colormap = cm.rainbow
-        fig.suptitle(self.filename+'  '+ get_adas_file_types()[self.file_type])
+        if fig is not None:
+            fig.suptitle(self.filename+'  '+ get_adas_file_types()[self.file_type])
 
         for i,ax in enumerate(axes.flatten()):
             if i >= self.n_ion: break
@@ -254,10 +270,9 @@ def get_atom_data(imp, filetypes=['acd','scd'], filenames=[]):
     return atom_data
 
 
-
-
 def null_space(A):
-    ''' Find null space of matrix A '''
+    '''Find null space of matrix `A`.
+    '''
     u, s, vh = svd(A, full_matrices=True)
     Q = vh[-1,:].T.conj()    # -1 index is after infinite time/equilibration
     # return the smallest singular eigenvalue
@@ -479,17 +494,116 @@ def plot_relax_time(logTe, rate_coeff, ax = None):
 
 
 
-
-
 class CartesianGrid:
+    """Fast linear interpolation for 1D and 2D vecctor data on equally spaced grids.
+    This offers optimal speed in Python for interpolation of atomic data tables such
+    as the ADAS ones.
+
+    Parameters
+    ----------
+    grids: list of arrays, N=len(grids), N=1 or N=2
+        List of 1D arrays with equally spaced grid values for each dimension
+    values: N+1 dimensional array of values used for interpolation
+        Values to interpolate. The first dimension typically refers to different ion stages, for which 
+        data is provided on the input grids. Other dimensions refer to values on the density and temperature grids.
+    """
+    def __init__(self, grids, values):
+
+        values = np.ascontiguousarray(np.moveaxis(values, 0, -1))
+        self.N = values.shape[:-1]
+
+        if len(self.N) > 2:
+            raise OMFITexception('Only 1 and 2 dimensional interpolation is supported')
+
+        for g, s in zip(grids, self.N):
+            if len(g) != s:
+                raise OMFITexception('wrong size of values array')
+
+        self.offsets = [g[0] for g in grids]
+        self.scales = [(g[-1] - g[0]) / (n - 1) for g, n in zip(grids, self.N)]
+
+        A = []
+        if len(self.N) == 1:
+            A.append(values[:-1])
+            A.append(values[1:] - A[0])
+
+        if len(self.N) == 2:
+            A.append(values[:-1, :-1])
+            A.append(values[1:, :-1] - A[0])
+            A.append(values[:-1, 1:] - A[0])
+            A.append(values[1:, 1:] - A[2] - A[1] - A[0])
+
+        self.A = A
+
+    def __call__(self, *coords):
+        """Evaluate the interpolation at the input `coords` values.
+        
+        This offers optimally-fast linear interpolation for 1D and  2D dimensional vector data 
+        on a equally spaced grids
+        
+        Parameters
+        ----------
+        coords:  list of arrays
+            List of 1D arrays for the N coordines (N=1 or N=2). These arrays must be of the same shape.
+ 
+        """
+        coords = np.array(coords).T
+        coords -= self.offsets
+        coords /= self.scales
+        coords = coords.T
+
+        # clip dimension - it will extrapolation by a nearest value
+        for coord, n in zip(coords, self.N):
+            np.clip(coord, 0, n - 1.00001, coord)
+
+        #  en.wikipedia.org/wiki/Bilinear_interpolation#Unit_square
+
+        # get indicies x and weights dx
+        x = np.int16(coords)  # fast floor(x) function
+        coords -= x  # frac(x)
+        dx = coords[..., None]
+
+        # prepare coefficients
+        if len(self.N) == 1:  # linear interpolation
+            # inplace evaluate linear  interpolation
+            inter_out = self.A[1][x[0]]
+            inter_out *= dx[0]
+            inter_out += self.A[0][x[0]]
+
+        else:  # bilinear interpolation
+            # inplace evaluate linear  interpolation
+            inter_out = self.A[1][x[0], x[1]]
+            inter_out *= dx[0]
+            inter_out += self.A[0][x[0], x[1]]
+
+            _tmp = self.A[3][x[0], x[1]]
+            _tmp *= dx[0]
+            _tmp += self.A[2][x[0], x[1]]
+            _tmp *= dx[1]
+            inter_out += _tmp
+
+        return np.moveaxis(inter_out, -1, 0)
+
+
+class CartesianGrid_Ndim:
     """
     Linear multivariate Cartesian grid interpolation in arbitrary dimensions
     This is a regular grid with equal spacing.
+
+    Use :py:class:`~aurora.atomic.CartesianGrid` for a version that is optimally fast
+    in 2 dimensions only.
+
+    Parameters
+    ----------
+    grids: list of arrays, N=len(grids), arbitrary N
+        List of 1D arrays with equally spaced grid values for each dimension
+    values: N+1 dimensional array of values used for interpolation
+        Values to interpolate. The first dimension typically refers to different ion stages, for which 
+        data is provided on the input grids. Other dimensions refer to values on the N-dimensional grids.
+
     """
     def __init__(self, grids, values):
-        ''' grids: list of arrays or ranges of each dimension
-        values: array with shape (ndim, len(grid[0]), len(grid[1]),...)
-        '''
+
         self.values = np.ascontiguousarray(values)
         for g,s in  zip(grids,values.shape[1:]):
             if len(g) != s: raise Exception('wrong size of values array')
@@ -499,7 +613,13 @@ class CartesianGrid:
         self.N = values.shape[1:]
 
     def __call__(self, *coords):
-        ''' Transform coords into pixel values '''
+        '''Transform coords into pixel values and provide interpolated result.
+
+        Parameters
+        ----------
+        coords:  list of arrays
+            List of 1D arrays for the N coordines (N=1 or N=2). These arrays must be of the same shape.
+        '''
         out_shape = coords[0].shape
 
         coords = np.array(coords).T
@@ -507,17 +627,16 @@ class CartesianGrid:
         coords /= self.scales
         coords = coords.T
 
-        #clip dimension - gives extrapolation by nearest value
+        # clip dimension - gives extrapolation by nearest value
         for coord, n in zip(coords, self.N):
             np.clip(coord,0,n-1,coord)
 
         #prepare output array
         inter_out = np.empty((self.values.shape[0],)+out_shape, dtype=self.values.dtype)
 
-        #fast interpolation on a regular grid
+        # fast interpolation on a N-dimensional regular grid
         for out,val in zip(inter_out,self.values):
-            scipy.ndimage.map_coordinates(val, coords,
-                                            order=1, output=out)
+            scipy.ndimage.map_coordinates(val, coords, order=1, output=out)
 
         return inter_out
 
