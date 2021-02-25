@@ -39,14 +39,6 @@ def get_adas_file_loc(filename, filetype='adf11'):
     file_loc : str
         Full path to the requested file. 
     '''
-    if not os.path.isdir(adas_data_dir):
-        # make sure that aurora/adas_data exists
-        os.makedirs(adas_data_dir)
-
-    if not os.path.isdir(adas_data_dir+filetype):
-        # make sure that aurora/adas_data/adf11 and aurora/adas_data/adf15 directories exist
-        os.makedirs(adas_data_dir+filetype)
-
     def fetch_file(filename,filetype, loc):
         if filetype=='adf11':
             fetch_adf11_file(filename, loc)
@@ -71,12 +63,16 @@ def get_adas_file_loc(filename, filetype='adf11'):
         if os.path.exists(loc):
             pass
         else:
-            # File could not be found. Download it and save it in adas_data:
+            # File could not be found. Download it and save it in AURORA_ADAS_DIR:
             fetch_file(filename, filetype, loc=loc)
         return loc
 
     else:
         # File could not be found. Download it and save it in adas_data:
+        if not os.path.isdir(adas_data_dir):
+            # make sure that aurora/adas_data exists
+            os.makedirs(adas_data_dir)
+
         loc = adas_data_dir+filetype+os.sep+filename
         fetch_file(filename,filetype, loc=loc)
         return loc
@@ -95,6 +91,10 @@ def fetch_adf11_file(filename, loc):
     loc : str
         Location to save fetched ADF11 in.
     '''
+    if not os.path.isdir(adas_data_dir+'adf11'):
+        # make sure that aurora/adas_data/adf11 directory exists
+        os.makedirs(adas_data_dir+'adf11')
+
     url = 'https://open.adas.ac.uk/download/adf11/'
     str1 =  filename.split('_')[0]
     
@@ -116,6 +116,10 @@ def fetch_adf15_file(filename, loc):
     loc : str
         Location to save fetched ADF15 file in.
     '''
+    if not os.path.isdir(adas_data_dir+'adf15'):
+        # make sure that aurora/adas_data/adf15 directory exists
+        os.makedirs(adas_data_dir+'adf15')
+
     url = 'https://open.adas.ac.uk/download/adf15/'
 
     if filename.startswith('pec'):

@@ -116,7 +116,7 @@ class adas_file:
 
         axes = np.atleast_2d(axes)
         colormap = cm.rainbow
-        fig.suptitle(self.filename+'  '+ adas_files.get_adas_file_types()[self.file_type])
+        fig.suptitle(self.filename+'  '+ get_adas_file_types()[self.file_type])
 
         for i,ax in enumerate(axes.flatten()):
             if i >= self.n_ion: break
@@ -127,7 +127,7 @@ class adas_file:
                 ax.plot(self.logT, self.data[i])
             ax.grid(True)
             if self.file_type != 'brs':
-                charge = i+1 if self.file_type in ['scd','prs','ccd','prb'] else i
+                charge = i+1 if self.file_type in ['scd','prs','ccd','prb'] else i+2
                 ax.set_title(self.imp+'$^{%d\!+}$'% (charge-1))   # check?
 
         for ax in axes[-1]:

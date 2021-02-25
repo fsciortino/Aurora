@@ -1,7 +1,7 @@
 name='aurora'
-__version__="0.2.1"
+__version__="0.2.2"
 
-import numpy as np, sys
+import numpy as np, os
 
 from .core import *
 from .atomic import *
@@ -25,3 +25,5 @@ from .synth_diags import *
 
 from .solps import *
 from .kn1d import *
+
+aurora_dir = os.path.dirname(os.path.abspath(__file__))

@@ -358,9 +358,9 @@ class aurora_sim:
     def run_aurora(self, D_z, V_z,
                    times_DV=None, nz_init=None, alg_opt=1, evolneut=False,
                    use_julia=False, plot=False):
-        '''Run a simulation using inputs in the given dictionary and D,v profiles as a function
-        of space, time and potentially also ionization state. Users may give an initial state of each
-        ion charge state as an input.
+        '''Run a simulation using inputs in the given dictionary and diffusion and convection profiles 
+        as a function of space, time and potentially also ionization state. Users may give an initial 
+        state of each ion charge state as an input.
 
         Results can be conveniently visualized with time-slider using
 
@@ -372,15 +372,21 @@ class aurora_sim:
                                labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]])
 
         Parameters
-        -----------------
-        D_z, V_z: arrays, shape of (space,time,nZ) or (space,time) or (space,)
-            Diffusion and convection coefficients, in units of :math:`cm^2/s` and :math:`cm/s`, respectively.
-            This may be given as a function of (space,time) or (space,nZ, time), where nZ indicates
-            the number of charge states. If `D_z` and `V_z` are found to be have only 2 dimensions, 
-            it is assumed that all charge states should have the same transport coefficients.
-            If they are only 1-D, it is further assumed that they are time-independent. 
-            Note that it is assumed that `D_z` and `V_z` profiles are already on the self.rvol_grid 
-            radial grid.
+        ----------
+        D_z: array, shape of (space,time,nZ) or (space,time) or (space,)
+            Diffusion coefficients, in units of :math:`cm^2/s`.
+            This may be given as a function of space only, (space,time) or (space,nZ, time), 
+            where nZ indicates the number of charge states. If given with 1 or 2 dimensions, 
+            it is assumed that all charge states should have the same diffusion coefficients.
+            If given as 1D, it is further assumed that diffusion is time-independent. 
+            Note that it is assumed that radial profiles are already on the self.rvol_grid radial grid.
+        V_z: array, shape of (space,time,nZ) or (space,time) or (space,)
+            Convection coefficients, in units of :math:`cm/s`.
+            This may be given as a function of space only, (space,time) or (space,nZ, time), 
+            where nZ indicates the number of charge states. If given with 1 or 2 dimensions, 
+            it is assumed that all charge states should have the same convection coefficients.
+            If given as 1D, it is further assumed that convection is time-independent. 
+            Note that it is assumed that radial profiles are already on the self.rvol_grid radial grid.
         times_DV : 1D array, optional
             Array of times at which `D_z` and `V_z` profiles are given. By Default, this is None, 
             which implies that `D_z` and `V_z` are time independent. 
@@ -404,7 +410,7 @@ class aurora_sim:
             particle conservation in each particle reservoir. 
 
         Returns
-        ------------
+        -------
         nz : array, (nr,nZ,nt)
             Charge state densities [:math:`cm^{-3}`] over the space and time grids.
         N_wall : array (nt,)
