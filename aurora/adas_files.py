@@ -356,8 +356,8 @@ def adas_files_dict():
     files["Ar"]["pbs"] = "pbsx5_ar.dat"
     files["Ar"]["prc"] = "prc89_ar.dat"
     files["Ca"] = {}     #20
-    files["Ca"]['acd'] = "acd85_ca.dat"
-    files["Ca"]['scd'] = "scd85_ca.dat"
+    files["Ca"]['acd'] = "acd89_ca.type_a_large" #"acd85_ca.dat"
+    files["Ca"]['scd'] = "scd50_ca.dat" #"scd85_ca.dat"
     files["Ca"]['ccd'] = "ccd89_w.dat"  # file not available, use first 20 ion stages using Foster scaling
     files["Ca"]['prb'] = "prb85_ca.dat" # not public on OPEN-ADAS, must request 
     files["Ca"]['plt'] = "plt85_ca.dat" # not public on OPEN-ADAS, must request 
