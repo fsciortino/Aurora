@@ -18,8 +18,6 @@ from . import plot_tools
 from . import coords
 
 
-from IPython import embed
-
 class solps_case:
     def __init__(self, path, geqdsk, solps_run='',
                  case_num=0, form='extracted', extracted_labels=None):
