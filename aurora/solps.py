@@ -9,13 +9,16 @@ import os
 import numpy as np
 plt.ion()
 from scipy.interpolate import griddata
-from matplotlib import cm
+import matplotlib as mpl
 import matplotlib.tri as tri
 from heapq import nsmallest
 import warnings
-
+from scipy import constants
 from . import plot_tools
 from . import coords
+
+
+from IPython import embed
 
 class solps_case:
     def __init__(self, path, geqdsk, solps_run='',
@@ -62,10 +65,10 @@ class solps_case:
         else:
             self.geqdsk = geqdsk
 
-        self.labels = {'ne':r'log($n_e$) [$m^{-3}$]' , 'Te':r'log($T_e$) [eV]',
-                      'nn':'log($n_n$) [$m^{-3}$]' , 'Tn':'log($T_n$) [eV]',
-                      'nm':'log($n_m$) [$m^{-3}$]' , 'Tm':'log($T_m$) [eV]',
-                      'Ti':r'log($T_i$) [eV]',
+        self.labels = {'ne':r'$n_e$ [$m^{-3}$]' , 'Te':r'$T_e$ [eV]',
+                      'nn':r'$n_n$ [$m^{-3}$]' , 'Tn':r'$T_n$ [eV]',
+                      'nm':r'$n_m$ [$m^{-3}$]' , 'Tm':r'$T_m$ [eV]',
+                      'Ti':r'$T_i$ [eV]',
             }
             
         if form=='extracted':
@@ -83,11 +86,24 @@ class solps_case:
             self.unit_p = self.nx//4
             self.unit_r = self.ny//2
 
-            self.double_null = False # TODO: generalize for double null shapes!
+            # Currently only set up for single null shapes
+            self.double_null = False
 
+            # Obtain indices for chosen radial regions
+            _R_idxs = np.array([],dtype=int)
+            _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1)))  # PFR and core
+            self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1,2*self.unit_r+2))) # open-SOL
+            
+            # obtain indices for chosen poloidal regions
+            _P_idxs = np.array([],dtype=int)
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
+            self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
+
+            
         elif form=='full':
             from omfit_classes import omfit_solps # import omfit_solps here to avoid issues with docs and packaging
-            self.b2fstate = omfit_solps.OMFITsolps(path+os.sep+solps_run+os.sep+'b2fstate')
+            self.b2fstate = omfit_solps.OMFITsolps(self.path+os.sep+self.solps_run+os.sep+'b2fstate')
             self.geom = omfit_solps.OMFITsolps(path+os.sep+'baserun'+os.sep+'b2fgmtry')
 
             self.nx,self.ny = self.geom['nx,ny']
@@ -102,37 +118,42 @@ class solps_case:
             self.double_null = self.cry.shape[2]%4==0
             
             # uncertain units for splitting of radial and poloidal regions...
-            self.unit_p = (self.crx.shape[2]-4 if self.double_null else self.crx.shape[2]-2)//4
-            self.unit_r = (self.crx.shape[1]-2 if self.double_null else self.crx.shape[1])//2 
+            self.unit_p = (self.crx.shape[2]-4 if self.double_null else self.crx.shape[2])//4
+            self.unit_r = (self.crx.shape[1]-2)//2   #(self.crx.shape[1]-2 if self.double_null else self.crx.shape[1])//2 
 
-        if self.double_null:
-            # TODO: unlikely to be correct, double null generalization still incomplete!
-            
-            # Obtain indices for chosen radial regions
-            _R_idxs = np.array([],dtype=int)
-            _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r)))  # PFR and core
-            self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r,2*self.unit_r))) # open-SOL
-            
-            # obtain indices for chosen poloidal regions
-            _P_idxs = np.array([],dtype=int)
-            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
-            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
-            self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
-            
-        else:  # upper or lower single null
-            # Obtain indices for chosen radial regions
-            _R_idxs = np.array([],dtype=int)
-            _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1)))  # PFR and core
-            self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1,2*self.unit_r+2))) # open-SOL
-            
-            # obtain indices for chosen poloidal regions
-            _P_idxs = np.array([],dtype=int)
-            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
-            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
-            self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
+            if self.double_null:
+                # TODO: double null generalization still incomplete!
 
+                # Obtain indices for chosen radial regions
+                _R_idxs = np.array([],dtype=int)
+                _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r)))  # PFR and core
+                self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r,2*self.unit_r))) # open-SOL
 
+                # obtain indices for chosen poloidal regions
+                _P_idxs = np.array([],dtype=int)
+                _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
+                _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
+                self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
 
+            else:  # upper or lower single null
+                # Obtain indices for chosen radial regions
+                _R_idxs = np.array([],dtype=int)
+                _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1)))  # PFR and core
+                self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1,2*self.unit_r+2))) # open-SOL
+
+                # obtain indices for chosen poloidal regions
+                _P_idxs = np.array([],dtype=int)
+                _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
+                _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
+                self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
+
+        # load data arrays
+        self.load_data() #P_idxs=self.P_idxs, R_idxs=self.R_idxs)  # TODO: enable subselection of regions
+        
+        # set zero densities equal to min to avoid log issues
+        #self.quants['nn'][self.quants['nn']==0.0] = nsmallest(2,np.unique(self.quants['nn'].flatten()))[1]
+
+        
     def load_data(self, fields=None, P_idxs=None, R_idxs=None,
                   Rmin=None, Rmax=None, Pmin=None, Pmax=None):
         '''Load SOLPS output for each of the needed quantities ('extracted' form)
@@ -141,7 +162,7 @@ class solps_case:
         -----------------
         fields : list or array
             List of fields to fetch from SOLPS output. If left to None, by default uses
-            self.labels.keys(), i.e. ['ne','Te','nn','nT','nm','Tm','Ti']
+            self.labels.keys(), i.e. ['ne','Te','nn','Tn','nm','Tm','Ti']
         P_idxs : list or array
             Poloidal indices to load.
         R_idxs : list or array
@@ -161,14 +182,14 @@ class solps_case:
             Dictionary containing 'R','Z' coordinates for 2D maps of each field requested by user.
         '''
         if P_idxs is None:
-            if Pmax is None: Pmax = self.ny
+            if Pmax is None: Pmax = self.nx
             if Pmin is None: Pmin = 0
             P_idxs = np.arange(Pmin,Pmax)
         else:
             pass # user provided list of poloidal grid indices
 
         if R_idxs is None:
-            if Rmax is None: Rmax = self.nx
+            if Rmax is None: Rmax = self.ny
             if Rmin is None: Rmin = 0
             R_idxs = np.arange(Rmin,Rmax)
         else:
@@ -180,7 +201,8 @@ class solps_case:
         self.quants = quants = {}
         
         if self.form=='extracted':
-
+            # "extracted" format has each variable in a different file
+            
             self.R = np.atleast_2d(
                 np.loadtxt(self.path+f'/{self.ext_names_map["R"]}{self.case_num}',
                            usecols=(3)).reshape((self.ny+2,self.nx+2))[:,P_idxs])[R_idxs,:]
@@ -193,48 +215,27 @@ class solps_case:
                                   usecols=(3)).reshape((self.ny+2,self.nx+2))
                 quants[field] = np.atleast_2d(tmp[:,P_idxs])[R_idxs,:]
 
-            self.triang_b2 = tri.Triangulation(self.R.flatten(), self.Z.flatten())
-            self.triang_eirene = self.triang_b2 # triangulation for EIRENE is mapped to b2 grid
     
         elif self.form=='full':
 
             # eliminate end (buffer) points of grid
-            self.R = np.mean(self.crx,axis=0)[R_idxs,:][:,P_idxs]
-            self.Z = np.mean(self.cry,axis=0)[R_idxs,:][:,P_idxs]
+            self.R = np.mean(self.crx,axis=0)[1:-1,1:-1][R_idxs,:][:,P_idxs]
+            self.Z = np.mean(self.cry,axis=0)[1:-1,1:-1][R_idxs,:][:,P_idxs]
 
-            for field in fields:
-                if field in ['ne','Te','Ti']:
-                    quants[field] = self.b2fstate[field.lower()][R_idxs,:][:,P_idxs]
-
-            eirene_out = self.load_eirene_output(files=['fort.44','fort.46'])
-            self.fort44 = eirene_out['fort.44']
-            self.fort46 = eirene_out['fort.46']
-            self.triang_eirene = eirene_out['triang']
-
-            NATM = int(self.fort44['NATM'])
-            NMOL = int(self.fort44['NMOL'])
-            NION = int(self.fort44['NION'])
-
-            # Read neutral densities and energies on EIRENE grid...
-            quants['pdenm'] = self.fort46['pdenm'].reshape(-1,NMOL,order='F')  # molecular density
-            quants['edenm'] = self.fort46['edenm'].reshape(-1,NMOL,order='F')  # molecular energy
-            quants['pdena'] = self.fort46['pdena'].reshape(-1,NATM,order='F')  # atomic density
-            quants['edena'] = self.fort46['edena'].reshape(-1,NATM,order='F')  # atomic energy
+            self.fort44 = self.load_fort44()
+            self.fort46 = self.load_fort46()
             
-            # ... and on B2 grid -- C order seems required
-            quants['dmb2'] = self.fort44['dmb2'].reshape(self.ny,self.nx,NMOL,order='C')[R_idxs,:,:][:,P_idxs,:]
-            quants['tmb2'] = self.fort44['tmb2'].reshape(self.ny,self.nx,NMOL,order='C')[R_idxs,:,:][:,P_idxs,:]
-            quants['dab2'] = self.fort44['dab2'].reshape(self.ny,self.nx,NATM,order='C')[R_idxs,:,:][:,P_idxs,:]
-            quants['tab2'] = self.fort44['tab2'].reshape(self.ny,self.nx,NATM,order='C')[R_idxs,:,:][:,P_idxs,:]
+            quants['ne'] = self.b2fstate['ne'][1:-1,1:-1][R_idxs,:][:,P_idxs] # m^-3
+            #quants['nn'] = self.b2fstate['na'][0,R_idxs,:][:,P_idxs] # m^-3   # only neutral component
+            nn44 = self.fort44['dab2'][:,:,0].T
+            nn44[nn44==0.0] = nsmallest(2,np.unique(nn44.flatten()))[1]
+            quants['nn'] = nn44[R_idxs,:][:,P_idxs] # m^-3   # only neutral component
+            quants['Tn'] = self.fort44['tab2'][:,:,0].T[R_idxs,:][:,P_idxs]/constants.e # eV
+            quants['Te'] = self.b2fstate['te'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
+            quants['Ti'] = self.b2fstate['ti'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
 
-            # save some useful quantities for background neutrals
-            quants['nn'] = quants['dab2'][:,:,0]
-            quants['Tn'] = quants['tab2'][:,:,0]
-            quants['nm'] = quants['dmb2'][:,:,0]
-            quants['Tm'] = quants['tmb2'][:,:,0]
-            
-            self.triang_b2 = tri.Triangulation(self.R.flatten(), self.Z.flatten())
-
+            # EIRENE nodes and triangulation
+            self.xnodes, self.ynodes, self.triangles = self.load_eirene_mesh()
 
 
             
@@ -242,7 +243,7 @@ class solps_case:
     def load_mesh_extra(self):
         '''Load the mesh.extra file.
         '''
-        with open(path+os.sep+'baserun'+os.sep, 'r') as f:
+        with open(self.path+os.sep+'baserun'+os.sep+'mesh.extra', 'r') as f:
             contents = f.readlines()
 
         mesh_extra = np.zeros((len(contents),4))
@@ -252,189 +253,262 @@ class solps_case:
             ii+=1
 
         return mesh_extra
-    
-    def load_eirene_output(self, files = ['fort.44']):
-        '''Load result from one of the fort.* files with EIRENE output, 
-        as indicated by the "files" list argument.
 
-        Parameters
-        ----------
-        files : list or array-like
-            EIRENE output files to read. Default is to load all files for which this method has been tested. 
+
+
+    def load_fort44(self):
+        '''Load result from one of the fort.44 file with EIRENE output on B2 grid.
 
         Returns
         -------
-        eirene_out : dict
+        out : dict
+            Dictionary containing a subdictionary with keys for each loaded field. 
+        '''
+        out = {}
+            
+        out = {}
+        # load each of these files into dictionary structures
+        with open(self.path +os.sep+self.solps_run+os.sep+'fort.44', 'r') as f:
+            contents = f.readlines()
+
+        NDX = out['NDX'] = int(contents[0].split()[0])
+        NDY = out['NDY']= int(contents[0].split()[1])
+        #out['DIM']=NDX*NDY
+        
+        NATM = out['NATM'] = int(contents[1].split()[0][0])
+        NMOL = out['NMOL'] = int(contents[1].split()[1][0])
+        NION = out['NION'] = int(contents[1].split()[2][0])
+
+        ii=2
+        out['species']=[]
+        while not contents[ii].startswith('*eirene'):
+            if not contents[ii].split()[0].isnumeric():
+                out['species'].append(contents[ii].split()[0])
+            ii+=1                    
+
+        while ii<len(contents):
+            if contents[ii].startswith('*eirene'):
+                key = ''.join(contents[ii].split()[3:-3])
+                dim = int(contents[ii].split()[-1])
+                out[key] = []
+            elif not contents[ii].split()[0][0].isalpha():
+                [out[key].append(float(val)) for val in contents[ii].strip().split()]
+            ii+=1
+
+        # hidden line at the end of 'edissml' field gives values of NLIM,NSTS,NSTRA
+        NLIM,NSTS,NSTRA = [int(val) for val in out['edissml'][-3:]]
+        out['NLIM'] = NLIM
+        NSTS=out['NSTS'] = NSTS
+        NSTRA=out['NSTRA'] = NSTRA
+        del out['edissml'][-3:]
+
+        # number of source strata
+        _NSTRA= np.array(out['pdena_int']).reshape(NATM,-1, order='F').shape[1]-1
+        assert NSTRA==_NSTRA   #check
+        # number of segments for resolved tallies on non-standard surfaces
+        NCL=out['NCL'] = len(out['sarea_res'])
+        # number of plasma background species
+        NPLS=out['NPLS'] = np.array(out['wlpump_res(P)']).reshape(NCL,-1,order='F').shape[1]
+        # number of “non-standard surfaces” (plasma boundaries)
+        _NSTS = int((len(out['eirdiag'])-1)/5)
+        assert NSTS==_NSTS #check
+        # number of "additional surfaces" (physical walls)
+        _NLIM=out['NLIM'] = len(out['isrftype'])-NSTS
+        assert NLIM==_NLIM #check
+        
+        # load variable descriptors for fort.44
+        fort44_info = get_fort44_info(NDX,NDY,NATM,NMOL,NION,NSTRA,NCL,NPLS,NSTS,NLIM)
+
+        for key in out:
+            if key in ['species','NDX','NDY','NATM','NMOL','NION','NSTRA','NCL','NPLS','NSTS','NLIM']:
+                continue
+            # find appropriate shape from fort44_info dictionary
+            out[key] = np.array(out[key]).reshape(*fort44_info[key][1],order='F')
+            
+        return out
+
+
+
+    def load_fort46(self):
+        '''Load result from fort.46 file with EIRENE output on EIRENE grid.
+
+        Returns
+        -------
+        out : dict
             Dictionary for each loaded file containing a subdictionary with keys for each loaded field from each file. 
         '''
-        eirene_out = {}
-        
-        for filename in files: 
-            eirene_out[filename] = {}
-            # load each of these files into dictionary structures
-            with open(self.path +os.sep+self.solps_run+os.sep+filename, 'r') as f:
-                contents = f.readlines()
+        out = {}
             
-            if filename=='fort.44':
-                XX=int(contents[0].split()[0])
-                YY=int(contents[0].split()[1])
-                eirene_out[filename]['XX']=XX
-                eirene_out[filename]['YY']=YY
-                eirene_out[filename]['DIM']=XX*YY
-            elif filename=='fort.46':
-                eirene_out[filename]['DIM']=contents[0].split()[0]
+        out = {}
+        # load each of these files into dictionary structures
+        with open(self.path +os.sep+self.solps_run+os.sep+'fort.46', 'r') as f:
+            contents = f.readlines()
 
-            eirene_out[filename]['NATM'] = int(contents[1].split()[0])
-            eirene_out[filename]['NMOL'] = int(contents[1].split()[1])
-            eirene_out[filename]['NION'] = int(contents[1].split()[2])
+        out['DIM']=contents[0].split()[0]
 
-            ii=2
-            eirene_out[filename]['species']=[]
-            while not contents[ii].startswith('*eirene'):
-                if not contents[ii].split()[0].isnumeric():
-                    eirene_out[filename]['species'].append(contents[ii].split()[0])
-                ii+=1                    
+        NATM = out['NATM'] = int(contents[1].split()[0][0])
+        NMOL = out['NMOL'] = int(contents[1].split()[1][0])
+        NION = out['NION'] = int(contents[1].split()[2][0])
 
-            while ii<len(contents):
-                if  contents[ii].startswith('*eirene'):
-                    key = ''.join(contents[ii].split()[3:-3])
-                    dim = contents[ii].split()[-1]
+        ii=2
+        out['species']=[]
+        while not contents[ii].startswith('*eirene'):
+            if not contents[ii].split()[0].isnumeric():
+                out['species'].append(contents[ii].split()[0])
+            ii+=1                    
 
-                    eirene_out[filename][key] = []
-                elif not contents[ii].split()[0][0].isalpha():
-                    [eirene_out[filename][key].append(float(val)) for val in contents[ii].strip().split()]
-                ii+=1
+        while ii<len(contents):
+            if contents[ii].startswith('*eirene'):
+                key = ''.join(contents[ii].split()[3:-3])
+                dim = int(contents[ii].split()[-1])
+                out[key] = []
+            elif not contents[ii].split()[0][0].isalpha():
+                [out[key].append(float(val)) for val in contents[ii].strip().split()]
+            ii+=1
 
-            for key in eirene_out[filename]:
-                eirene_out[filename][key] = np.array(eirene_out[filename][key])
+        for key in out:
 
-        # Now load fort.33 file with EIRENE nodes and cells
-        Nodes=np.fromfile(self.path+os.sep+'baserun'+os.sep+'fort.33',sep=' ')
-        NN=int(Nodes[0])
-        XNodes=Nodes[1:NN+1]/100  # cm -->m
-        YNodes=Nodes[NN+1:]/100
+            # set to the right shape, depending on whether quantity is atomic, molecular or ionic
+            if key.endswith('a'): num=NATM
+            elif key.endswith('m'): num=NMOL
+            elif key.endswith('i'): num=NION
+            else: num=1
+            if key in ['species','DIM']:
+                continue
+            out[key] = np.array(out[key]).reshape(-1,num,order='F')
+
+        return out
+    
+    
+    def load_eirene_mesh(self):
+        '''Load EIRENE nodes from the fort.33 file and triangulation from the fort.34 file
+        '''
+        nodes=np.fromfile(self.path+os.sep+'baserun'+os.sep+'fort.33',sep=' ')
+        n=int(nodes[0])
+        xnodes=nodes[1:n+1]/100  # cm -->m
+        ynodes=nodes[n+1:]/100
         
         # EIRENE triangulation
-        Triangles = np.loadtxt(
-            self.path+os.sep+'baserun'+os.sep+'fort.34',skiprows=1, usecols=(1,2,3))
+        triangles = np.loadtxt(self.path+os.sep+'baserun'+os.sep+'fort.34',
+                               skiprows=1, usecols=(1,2,3))
 
-        eirene_out['triang'] =tri.Triangulation(XNodes,YNodes,triangles=(Triangles-1))
-        
-        return eirene_out
+        return xnodes, ynodes, triangles-1  # -1 for python indexing
 
-
-    def process_solps_data(self, fields=None, P_idxs=None, R_idxs=None, plot=False):
-        '''Load and process SOLPS to permit clear plotting. 
-        
-        Parameters
-        ----------
-        fields : dict
-            Dictionary containing SOLPS outputs to process. Keys indicate the quantity, value its label
-            (only used for plotting). If left to None, defaults fields of 'ne','Te','nn' and 'Tn' are used.
-        P_idxs : list or array
-            Poloidal indices to load.
-        R_idxs : list or array
-            Radial indices to load.
-        plot : bool
-            If True, plot results for all loaded 2D quantities. 
-
-        Returns
-        -------
-        quants : dict
-            Dictionary containing 'R','Z' coordinates for 2D maps of each field requested by user.
-            Quantities are processed and masked to facilitate plotting.
-        '''
-        if fields is None:
-            fields = ['ne','Te','nn','Tn'] #list(self.labels.keys())
-
-        if P_idxs is None:
-            P_idxs = self.P_idxs
-        if R_idxs is None:
-            R_idxs = self.R_idxs
-
-        # load data arrays
-        self.load_data(fields = fields, P_idxs=P_idxs, R_idxs=R_idxs)
-
-        # apply masking based on maximum side-length
-        self.max_mask_len = 10* (np.max(self.Z)-np.min(self.Z))/(self.nx) #ROT to get an appropriate edge masking length
-        self.triang_b2 = apply_mask(self.triang_b2, self.geqdsk, max_mask_len=self.max_mask_len)
-
-        # set zero densities equal to min to avoid log issues
-        self.quants['nn'][self.quants['nn']==0.0] = nsmallest(2,np.unique(self.quants['nn'].flatten()))[1]
-
-        if plot:
-
-            fig,axs = plt.subplots(2,2, figsize=(9,12),sharex=True) 
-            ax = axs.flatten()
-
-            cbars = [];
-            for ii,field in enumerate(fields):
-                label = self.labels[field]
-
-                #ax[ii].plot(self.geqdsk['RBBBS'],self.geqdsk['ZBBBS'],c='k')
-                cntr = ax[ii].tricontourf(self.triang_b2, np.log10(self.quants[field]).flatten(),
-                                           cmap=cm.magma,levels=300)
-
-                # create draggable colorbar
-                cbars.append( plt.colorbar(cntr, format='%.3g', ax=ax[ii]))
-                cbars[-1].ax.set_title(label)
-                cbars[-1] = plot_tools.DraggableColorbar(cbars[-1],cntr)
-                cbars[-1].connect()
-
-                ax[ii].axis('scaled')
-                ax[ii].set_xlabel('R [m]')
-                ax[ii].set_ylabel('Z [m]')
-
-
-
-    def plot_2d_vals(self, vals, label='', use_triang=True, max_mask_len=None):
-        '''Method to plot 2D fields over the R and Z grids. 
+                
+    def plot2d_b2(self, vals, ax=None, scale='log', label='', **kwargs):
+        '''Method to plot 2D fields on B2 grids. 
         Colorbars are set to be manually adjustable, allowing variable image saturation.
 
         Parameters
         ----------
-        vals : array, (ny,nx)
-            2D array containing a variable of interest, on the same grid as the 
-            R and Z attributes. 
-
-        Returns
-        -------
+        vals : array (self.ny, self.nx)
+            Data array for a variable of interest.
+        ax : matplotlib Axes instance
+            Axes on which to plot. If left to None, a new figure is created.
+        scale : str
+            Choice of 'linear','log' and 'symlog' for matplotlib.colors.
         label : str
-            Label describing the quantity being plotted.
-        use_triang : bool
-            If True, use a triangulation to plot results on B2 grids, attempting
-            to mask unwanted spurious edges. Alternatively, use a simple filled 
-            contour plot, which however may show unphysical features at the edges
-            of the B2 grid. Default is True (use the triangulation).  
-        max_mask_len : float
-            Optional maximum length of triangulation segments to be masked. If left to 
-            None, the default rule-of-thumb length for this variable will be used, but 
-            this may need hand adjustments for specific use cases.
-        '''
+            Label to set on the colorbar. No label by default.
+        kwargs
+            Additional keyword arguments passed to the `PatchCollection` class.
 
-        fig,ax0 = plt.subplots(figsize=(8,11))
-        ax0.axis('equal')
-        ax0.set_xlabel('R [m]'); ax0.set_ylabel('Z [m]')
+        '''
+        if ax is None:
+            fig,ax = plt.subplots(1,figsize=(9, 11))
+
+        if np.prod(vals.shape)==self.crx.shape[1]*self.crx.shape[2]:
+            #print('Excluding boundary cells in plot2d_b2')
+            vals = vals[1:-1,1:-1]
+
+        vals = vals.flatten()
+        xx = self.crx.transpose(2,1,0)[1:-1,1:-1,:]
+        yy = self.cry.transpose(2,1,0)[1:-1,1:-1,:]
+        NY = self.ny; NX = self.nx
+
+        # Avoid zeros that may derive from low Monte Carlo statistics
+        if np.any(vals==0): vals[vals==0.0] = nsmallest(2,np.unique(vals))[1]
+        
+        patches = []
+        for iy in np.arange(0,NY):
+            for ix in np.arange(0,NX):
+                rr = np.atleast_2d(xx[ix,iy,[0,1,3,2]]).T
+                zz = np.atleast_2d(yy[ix,iy,[0,1,3,2]]).T
+                patches.append(mpl.patches.Polygon(np.hstack((rr,zz)), True,linewidth=3))
+
+        # collect al patches
+        p = mpl.collections.PatchCollection(patches,False, edgecolor='k',linewidth=0.1, **kwargs)
+
+        p.set_array(np.array(vals))
+
+        if scale=='linear':
+            p.set_clim([np.min(vals), np.max(vals)])
+        elif scale=='log':
+            p.norm = mpl.colors.LogNorm(vmin=np.min(vals),vmax=np.max(vals))
+        elif scale=='symlog':
+            p.norm = mpl.colors.SymLogNorm(linthresh=np.max(vals)/10.,base=10,
+                                        linscale=0.5, vmin=np.min(vals),vmax=np.max(vals))
+        else:
+            raise ValueError('Unrecognized scale parameter')
+        
+        ax.add_collection(p)
+        tickLocs = [np.min(vals),np.max(vals)/10,np.min(vals)/10,np.min(vals)]
+        cb = plt.colorbar(p,ax=ax, pad=0.01, ticks = tickLocs if scale=='symlog' else None)
+        
+        #cb.set_label(label)
+        ax.set_title(label)
+        ax.set_xlabel('R [m]')
+        ax.set_ylabel('Z [m]')
+        plt.grid(True)
+        ax.axis('scaled')
+
+        
+
+
+    def plot2d_eirene(self, vals,  ax = None, scale='log', label='', **kwargs):
+        '''Method to plot 2D fields from EIRENE.
+
+        Parameters
+        ----------
+        vals : array (self.ny, self.nx)
+            Data array for an EIRENE variable of interest.
+        ax : matplotlib Axes instance
+            Axes on which to plot. If left to None, a new figure is created.
+        scale : str
+            Choice of 'linear','log' and 'symlog' for matplotlib.colors.
+        label : str
+            Label to set on the colorbar. No label by default.
+        kwargs
+            Additional keyword arguments passed to the `tripcolor` function.
+
+        '''
+        # Avoid zeros that may derive from low Monte Carlo statistics
+        if np.any(vals==0): vals[vals==0.0] = nsmallest(2,np.unique(vals.flatten()))[1]
+
+        if ax is None:
+            fig,ax = plt.subplots(figsize=(8,11))
 
         # plot LCFS
-        ax0.plot(self.geqdsk['RBBBS'],self.geqdsk['ZBBBS'],c='k')
-        
-        if use_triang:
-            # possibly modify edge masking of triangulation
-            if max_mask_len is not None:
-                self.max_mask_len = float(max_mask_len)
-                self.triang_b2 = apply_mask(self.triang_b2, self.geqdsk, max_mask_len=max_mask_len)
-            
-            # triangulation from b2 R and Z grid
-            cntr = ax0.tricontourf(self.triang_b2, vals.flatten(), cmap=cm.magma,levels=300)
-        else:
-            # Simpler plotting, with no triangulation
-            cntr = ax0.contourf(self.R, self.Z, vals)
+        ax.plot(self.geqdsk['RBBBS'],self.geqdsk['ZBBBS'],c='k')
 
-        cbar = plt.colorbar(cntr, format='%.3g', ax=ax0)
-        cbar.set_label(label)
+        # given quantity is on EIRENE triangulation
+        if scale=='linear': norm = None
+        elif scale=='log': norm =  mpl.colors.LogNorm(vmin=np.min(vals),vmax=np.max(vals))
+        elif scale=='symlog': norm = mpl.colors.SymLogNorm(linthresh=np.max(vals)/10.,base=10,
+                                        linscale=0.5, vmin=np.min(vals),vmax=np.max(vals))
+        else: raise ValueError('Unrecognized scale parameter')
+        
+        cntr = ax.tripcolor(self.xnodes, self.ynodes, self.triangles,
+                             facecolors=vals.flatten(), norm=norm, **kwargs)
+
+        ax.axis('scaled')
+        ax.set_xlabel('R [m]')
+        ax.set_ylabel('Z [m]')
+        cbar = plt.colorbar(cntr, format='%.3g', ax=ax)
+        #cbar.set_label(label)
+        ax.set_title(label)
         cbar = plot_tools.DraggableColorbar(cbar,cntr)
         cbar.connect()
+
 
 
     def get_radial_prof(self, quant='nn', dz_mm=5, plot=False):
@@ -476,7 +550,7 @@ class solps_case:
             Standard deviation of HFS midplane profile on rhop_HFS grid, based on variations 
             within +/-`dz_mm`/2 millimeters from the midplane.
         '''
-        
+
         rhop_2D = coords.get_rhop_RZ(self.R,self.Z, self.geqdsk)
         
         # evaluate FSA radial profile inside the LCFS
@@ -620,3 +694,132 @@ def apply_mask(triang, geqdsk, max_mask_len=0.4, mask_up=False, mask_down=False)
     triang.set_mask((cond_maxd & cond_y) | center_mask)
 
     return triang
+
+
+
+
+def get_fort44_info(NDX,NDY,NATM,NMOL,NION,NSTRA,NCL,NPLS,NSTS,NLIM):
+    '''Collection of labels and dimensions for all fort.44 variables, as collected in the 
+    SOLPS-ITER 2020 manual.
+    '''
+    
+    fort44_info = {
+        'dab2': [r'Atom density ($m^{-3}$)',(NDX,NDY,NATM)],
+        'tab2': [r'Atom temperature (eV )', (NDX,NDY,NATM)],
+        'dmb2': [r'Molecule density ($m^{-3}$)', (NDX,NDY,NMOL)],
+        'tmb2': [r'Molecule temperature (eV )', (NDX,NDY,NMOL)],
+        'dib2': [r'Test ion density ($m^{-3}$)', (NDX,NDY,NION)],
+        'tib2': [r' Test ion temperature (eV)', (NDX,NDY,NION)],
+        'rfluxa': [r'Radial flux density of atoms ($m^{-2} s^{-1}$)', (NDX,NDY,NATM)],
+        'rfluxm': [r'Radial flux density of molecules ($m^{-2} s^{-1}$)', (NDX,NDY,NMOL)],
+        'pfluxa': [r'Poloidal flux density of atoms ($m^{-2} s^{-1}$)', (NDX,NDY,NATM)],
+        'pfluxm': [r'Poloidal flux density of molecules ($m^{-2} s^{-1}$)', (NDX,NDY,NMOL)],
+        'refluxa': [r'Radial energy flux density carried by atoms ($W m^{-2}$)', (NDX,NDY,NATM)],
+        'refluxm': [r'Radial energy flux density carried by molecules ($W m^{-2}$)', (NDX,NDY,NMOL)],
+        'pefluxa': [r'Poloidal energy flux density carried by atoms ($W m^{-2}$)', (NDX,NDY,NATM)],
+        'pefluxm': [r'Poloidal energy flux density carried by molecules ($W m^{-2}$)', (NDX,NDY,NMOL)],
+        #
+        'emiss': [r'$H_\alpha$ emissivity due to atoms ($photons m^{-2} s^{-1}$)', (NDX,NDY)],
+        'emissmol': [r'$H_\alpha$ emissivity due to molecules and molecular ions ($photons m^{-2} s^{-1}$)', (NDX,NDY)],
+        'srcml': [r'Molecule particle source (A)', (NDX,NDY,NMOL)],
+        'edissml': [r'Energy spent for dissociating hydrogenic molecules (W)', (NDX,NDY,NMOL)],
+        'wldnek': [r'Heat transferred by neutrals (W), total over strata', (NLIM+NSTS)],
+        'wldnep': [r'Potential energy released by neutrals (W), total over strata', (NLIM+NSTS)],
+        'wldna': [r'Flux of atoms impinging on surface (A), total over strata', (NLIM+NSTS,NATM)],
+        'ewlda': [r'Average energy of impinging atoms on surface (eV), total over strata', (NLIM+NSTS,NATM)],
+        'wldnm': [r'Flux of molecules impinging on surface (A), total over strata', (NLIM+NSTS,NMOL)],
+        'ewldm': [r'Average energy of impinging molecules on surface (eV), total over strata', (NLIM+NSTS,NMOL)],
+        'p1,p2': [r'Endpoints of surface (X and Y coordinates, in m), total over strata', (NLIM)],
+        'wldra': [r'Flux of reflected atoms from surface (A), total over strata', (NLIM+NSTS,NATM)],
+        'wldrm': [r'Flux of reflected molecules from surface (A), total over strata', (NLIM+NSTS,NMOL)],
+    }
+    
+    for i in np.arange(NSTRA+1):  # from 0 to NSTRA, unlike in manual
+        fort44_info.update(
+            {f'wldnek({i})': [r'Heat transferred by neutrals (W)', (NLIM+NSTS,)],
+             f'wldnep({i})': [r'Potential energy released by neutrals (W)', (NLIM+NSTS,)],
+             f'wldna({i})': [r'Flux of atoms impinging on surface (A)', (NLIM+NSTS,NATM)],
+             f'ewlda({i})': [r'Average energy of impinging atoms on surface (eV)', (NLIM+NSTS,NATM)],
+             f'wldnm({i})': [r'Flux of molecules impinging on surface (A)', (NLIM+NSTS,NMOL)],
+             f'ewldm({i})': [r'Average energy of impinging molecules on surface (eV)', (NLIM+NSTS,NMOL)],
+             f'wldra({i})': [r'Flux of reflected atoms from surface (A)', (NLIM+NSTS,NATM)],
+             f'wldrm({i})': [r'Flux of reflected molecules from surface (A)', (NLIM+NSTS,NMOL)]}
+        )
+
+
+    fort44_info.update(
+        {'wldpp': [r'Flux of plasma ions impinging on surface (A), total over strata', (NLIM+NSTS,NPLS)],
+         'wldpa': [r'Net flux of atoms emitted from surface (A), total over strata', (NLIM+NSTS,NATM)],
+         'wldpm': [r'Net flux of molecules emitted from surface (A), total over strata', (NLIM+NSTS,NMOL)],
+         'wldpeb': [r'Power carried by particles emitted from surface (W), total over strata', (NLIM+NSTS,)],
+         'wldspt': [r'Flux of sputtered wall material (A), total over strata', (NLIM+NSTS,)],
+         'wldspta': [r'Flux of sputtered wall material per atom (A), total over strata', (NLIM+NSTS,NATM)],
+         'wldsptm': [r'Flux of sputtered wall material per molecule (A), total over strata', (NLIM+NSTS,NMOL)]}
+        )
+
+    for i in np.arange(NSTRA+1): # from 0 to NSTRA, unlike in manual
+        fort44_info.update(
+            {f'wldpp({i})': [r'Flux of plasma ions impinging on surface (A)', (NLIM+NSTS,NPLS)],
+             f'wldpa({i})': [r'Net flux of atoms emitted from surface (A)', (NLIM+NSTS,NATM)],
+             f'wldpm({i})': [r'Net flux of molecules emitted from surface (A)', (NLIM+NSTS,NMOL)],
+             f'wldpeb({i})': [r'Power carried by particles emitted from surface (W)', (NLIM+NSTS,)],
+             f'wldspt({i})': [r'Flux of sputtered wall material (A)', (NLIM+NSTS,)],
+             f'wldspta({i})': [r'Flux of sputtered wall material per atom (A)', (NLIM+NSTS,NATM)],
+             f'wldsptm({i})': [r'Flux of sputtered wall material per molecule (A)', (NLIM+NSTS,NMOL)],
+             }
+        )
+
+    fort44_info.update(
+        {
+            
+            'isrftype': [r'ILIIN surface type variable in Eirene', (NLIM+NSTS,)],
+            'wlarea': [r'Surface area (m2)', (NLIM+NSTS,)],
+            'wlabsrp(A)': [r'Absorption rate for atoms', (NATM, NLIM+NSTS)],
+            'wlabsrp(M)': [r'Absorption rate for molecules', (NMOL, NLIM+NSTS)],
+            'wlabsrp(I)': [r'Absorption rate for test ions', (NION, NLIM+NSTS)],
+            'wlabsrp(P)': [r'Absorption rate for plasma ions', (NPLS, NLIM+NSTS)],
+            'wlpump(A)': [r'Pumped flux per atom (A)', (NATM, NLIM+NSTS)],
+            'wlpump(M)': [r'Pumped flux per molecule (A)', (NMOL, NLIM+NSTS)],
+            'wlpump(I)': [r'Pumped flux per test ion (A)', (NION, NLIM+NSTS)],
+            'wlpump(P)': [r'Pumped flux per plasma ion (A)', (NPLS, NLIM+NSTS)],
+            'eneutrad': [r'Radiation rate due to atoms (W)', (NDX,NDY,NATM)],
+            'emolrad': [r'Radiation rate due to molecules (W)', (NDX,NDY,NMOL)],
+            'eionrad': [r'Radiation rate due to test ions (W)', (NDX,NDY,NION)],
+            # eirdiag rather than eirdiag_nds, as in manual...
+            'eirdiag': [r'Indices for segments on resolved non-standard surfaces', (5*NSTS +1,)],
+            'sarea_res': [r'Surface area of surface segment (m2)', (NCL,)],
+            'wldna_res': [r'Flux of atoms impinging on surface segment (A)', (NATM, NCL)],
+            'wldnm_res': [r'Flux of molecules impinging on surface segment (A)', (NMOL, NCL)],
+            'ewlda_res': [r'Average energy of impinging atoms on surface segment (eV)', (NATM, NCL)],
+            'ewldm_res': [r'Average energy of impinging molecules on surface segment (eV)', (NMOL, NCL)],
+            'ewldea_res': [r'Energy flux carried by emitted atoms from surface segment (W)', (NATM, NCL)],
+            'ewldem_res': [r'Energy flux carried by emitted molecules from surface segment (W)', (NMOL, NCL)],
+            'ewldrp_res': [r'Total energy flux carried by emitted particles from surface segment (W)', (NCL,)],
+            'ewldmr_res': [r'Flux of emitted molecules from recycling atoms (A)', (NMOL, NCL)],
+            'wldspt_res': [r'Flux of sputtered wall material (A)', (NCL,)],
+            'wldspta_res': [r'Flux of sputtered wall material per atom (A)', (NCL, NATM)],
+            'wldsptm_res': [r'Flux of sputtered wall material per molecule (A)', (NCL, NMOL)],
+            'wlpump_res(A)': [r'Pumped flux per atom (A)', (NCL, NATM)],
+            'wlpump_res(M)': [r' Pumped flux per molecule (A)', (NCL, NMOL)],
+            'wlpump_res(I)': [r' Pumped flux per test ion (A)', (NCL, NION)],
+            'wlpump_res(P)': [r' Pumped flux per plasma ion (A)', (NCL, NPLS)],
+            'pdena_int': [r'Integral number of atoms over the entire Eirene computational grid', (NATM, NSTRA+1)],
+            'pdenm_int': [r'Integral number of molecules over the entire Eirene computational grid', (NMOL, NSTRA+1)],
+            'pdeni_int': [r'Integral number of test ions over the entire Eirene computational grid', (NION, NSTRA+1)],
+            'pdena_int_b2': [r'Integral number of atoms over the B2.5 computational grid', (NATM, NSTRA+1)],
+            'pdenm_int_b2': [r'Integral number of molecules over the B2.5 computational grid', (NMOL, NSTRA+1)],
+
+            'pdeni_int_b2': [r'Integral number of test ions over the B2.5 computational grid', (NION, NSTRA+1)],
+            'edena_int': [r'Integral energy carried by atoms over the entire Eirene computational grid (J)', (NATM,NSTRA+1)],
+            'edenm_int': [r'Integral energy carried by molecules over the entire Eirene computational grid (J)', (NMOL,NSTRA+1)],
+            'edeni_int': [r'Integral energy carried by test ions over the entire Eirene computational grid (J)', (NION,NSTRA+1)],
+            'edena_int_b2': [r'Integral energy carried by atoms over the B2.5 computational grid (J)', (NATM, NSTRA+1)],
+            'edenm_int_b2': [r'Integral energy carried by molecules over the B2.5 computational grid (J)', (NMOL, NSTRA+1)],
+            'edeni_int_b2': [r'Integral energy carried by test ions over the B2.5 computational grid (J)', (NION, NSTRA+1)]
+        }
+    )
+
+    # extra, undocumente?
+    #fort44_info.update({'wall_geometry' : [r'Wall geometry points', ((NSTRA+1)*(5*NSTS+1),)]})  # check dimensions
+    fort44_info.update({'wall_geometry' : [r'Wall geometry points', (4*NLIM,)]})  # check dimensions
+    return fort44_info
