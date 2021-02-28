@@ -373,8 +373,7 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     #print(f'Total {imp} line radiation power: {out["line_rad_tot"][-1]/1e6:.3f} MW')
     #print(f'Total {imp} continuum radiation power: {out["cont_rad"].sum(0)[-1]/1e6:.3f} MW')
     #print(f'Total {imp} bremsstrahlung radiation power: {out["brems"].sum(0)[-1]/1e6:.3f} MW')
-    #if n0_cm3 is not None:
-    #    print(f'Thermal CX power: {out["thermal_cx_rad"][-1]/1e6:.3f} MW')
+    #if n0_cm3 is not None: print(f'Thermal CX power: {out["thermal_cx_rad"][-1]/1e6:.3f} MW')
     #print(f'Total radiated power: {out["Prad"]/1e6:.3f} MW')
 
     # calculate average charge state Z across radius
@@ -385,17 +384,17 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         fig,ax = plt.subplots()
         ax.plot(rhop, out['line_rad_dens'].sum(0)/1e6, label=r'$P_{rad,line}$')
         ax.plot(rhop, out['cont_rad_dens'].sum(0)/1e6, label=r'$P_{cont}$')
-        ax.plot(rhop, out['brems_dens'].sum(0)/1e6, label=r'$P_{brems}$')
+        #ax.plot(rhop, out['brems_dens'].sum(0)/1e6, label=r'$P_{brems}$')
         ax.plot(rhop, out['rad_tot_dens']/1e6, label=r'$P_{rad,tot}$')
         ax.set_xlabel(r'$\rho_p$')
         ax.set_ylabel(fr'{imp} $P_{{rad}}$ [$MW/m^3$]')
         ax.legend().set_draggable(True)
         
-        # plot power in MW 
+        # plot cumulative power in MW 
         fig,ax = plt.subplots()
         ax.plot(rhop, out['line_rad'].sum(0)/1e6, label=r'$P_{rad,line}$')
         ax.plot(rhop, out['cont_rad'].sum(0)/1e6, label=r'$P_{cont}$')
-        ax.plot(rhop, out['brems'].sum(0)/1e6, label=r'$P_{brems}$')
+        #ax.plot(rhop, out['brems'].sum(0)/1e6, label=r'$P_{brems}$')
         ax.plot(rhop, out['rad_tot']/1e6, label=r'$P_{rad,tot}$')
         ax.set_xlabel(r'$\rho_p$')
         ax.set_ylabel(fr'{imp} $P_{{rad}}$ [MW]')

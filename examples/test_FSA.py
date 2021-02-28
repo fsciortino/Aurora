@@ -1,6 +1,5 @@
 '''
-Script to test quality of flux-surface-averaging (FSA) procedure by evaluating the normalized ionization rate, 
-or equivalently by comparing the ionization rate of impurities with the parallel transport transit rate. 
+Script to test quality of flux-surface-averaging (FSA) procedure by evaluating the normalized ionization rate, or equivalently by comparing the ionization rate of impurities with the parallel transport transit rate. 
 This is inspired by Dux et al. NF 2020.
 
 It is recommended to run this in IPython.
@@ -32,7 +31,7 @@ kp['ne']['vals'] = inputgacode['ne'][None,:]*1e13 # 1e19 m^-3 --> cm^-3
 kp['Te']['vals'] = inputgacode['Te'][None,:]*1e3  # keV --> eV
 
 # set impurity species and sources rate
-imp = namelist['imp'] = 'Ar'
+imp = namelist['imp'] = 'F' #'Ar'
 namelist['source_type'] = 'const'
 namelist['Phi0'] = 1e24
 
@@ -66,6 +65,6 @@ fz_profs = np.zeros_like(S_z)
 for cs in np.arange(S_z.shape[1]):
     fz_profs[:,cs] = interp1d(rhop, fz[:,cs])(rhop_in)
 
-nu_ioniz_star = aurora.atomic.plot_norm_ion_freq( S_z, q_prof, R_prof, asim.A_imp, Ti_prof,
-                                                      nz_profs=fz_profs, rhop=rhop_in, plot=True,
-                                                      eps_prof=eps_prof)
+nu_ioniz_star = aurora.atomic.plot_norm_ion_freq(S_z, q_prof, R_prof, asim.A_imp, Ti_prof,
+                                                 nz_profs=fz_profs, rhop=rhop_in, plot=True,
+                                                 eps_prof=eps_prof)

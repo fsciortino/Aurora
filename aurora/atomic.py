@@ -8,7 +8,7 @@ from matplotlib import cm
 import os, sys, copy
 import scipy.ndimage
 from scipy.linalg import svd
-from scipy.constants import m_p, e as q_electron
+from scipy import constants
 
 from . import adas_files
 
@@ -780,19 +780,19 @@ def balance(logTe_val, cs, n0_by_ne, logTe_, S,R,cx):
 
 def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
                        nz_profs=None, rhop=None, plot=True, eps_prof=None):
-    '''
-    Compare effective ionization rate for each charge state with the 
-    characteristic transit time that a non-trapped and trapped impurity ion takes
-    to travel a parallel distance L = q R. 
+    r'''Compare effective ionization rate for each charge state with the characteristic
+    transit time that passing and trapped impurity ions take to travel a parallel distance 
+    :math:`L = q R`, defining
 
-    If the normalized ionization rate is less than 1, then flux surface averaging of
-    background asymmetries (e.g. from edge or beam neutrals) can be considered in a 
-    "flux-surface-averaged" sense; otherwise, local effects (i.e. not flux-surface-averaged)
+    .. math::
+
+        \nu_{ion}^* \equiv \nu_{ion} \tau_t = \nu_{ion} \frac{q R}{v_{th}} = \frac{\sum_z n_z \nu_z^{ion}}{\sum_z n_z} q R \sqrt{\frac{m_{imp}}{2 k_B T_i}}
+
+    following Ref.[1]_. If the normalized ionization rate (:math:`\nu_{ion}^*`) is less than 1, 
+    then flux surface averaging of background asymmetries (e.g. from edge or beam neutrals) may 
+    be taken as a good approximation of reality; in this case, 1.5D simulations of impurity transport
+    are expected to be valid. If, on the other hand, :math:`\nu_{ion}^*>1` then local effects 
     may be too important to ignore. 
-
-    This function is inspired by Dux et al. NF 2020. Note that in this paper the ionization 
-    rate averaged over all charge state densities is considered. This function avoids the 
-    averaging over charge states, unless these are provided as an input. 
 
     Parameters
     ----------
@@ -823,18 +823,22 @@ def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
     nu_ioniz_star : array (r,cs) or (r,)
          Normalized ionization rate. If nz_profs is given as an input, this is an average over
          all charge state; otherwise, it is given for each charge state.
-    '''
 
-    nu = np.zeros_like(S_z)
-    for cs in np.arange(S_z.shape[1]): # exclude neutral states
-        nu[:,cs] = S_z[:,cs] * q_prof * R_prof * np.sqrt((imp_A * m_p)/(2*Ti_prof))
+    References
+    ----------
+    .. [1] R.Dux et al. Nucl. Fusion 60 (2020) 126039
+
+    '''
+    nu = np.zeros((S_z.shape[0],S_z.shape[1]-1))  # exclude neutral states, which have no parallel transport
+    for cs in np.arange(nu.shape[1]):
+        nu[:,cs] = S_z[:,cs+1] * q_prof * R_prof * np.sqrt((imp_A * constants.m_p)/(2*Ti_prof*constants.e))
 
     if nz_profs is not None:
         # calculate average nu_ioniz_star 
-        nu_ioniz_star = np.sum(nz_profs[:,1:]*nu[:,1:],axis=1)/np.sum(nz_profs[:,1:],axis=1)
+        nu_ioniz_star = np.sum(nz_profs[:,1:]*nu,axis=1)/np.sum(nz_profs[:,1:],axis=1)
     else:
         # return normalized ionization rate for each charge state
-        nu_ioniz_star = nu[:,1:]
+        nu_ioniz_star = nu
 
     if plot:
         if rhop is None:
@@ -844,7 +848,7 @@ def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
         if nu_ioniz_star.ndim==1:
             ax.semilogy(rhop,nu_ioniz_star, label=r'$\nu_{ion}^*$')
         else:
-            for cs in np.arange(S_z.shape[1]-1):
+            for cs in np.arange(nu.shape[1]):
                 ax.semilogy(rhop, nu_ioniz_star[:,cs], label=f'q={cs+1}')
             ax.set_ylabel(r'$\nu_{ion}^*$')
 
@@ -854,6 +858,6 @@ def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
             ax.semilogy(rhop, np.sqrt(eps_prof), label=r'$\sqrt{\epsilon}$')
 
         ax.legend().set_draggable(True)
-
+        ax.set_xlim([0,1])
 
 

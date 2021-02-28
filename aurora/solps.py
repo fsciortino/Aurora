@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 plt.ion()
-from scipy.interpolate import griddata
+from scipy.interpolate import griddata, interp1d
 import matplotlib as mpl
 import matplotlib.tri as tri
 from heapq import nsmallest
@@ -393,7 +393,7 @@ class solps_case:
         return xnodes, ynodes, triangles-1  # -1 for python indexing
 
                 
-    def plot2d_b2(self, vals, ax=None, scale='log', label='', **kwargs):
+    def plot2d_b2(self, vals, ax=None, scale='log', label='', lb=None, ub=None, **kwargs):
         '''Method to plot 2D fields on B2 grids. 
         Colorbars are set to be manually adjustable, allowing variable image saturation.
 
@@ -407,6 +407,10 @@ class solps_case:
             Choice of 'linear','log' and 'symlog' for matplotlib.colors.
         label : str
             Label to set on the colorbar. No label by default.
+        lb : float
+            Lower bound for colorbar. If left to None, the minimum value in `vals` is used.
+        ub : float
+            Upper bound for colorbar. If left to None, the maximum value in `vals` is used.
         kwargs
             Additional keyword arguments passed to the `PatchCollection` class.
 
@@ -438,21 +442,29 @@ class solps_case:
 
         p.set_array(np.array(vals))
 
+        if lb is None:
+            lb = np.min(vals)
+        if ub is None:
+            ub = np.max(vals)
+
         if scale=='linear':
-            p.set_clim([np.min(vals), np.max(vals)])
+            p.set_clim([lb, ub])
         elif scale=='log':
-            p.norm = mpl.colors.LogNorm(vmin=np.min(vals),vmax=np.max(vals))
+            p.norm = mpl.colors.LogNorm(vmin=lb,vmax=ub)
         elif scale=='symlog':
-            p.norm = mpl.colors.SymLogNorm(linthresh=np.max(vals)/10.,base=10,
-                                        linscale=0.5, vmin=np.min(vals),vmax=np.max(vals))
+            p.norm = mpl.colors.SymLogNorm(linthresh=ub/10.,base=10,
+                                        linscale=0.5, vmin=lb,vmax=ub)
         else:
             raise ValueError('Unrecognized scale parameter')
         
         ax.add_collection(p)
-        tickLocs = [np.min(vals),np.max(vals)/10,np.min(vals)/10,np.min(vals)]
-        cb = plt.colorbar(p,ax=ax, pad=0.01, ticks = tickLocs if scale=='symlog' else None)
+        tickLocs = [ub,ub/10,lb/10,lb]
+        cbar = plt.colorbar(p,ax=ax, pad=0.01, ticks = tickLocs if scale=='symlog' else None)
         
-        #cb.set_label(label)
+        cbar = plot_tools.DraggableColorbar(cbar,p)
+        cbar.connect()
+        
+        #cbar.set_label(label)
         ax.set_title(label)
         ax.set_xlabel('R [m]')
         ax.set_ylabel('Z [m]')
@@ -462,7 +474,7 @@ class solps_case:
         
 
 
-    def plot2d_eirene(self, vals,  ax = None, scale='log', label='', **kwargs):
+    def plot2d_eirene(self, vals,  ax = None, scale='log', label='', lb=None, ub=None,**kwargs):
         '''Method to plot 2D fields from EIRENE.
 
         Parameters
@@ -475,6 +487,10 @@ class solps_case:
             Choice of 'linear','log' and 'symlog' for matplotlib.colors.
         label : str
             Label to set on the colorbar. No label by default.
+        lb : float
+            Lower bound for colorbar. If left to None, the minimum value in `vals` is used.
+        ub : float
+            Upper bound for colorbar. If left to None, the maximum value in `vals` is used.
         kwargs
             Additional keyword arguments passed to the `tripcolor` function.
 
@@ -487,12 +503,17 @@ class solps_case:
 
         # plot LCFS
         ax.plot(self.geqdsk['RBBBS'],self.geqdsk['ZBBBS'],c='k')
-
+        
+        if lb is None:
+            lb = np.min(vals)
+        if ub is None:
+            ub = np.max(vals)
+        
         # given quantity is on EIRENE triangulation
         if scale=='linear': norm = None
-        elif scale=='log': norm =  mpl.colors.LogNorm(vmin=np.min(vals),vmax=np.max(vals))
-        elif scale=='symlog': norm = mpl.colors.SymLogNorm(linthresh=np.max(vals)/10.,base=10,
-                                        linscale=0.5, vmin=np.min(vals),vmax=np.max(vals))
+        elif scale=='log': norm =  mpl.colors.LogNorm(vmin=lb,vmax=ub)
+        elif scale=='symlog': norm = mpl.colors.SymLogNorm(linthresh=ub/10.,base=10,
+                                        linscale=0.5, vmin=lb,vmax=ub)
         else: raise ValueError('Unrecognized scale parameter')
         
         cntr = ax.tripcolor(self.xnodes, self.ynodes, self.triangles,
@@ -561,7 +582,7 @@ class solps_case:
 
         prof_FSA = self.geqdsk['fluxSurfaces'].surfAvg(function=avg_function)
         rhop_FSA = np.sqrt(self.geqdsk['fluxSurfaces']['geo']['psin'])
-
+        
         # get R axes on the midplane on the LFS and HFS
         _dz = (np.max(self.Z) - np.min(self.Z))/((self.nx+self.ny)/10.) # rule-of-thumb to identify vertical resolution
         mask = (self.Z.flatten()>-_dz)&(self.Z.flatten()<_dz)
