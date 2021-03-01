@@ -53,7 +53,7 @@ namelist['Phi0'] = 2e20  # particles/s
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
 # check radial grid:
-_ = aurora.create_radial_grid(namelist,plot=plot)
+rvol_grid, pro_grid, qpr_grid, prox_param = aurora.create_radial_grid(namelist,plot=True)
 
 # check time grid:
 _ = aurora.create_time_grid(namelist['timing'], plot=plot)
@@ -104,4 +104,4 @@ Zeff = interp1d(rhop_gacode[:-1], inputgacode['z_eff'][:-1],
                  bounds_error=False,fill_value='extrapolate')(asim.rhop_grid)
 
 # Obtain estimates for centrifigal asymmetry and plot expected 2D distribution inside LCFS
-asim.centrifugal_asym(omega, Zeff, plot=plot)
+#asim.centrifugal_asym(omega, Zeff, plot=plot)

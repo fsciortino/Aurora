@@ -65,46 +65,35 @@ def create_radial_grid(namelist,plot=False):
     a0=1./dr_0
 
     # number of radial points:
-    ir=int(1.5+r_edge*(a0*K+ (1./dr_1))/(K+1.))
+    ir=int(round(1.5+r_edge*(a0*K+ (1./dr_1))/(K+1.)))
 
-    rr = np.zeros(ir)
-    pro = np.zeros(ir)
-    qpr = np.zeros(ir)
-    ro = np.zeros(ir)
+    rvol_grid = np.zeros(ir)
+    pro_grid = np.zeros(ir)
+    qpr_grid = np.zeros(ir)
 
     # prox_param is used in calculation of ion perpendicular loss at the last grid point
     prox_param=(K+1.)*(float(ir)-1.5)/r_edge-a0*K
 
     # form the radial grid iteratively
-    rr[0] = 0.
+    rvol_grid[0] = 0.
     for i in np.arange(1,ir):
         temp1 = 0.
         temp2 = r_edge*1.05
-        ro[i] = (i-1)
         
         for j in np.arange(50):
-            rr[i] = (temp1+temp2)/2.
-            temp3 = a0*rr[i]+(prox_param-a0)*r_edge/(K+1.)*(rr[i]/r_edge)**(K+1.)
-            if temp3 > ro[i]:
-                temp2 = rr[i]
+            rvol_grid[i] = (temp1+temp2)/2.
+            temp3 = a0*rvol_grid[i]+(prox_param-a0)*r_edge/(K+1.)*(rvol_grid[i]/r_edge)**(K+1.)
+            if temp3 > i:
+                temp2 = rvol_grid[i]
             else:
-                temp1 = rr[i]
+                temp1 = rvol_grid[i]
 
     # terms related with derivatives of rho
-    temp1 = .5
-    pro[0] = 2./(dr_0**2)
+    temp1 = 0.5
+    pro_grid[0] = 2./(dr_0**2)
     for i in np.arange(1,ir):
-        pro[i] = (a0+(prox_param-a0)*(rr[i]/r_edge)**K)*temp1
-        qpr[i] = pro[i]/rr[i]+temp1*(prox_param-a0)*K/r_edge*(rr[i]/r_edge)**(K-1.)
-
-    # keep only nonzero terms
-    idxs = np.nonzero(rr)
-    rvol_grid = rr[idxs]
-    pro_grid = pro[idxs]
-    qpr_grid = qpr[idxs]
-
-    #force rvol=0 on axis
-    rvol_grid[0] = 0.0
+        pro_grid[i] = (a0+(prox_param-a0)*(rvol_grid[i]/r_edge)**K)*temp1
+        qpr_grid[i] = pro_grid[i]/rvol_grid[i]+temp1*(prox_param-a0)*K/r_edge*(rvol_grid[i]/r_edge)**(K-1.)
 
     if plot:
 
@@ -497,15 +486,20 @@ def get_rhopol_rvol_mapping(geqdsk, rho_pol=None):
 
 
 
-# def create_aurora_radial_grid(namelist,plot=False):
-#     ''' This interfaces the package subroutine to create the radial grid.
-#     This exactly reproduces STRAHL functionality to produce radial grids, both for dr_0<0 and dr_1>0.
+# def create_radial_grid(namelist,plot=False):
+#     '''This interfaces the package subroutine to create the radial grid exactly as STRAHL does it.
 #     Refer to the STRAHL manual for details.
 
-#     If plot==True, then show the radial grid, else return r,pro and qpr arrays required for simulation runs.
 #     '''
+#     # import here to avoid import when building documentation or package
+#     try:
+#         from ._aurora import get_radial_grid
+#     except ModuleNotFoundError:
+#         raise MissingAuroraBuild('Could not load particle transport forward model!'+\
+#                       'Use the makefile or setup.py to build sources.')
+    
 #     # NB: there is currently a hard-coded maximum number of grid points (1000)
-#     _r, _pro, prox, _qpr = _aurora.get_radial_grid(
+#     _r, _pro, prox, _qpr = get_radial_grid(
 #         namelist['ng'],namelist['bound_sep'],namelist['K'],namelist['dr_0'],namelist['dr_1'], namelist['rvol_lcfs'])
 
 #     # eliminate trailing zeros:
@@ -532,7 +526,8 @@ def get_rhopol_rvol_mapping(geqdsk, rho_pol=None):
 
 #         if 'saw_model' in namelist and namelist['saw_model']['saw_flag']:
 #             ax.axvline( namelist['saw_model']['rmix']/namelist['rvol_lcfs'],ls='--',c='k')
-#             ax.text(namelist['saw_model']['rmix']/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.5 ,'Sawtooth mixing radius',rotation='vertical')
+#             ax.text(namelist['saw_model']['rmix']/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.5 ,
+#                     'Sawtooth mixing radius',rotation='vertical')
 
 #         ax.set_xlabel(r'$r/r_{lcfs}$');
 #         ax.set_ylabel(r'$\Delta$ r [cm]');
@@ -540,8 +535,7 @@ def get_rhopol_rvol_mapping(geqdsk, rho_pol=None):
 #         ax.set_xlim(0,r_wall/namelist['rvol_lcfs'])
 #         ax.set_title('# radial grid points: %d'%len(radius_grid))
 
-#     else:
-#         return radius_grid, pro, prox, qpr
+#     return radius_grid, pro, prox, qpr
 
 
 

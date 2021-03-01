@@ -396,7 +396,7 @@ class aurora_sim:
             internally set to an array of 0's.
         alg_opt : int, optional
             If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
-            If `alg_opt=1`, use the older finite-differences algorithm in the 2018 version of STRAHL.
+            If `alg_opt=0`, use the older finite-differences algorithm in the 2018 version of STRAHL.
         evolneut : bool, optional
             If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
             which case neutrals are only taken as a source and those that are not ionized immediately after

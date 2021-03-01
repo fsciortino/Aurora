@@ -10,7 +10,7 @@ The table below describes the main input parameters to Aurora's forward model of
 
 
 .. list-table::
-   :widths: 10 10 80
+   :widths: 20 20 60
    :header-rows: 1
 
    * - Parameter
