@@ -6,10 +6,10 @@ In this page, we describe some of the most important input parameter for Aurora 
 
 Namelist for ion transport simulations
 --------------------------------------
-The table below describes the main input parameters to Aurora's forward model of ion transport. Refer to the following sections for details on spatio-temporal grids and recycling.
+The table below describes the main input parameters to Aurora's forward model of ion transport. Refer to the following sections for details on spatio-temporal grids, recycling and kinetic profiles specifications.
 
 
-.. list-table:: 1.5D ion transport simulation namelist
+.. list-table::
    :widths: 20 10 70
    :header-rows: 1
 
@@ -27,7 +27,7 @@ The table below describes the main input parameters to Aurora's forward model of
      - Flux [particles/s] of simulated ions.
    * - `source_type`
      - const
-     - Type of ion source, one of ['file','const','step','synth_LBO'], see :py:fun:`~aurora.source_utils.get_source_time_history`.
+     - Type of ion source, one of ['file','const','step','synth_LBO'], see :py:func:`~aurora.source_utils.get_source_time_history`.
    * - `explicit_source_vals`
      - `None`
      -  2D array for sources on `explicit_source_time` and `explicit_source_rhop` grids
@@ -39,34 +39,34 @@ The table below describes the main input parameters to Aurora's forward model of
      - :math:`\rho_p` grid for explicit source
    * - `source_width_in`
      - 0.0
-     - Inner Gaussian source width, only used if >0. See :py:fun:`~aurora.source_utils.get_radial_source`.
+     - Inner Gaussian source width, only used if >0. See :py:func:`~aurora.source_utils.get_radial_source`.
    * - `source_width_out`
      - 0.0
-     - Outer Gaussian source width, only used if >0. See :py:fun:`~aurora.source_utils.get_radial_source`.
+     - Outer Gaussian source width, only used if >0. See :py:func:`~aurora.source_utils.get_radial_source`.
    * - `imp_source_energy_eV`
      - 3.0
-     - Energy of neutral ion source, only used if `source_width_in=source_width_out=0`, see :py:fun:`~aurora.source_utils.get_radial_source`.
+     - Energy of neutral ion source, only used if `source_width_in=source_width_out=0`, see :py:func:`~aurora.source_utils.get_radial_source`.
    * - `prompt_redep_flag`
      - False
-     - If True, a simple prompt redeposition model is activated, see :py:fun:`~aurora.source_utils.get_radial_source`.
+     - If True, a simple prompt redeposition model is activated, see :py:func:`~aurora.source_utils.get_radial_source`.
    * - `source_file`
      - None
-     - Location of source file, using STRAHL format, only used if `source_type="file"`, see :py:fun:`~aurora.source_utils.get_source_time_history`.
+     - Location of source file, using STRAHL format, only used if `source_type="file"`, see :py:func:`~aurora.source_utils.get_source_time_history`.
    * - `source_cm_out_lcfs`
      - 1.0
      - Source distance in cm from LCFS
    * - `LBO["n_particles"]`
      - 1e+18
-     - Number of particles in LBO synthetic source, only used if `source_type`=`synth_LBO`
+     - Number of particles in LBO synthetic source, only used if `source_type="synth_LBO"`
    * - `LBO["t_fall"]`
      - 0.3
-     - Decay time of LBO synthetic source, only used if `source_type`=`synth_LBO`
+     - Decay time of LBO synthetic source, only used if `source_type="synth_LBO"`
    * - `LBO["t_rise"]`
      - 0.05
-     - Rise time of LBO synthetic source, only used if `source_type`=`synth_LBO`
+     - Rise time of LBO synthetic source, only used if `source_type="synth_LBO"`
    * - `LBO["t_start"]`
      - 0.0
-     - Start time of LBO synthetic source, only used if `source_type`=`synth_LBO`
+     - Start time of LBO synthetic source, only used if `source_type="synth_LBO"`
    * - `timing["dt_increase"]`
      - [1.005 1.   ]
      - `dt` multipliers at every time step change. See detailed description.
@@ -138,10 +138,10 @@ The table below describes the main input parameters to Aurora's forward model of
      - Mach number in the SOL, determining parallel loss rates.
    * - `kin_profs["ne"]`
      - {'fun': 'interpa', 'times': [1.0]}
-     - Specification of electron density [:math:`cm^{-3}`]. `fun=interpa` interpolates data also in the SOL.
+     - Specification of electron density [:math:`cm^{-3}`]. `fun="interpa"` interpolates data also in the SOL.
    * - `kin_profs["Te"]`
      - {'fun': 'interp', 'times': [1.0], 'decay': [1.0]}
-     - Specification of electron temperature [:math:`eV`]. `fun=interp` sets decay over `decay` length in the SOL.
+     - Specification of electron temperature [:math:`eV`]. `fun="interp"` sets decay over `decay` length in the SOL.
    * - `kin_profs["Ti"]`
      - {'fun': 'interp', 'times': [1.0], 'decay': [1.0]}
      - Specification of ion temperature [:math:`eV`]. Only used for charge exchange rates.
@@ -153,10 +153,10 @@ The table below describes the main input parameters to Aurora's forward model of
      - If True, activate charge exchange recombination with background thermal neutrals. Requires `kin_profs["n0"]`.
    * - `nbi_cxr_flag`
      - False
-     - If True, activate charge exchange recombination with NBI neutrals (to be specified in :py:class:`~aurora.aurora_sim`).
+     - If True, activate charge exchange recombination with NBI neutrals (to be specified in :py:class:`~aurora.core.aurora_sim`).
    * - `device`
      - CMOD
-     - Name of experimental device, only used by MDS+ if device database can be read via :py:mod:`omfit_classes.omfit_eqdsk`.
+     - Name of experimental device, only used by MDS+ if device database can be read via `omfit_eqdsk <https://pypi.org/project/omfit-eqdsk/>`_.
    * - `shot`
      - 99999
      - Shot number, only used in combination with `device` to connect to MDS+ databases.
@@ -240,6 +240,7 @@ Recycling
 
 A 1.5D transport model such as Aurora cannot accurately model recycling at walls. Like STRAHL, Aurora uses a number of parameters to approximate the transport of impurities outside of the LCFS; we recommend that users ensure that their core results don't depend sensitively on these parameters:
 
+   
 #. `recycling_flag`: if this is False, no recycling nor communication between the divertor and core plasma particle reservoirs is allowed.
 
 #. `wall_recycling` : if this is 0, particles are allowed to move from the divertor reservoir back into the core plasma, based on the `tau_div_SOL_ms` and `tau_pump_ms` parameters, but no recycling from the wall is enabled. If >0 and <1, recycling of particles hitting the limiter and wall reservoirs is enabled, with a recycling coefficient equal to this value. 
