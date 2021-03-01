@@ -40,7 +40,7 @@ class aurora_sim:
         - thermal rates for the halo may be from ADAS CCD files or from the same methods used 
         for fast neutrals
         - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
-        This method still needs more testing within this class. Contact sciortino@psfc.mit.edu for details. 
+        This method still needs more testing within this class. Contact sciortino-at-psfc.mit.edu for details. 
     setup2load : str, optional
         Path to file from which Aurora simulation setup should be loaded. 
         This is expected in pickle format, e.g. "test.pkl". Any `aurora_sim` instance

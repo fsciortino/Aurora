@@ -6,11 +6,11 @@ In this page, we describe some of the most important input parameter for Aurora 
 
 Namelist for ion transport simulations
 --------------------------------------
-The table below describes the main input parameters to Aurora's forward model of ion transport. This is list is in the process of being updated.
+The table below describes the main input parameters to Aurora's forward model of ion transport. Refer to the following sections for details on spatio-temporal grids and recycling.
 
 
-.. list-table:: Aurora 1.5D ion transport simulation namelist
-   :widths: 25 25 50
+.. list-table:: 1.5D ion transport simulation namelist
+   :widths: 20 10 70
    :header-rows: 1
 
    * - Parameter
@@ -136,12 +136,9 @@ The table below describes the main input parameters to Aurora's forward model of
    * - `SOL_mach`
      - 0.1
      - Mach number in the SOL, determining parallel loss rates.
-   * - `average_kin_profs`
-     - True
-     - If True, kinetic profiles are averaged in time,
    * - `kin_profs["ne"]`
      - {'fun': 'interpa', 'times': [1.0]}
-     - Specification of electron density [:math:`cm^{-3}`]. `fun=interpa` interpolates data also in the SOL. 
+     - Specification of electron density [:math:`cm^{-3}`]. `fun=interpa` interpolates data also in the SOL.
    * - `kin_profs["Te"]`
      - {'fun': 'interp', 'times': [1.0], 'decay': [1.0]}
      - Specification of electron temperature [:math:`eV`]. `fun=interp` sets decay over `decay` length in the SOL.
@@ -258,3 +255,40 @@ A 1.5D transport model such as Aurora cannot accurately model recycling at walls
 #. `divbls` : fraction of user-specified impurity source that is added to the divertor reservoir rather than the core plasma reservoir. These particles can return to the core plasma only if `recycling_flag=True` and `wall_recycling>=0`. This parameter is useful to simulate divertor puffing. 
 
 The parallel loss rate in the open SOL and limiter shadow also depends on the local connection length. This is approximated by two parameters: `clen_divertor` and `clen_limiter`, in the open SOL and the limiter shadow, respectively. These connection lengths can be approximated using the edge safety factor and the major radius from the `geqdsk`, making use of the :py:func:`~aurora.grids_utils.estimate_clen` function.
+
+
+
+Kinetic profiles
+----------------
+In this section, we add a few more details on the specification of kinetic profiles in the Aurora namelist for 1.5D simulations of ion transport. We reproduce here the rows of the previous table that are relevant to this.
+
+
+.. list-table:: Kinetic profiles specification
+   :widths: 20 10 70
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - `kin_profs["ne"]`
+     - {'fun': 'interpa', 'times': [1.0]}
+     - Specification of electron density [:math:`cm^{-3}`]. `fun=interpa` interpolates data also in the SOL.
+   * - `kin_profs["Te"]`
+     - {'fun': 'interp', 'times': [1.0], 'decay': [1.0]}
+     - Specification of electron temperature [:math:`eV`]. `fun=interp` sets decay over `decay` length in the SOL.
+   * - `kin_profs["Ti"]`
+     - {'fun': 'interp', 'times': [1.0], 'decay': [1.0]}
+     - Specification of ion temperature [:math:`eV`]. Only used for charge exchange rates.
+   * - `kin_profs["n0"]`
+     - {'fun': 'interpa', 'times': [1.0]}
+     - Specification of background (H-isotope) neutral density [:math:`cm^{-3}`].
+
+
+Simulations that don't include charge exchange will only need electron density (`ne`) and temperature (`Te`). If charge exchange is added, then an ion temperature `Ti` and background H-isotope neutral density must be specified. Note that `Ti` should strictly be :math:`T_{red}=(m_H T_n + m_{imp} T_i)/(T_n+T_i)`, where `m_H` is the background species mass and `T_n` is the background neutral temperature, since only the effective ("reduced") energy of the neutral-impurity interaction enters the evaluation of charge exchange rates. `Ti` is also used to compute parallel loss rates in the SOL; if not provided by users, it is substituted by `Te`.
+
+Each field of `kin_profs` requires specification of `fun`, `times`, `rhop` and `vals`. 
+
+#. `fun` corresponds to a specification of interpolation functions in Aurora. Users should choose whether to interpolate data as given also in the SOL (`fun=interp`) or if SOL profiles should be substituted by an exponential decay. In the latter case, a decay scale length (in :math:`cm` units) should also be provided as `decay`.
+#. `times` is a 1D array of times, in seconds, at which time-dependent profiles are given. If only a single value is given, whatever it may be, profiles are taken to be time independent.
+#. `rhop` is a 1D array of radial grid values, given as square-root of normalized poloidal flux.
+#. `vals` is a 2D array of values of the given kinetic quantity. The first dimension is expected to be time, the second radial coordinate. 

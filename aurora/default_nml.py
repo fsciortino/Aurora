@@ -59,7 +59,6 @@ def load_default_namelist():
         'SOL_mach': 0.1,
         # --------------------
         # kinetic profiles
-        'average_kin_profs': True,
         'kin_profs' : {'ne': {'fun': 'interpa',
                               'times': [1.]}, 
                        'Te': {'fun':'interp',
@@ -90,10 +89,10 @@ if __name__=='__main__':
     for key in nml:
         if isinstance(nml[key], dict):
             for key2 in nml[key]:
-                print(f'* - `{key}["{key2}"]`')
-                print(f'  - {nml[key][key2]}')
-                print('  -')
+                print(f'   * - `{key}["{key2}"]`')
+                print(f'     - {nml[key][key2]}')
+                print('     -')
         else:
-            print(f'* - `{key}`')
-            print(f'  - {nml[key]}')
-            print('  -')
+            print(f'   * - `{key}`')
+            print(f'     - {nml[key]}')
+            print('     -')
