@@ -39,7 +39,7 @@ kp['ne']['vals'] = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
 kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
 
 # set impurity species and sources rate
-imp = namelist['imp'] = 'C'
+imp = namelist['imp'] = 'Ar' #'C'
 namelist['source_type'] = 'const'
 namelist['Phi0'] = 2e20  # particles/s
 
@@ -55,7 +55,7 @@ clen_divertor_m, clen_limiter_m = aurora.estimate_clen(geqdsk)
 #bound_sep_cm, lim_sep_cm = aurora.grids_utils.estimate_boundary_distance(my_shot, my_device, time_ms.)
 bound_sep_cm = 1.5
 lim_sep_cm = 1.0
-p_H2_mTorr=0.05 # mTorr
+p_H2_mTorr=1.0 # mTorr
 innermost_rmid_cm=2.0
 
 kn1d_res = aurora.run_kn1d(kp['ne']['rhop'], kp['ne']['vals'][0,:], kp['Te']['vals'][0,:], kp['Te']['vals'][0,:],
@@ -70,7 +70,9 @@ aurora.kn1d.plot_transport(kn1d_res)    # gradient scale lengths and "effective 
 
 # add atomic neutral density to inputs and turn on charge exchange recombination
 kp['n0']['rhop'] = kp['ne']['rhop']
-n0 = interp1d(kn1d_res['kn1d_profs']['rhop'],kn1d_res['kn1d_profs']['n0'])(kp['Te']['rhop'])
+
+# interpolate and convert from m^-3 to cm^-3
+n0 = interp1d(kn1d_res['kn1d_profs']['rhop'],kn1d_res['kn1d_profs']['n0']*1e-6)(kp['Te']['rhop'])
 kp['n0']['vals'] = n0[None,:] # need to set to (time,radius) grid, here time-independent
 namelist['cxr_flag'] = True
 
@@ -149,10 +151,10 @@ for cs in np.arange(nz.shape[1]):
     nz_cxr_interp[:,cs] = interp1d(asim.rhop_grid, nz_cxr[:,cs,-1])(rhop)
 
 # get total radiated power components
-rad_model = aurora.radiation_model(imp,rhop, ne, Te, vol, nz_cm3=nz_interp)
+rad_model = aurora.radiation_model(imp,rhop, ne, Te, vol, nz_cm3=nz_interp, plot=True)
 rad_model_cxr = aurora.radiation_model(imp, rhop, ne, Te, vol, nz_cm3=nz_cxr_interp,
                                        n0_cm3=n0, Ti_eV=Ti)
 
 # print to screen 0-D prediction of ion total radiated power
-print(f'Prad = {np.round(rad_model["Prad"]/1e6,3)} MW without neutrals')
-print(f'Prad = {np.round(rad_model_cxr["Prad"]/1e6,3)} MW with neutrals')
+print(f'Prad = {np.round(rad_model["Prad"]/1e3,3)} kW without neutrals')
+print(f'Prad = {np.round(rad_model_cxr["Prad"]/1e3,3)} kW with neutrals')
