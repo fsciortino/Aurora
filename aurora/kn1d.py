@@ -27,7 +27,7 @@ from . import coords
 
 thisdir = os.path.dirname(os.path.realpath(__file__))
 
-def _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV, 
+def _setup_kin_profs(rhop, ne_cm3_in, Te_eV_in, Ti_eV_in, 
                      geqdsk, bound_sep_cm, lim_sep_cm,
                      kin_prof_exp_decay_SOL=False, kin_prof_exp_decay_LS=False,
                      ne_decay_len_cm=1.0, Te_decay_len_cm=1.0, Ti_decay_len_cm=1.0, 
@@ -42,11 +42,11 @@ def _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV,
     ----------
     rhop : 1D array
         Sqrt of poloidal flux grid on which ne_cm3, Te_eV and Ti_eV are given.
-    ne_cm3 : 1D array
+    ne_cm3_in : 1D array
         Electron density on rhop grid [:math:`cm^{-3}`].
-    Te_eV : 1D array
+    Te_eV_in : 1D array
         Electron temperature on rhop grid [:math:`eV`].
-    Ti_eV : 1D array
+    Ti_eV_in : 1D array
         Main ion temperature on rhop grid [:math:`eV`].
     geqdsk : `omfit_classes.omfit_eqdsk.OMFITgeqdsk` class instance
         gEQDSK file as processed by the `omfit_classes.omfit_eqdsk.OMFITgeqdsk` class.
@@ -78,15 +78,13 @@ def _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV,
     -------
     rmid_to_wall_cm : 1D array
         Midradius coordinate from the magnetic axis to the wall. Units of [:math:`cm`].
-    ne : 1D array
+    ne_cm3 : 1D array
         Electron density [:math:`cm^{-3}`] on the rmid_to_wall_cm grid.
-    Te : 1D array
+    Te_eV : 1D array
         Electron temperature [:math:`eV`] on the rmid_to_wall_cm grid.
-    Ti : 1D array
+    Ti_eV : 1D array
         Main ion temperature [:math:`eV`] on the rmid_to_wall_cm grid.
     '''
-
-    ne_m3 = ne_cm3 * 1e6  # cm^-3 --> m^-3
 
     # convert radial coordinate to rmid
     rmid = coords.rad_coord_transform(rhop, 'rhop', 'rmid', geqdsk) # m
@@ -98,9 +96,9 @@ def _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV,
 
     # interpolate profiles on grid extending to wall
     rmid_to_wall_m = np.linspace(np.min(rmid), rwall, 1001)  # 101) #201)
-    _ne = interp1d(rmid, ne_m3, bounds_error=False)(rmid_to_wall_m)  # extrapolates to nan
-    _Te = interp1d(rmid, Te_eV, bounds_error=False)(rmid_to_wall_m)  # extrapolates to nan
-    _Ti = interp1d(rmid, Ti_eV, bounds_error=False)(rmid_to_wall_m)  # extrapolates to nan
+    _ne_cm3 = interp1d(rmid, ne_cm3_in, bounds_error=False)(rmid_to_wall_m)  # extrapolates to nan
+    _Te_eV = interp1d(rmid, Te_eV_in, bounds_error=False)(rmid_to_wall_m)  # extrapolates to nan
+    _Ti_eV = interp1d(rmid, Ti_eV_in, bounds_error=False)(rmid_to_wall_m)  # extrapolates to nan
 
     indLCFS = np.searchsorted(rmid_to_wall_m, rsep)
     indLS = np.searchsorted(rmid_to_wall_m, rlim)
@@ -109,56 +107,56 @@ def _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV,
     # if kinetic profiles don't extend far enough in radius, we must set an exp decay depending on the radial region
     if ind_end < indLS:
         # decays in SOL (all the way to the wall)
-        ne_sol = _ne[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(ne_decay_len_cm[0]/100.0))
-        ne_ = np.concatenate((_ne[:ind_end], ne_sol))
-        Te_sol = _Te[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(Te_decay_len_cm[0]/100.0))
-        Te_ = np.concatenate((_Te[:ind_end], Te_sol))
-        Ti_sol = _Ti[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(Ti_decay_len_cm[0]/100.0))
-        Ti_ = np.concatenate((_Ti[:ind_end], Ti_sol))
+        ne_cm3_sol = _ne_cm3[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(ne_decay_len_cm[0]/100.0))
+        ne_cm3_ = np.concatenate((_ne_cm3[:ind_end], ne_cm3_sol))
+        Te_eV_sol = _Te_eV[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(Te_decay_len_cm[0]/100.0))
+        Te_eV_ = np.concatenate((_Te_eV[:ind_end], Te_eV_sol))
+        Ti_eV_sol = _Ti_eV[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(Ti_decay_len_cm[0]/100.0))
+        Ti_eV_ = np.concatenate((_Ti_eV[:ind_end], Ti_eV_sol))
     else:
-        ne_ = copy.deepcopy(_ne)
-        Te_ = copy.deepcopy(_Te)
-        Ti_ = copy.deepcopy(_Ti)
+        ne_cm3_ = copy.deepcopy(_ne_cm3)
+        Te_eV_ = copy.deepcopy(_Te_eV)
+        Ti_eV_ = copy.deepcopy(_Ti_eV)
 
     if ind_end < len(rmid_to_wall_m):
         # decays in the LS
-        ne_ls = ne_[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(ne_decay_len_cm[1]/100.0))
-        ne = np.concatenate((ne_[:ind_end], ne_ls))
-        Te_ls = Te_[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(Te_decay_len_cm[1]/100.0))
-        Te = np.concatenate((Te_[:ind_end], Te_ls))
-        Ti_ls = Ti_[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(Ti_decay_len_cm[1]/100.0))
-        Ti = np.concatenate((Ti_[:ind_end], Ti_ls))
+        ne_cm3_ls = ne_cm3_[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(ne_decay_len_cm[1]/100.0))
+        ne_cm3 = np.concatenate((ne_cm3_[:ind_end], ne_cm3_ls))
+        Te_eV_ls = Te_eV_[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(Te_decay_len_cm[1]/100.0))
+        Te_eV = np.concatenate((Te_eV_[:ind_end], Te_eV_ls))
+        Ti_eV_ls = Ti_eV_[ind_end-1] * np.exp(-(rmid_to_wall_m[ind_end:]-rmid_to_wall_m[ind_end-1])/(Ti_decay_len_cm[1]/100.0))
+        Ti_eV = np.concatenate((Ti_eV_[:ind_end], Ti_eV_ls))
     else:
-        ne = copy.deepcopy(ne_)
-        Te = copy.deepcopy(Te_)
-        Ti = copy.deepcopy(Ti_)
+        ne_cm3 = copy.deepcopy(ne_cm3_)
+        Te_eV = copy.deepcopy(Te_eV_)
+        Ti_eV = copy.deepcopy(Ti_eV_)
 
 
     # User may want to set exp decay in SOL or LS in place of dubious experimental data
     if kin_prof_exp_decay_SOL:
         # decays in the SOL
-        ne[indLCFS:indLS] = ne[indLCFS - 1] * np.exp(
+        ne_cm3[indLCFS:indLS] = ne_cm3[indLCFS - 1] * np.exp(
             -(rmid_to_wall_m[indLCFS:indLS] - rmid_to_wall_m[indLCFS-1])/(ne_decay_len_cm[0]/100.0)
         )
-        Te[indLCFS:indLS] = Te[indLCFS - 1] * np.exp(
+        Te_eV[indLCFS:indLS] = Te_eV[indLCFS - 1] * np.exp(
             -(rmid_to_wall_m[indLCFS:indLS] - rmid_to_wall_m[indLCFS-1])/(Te_decay_len_cm[0]/100.0)
         )
-        Ti[indLCFS:indLS] = Ti[indLCFS - 1] * np.exp(
+        Ti_eV[indLCFS:indLS] = Ti_eV[indLCFS - 1] * np.exp(
             -(rmid_to_wall_m[indLCFS:indLS] - rmid_to_wall_m[indLCFS-1])/(Ti_decay_len_cm[0]/100.0)
         )
 
     if kin_prof_exp_decay_LS:
         # decays in the LS
-        ne[indLS:] = ne[indLS-1] * np.exp(-(rmid_to_wall_m[indLS:]-rmid_to_wall_m[indLS-1])/(ne_decay_len_cm[1]/100.0))
-        Te[indLS:] = Te[indLS-1] * np.exp(-(rmid_to_wall_m[indLS:]-rmid_to_wall_m[indLS-1])/(Te_decay_len_cm[1]/100.0))
-        Ti[indLS:] = Ti[indLS-1] * np.exp(-(rmid_to_wall_m[indLS:]-rmid_to_wall_m[indLS-1])/(Ti_decay_len_cm[1]/100.0))
+        ne_cm3[indLS:] = ne_cm3[indLS-1] * np.exp(-(rmid_to_wall_m[indLS:]-rmid_to_wall_m[indLS-1])/(ne_decay_len_cm[1]/100.0))
+        Te_eV[indLS:] = Te_eV[indLS-1] * np.exp(-(rmid_to_wall_m[indLS:]-rmid_to_wall_m[indLS-1])/(Te_decay_len_cm[1]/100.0))
+        Ti_eV[indLS:] = Ti_eV[indLS-1] * np.exp(-(rmid_to_wall_m[indLS:]-rmid_to_wall_m[indLS-1])/(Ti_decay_len_cm[1]/100.0))
     
     # set minima across radial profiles
-    ne[ne < ne_min_cm3] = ne_min_cm3
-    Te[Te < Te_min_eV] = Te_min_eV
-    Ti[Ti < Ti_min_eV] = Ti_min_eV
+    ne_cm3[ne_cm3 < ne_min_cm3] = ne_min_cm3
+    Te_eV[Te_eV < Te_min_eV] = Te_min_eV
+    Ti_eV[Ti_eV < Ti_min_eV] = Ti_min_eV
 
-    return rmid_to_wall_m, ne, Te, Ti
+    return rmid_to_wall_m, ne_cm3, Te_eV, Ti_eV
 
 
 
@@ -172,7 +170,7 @@ def run_kn1d(rhop, ne_cm3, Te_eV, Ti_eV, geqdsk, p_H2_mTorr,
     '''Run KN1D for the given parameters. Refer to the KN1D manual for details. 
 
     Depending on the provided options, kinetic profiles are extended beyond the Last Closed
-    Flux Surface (LCFS) and the Limiter Shadow (LS) via exponential decays with specified 
+    Flux Surface (LCxFS) and the Limiter Shadow (LS) via exponential decays with specified 
     decay lengths. It is assumed that the given kinetic profiles extend from the core until
     at least the LCFS. All inputs are taken to be time-independent.
 
@@ -296,8 +294,8 @@ def run_kn1d(rhop, ne_cm3, Te_eV, Ti_eV, geqdsk, p_H2_mTorr,
     if 'Simple_CX' not in kn1d:
         kn1d['Simple_CX'] = False
 
-
-    rmid_to_wall_m, ne,Te,Ti = _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV, 
+    # get kinetic profiles on rmid_to_wall_m grid, applying exponential decays in SOL as requested
+    rmid_to_wall_m,_ne_cm3,_Te_eV,_Ti_eV = _setup_kin_profs(rhop, ne_cm3, Te_eV, Ti_eV, 
                                               geqdsk, bound_sep_cm, lim_sep_cm,
                                               kin_prof_exp_decay_SOL, kin_prof_exp_decay_LS,
                                               ne_decay_len_cm, Te_decay_len_cm, Ti_decay_len_cm, 
@@ -305,7 +303,8 @@ def run_kn1d(rhop, ne_cm3, Te_eV, Ti_eV, geqdsk, p_H2_mTorr,
 
     if plot_kin_profs:
         # show kinetic profiles going into KN1D modeling
-        plot_input_kin_prof(rmid_to_wall_m, ne, Te, Ti, innermost_rmid_cm, bound_sep_cm, lim_sep_cm)
+        plot_input_kin_prof(rmid_to_wall_m, _ne_cm3, _Te_eV, _Ti_eV,
+                            innermost_rmid_cm, bound_sep_cm, lim_sep_cm)
 
     rhop = coords.rad_coord_transform(rmid_to_wall_m, 'rmid', 'rhop', geqdsk)
     rwall_m = rmid_to_wall_m[-1]  #m
@@ -341,12 +340,12 @@ def run_kn1d(rhop, ne_cm3, Te_eV, Ti_eV, geqdsk, p_H2_mTorr,
     # Save arrays in final forms for KN1D 
     num = 5  # digital point precision
     kn1d['x'] = round_arr(r_kn1d_m[:ind_in], num, float)
-    ne_ = ne[::-1]
-    kn1d['ne'] = round_arr(ne_[:ind_in], num, float) # m^-3
-    Te_ = Te[::-1]
-    kn1d['Te'] = round_arr(Te_[:ind_in], num, float)  # eV
-    Ti_ = Ti[::-1]
-    kn1d['Ti'] = round_arr(Ti_[:ind_in], num, float) # eV
+    ne_ = _ne_cm3[::-1]*1e6
+    kn1d['ne_m3'] = round_arr(ne_[:ind_in], num, float) # m^-3
+    Te_ = _Te_eV[::-1]
+    kn1d['Te_eV'] = round_arr(Te_[:ind_in], num, float)  # eV
+    Ti_ = _Ti_eV[::-1]
+    kn1d['Ti_eV'] = round_arr(Ti_[:ind_in], num, float) # eV
     dPipe_ = dPipe[::-1]
     kn1d['dPipe'] = round_arr(dPipe_[:ind_in], num, float)
     lc_ = lc[::-1]
@@ -401,9 +400,9 @@ exit
         xsep=kn1d['xsep'],
         gaugeH2=kn1d['p_H2_mTorr'],
         mu=kn1d['mu'],
-        Ti=idl_array(kn1d['Ti'], num),
-        Te=idl_array(kn1d['Te'], num),
-        ne=idl_array(kn1d['ne'], num),
+        Ti=idl_array(kn1d['Ti_eV'], num),
+        Te=idl_array(kn1d['Te_eV'], num),
+        ne=idl_array(kn1d['ne_m3'], num),
         vx=idl_array(kn1d['vx'], num),
         lc=idl_array(kn1d['lc'], num),
         dPipe=idl_array(kn1d['dPipe'], num),
@@ -442,16 +441,16 @@ exit
     out['Gamma_i'] = cumtrapz(Sion_interp, kn1d['x'], initial=0.0)
 
     # Effective diffusivity
-    out['D_eff'] = np.abs(out['Gamma_i'] / np.gradient(kn1d['ne'], kn1d['x']))  # check
+    out['D_eff'] = np.abs(out['Gamma_i'] / np.gradient(kn1d['ne_m3'], kn1d['x']))  # check
 
     # ensure that x bases are all to the same accuracy to avoid issues in interpolation
     out['xh'] = round_arr(out['xh'], num, dtype=float)
     out['xh2'] = round_arr(out['xh2'], num, dtype=float)
 
     # gradient length scales
-    out['L_ne'] = np.abs(1.0 / np.gradient(np.log(kn1d['ne']), kn1d['x']))
-    out['L_Te'] = np.abs(1.0 / np.gradient(np.log(kn1d['Te']), kn1d['x']))
-    out['L_Ti'] = np.abs(1.0 / np.gradient(np.log(kn1d['Ti']), kn1d['x']))
+    out['L_ne'] = np.abs(1.0 / np.gradient(np.log(kn1d['ne_m3']), kn1d['x']))
+    out['L_Te'] = np.abs(1.0 / np.gradient(np.log(kn1d['Te_eV']), kn1d['x']))
+    out['L_Ti'] = np.abs(1.0 / np.gradient(np.log(kn1d['Ti_eV']), kn1d['x']))
 
     #### Calculate radial profiles of neutral excited states   ####
 
@@ -460,14 +459,14 @@ exit
 
     # assume pure plasma and quasi-neutrality
     nhp_interp = interp1d(out['xh2'], out['nhp'], bounds_error=False, fill_value=0.0)(kn1d['x'])  # nH2+
-    out['ni'] = kn1d['ne'] - nhp_interp
+    out['ni'] = kn1d['ne_m3'] - nhp_interp
 
     # get profiles of excited states' density (only n=2 and n=3) ---- densities in cm^-3, Te in eV
     N2, N2_ground, N2_cont = neutrals.get_exc_state_ratio(
-        m=2, N1=N1/1e6, ni=out['ni']/1e6, ne=kn1d['ne'] / 1e6, Te=kn1d['Te'], plot=False, rad_prof=kn1d['x']
+        m=2, N1=N1/1e6, ni=out['ni']/1e6, ne=kn1d['ne_m3'] / 1e6, Te=kn1d['Te_eV'], plot=False, rad_prof=kn1d['x']
     )
     N3, N3_ground, N3_cont = neutrals.get_exc_state_ratio(
-        m=3, N1=N1/1e6, ni=out['ni']/1e6, ne=kn1d['ne'] / 1e6, Te=kn1d['Te'], plot=False, rad_prof=kn1d['x']
+        m=3, N1=N1/1e6, ni=out['ni']/1e6, ne=kn1d['ne_m3'] / 1e6, Te=kn1d['Te_eV'], plot=False, rad_prof=kn1d['x']
     )
 
     out['N2'] = N2 * 1e6  # transform back to m^-3 (all KN1D units are in SI units)
@@ -477,6 +476,9 @@ exit
     out['N3_ground'] = N3_ground * 1e6
     out['N3_cont'] = N3_cont * 1e6
 
+    # store rwall_m to allow external coordinate conversions
+    out['rwall_m'] = rwall_m
+    
     #################################
     # Store neutral density profiles in a format that can be used for integrated modeling
     out_profs = res['kn1d_profs'] = {}
@@ -511,14 +513,14 @@ exit
 
 
     
-def plot_input_kin_prof(rmid_to_wall_m, ne, Te, Ti,
+def plot_input_kin_prof(rmid_to_wall_m, ne_cm3, Te_eV, Ti_eV,
                         innermost_rmid_cm, bound_sep_cm, lim_sep_cm):
     '''Plot extent of kinetic profiles entering KN1D calculation
     '''
     fig,axs = plt.subplots(3,1, figsize=(8,8), sharex=True)
-    axs[0].plot(rmid_to_wall_m*1e2, ne)
-    axs[1].plot(rmid_to_wall_m*1e2, Te)
-    axs[2].plot(rmid_to_wall_m*1e2, Ti)
+    axs[0].plot(rmid_to_wall_m*1e2, ne_cm3)
+    axs[1].plot(rmid_to_wall_m*1e2, Te_eV)
+    axs[2].plot(rmid_to_wall_m*1e2, Ti_eV)
     axs[-1].set_xlabel(r'$r_{mid}$ [cm]')
     axs[0].set_ylabel(r'$n_e$ [$cm^{-3}$]')
     axs[1].set_ylabel(r'$T_e$ [$eV$]')
@@ -526,9 +528,9 @@ def plot_input_kin_prof(rmid_to_wall_m, ne, Te, Ti,
 
     indin = np.argmin(np.abs(rmid_to_wall_m*100 -(np.max(rmid_to_wall_m)*100.-innermost_rmid_cm)))
     
-    axs[0].set_ylim([0,np.max(ne[indin:])]); axs[0].grid(True)
-    axs[1].set_ylim([0,np.max(Te[indin:])]); axs[1].grid(True)
-    axs[2].set_ylim([0,np.max(Ti[indin:])]); axs[2].grid(True)
+    axs[0].set_ylim([0,np.max(ne_cm3[indin:])]); axs[0].grid(True)
+    axs[1].set_ylim([0,np.max(Te_eV[indin:])]); axs[1].grid(True)
+    axs[2].set_ylim([0,np.max(Ti_eV[indin:])]); axs[2].grid(True)
     axs[0].set_xlim([np.max(rmid_to_wall_m)*100.-innermost_rmid_cm, np.max(rmid_to_wall_m)*100.])
     plt.subplots_adjust(hspace=0)
 
@@ -566,12 +568,12 @@ def plot_overview(res):
     mu = int(ins['mu'])
     species = 'H' if mu == 1 else 'D'
 
-    (line,) = ax[0].plot(ins['x'], ins['ne'] / 1e19, lw=2.0)
+    (line,) = ax[0].plot(ins['x'], ins['ne_m3'] / 1e19, lw=2.0)
 
     c = line.get_color()
 
-    ax[1].semilogy(ins['x'], ins['Te'], lw=2.0, c=c, ls='-', label=r'$T_e$')
-    ax[1].semilogy(ins['x'], ins['Ti'], lw=2.0, c=c, ls='--', label=r'$T_i$')
+    ax[1].semilogy(ins['x'], ins['Te_eV'], lw=2.0, c=c, ls='-', label=r'$T_e$')
+    ax[1].semilogy(ins['x'], ins['Ti_eV'], lw=2.0, c=c, ls='--', label=r'$T_i$')
     ax[1].semilogy(outs['xh'], outs['th'], lw=2.0, c=c, ls='-.', label=fr'$T_{species}$')
 
     ax[2].semilogy(outs['xh'], outs['nh'], lw=2.0, c=c, ls='-', label=fr'$n_{species}$')
@@ -580,7 +582,7 @@ def plot_overview(res):
     
     # quasineutrality in a pure plasma: nH+ = ne - nH2+ (NB: NH2+ is saved as nhp)
     nhp_interp = interp1d(outs['xh2'], outs['nhp'], bounds_error=False, fill_value=0.0)(ins['x'])
-    ax[2].semilogy(ins['x'], ins['ne'] - nhp_interp, lw=2.0, c=c, ls=':', label=r'$n_e - n_{%s2}^+$'%species)
+    ax[2].semilogy(ins['x'], ins['ne_m3'] - nhp_interp, lw=2.0, c=c, ls=':', label=r'$n_e - n_{%s2}^+$'%species)
 
     ax[3].semilogy(outs['xh'], outs['sion'] / 1e20, lw=2.0, c=c, label='Atomic ionization rate')
 
@@ -635,7 +637,7 @@ def plot_exc_states(res):
 
     fig, ax = plt.subplots(4, 1, sharex=True, figsize=(10, 10))
     
-    _ne = interp1d(ins['x'], ins['ne'])(outs['xh'])
+    _ne = interp1d(ins['x'], ins['ne_m3'])(outs['xh'])
     (line,) = ax[0].semilogy(outs['xh'], outs['nh'] / _ne, lw=2.0)
     c = line.get_color()
 

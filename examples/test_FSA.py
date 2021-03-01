@@ -11,7 +11,7 @@ from omfit_classes import omfit_eqdsk, omfit_gapy
 import scipy,sys,os
 import time
 from scipy.interpolate import interp1d
-
+plt.style.use('/home/sciortino/SPARC/sparc_plots.mplstyle')
 # Make sure that package home is added to sys.path
 sys.path.append('../')
 import aurora

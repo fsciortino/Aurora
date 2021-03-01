@@ -4,6 +4,39 @@ Input parameters
 In this page, we describe some of the most important input parameter for Aurora simulations. Since all Aurora inputs are created in Python, rather than in a low-level language, users are encouraged to browse through the module documentation to get a complete picture; here, we only look at some specific features. 
 
 
+Namelist for ion transport simulations
+--------------------------------------
+The table below describes the main input parameters to Aurora's forward model of ion transport. This is list is in the process of being updated.
+
+
+.. list-table:: Aurora 1.5D ion transport simulation namelist
+   :widths: 25 25 50
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - `device`
+     - 'CMOD'
+     - Name of experimental device. This is only used to interact with MDS+ if the database of the chosen device can be read via :py:mod:`omfit_classes.omfit_eqdsk`.
+   * - `shot`
+     - 99999
+     - Shot number. This is only used in combination with `device` to connect to MDS+ databases.
+   * - `time`
+     - 1250
+     - Time in ms used to read magnetic equilibrium, if this is fetched via MDS+.
+   * - `imp`
+     - `Ca`
+     - Atomic symbol of the simulated ion.
+   * - `main_element`
+     - `D`
+     - Background ion species, usually hydrogen isotopes.
+   * - `Baxis`
+     - 5.5
+     - Magnetic field on axis [T]. This is only used for a simple model of prompt redeposition; most users won't need this.
+
+  
+
 Spatio-temporal grids
 ---------------------
 

@@ -231,7 +231,9 @@ class solps_case:
             quants['Tn'] = self.fort44['tab2'][:,:,0].T[R_idxs,:][:,P_idxs]/constants.e # eV
             quants['Te'] = self.b2fstate['te'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
             quants['Ti'] = self.b2fstate['ti'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
-
+            quants['nm'] = self.fort44['dmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular density
+            quants['Tm'] = self.fort44['tmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular temperature
+            
             # EIRENE nodes and triangulation
             self.xnodes, self.ynodes, self.triangles = self.load_eirene_mesh()
 
@@ -637,7 +639,7 @@ class solps_case:
 
         if plot:
             # plot quantties on linear scale -- need to adapt labels
-            lab = fr'${self.labels[quant].split("$")[1]}$ [${self.labels[quant].split("$")[3]}$]'
+            #lab = fr'${self.labels[quant].split("$")[1]}$ [${self.labels[quant].split("$")[3]}$]'
             
             # compare FSA radial profiles with midplane (LFS and HFS) ones
             fig,ax = plt.subplots()
@@ -647,7 +649,7 @@ class solps_case:
             ax.plot(rhop_chord_LFS, self.quants[quant][:,JXA], label='LFS grid midplane')
             ax.plot(rhop_chord_HFS, self.quants[quant][:,JXI], label='HFS grid midplane')
             ax.set_xlabel(r'$\rho_p$')
-            ax.set_ylabel(lab)
+            ax.set_ylabel(self.labels[quant]) #lab)
             ax.legend(loc='best').set_draggable(True)
             plt.tight_layout()
 
