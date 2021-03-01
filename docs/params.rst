@@ -16,159 +16,159 @@ The table below describes the main input parameters to Aurora's forward model of
    * - Parameter
      - Default
      - Description
-* - `imp`
-  - Ca
-  - Atomic symbol of the simulated ion.
-* - `main_element`
-  - D
-  - Background ion species, usually hydrogen isotopes.
-* - `Phi0`
-  - 1e+21
-  - Flux [particles/s] of simulated ions.
-* - `source_type`
-  - const
-  - Type of ion source, one of ['file','const','step','synth_LBO'], see :py:fun:`~aurora.source_utils.get_source_time_history`.
-* - `explicit_source_vals`
-  - `None`
-  -  2D array for sources on `explicit_source_time` and `explicit_source_rhop` grids
-* - `explicit_source_time`
-  - `None`
-  -  Time grid for explicit source
-* - `explicit_source_rhop`
-  - `None`
-  - :math:`\rho_p` grid for explicit source
-* - `source_width_in`
-  - 0.0
-  - Inner Gaussian source width, only used if >0. See :py:fun:`~aurora.source_utils.get_radial_source`.
-* - `source_width_out`
-  - 0.0
-  - Outer Gaussian source width, only used if >0. See :py:fun:`~aurora.source_utils.get_radial_source`.
-* - `imp_source_energy_eV`
-  - 3.0
-  - Energy of neutral ion source, only used if `source_width_in=source_width_out=0`, see :py:fun:`~aurora.source_utils.get_radial_source`.
-* - `prompt_redep_flag`
-  - False
-  - If True, a simple prompt redeposition model is activated, see :py:fun:`~aurora.source_utils.get_radial_source`.
-* - `source_file`
-  - None
-  - Location of source file, using STRAHL format, only used if `source_type="file"`, see :py:fun:`~aurora.source_utils.get_source_time_history`.
-* - `source_cm_out_lcfs`
-  - 1.0
-  - Source distance in cm from LCFS
-* - `LBO["n_particles"]`
-  - 1e+18
-  - Number of particles in LBO synthetic source, only used if `source_type`=`synth_LBO`
-* - `LBO["t_fall"]`
-  - 0.3
-  - Decay time of LBO synthetic source, only used if `source_type`=`synth_LBO`
-* - `LBO["t_rise"]`
-  - 0.05
-  - Rise time of LBO synthetic source, only used if `source_type`=`synth_LBO`
-* - `LBO["t_start"]`
-  - 0.0
-  - Start time of LBO synthetic source, only used if `source_type`=`synth_LBO`
-* - `timing["dt_increase"]`
-  - [1.005 1.   ]
-  - `dt` multipliers at every time step change. See detailed description.
-* - `timing["dt_start"]`
-  - [1.e-05 1.e-03]
-  - `dt` values at the beginning of each interval/cycle. See detailed description.
-* - `timing["steps_per_cycle"]`
-  - [1 1]
-  - Number of steps before `dt` is multiplied by a `dt_increase` value. See detailed description.
-* - `timing["times"]`
-  - [0.  0.1]
-  - Times at which intervals/cycles change.
-* - `bound_sep`
-  - 2.0
-  - Distance between wall boundary and plasma separatrix [cm].
-* - `lim_sep`
-  - 1.0
-  - Distance between nearest limiter and plasma separatrix [cm].
-* - `clen_divertor`
-  - 17.0
-  - Connection length to the divertor [cm].
-* - `clen_limiter`
-  - 0.5
-  - Connection length to the nearest limiter [cm]
-* - `dr_0`
-  - 0.3
-  - Radial grid spacing on axis. See detailed description.
-* - `dr_1`
-  - 0.05
-  - Radial grid spacing near the wall. See detailed description.
-* - `K`
-  - 6.0
-  - Exponential grid resolution factor. See detailed description.
-* - `SOL_decay`
-  - 0.05
-  - Decay length at the wall bounday, numerical parameter for the last grid point.
-* - `saw_model["saw_flag"]`
-  - False
-  - If True, activate sawtooth phenomenological model.
-* - `saw_model["rmix"]`
-  - 1000.0
-  - Mixing radius of sawtooth model. Each charge state density is flattened inside of this.
-* - `saw_model["times"]`
-  - [1.0]
-  - Times at which sawteeth occur.
-* - `saw_model["sawtooth_erfc_width"]`
-  - 1.0
-  - Smoothing width of sawtooth crash [cm].
-* - `recycling_flag`
-  - False
-  - If True, particles may return to main chamber, either via flows from the SOL or proper recycling.
-* - `wall_recycling`
-  - 0.0
-  - If True, recycling is activated: particles from the wall and divertor may return to main chamber.
-* - `divbls`
-  - 0.0
-  - Fraction of source that is puffed into the divertor, as opposed to into the main chamber.
-* - `tau_div_SOL_ms`
-  - 50.0
-  - Time scale for transport between the divertor and the open SOL [ms].
-* - `tau_pump_ms`
-  - 500.0
-  - Time scale for pumping out of divertor reservoir [ms].
-* - `tau_rcl_ret_ms`
-  - 50.0
-  - Time scale for retention at the wall [ms] before recycling may occur. 
-* - `SOL_mach`
-  - 0.1
-  - Mach number in the SOL, determining parallel loss rates.
-* - `average_kin_profs`
-  - True
-  - If True, kinetic profiles are averaged in time,
-* - `kin_profs["ne"]`
-  - {'fun': 'interpa', 'times': [1.0]}
-  - Specification of electron density [:math:`cm^{-3}`]. `fun=interpa` interpolates data also in the SOL. 
-* - `kin_profs["Te"]`
-  - {'fun': 'interp', 'times': [1.0], 'decay': [1.0]}
-  - Specification of electron temperature [:math:`eV`]. `fun=interp` sets decay over `decay` length in the SOL.
-* - `kin_profs["Ti"]`
-  - {'fun': 'interp', 'times': [1.0], 'decay': [1.0]}
-  - Specification of ion temperature [:math:`eV`]. Only used for charge exchange rates.
-* - `kin_profs["n0"]`
-  - {'fun': 'interpa', 'times': [1.0]}
-  - Specification of background (H-isotope) neutral density [:math:`cm^{-3}`].
-* - `cxr_flag`
-  - False
-  - If True, activate charge exchange recombination with background thermal neutrals. Requires `kin_profs["n0"]`.
-* - `nbi_cxr_flag`
-  - False
-  - If True, activate charge exchange recombination with NBI neutrals (to be specified in :py:class:`~aurora.aurora_sim`).
-* - `device`
-  - CMOD
-  - Name of experimental device, only used by MDS+ if device database can be read via :py:mod:`omfit_classes.omfit_eqdsk`.
-* - `shot`
-  - 99999
-  - Shot number, only used in combination with `device` to connect to MDS+ databases.
-* - `time`
-  - 1250
-  - Time [ms] used to read magnetic equilibrium, if this is fetched via MDS+.
-* - `Baxis`
-  - 5.5
-  - Magnetic field on axis [T]. This is only used if `prompt_redep_flag=True`.
+   * - `imp`
+     - Ca
+     - Atomic symbol of the simulated ion.
+   * - `main_element`
+     - D
+     - Background ion species, usually hydrogen isotopes.
+   * - `Phi0`
+     - 1e+21
+     - Flux [particles/s] of simulated ions.
+   * - `source_type`
+     - const
+     - Type of ion source, one of ['file','const','step','synth_LBO'], see :py:fun:`~aurora.source_utils.get_source_time_history`.
+   * - `explicit_source_vals`
+     - `None`
+     -  2D array for sources on `explicit_source_time` and `explicit_source_rhop` grids
+   * - `explicit_source_time`
+     - `None`
+     -  Time grid for explicit source
+   * - `explicit_source_rhop`
+     - `None`
+     - :math:`\rho_p` grid for explicit source
+   * - `source_width_in`
+     - 0.0
+     - Inner Gaussian source width, only used if >0. See :py:fun:`~aurora.source_utils.get_radial_source`.
+   * - `source_width_out`
+     - 0.0
+     - Outer Gaussian source width, only used if >0. See :py:fun:`~aurora.source_utils.get_radial_source`.
+   * - `imp_source_energy_eV`
+     - 3.0
+     - Energy of neutral ion source, only used if `source_width_in=source_width_out=0`, see :py:fun:`~aurora.source_utils.get_radial_source`.
+   * - `prompt_redep_flag`
+     - False
+     - If True, a simple prompt redeposition model is activated, see :py:fun:`~aurora.source_utils.get_radial_source`.
+   * - `source_file`
+     - None
+     - Location of source file, using STRAHL format, only used if `source_type="file"`, see :py:fun:`~aurora.source_utils.get_source_time_history`.
+   * - `source_cm_out_lcfs`
+     - 1.0
+     - Source distance in cm from LCFS
+   * - `LBO["n_particles"]`
+     - 1e+18
+     - Number of particles in LBO synthetic source, only used if `source_type`=`synth_LBO`
+   * - `LBO["t_fall"]`
+     - 0.3
+     - Decay time of LBO synthetic source, only used if `source_type`=`synth_LBO`
+   * - `LBO["t_rise"]`
+     - 0.05
+     - Rise time of LBO synthetic source, only used if `source_type`=`synth_LBO`
+   * - `LBO["t_start"]`
+     - 0.0
+     - Start time of LBO synthetic source, only used if `source_type`=`synth_LBO`
+   * - `timing["dt_increase"]`
+     - [1.005 1.   ]
+     - `dt` multipliers at every time step change. See detailed description.
+   * - `timing["dt_start"]`
+     - [1.e-05 1.e-03]
+     - `dt` values at the beginning of each interval/cycle. See detailed description.
+   * - `timing["steps_per_cycle"]`
+     - [1 1]
+     - Number of steps before `dt` is multiplied by a `dt_increase` value. See detailed description.
+   * - `timing["times"]`
+     - [0.  0.1]
+     - Times at which intervals/cycles change.
+   * - `bound_sep`
+     - 2.0
+     - Distance between wall boundary and plasma separatrix [cm].
+   * - `lim_sep`
+     - 1.0
+     - Distance between nearest limiter and plasma separatrix [cm].
+   * - `clen_divertor`
+     - 17.0
+     - Connection length to the divertor [cm].
+   * - `clen_limiter`
+     - 0.5
+     - Connection length to the nearest limiter [cm]
+   * - `dr_0`
+     - 0.3
+     - Radial grid spacing on axis. See detailed description.
+   * - `dr_1`
+     - 0.05
+     - Radial grid spacing near the wall. See detailed description.
+   * - `K`
+     - 6.0
+     - Exponential grid resolution factor. See detailed description.
+   * - `SOL_decay`
+     - 0.05
+     - Decay length at the wall bounday, numerical parameter for the last grid point.
+   * - `saw_model["saw_flag"]`
+     - False
+     - If True, activate sawtooth phenomenological model.
+   * - `saw_model["rmix"]`
+     - 1000.0
+     - Mixing radius of sawtooth model. Each charge state density is flattened inside of this.
+   * - `saw_model["times"]`
+     - [1.0]
+     - Times at which sawteeth occur.
+   * - `saw_model["sawtooth_erfc_width"]`
+     - 1.0
+     - Smoothing width of sawtooth crash [cm].
+   * - `recycling_flag`
+     - False
+     - If True, particles may return to main chamber, either via flows from the SOL or proper recycling.
+   * - `wall_recycling`
+     - 0.0
+     - If True, recycling is activated: particles from the wall and divertor may return to main chamber.
+   * - `divbls`
+     - 0.0
+     - Fraction of source that is puffed into the divertor, as opposed to into the main chamber.
+   * - `tau_div_SOL_ms`
+     - 50.0
+     - Time scale for transport between the divertor and the open SOL [ms].
+   * - `tau_pump_ms`
+     - 500.0
+     - Time scale for pumping out of divertor reservoir [ms].
+   * - `tau_rcl_ret_ms`
+     - 50.0
+     - Time scale for retention at the wall [ms] before recycling may occur. 
+   * - `SOL_mach`
+     - 0.1
+     - Mach number in the SOL, determining parallel loss rates.
+   * - `average_kin_profs`
+     - True
+     - If True, kinetic profiles are averaged in time,
+   * - `kin_profs["ne"]`
+     - {'fun': 'interpa', 'times': [1.0]}
+     - Specification of electron density [:math:`cm^{-3}`]. `fun=interpa` interpolates data also in the SOL. 
+   * - `kin_profs["Te"]`
+     - {'fun': 'interp', 'times': [1.0], 'decay': [1.0]}
+     - Specification of electron temperature [:math:`eV`]. `fun=interp` sets decay over `decay` length in the SOL.
+   * - `kin_profs["Ti"]`
+     - {'fun': 'interp', 'times': [1.0], 'decay': [1.0]}
+     - Specification of ion temperature [:math:`eV`]. Only used for charge exchange rates.
+   * - `kin_profs["n0"]`
+     - {'fun': 'interpa', 'times': [1.0]}
+     - Specification of background (H-isotope) neutral density [:math:`cm^{-3}`].
+   * - `cxr_flag`
+     - False
+     - If True, activate charge exchange recombination with background thermal neutrals. Requires `kin_profs["n0"]`.
+   * - `nbi_cxr_flag`
+     - False
+     - If True, activate charge exchange recombination with NBI neutrals (to be specified in :py:class:`~aurora.aurora_sim`).
+   * - `device`
+     - CMOD
+     - Name of experimental device, only used by MDS+ if device database can be read via :py:mod:`omfit_classes.omfit_eqdsk`.
+   * - `shot`
+     - 99999
+     - Shot number, only used in combination with `device` to connect to MDS+ databases.
+   * - `time`
+     - 1250
+     - Time [ms] used to read magnetic equilibrium, if this is fetched via MDS+.
+   * - `Baxis`
+     - 5.5
+     - Magnetic field on axis [T]. This is only used if `prompt_redep_flag=True`.
 
 
 

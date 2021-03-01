@@ -415,7 +415,7 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, maxTe=10e3, include
     atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
         necessary only if include_cx=True)
     ne_cm3 : float or array
-        Electron density in units of :math:`cm^-3`
+        Electron density in units of :math:`cm^{-3}`
     Te_eV : float or array
         Electron temperature in units of eV. If left to None, the Te grid
         given in the atomic data is used.
