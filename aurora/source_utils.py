@@ -307,7 +307,7 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
 
         # remove promptly redeposited ions
         if namelist['prompt_redep_flag']:
-            omega_c = 1.602e-19/1.601e-27*namelist['Baxis']/namelist['a']  
+            omega_c = 1.602e-19/1.601e-27*namelist['Baxis']/namelist['main_ion_A']  
             dt = (rvol_grid[i_src]-rvol_grid)/v
             pp = dt*omega_c
             non_redep =  pp**2/(1.+pp**2)

@@ -6,15 +6,11 @@ def load_default_namelist():
     '''
 
     namelist = {
-        'device': 'CMOD',
-        'shot': 99999,
-        'time': 1250, # in ms, for equilibrium
         'imp': 'Ca',
+        'main_element': 'D',  # background
         # --------------------
-        # background:
-        'main_element': 'D',
-        'Baxis': 5.5,
-        # --------------------
+        'Phi0': 1e+21,
+        'source_type':'const', 
         # explicit source:
         'explicit_source_vals' : None, # provide 2D array on explicit_source_time and explicit_source_rhop grids
         'explicit_source_time' : None, 
@@ -24,30 +20,28 @@ def load_default_namelist():
         'source_width_out': 0.0,    
         'imp_source_energy_eV' : 3.0, # only needed if source_width_in=source_width_out=0.0
         'prompt_redep_flag' : False,
-        'Phi0': 1e+21,
-        'source_type':'const', 
         'source_file': None, # required if source_type='file'
         'source_cm_out_lcfs' : 1.0, # source distance in cm from LCFS
         # LBO synthetic model, only used if source_type='synth_LBO'
         'LBO': {'n_particles': 1e+18,
-                't_fall': 1.71,
-                't_rise': 0.181,
-                't_start': 0.0},
+                't_fall': 0.3,
+                't_rise': 0.05,
+                't_start': 0.01},
         # --------------------
-        # timing
+        # time grid specifications
         'timing': {'dt_increase': np.array([1.005, 1.]),
                    'dt_start': np.array([1e-5, 0.001]),
                    'steps_per_cycle': np.array([1, 1]),
                    'times': np.array([0., 0.1])},
         # --------------------
         # radial grid
-        'K': 6.0,
         'bound_sep': 2.0,
+        'lim_sep': 1.0,
         'clen_divertor': 17.0,
         'clen_limiter': 0.5,
         'dr_0': 0.3,
         'dr_1': 0.05,
-        'lim_sep': 1.0,
+        'K': 6.0,
         'SOL_decay': 0.05, 
         # -------------------
         'saw_model': {'saw_flag': False,
@@ -76,13 +70,30 @@ def load_default_namelist():
                               'times': [1.]}
                    },
         # ----------------
-        # flags
+        # charge exchange flags
         'cxr_flag' : False,
         'nbi_cxr_flag' : False,
-        'prad_flag' : False,
-        'thermal_cx_rad_flag' : False,
-        'spectral_brem_flag' : False,
-        'sxr_flag' : False,
-        'main_ion_brem_flag' : False,
+        # -----------------
+        # misc
+        'device': 'CMOD',
+        'shot': 99999,
+        'time': 1250, # in ms, for equilibrium
+        'Baxis': 5.5,
     }
     return namelist
+
+
+if __name__=='__main__':
+    # print default namelist for documentation
+
+    nml = load_default_namelist()
+    for key in nml:
+        if isinstance(nml[key], dict):
+            for key2 in nml[key]:
+                print(f'* - `{key}["{key2}"]`')
+                print(f'  - {nml[key][key2]}')
+                print('  -')
+        else:
+            print(f'* - `{key}`')
+            print(f'  - {nml[key]}')
+            print('  -')
