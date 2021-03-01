@@ -70,7 +70,8 @@ class aurora_sim:
             self.geqdsk = geqdsk
 
         self.Raxis_cm = self.geqdsk['RMAXIS']*100. # cm
-
+        self.namelist['Baxis'] = self.geqdsk['BCENTR']
+        
         # load ionization and recombination rates
         filetypes = ['acd','scd','ccd'] if self.namelist['cxr_flag'] else ['acd','scd']
         self.atom_data = atomic.get_atom_data(self.imp,filetypes)
@@ -113,7 +114,7 @@ class aurora_sim:
 
         self.bound_sep = self.namelist['bound_sep']
         self.lim_sep = self.namelist['lim_sep']
-        self.sawtooth_erfc_width = self.namelist['saw_model']['sawtooth_erfc_width']
+        self.sawtooth_erfc_width = self.namelist['saw_model']['crash_width']
         self.cxr_flag = self.namelist['cxr_flag']
         self.nbi_cxr_flag = self.namelist['nbi_cxr_flag']
         

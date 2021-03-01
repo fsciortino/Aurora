@@ -10,7 +10,7 @@ The table below describes the main input parameters to Aurora's forward model of
 
 
 .. list-table::
-   :widths: 20 10 70
+   :widths: 10 10 80
    :header-rows: 1
 
    * - Parameter
@@ -112,7 +112,7 @@ The table below describes the main input parameters to Aurora's forward model of
    * - `saw_model["times"]`
      - [1.0]
      - Times at which sawteeth occur.
-   * - `saw_model["sawtooth_erfc_width"]`
+   * - `saw_model["crash_width"]`
      - 1.0
      - Smoothing width of sawtooth crash [cm].
    * - `recycling_flag`
@@ -163,9 +163,6 @@ The table below describes the main input parameters to Aurora's forward model of
    * - `time`
      - 1250
      - Time [ms] used to read magnetic equilibrium, if this is fetched via MDS+.
-   * - `Baxis`
-     - 5.5
-     - Magnetic field on axis [T]. This is only used if `prompt_redep_flag=True`.
 
 
 

@@ -47,7 +47,7 @@ def load_default_namelist():
         'saw_model': {'saw_flag': False,
                       'rmix': 1000.0,
                       'times': [1.0,], 
-                      'sawtooth_erfc_width' : 1.0},
+                      'crash_width' : 1.0},
         # --------------------
         # edge/recycling
         'recycling_flag' : False,
@@ -62,9 +62,11 @@ def load_default_namelist():
         'kin_profs' : {'ne': {'fun': 'interpa',
                               'times': [1.]}, 
                        'Te': {'fun':'interp',
-                              'times': [1.], 'decay': [1.]},
+                              'times': [1.],
+                              'decay': [1.]},
                        'Ti': {'fun':'interp',
-                              'times': [1.], 'decay': [1.]},
+                              'times': [1.],
+                              'decay': [1.]},
                        'n0': {'fun':'interpa',
                               'times': [1.]}
                    },
@@ -77,7 +79,6 @@ def load_default_namelist():
         'device': 'CMOD',
         'shot': 99999,
         'time': 1250, # in ms, for equilibrium
-        'Baxis': 5.5,
     }
     return namelist
 
