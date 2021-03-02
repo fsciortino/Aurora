@@ -12,7 +12,7 @@ After doing this, you can run::
 
   python setup.py install
 
-and should do the magic.
+which should do the magic.
 
 Some users may want to have greater control over which compiler is being used for the installation; this can be most easily done by modifying the provided Makefile directly. After changing its top configuration lines, users can do::
 
@@ -26,9 +26,21 @@ The latest release is now available via PyPI using::
 
   pip install aurorafusion
 
-[![PyPI version](https://badge.fury.io/py/aurorafusion.svg)](https://badge.fury.io/py/aurorafusion)
+.. image:: https://badge.fury.io/py/aurorafusion.svg
+    :target: https://badge.fury.io/py/aurorafusion
 
-We also working to make this available from Anaconda Cloud, but the process is not yet complete. 
+	     
+Installing via conda is also possible using
+
+    conda install -c sciortino aurorafusion 
+
+.. image:: https://anaconda.org/sciortino/aurorafusion/badges/version.svg
+    :target: https://anaconda.org/sciortino/aurorafusion
+    
+.. image:: https://anaconda.org/sciortino/aurorafusion/badges/latest_release_relative_date.svg
+    :target: https://anaconda.org/sciortino/aurorafusion
+
+Note that the conda version is NOT updated very regularly. If this kind of installation is your preference, feel free to contact us to request an update. The conda installation does not currently install dependencies on `omfit_classes`, which users may need to install via `pip` (see the `PyPI repo <https://pypi.org/project/omfit-classes/>`_). 
 
 
 Running with Julia

@@ -424,7 +424,7 @@ exit
 
     #### store all KN1D data for postprocessing  #####
     res = {}
-    res['ins'] = kn1d  # store inputs for plotting
+    #res['ins'] = kn1d  # store inputs for plotting
     out = res['out'] = scipy.io.readsav(f'{thisdir}/KN1D/kn1d_out.sav')
     res['kn1d_input'] = scipy.io.readsav(f'{thisdir}/KN1D/.KN1D_input')
     res['kn1d_mesh'] = scipy.io.readsav(f'{thisdir}/KN1D/.KN1D_mesh')
@@ -526,6 +526,8 @@ def plot_input_kin_prof(rmid_to_wall_m, ne_cm3, Te_eV, Ti_eV,
     axs[1].set_ylabel(r'$T_e$ [$eV$]')
     axs[2].set_ylabel(r'$T_i$ [$eV$]')
 
+    #from IPython import embed
+    #embed()
     indin = np.argmin(np.abs(rmid_to_wall_m*100 -(np.max(rmid_to_wall_m)*100.-innermost_rmid_cm)))
     
     axs[0].set_ylim([0,np.max(ne_cm3[indin:])]); axs[0].grid(True)
@@ -560,20 +562,20 @@ def plot_overview(res):
         Output dictionary from function :py:fun:`~aurora.kn1d.run_kn1d`.
     '''
     
-    ins = res['ins']
+    ins = res['kn1d_input']
     outs = res['out']
-    
+
     fig, ax = plt.subplots(4, 1, sharex=True, figsize=(10, 10))
     
     mu = int(ins['mu'])
     species = 'H' if mu == 1 else 'D'
 
-    (line,) = ax[0].plot(ins['x'], ins['ne_m3'] / 1e19, lw=2.0)
+    (line,) = ax[0].plot(ins['x'], ins['n'] / 1e19, lw=2.0)
 
     c = line.get_color()
 
-    ax[1].semilogy(ins['x'], ins['Te_eV'], lw=2.0, c=c, ls='-', label=r'$T_e$')
-    ax[1].semilogy(ins['x'], ins['Ti_eV'], lw=2.0, c=c, ls='--', label=r'$T_i$')
+    ax[1].semilogy(ins['x'], ins['te'], lw=2.0, c=c, ls='-', label=r'$T_e$')
+    ax[1].semilogy(ins['x'], ins['ti'], lw=2.0, c=c, ls='--', label=r'$T_i$')
     ax[1].semilogy(outs['xh'], outs['th'], lw=2.0, c=c, ls='-.', label=fr'$T_{species}$')
 
     ax[2].semilogy(outs['xh'], outs['nh'], lw=2.0, c=c, ls='-', label=fr'$n_{species}$')
@@ -582,22 +584,22 @@ def plot_overview(res):
     
     # quasineutrality in a pure plasma: nH+ = ne - nH2+ (NB: NH2+ is saved as nhp)
     nhp_interp = interp1d(outs['xh2'], outs['nhp'], bounds_error=False, fill_value=0.0)(ins['x'])
-    ax[2].semilogy(ins['x'], ins['ne_m3'] - nhp_interp, lw=2.0, c=c, ls=':', label=r'$n_e - n_{%s2}^+$'%species)
+    ax[2].semilogy(ins['x'], ins['n'] - nhp_interp, lw=2.0, c=c, ls=':', label=r'$n_e - n_{%s2}^+$'%species)
 
     ax[3].semilogy(outs['xh'], outs['sion'] / 1e20, lw=2.0, c=c, label='Atomic ionization rate')
 
     # annotate location of limiter and LCFS
-    ax[0].axvline(ins['xlim'])
+    ax[0].axvline(ins['xlimiter'])
     ax[0].axvline(ins['xsep'])
-    ax[1].axvline(ins['xlim'])
+    ax[1].axvline(ins['xlimiter'])
     ax[1].axvline(ins['xsep'])
-    ax[2].axvline(ins['xlim'])
+    ax[2].axvline(ins['xlimiter'])
     ax[2].axvline(ins['xsep'])
-    ax[3].axvline(ins['xlim'])
+    ax[3].axvline(ins['xlimiter'])
     ax[3].axvline(ins['xsep'])
 
-    dist = ins['xlim'] / 10.0  # convenient rule-of-thumb for plotting
-    ax[0].annotate('Limiter', (ins['xlim'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
+    dist = ins['xlimiter'] / 10.0  # convenient rule-of-thumb for plotting
+    ax[0].annotate('Limiter', (ins['xlimiter'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
     ax[0].annotate('LCFS', (ins['xsep'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
     
     # reduce number of ticks from default
@@ -632,12 +634,12 @@ def plot_exc_states(res):
     res : dict
         Output dictionary from function :py:fun:`~aurora.kn1d.run_kn1d`.
     '''
-    ins = res['ins']
+    ins = res['kn1d_input']
     outs = res['out']
 
     fig, ax = plt.subplots(4, 1, sharex=True, figsize=(10, 10))
-    
-    _ne = interp1d(ins['x'], ins['ne_m3'])(outs['xh'])
+
+    _ne = interp1d(ins['x'], ins['n'],bounds_error=False,fill_value='extrapolate')(outs['xh'])
     (line,) = ax[0].semilogy(outs['xh'], outs['nh'] / _ne, lw=2.0)
     c = line.get_color()
 
@@ -652,17 +654,17 @@ def plot_exc_states(res):
     ax[3].plot(ins['x'], outs['N3_cont'], c=c, lw=2.0, ls='-.', label='from cont.')
 
     # annotate location of limiter and LCFS
-    ax[0].axvline(ins['xlim'])
+    ax[0].axvline(ins['xlimiter'])
     ax[0].axvline(ins['xsep'])
-    ax[1].axvline(ins['xlim'])
+    ax[1].axvline(ins['xlimiter'])
     ax[1].axvline(ins['xsep'])
-    ax[2].axvline(ins['xlim'])
+    ax[2].axvline(ins['xlimiter'])
     ax[2].axvline(ins['xsep'])
-    ax[3].axvline(ins['xlim'])
+    ax[3].axvline(ins['xlimiter'])
     ax[3].axvline(ins['xsep'])
     
-    dist = ins['xlim'] / 10.0  # convenient rule-of-thumb for plotting
-    ax[0].annotate('Limiter', (ins['xlim'] + dist, 1e-3 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
+    dist = ins['xlimiter'] / 10.0  # convenient rule-of-thumb for plotting
+    ax[0].annotate('Limiter', (ins['xlimiter'] + dist, 1e-3 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
     ax[0].annotate('LCFS', (ins['xsep'] + dist, 1e-3 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
     
     ax[0].set_ylabel(r'$n_{n,1}/n_e$')
@@ -697,7 +699,7 @@ def plot_emiss(res, check_collrad=True):
         rates using rates from COLLRAD. 
     '''
     
-    ins = res['ins'] 
+    ins = res['kn1d_input']
     outs = res['out']
 
     mu = int(ins['mu'])
@@ -708,13 +710,13 @@ def plot_emiss(res, check_collrad=True):
     ax[1].plot(outs['xh'], outs['balmer'], '-', c=c, label='KN1D (JH)')
 
     # annotate location of limiter and LCFS
-    ax[0].axvline(ins['xlim'])
+    ax[0].axvline(ins['xlimiter'])
     ax[0].axvline(ins['xsep'])
-    ax[1].axvline(ins['xlim'])
+    ax[1].axvline(ins['xlimiter'])
     ax[1].axvline(ins['xsep'])
 
-    dist = ins['xlim'] / 10.0  # convenient rule-of-thumb for plotting
-    ax[0].annotate('Limiter', (ins['xlim'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
+    dist = ins['xlimiter'] / 10.0  # convenient rule-of-thumb for plotting
+    ax[0].annotate('Limiter', (ins['xlimiter'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
     ax[0].annotate('LCFS', (ins['xsep'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
 
     ax[-1].set_xlabel('Distance from the wall [m]')
@@ -770,7 +772,7 @@ def plot_transport(res):
     res : dict
         Output dictionary from function :py:fun:`~aurora.kn1d.run_kn1d`.
     '''
-    ins = res['ins'] 
+    ins = res['kn1d_input']
     outs = res['out']
 
     fig, ax = plt.subplots(3, 1, sharex=True, figsize=(10, 7.5))
@@ -789,15 +791,15 @@ def plot_transport(res):
     ax[2].plot(outs['xH2'], outs['sp'], lw=2.0, c=c, ls='--', label='Ion source')
 
     # annotate location of limiter and LCFS
-    ax[0].axvline(ins['xlim'])
+    ax[0].axvline(ins['xlimiter'])
     ax[0].axvline(ins['xsep'])
-    ax[1].axvline(ins['xlim'])
+    ax[1].axvline(ins['xlimiter'])
     ax[1].axvline(ins['xsep'])
-    ax[2].axvline(ins['xlim'])
+    ax[2].axvline(ins['xlimiter'])
     ax[2].axvline(ins['xsep'])
     
-    dist = ins['xlim'] / 10.0  # convenient rule-of-thumb for plotting
-    ax[0].annotate('Limiter', (ins['xlim'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
+    dist = ins['xlimiter'] / 10.0  # convenient rule-of-thumb for plotting
+    ax[0].annotate('Limiter', (ins['xlimiter'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
     ax[0].annotate('LCFS', (ins['xsep'] + dist, 0.5 * ax[0].get_ylim()[1]), fontsize=14, rotation=90)
 
     ax[0].legend(fontsize=16, loc='best')
