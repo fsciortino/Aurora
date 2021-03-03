@@ -40,7 +40,10 @@ Installing via conda is also possible using
 .. image:: https://anaconda.org/sciortino/aurorafusion/badges/latest_release_relative_date.svg
     :target: https://anaconda.org/sciortino/aurorafusion
 
-Note that the conda version is NOT updated very regularly. If this kind of installation is your preference, feel free to contact us to request an update. The conda installation does not currently install dependencies on `omfit_classes`, which users may need to install via `pip` (see the `PyPI repo <https://pypi.org/project/omfit-classes/>`_). 
+.. warning::
+
+	The conda version is NOT updated very regularly. If this kind of installation is your preference, feel free to contact us to request an update. 
+	The conda installation does not currently install dependencies on `omfit_classes <https://pypi.org/project/omfit-classes/>`_, which users may need to install via `pip`. 
 
 
 Running with Julia
