@@ -40,6 +40,13 @@ def get_adas_file_loc(filename, filetype='adf11'):
         Full path to the requested file. 
     '''
     def fetch_file(filename,filetype, loc):
+        if not os.path.isdir(os.path.dirname(os.path.dirname(loc))):
+            # make sure that aurora/adas_data/adf** directory exists, sp that we can store data files in it
+            os.makedirs(os.path.dirname(os.path.dirname(loc)))
+        if not os.path.isdir(os.path.dirname(loc)):
+            # make sure that aurora/adas_data/adf** directory exists, sp that we can store data files in it
+            os.makedirs(os.path.dirname(loc))
+
         if filetype=='adf11':
             fetch_adf11_file(filename, loc)
         elif filetype=='adf15':
@@ -91,10 +98,6 @@ def fetch_adf11_file(filename, loc):
     loc : str
         Location to save fetched ADF11 in.
     '''
-    if not os.path.isdir(adas_data_dir+'adf11'):
-        # make sure that aurora/adas_data/adf11 directory exists
-        os.makedirs(adas_data_dir+'adf11')
-
     url = 'https://open.adas.ac.uk/download/adf11/'
     str1 =  filename.split('_')[0]
     
@@ -116,10 +119,6 @@ def fetch_adf15_file(filename, loc):
     loc : str
         Location to save fetched ADF15 file in.
     '''
-    if not os.path.isdir(adas_data_dir+'adf15'):
-        # make sure that aurora/adas_data/adf15 directory exists
-        os.makedirs(adas_data_dir+'adf15')
-
     url = 'https://open.adas.ac.uk/download/adf15/'
 
     if filename.startswith('pec'):
