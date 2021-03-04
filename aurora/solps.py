@@ -871,3 +871,33 @@ def get_fort44_info(NDX,NDY,NATM,NMOL,NION,NSTRA,NCL,NPLS,NSTS,NLIM):
     #fort44_info.update({'wall_geometry' : [r'Wall geometry points', ((NSTRA+1)*(5*NSTS+1),)]})  # check dimensions
     fort44_info.update({'wall_geometry' : [r'Wall geometry points', (4*NLIM,)]})  # check dimensions
     return fort44_info
+
+def get_fort46_info(NTRII,NATM,NMOL,NION):
+    '''Collection of labels and dimensions for all fort.46 variables, as collected in the 
+    SOLPS-ITER 2020 manual.
+    '''
+    
+    fort46_info = {
+        'PDENA': [r'Atom particle density ($cm^{-3}$)',(NTRII,NATM)],
+        'PDENM': [r'Molecule particle density ($cm^{-3}$)', (NTRII,NMOL)],
+        'PDENI': [r'Test ion particle density ($cm^{-3}$)', (NTRII,NION)],
+        'EDENA': [r'Energy density carried by atoms ($eV*cm^{-3}$)', (NTRII,NATM)],
+        'EDENM': [r'Energy density carried by molecules ($eV*cm^{-3}$)', (NTRII,NMOL)],
+        'EDENI': [r'Energy density carried by test ions ($eV*cm^{-3}$)', (NTRII,NION)],
+        'VXDENA': [r'X-directed momentum density carried by atoms ($g*cm^{-2}*s^{-1}$)', (NTRII,NATM)],
+        'VXDENM': [r'X-directed momentum density carried by molecules ($g*cm^{-2}*s^{-1}$)', (NTRII,NMOL)],
+        'VXDENI': [r'X-directed momentum density carried by test ions ($g*cm^{-2}*s^{-1}$)', (NTRII,NION)],
+        'VYDENA': [r'Y -directed momentum density carried by atoms ($g*cm^{-2}*s^{-1}$)', (NTRII,NATM)],
+        'VYDENM': [r'Y -directed momentum density carried by molecules ($g*cm^{-2}*s^{-1}$)', (NTRII,NMOL)],
+        'VYDENI': [r'Y -directed momentum density carried by test ions ($g*cm^{-2}*s^{-1}$)', (NTRII,NION)],
+        'VZDENA': [r'Z-directed momentum density carried by atoms ($g*cm^{-2}*s^{-1}$)', (NTRII,NATM)],
+        'VZDENM': [r'Z-directed momentum density carried by molecules ($g*cm^{-2}*s^{-1}$)', (NTRII,NMOL)],
+        'VZDENI': [r'Z-directed momentum density carried by test ions ($g*cm^{-2}*s^{-1}$)', (NTRII,NION)],
+        'VOLUMES': [r'Triangle volumes ($cm^{-3}$)', (NTRII)],
+        'PUX': [r'X-component of the poloidal unit vector at the triangle center', (NTRII)],
+        'PUY': [r'Y-component of the poloidal unit vector at the triangle center', (NTRII)],
+        'PVX': [r'X-component of the radial unit vector at the triangle center', (NTRII)],
+        'PVY': [r'Y-component of the radial unit vector at the triangle center', (NTRII)],
+    }
+    
+    return fort46_info
