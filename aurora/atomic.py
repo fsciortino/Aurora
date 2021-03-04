@@ -223,7 +223,7 @@ def read_filter_response(filepath, adas_format=True, plot=False):
     return E_eV, response
 
     
-def get_atom_data(imp, filetypes=['acd','scd'], filenames=[]):
+def get_atom_data(imp, files=['acd','scd']):
     ''' Collect atomic data for a given impurity from all types of ADAS files available or
     for only those requested. 
 
@@ -231,14 +231,23 @@ def get_atom_data(imp, filetypes=['acd','scd'], filenames=[]):
     ----------
     imp : str
         Atomic symbol of impurity ion.
-    filetypes : list or array-like 
+    files : list or dict
         ADAS file types to be fetched. Default is ["acd","scd"] for effective ionization 
-        and recombination rates (excluding CX).
-    filenames : list or array-like, optional
-        ADAS file names to be used in place of the defaults given by 
-        :py:meth:`~aurora.adas_files.adas_file_dict`.
-        If left empty, such defaults are used. Note that the order of filenames must be 
-        the same as the one in the "filetypes" list.
+        and recombination rates (excluding CX) using default files, listed in :py:func:`~aurora.adas_files_adas_files_dict`.
+        If users prefer to use specific files, they may pass a dictionary instead, of the form
+
+        .. code-block:: python
+
+            {'acd': 'acd89_ar.dat', 'scd': 'scd89_ar.dat'}
+
+        or
+
+        .. code-block:: python
+
+            {'acd': 'acd89_ar.dat', 'scd': None}
+
+        if only some of the files need specifications and others (given as None) should be 
+        taken from the default files.
     
     Returns
     -------
@@ -247,21 +256,26 @@ def get_atom_data(imp, filetypes=['acd','scd'], filenames=[]):
         Each entry of the dictionary gives log-10 of ne, log-10 of Te and log-10 of the data
         as attributes atom_data[key].logNe, atom_data[key].logT, atom_data[key].data
     '''
-    atom_data = {}
-    
-    if filenames:
-        files = {}
-        for ii,typ in enumerate(filetypes):
-            files[typ] = filenames[ii]
-    else:
-        # get dictionary containing default list of ADAS atomic files
-        files = adas_files.adas_files_dict()[imp]
 
-    for filetype in filetypes:
-        filename = files[filetype]
+    # default files dictionary
+    all_files = adas_files.adas_files_dict()[imp] # all default files for a given species
+    
+    if isinstance(files, dict):
+        # user provided files choices as a dictionary
+        for filename in files:
+            if files[filename] is not None:
+                all_files[filename] = files[filename]
+
+    # exclude files not of interest
+    keys_to_delete = [key for key in all_files if key not in files]
+    for key in keys_to_delete:
+        del all_files[key]
+
+    atom_data = {}
+    for filetype in all_files:
 
         # find location of required ADF11 file
-        fileloc = adas_files.get_adas_file_loc(filename,filetype='adf11')
+        fileloc = adas_files.get_adas_file_loc(all_files[filetype],filetype='adf11')
 
         # load specific file and add it to output dictionary
         res = adas_file(fileloc)

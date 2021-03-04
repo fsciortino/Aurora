@@ -15,7 +15,7 @@ from . import source_utils
 from . import particle_conserv
 from . import plot_tools
 from . import synth_diags
-
+from . import adas_files
 
 class aurora_sim:
     '''Setup the input dictionary for an Aurora ion transport simulation from the given namelist.
@@ -72,9 +72,15 @@ class aurora_sim:
         self.Raxis_cm = self.geqdsk['RMAXIS']*100. # cm
         self.namelist['Baxis'] = self.geqdsk['BCENTR']
         
-        # load ionization and recombination rates
-        filetypes = ['acd','scd','ccd'] if self.namelist['cxr_flag'] else ['acd','scd']
-        self.atom_data = atomic.get_atom_data(self.imp,filetypes)
+        # specify which atomic data files should be used -- use defaults unless user specified in namelist
+        atom_files = {}
+        atom_files['acd'] = self.namelist['acd'] if 'acd' in self.namelist else adas_files.adas_files_dict()[self.imp]['acd']
+        atom_files['scd'] = self.namelist['scd'] if 'scd' in self.namelist else adas_files.adas_files_dict()[self.imp]['scd']
+        if self.namelist['cxr_flag']:
+            atom_files['ccd'] = self.namelist['ccd'] if 'ccd' in self.namelist else adas_files.adas_files_dict()[self.imp]['ccd']
+
+        # now load ionization and recombination rates
+        self.atom_data = atomic.get_atom_data(self.imp,files=atom_files)
 
         # set up radial and temporal grids
         self.setup_grids()
