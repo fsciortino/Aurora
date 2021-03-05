@@ -52,11 +52,11 @@ namelist['Phi0'] = 2e20  # particles/s
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
-# check radial grid:
-rvol_grid, pro_grid, qpr_grid, prox_param = aurora.create_radial_grid(namelist,plot=True)
+# check radial grid (also internally run by aurora_sim):
+#rvol_grid, pro_grid, qpr_grid, prox_param = aurora.create_radial_grid(namelist,plot=plot)
 
-# check time grid:
-_ = aurora.create_time_grid(namelist['timing'], plot=plot)
+# check time grid (also internally run by aurora_sim):
+#_ = aurora.create_time_grid(namelist['timing'], plot=plot)
 
 # set time-independent transport coefficients (flat D=1 m^2/s, V=-2 cm/s)
 D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s

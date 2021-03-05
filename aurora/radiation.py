@@ -117,16 +117,10 @@ def compute_rad(imp, nz, ne, Te,
     # calculate total radiation
     if prad_flag:
 
-        if 'plt' in adas_files_sub:  # check if user requested use of a specific file
-            atom_data = atomic.get_atom_data(imp, ['plt'],[adas_files_sub['plt']])
-        else:  # use default file from adas_files.adas_files_dict()
-            atom_data = atomic.get_atom_data(imp, ['plt'])
+        atom_data = atomic.get_atom_data(imp, files = {'plt': adas_files_sub['plt'] if 'plt' in adas_files_sub else None})
         pltt = atomic.interp_atom_prof(atom_data['plt'],logne,logTe) # W
 
-        if 'prb' in adas_files_sub:
-            atom_data = atomic.get_atom_data(imp, ['prb'],[adas_files_sub['prb']])
-        else:
-            atom_data = atomic.get_atom_data(imp, ['prb'])
+        atom_data = atomic.get_atom_data(imp, files = {'prb': adas_files_sub['prb'] if 'prb' in adas_files_sub else None})
         prb = atomic.interp_atom_prof(atom_data['prb'],logne,logTe) # W
 
         # line radiation for each charge state
@@ -158,10 +152,7 @@ def compute_rad(imp, nz, ne, Te,
             logTi = np.log10(Ti)
             
             # thermal CX radiation to total recombination and continuum radiation terms:
-            if 'prc' in adas_files_sub:
-                atom_data = atomic.get_atom_data(imp, ['prc'],[adas_files_sub['prc']])
-            else:
-                atom_data = atomic.get_atom_data(imp, ['prc'])
+            atom_data = atomic.get_atom_data(imp, files = {'prc': adas_files_sub['prc'] if 'prc' in adas_files_sub else None})
 
             # prc has weak dependence on density, so no difference between using ni or ne
             prc = atomic.interp_atom_prof(atom_data['prc'],logne,logTi,x_multiply=False) # W
@@ -174,16 +165,10 @@ def compute_rad(imp, nz, ne, Te,
                        
     if sxr_flag: # SXR-filtered radiation (spectral range depends on filter used for files)
 
-        if 'pls' in adas_files_sub:
-            atom_data = atomic.get_atom_data(imp, ['pls'],[adas_files_sub['pls']])
-        else:
-            atom_data = atomic.get_atom_data(imp, ['pls'])
+        atom_data = atomic.get_atom_data(imp, files = {'pls': adas_files_sub['pls'] if 'pls' in adas_files_sub else None})
         pls = atomic.interp_atom_prof(atom_data['pls'],logne,logTe) # W
 
-        if 'prs' in adas_files_sub:
-            atom_data = atomic.get_atom_data(imp, ['prs'],[adas_files_sub['prs']])
-        else:
-            atom_data = atomic.get_atom_data(imp, ['prs'])
+        atom_data = atomic.get_atom_data(imp, files = {'prs': adas_files_sub['prs'] if 'prs' in adas_files_sub else None})
         prs = atomic.interp_atom_prof(atom_data['prs'],logne,logTe) # W
 
         # SXR line radiation for each charge state
@@ -194,10 +179,7 @@ def compute_rad(imp, nz, ne, Te,
 
         try:
             # impurity bremsstrahlung in SXR range -- already included in 'sxr_cont_rad'
-            if 'pbs' in adas_files_sub:
-                atom_data = atomic.get_atom_data(imp, ['pbs'],[adas_files_sub['pbs']])
-            else:
-                atom_data = atomic.get_atom_data(imp, ['pbs'])
+            atom_data = atomic.get_atom_data(imp, files = {'pbs': adas_files_sub['pbs'] if 'pbs' in adas_files_sub else None})
             pbs = atomic.interp_atom_prof(atom_data['pbs'],logne,logTe) # W
             res['sxr_brems'] = nz[:,1:] * pbs 
         except IndexError:
@@ -210,10 +192,7 @@ def compute_rad(imp, nz, ne, Te,
         
     if spectral_brem_flag:  # spectral bremsstrahlung (i.e. brems at a specific wavelength)
 
-        if 'brs' in adas_files_sub:
-            atom_data = atomic.get_atom_data(imp, ['brs'],[adas_files_sub['brs']])
-        else:
-            atom_data = atomic.get_atom_data(imp, ['brs'])
+        atom_data = atomic.get_atom_data(imp, files = {'brs': adas_files_sub['brs'] if 'brs' in adas_files_sub else None})
         x,y,tab = atom_data['brs']
         brs = atomic.interp_atom_prof((x,y,tab.T),None,logTe) # W
 
@@ -298,28 +277,17 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     out['vol'] = vol
     if n0_cm3 is not None:
         out['n0_cm3'] = n0_cm3
-        
-    # load ionization and recombination rates
-    filetypes = ['acd','scd']
-    filenames = []
-    def_adas_files_dict = adas_files.adas_files_dict()
-    for filetype in filetypes:
-        if filetype in adas_files_sub:
-            filenames.append(adas_files_sub[filetype])
-        else:
-            filenames.append(def_adas_files_dict[imp][filetype])
-
-    # if background neutral density was given, load thermal CX rates too
-    if n0_cm3 is not None:
-        filetypes.append('ccd')
-        if 'ccd' in adas_files_sub:
-            filenames.append(adas_files_sub['ccd'])
-        else:
-            filenames.append(def_adas_files_dict[imp]['ccd']) 
 
     if nz_cm3 is None:
-        # obtain fractional abundances via a constant-fraction model 
-        atom_data = atomic.get_atom_data(imp,filetypes,filenames)
+        # load ionization and recombination rates
+        atom_files = {}
+        atom_files['acd'] = adas_files_sub['acd'] if 'acd' in adas_files_sub else adas_files.adas_files_dict()[imp]['acd']
+        atom_files['scd'] = adas_files_sub['scd'] if 'scd' in adas_files_sub else adas_files.adas_files_dict()[imp]['scd']
+        if n0_cm3 is not None:
+            atom_files['ccd'] = adas_files_sub['ccd'] if 'ccd' in adas_files_sub else adas_files.adas_files_dict()[imp]['ccd']
+        
+        # now load ionization and recombination rates
+        atom_data = atomic.get_atom_data(imp,files=atom_files)
 
         if n0_cm3 is None:
             # obtain fractional abundances without CX:
@@ -387,7 +355,7 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         #ax.plot(rhop, out['brems_dens'].sum(0)/1e6, label=r'$P_{brems}$')
         ax.plot(rhop, out['rad_tot_dens']/1e6, label=r'$P_{rad,tot}$')
         ax.set_xlabel(r'$\rho_p$')
-        ax.set_ylabel(fr'{imp} $P_{{rad}}$ [$MW/m^3$]')
+        ax.set_ylabel(fr'$P_{{rad}}$ {imp} [$MW/m^3$]')
         ax.legend().set_draggable(True)
         
         # plot cumulative power in MW 
@@ -397,7 +365,7 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         #ax.plot(rhop, out['brems'].sum(0)/1e6, label=r'$P_{brems}$')
         ax.plot(rhop, out['rad_tot']/1e6, label=r'$P_{rad,tot}$')
         ax.set_xlabel(r'$\rho_p$')
-        ax.set_ylabel(fr'{imp} $P_{{rad}}$ [MW]')
+        ax.set_ylabel(fr'$P_{{rad}}$ {imp} [MW]')
         fig.suptitle('Cumulative power')
         ax.legend().set_draggable(True)
         plt.tight_layout()
@@ -413,7 +381,7 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
             a_plot.plot(rhop, out['line_rad_dens'][cs,:]/1e6, ls)
             a_legend.plot([], [], ls, label=imp+fr'$^{{{cs}+}}$')
         a_plot.set_xlabel(r'$\rho_p$')
-        a_plot.set_ylabel(fr'{imp} $P_{{rad}}$ [$MW/m^3$]')
+        a_plot.set_ylabel(fr'$P_{{rad}}^{{line}}$ {imp} [$MW/m^3$]')
         ncol_leg = 2 if out['line_rad_dens'].shape[0]<25 else 3
         leg=a_legend.legend(loc='center right', fontsize=11, ncol=ncol_leg).set_draggable(True)
         a_legend.axis('off')
@@ -422,7 +390,7 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         fig,ax = plt.subplots()
         ax.plot(rhop, out['Z_avg'])
         ax.set_xlabel(r'$\rho_p$')
-        ax.set_ylabel(fr'{imp} $\langle Z \rangle$')
+        ax.set_ylabel(fr'$\langle Z \rangle$ \ {imp}')
         plt.tight_layout()
         
     return out
@@ -985,13 +953,11 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
                                            include_cx=True if n0_cm3!=0.0 else False)
 
     # line radiation
-    atom_data = atomic.get_atom_data(imp,['pls' if sxr else 'plt'], 
-                                     filenames=[] if line_rad_file is None else [line_rad_file])
-    pltt= atomic.interp_atom_prof(atom_data['pls' if sxr else 'plt'],None, np.log10(Te_eV)) # line radiation [W.cm^3]
+    atom_data = atomic.get_atom_data(imp,{'pls' if sxr else 'plt': None if line_rad_file is None else line_rad_file})
+    pltt= atomic.interp_atom_prof(atom_data['pls' if sxr else 'plt'], None, np.log10(Te_eV)) # line radiation [W.cm^3]
 
     # recombination and bremsstrahlung radiation
-    atom_data = atomic.get_atom_data(imp,['prs' if sxr else 'prb'], 
-                                     filenames=[] if cont_rad_file is None else [cont_rad_file])
+    atom_data = atomic.get_atom_data(imp,{'prs' if sxr else 'prb': None if cont_rad_file is None else cont_rad_file})
     prb = atomic.interp_atom_prof(atom_data['prs' if sxr else 'prb'],None, np.log10(Te_eV)) # continuum radiation [W.cm^3]
 
     pltt*= fz[:,:-1]

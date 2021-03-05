@@ -79,6 +79,10 @@ def load_default_namelist():
         'device': 'CMOD',
         'shot': 99999,
         'time': 1250, # in ms, for equilibrium
+        # atomic data (ADF11)
+        'acd': None, # use default
+        'scd': None, # use default
+        'ccd': None, # use default
     }
     return namelist
 

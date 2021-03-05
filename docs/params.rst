@@ -163,7 +163,18 @@ The table below describes the main input parameters to Aurora's forward model of
    * - `time`
      - 1250
      - Time [ms] used to read magnetic equilibrium, if this is fetched via MDS+.
+   * - `acd`
+     - None
+     - ADAS ADF11 ACD file (recombination rates). If left to None, uses defaults in :py:func:`~aurora.adas_files.adas_files_dict` for the chosen ion species.
+   * - `scd`
+     - None
+     - ADAS ADF11 SCD file (ionization rates). If left to None, uses defaults in :py:func:`~aurora.adas_files.adas_files_dict` for the chosen ion species.
+   * - `ccd`
+     - None
+     - ADAS ADF11 CCD file (nl-unresolved charge exchange rates). If left to None, uses defaults in :py:func:`~aurora.adas_files.adas_files_dict` for the chosen ion species.
 
+    
+    
 
 
 Spatio-temporal grids

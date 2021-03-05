@@ -19,39 +19,37 @@ from . import coords
 
 
 class solps_case:
+    '''Read SOLPS output and prepare for Aurora impurity-neutral analysis. 
+    
+    Parameters
+    ----------
+    path : str
+        Path to SOLPS output files. If form='full', this path indicates where to find the directory named "baserun"
+        and the 'solps_run' one. If these are "extracted" files from SOLPS (form='extracted'),
+        then this is the path to the disk location where each of the required files
+        can be found. 
+    geqdsk : str or `omfit_classes.omfit_geqdsk.OMFITgeqdsk` class instance
+        Path to the geqdsk to load from disk, or instance of the `omfit_classes.omfit_geqdsk.omfit_geqdsk` 
+        class that contains the processed gEQDSK file already. 
+    solps_run : str
+        If form='full', this string specifies the directory (relative to the given path)
+        where case-specific files for a SOLPS run can be found (e.g. 'b2fstate').
+    case_num : int
+        Index/integer identifying the SOLPS case of interest. 
+    form : str
+        Form of SOLPS output to be loaded, one of {'full','extracted'}. 
+        The 'full' output consists of 'b2fstate', 'b2fgmtry', 'fort.44', etc.
+        The 'extracted' output consists of individual files containing one quantity each.
+        If form='extracted', the 'extracted_labels' argument allows to specify files 
+        nomanclature. 
+    extracted_labels : dict
+        Only used if form='extracted', this dictionary allows specification of the names of
+        files/variables to be extracted. Default is to use
+        [RadLoc, VertLoc, Ne, Te, NeuDen, NeuTemp, MolDen, MolTemp, Ti]
+        each of which will be expected to have "case_num" appended to the name of the file.
+    '''
     def __init__(self, path, geqdsk, solps_run='',
-                 case_num=0, form='extracted', extracted_labels=None):
-        '''Read SOLPS output and prepare for Aurora impurity-neutral analysis. 
-
-        Parameters
-        ----------
-        path : str
-            Path to output files. If these are "extracted" files from SOLPS (form='extracted'),
-            then this is the path to the disk location where each of the required files
-            can be found. 
-            If form='full', this path indicates where to find the directory named "baserun"
-            and the 'solps_run' one.
-        geqdsk : str or `omfit_classes.omfit_geqdsk.OMFITgeqdsk` class instance
-            Path to the geqdsk to load from disk, or instance of the `omfit_classes.omfit_geqdsk.omfit_geqdsk` 
-            class that contains the processed gEQDSK file already. 
-        solps_run : str
-            If form='full', this string specifies the directory (relative to the given path)
-            where case-specific files for a SOLPS run can be found (e.g. 'b2fstate').
-        case_num : int
-            Index/integer identifying the SOLPS case of interest. 
-        form : str
-            Form of SOLPS output to be loaded, one of {'full','extracted'}. 
-            The 'full' output consists of 'b2fstate', 'b2fgmtry', 'fort.44', etc.
-            The 'extracted' output consists of individual files containing one quantity each.
-            If form='extracted', the 'extracted_labels' argument allows to specify files 
-            nomanclature. 
-        extracted_labels : dict
-            Only used if form='extracted', this dictionary allows specification of the names of
-            files/variables to be extracted. Default is to use
-            [RadLoc, VertLoc, Ne, Te, NeuDen, NeuTemp, MolDen, MolTemp, Ti]
-            each of which will be expected to have "case_num" appended to the name of the file.
-        '''
-
+                 case_num=0, form='full', extracted_labels=None):
         self.path = path
         self.solps_run = solps_run
         self.case_num = case_num
@@ -150,7 +148,6 @@ class solps_case:
         
         # set zero densities equal to min to avoid log issues
         #self.quants['nn'][self.quants['nn']==0.0] = nsmallest(2,np.unique(self.quants['nn'].flatten()))[1]
-
         
     def load_data(self, fields=None, P_idxs=None, R_idxs=None,
                   Rmin=None, Rmax=None, Pmin=None, Pmax=None):
@@ -224,22 +221,61 @@ class solps_case:
             self.fort46 = self.load_fort46()
             
             quants['ne'] = self.b2fstate['ne'][1:-1,1:-1][R_idxs,:][:,P_idxs] # m^-3
+            quants['Te'] = self.b2fstate['te'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
+            quants['Ti'] = self.b2fstate['ti'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
+            
+            # density of atomic species if B2 fluid neutral model is used:
             #quants['nn'] = self.b2fstate['na'][0,R_idxs,:][:,P_idxs] # m^-3   # only neutral component
+
+            # assume that EIRENE neutral model is used:
             nn44 = self.fort44['dab2'][:,:,0].T
             nn44[nn44==0.0] = nsmallest(2,np.unique(nn44.flatten()))[1]
             quants['nn'] = nn44[R_idxs,:][:,P_idxs] # m^-3   # only neutral component
             quants['Tn'] = self.fort44['tab2'][:,:,0].T[R_idxs,:][:,P_idxs]/constants.e # eV
-            quants['Te'] = self.b2fstate['te'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
-            quants['Ti'] = self.b2fstate['ti'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
+            
             quants['nm'] = self.fort44['dmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular density
             quants['Tm'] = self.fort44['tmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular temperature
             
             # EIRENE nodes and triangulation
             self.xnodes, self.ynodes, self.triangles = self.load_eirene_mesh()
 
+            # identify species (both B2 and EIRENE):
+            self.species_id()
+            
+            
+    def species_id(self):
+        '''Identify species included in SOLPS run, both for B2 and EIRENE quantities.
+        This is only designed to work in the "full" data format.
+        '''
+        assert self.form=='full'
+        
+        #b2_Zns = self.b2fstate['zn']  # nuclear charge (not ionization state)
+        b2_Ans = self.b2fstate['am'] # nuclear masses (2 for H/D/T, 4 for He, etc.)
 
-            
-            
+        # TODO: separate use of zamin and zamax for bundling
+        b2_Zas = self.b2fstate['zamin'] # atom charge (min over bundle)
+        #b2_Za_max = self.b2fstate['zamax'] # atom charge (max over bundle)
+        
+        # import here to avoid issues when building docs or package
+        from omfit_classes.utils_math import atomic_element
+
+        self.b2_species = b2_species = {}
+        for ii,(Zi,An) in enumerate(zip(b2_Zas,b2_Ans)):
+            # get name of atomic species from charge and atomic mass number
+            out = atomic_element(Z_ion=Zi, A=An)
+            _spec = list(out.keys())[0]
+            cs_str = f'{int(Zi)}+' if int(Zi)!=0 else '0'
+            b2_species[ii] = {'symbol': out[_spec]['symbol']+cs_str, 'Z':int(Zi),'A':int(An)}
+
+        self.eirene_species = eirene_species = {'atm':{}, 'mol':{}, 'ion':{}}
+        _atm = [spec for spec in self.fort44['species'] if ((not any(map(str.isdigit, spec)))&('+' not in spec)) ]
+        for ss,atm in enumerate(_atm): eirene_species['atm'][ss] = atm
+        _mol = [spec for spec in self.fort44['species'] if ((any(map(str.isdigit, spec)))&('+' not in spec))]
+        for ss,mol in enumerate(_mol): eirene_species['mol'][ss] = mol
+        _ion = [spec for spec in self.fort44['species'] if '+'  in spec]
+        for ss,ion in enumerate(_ion): eirene_species['ion'][ss] = ion
+
+        
     def load_mesh_extra(self):
         '''Load the mesh.extra file.
         '''
@@ -532,7 +568,8 @@ class solps_case:
 
 
 
-    def get_radial_prof(self, quant='nn', dz_mm=5, plot=False):
+    def get_radial_prof(self, vals, dz_mm=5, label='', plot=False):
+        #quant='nn', dz_mm=5, plot=False):
         '''Extract radial profiles of a quantity "quant" from the SOLPS run. 
         This function returns profiles on the low- (LFS) and high-field-side (HFS) midplane, 
         as well as flux surface averaged (FSA) ones. 
@@ -571,6 +608,10 @@ class solps_case:
             Standard deviation of HFS midplane profile on rhop_HFS grid, based on variations 
             within +/-`dz_mm`/2 millimeters from the midplane.
         '''
+        
+        if np.prod(vals.shape)==self.crx.shape[1]*self.crx.shape[2]:
+            # Exclude boundary cells
+            vals = vals[1:-1,1:-1]
 
         rhop_2D = coords.get_rhop_RZ(self.R,self.Z, self.geqdsk)
         
@@ -579,12 +620,12 @@ class solps_case:
             if any(coords.get_rhop_RZ(r,z, self.geqdsk)<np.min(rhop_2D)):
                 return np.nan
             else:
-                return griddata((self.R.flatten(),self.Z.flatten()), self.quants[quant].flatten(),
+                return griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(), #self.quants[quant].flatten(),
                                 (r,z), method='linear')
 
         prof_FSA = self.geqdsk['fluxSurfaces'].surfAvg(function=avg_function)
         rhop_FSA = np.sqrt(self.geqdsk['fluxSurfaces']['geo']['psin'])
-        
+
         # get R axes on the midplane on the LFS and HFS
         _dz = (np.max(self.Z) - np.min(self.Z))/((self.nx+self.ny)/10.) # rule-of-thumb to identify vertical resolution
         mask = (self.Z.flatten()>-_dz)&(self.Z.flatten()<_dz)
@@ -598,7 +639,7 @@ class solps_case:
 
         # get midplane radial profile...
         # ...on the LFS:
-        _prof_LFS = griddata((self.R.flatten(),self.Z.flatten()), self.quants[quant].flatten(),
+        _prof_LFS = griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(), #self.quants[quant].flatten(),
                              (_R_LFS,0.5*dz_mm*1e-3*np.random.random(len(_R_LFS))),
                              #(_R_LFS,np.zeros_like(_R_LFS)),
                              method='linear')
@@ -607,7 +648,7 @@ class solps_case:
         rhop_LFS = coords.get_rhop_RZ(R_LFS,np.zeros_like(R_LFS), self.geqdsk)
 
         # ... and on the HFS:
-        _prof_HFS = griddata((self.R.flatten(),self.Z.flatten()), self.quants[quant].flatten(),
+        _prof_HFS = griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(), #self.quants[quant].flatten(),
                              #(_R_HFS, np.zeros_like(_R_HFS)),
                              (_R_HFS,0.5*dz_mm*1e-3*np.random.random(len(_R_HFS))),
                              method='linear')
@@ -646,10 +687,12 @@ class solps_case:
             ax.plot(rhop_FSA, prof_FSA, label='FSA')
             ax.plot(rhop_LFS, prof_LFS, label='LFS midplane')
             ax.plot(rhop_HFS, prof_HFS, label='HFS midplane')
-            ax.plot(rhop_chord_LFS, self.quants[quant][:,JXA], label='LFS grid midplane')
-            ax.plot(rhop_chord_HFS, self.quants[quant][:,JXI], label='HFS grid midplane')
+            ax.plot(rhop_chord_LFS, vals[:,JXA], #self.quants[quant][:,JXA],
+                    label='LFS grid midplane')
+            ax.plot(rhop_chord_HFS, vals[:,JXI], #self.quants[quant][:,JXI],
+                    label='HFS grid midplane')
             ax.set_xlabel(r'$\rho_p$')
-            ax.set_ylabel(self.labels[quant]) #lab)
+            ax.set_ylabel(label) #self.labels[quant]) #lab)
             ax.legend(loc='best').set_draggable(True)
             plt.tight_layout()
 
