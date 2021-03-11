@@ -11,6 +11,7 @@ plt.ion()
 from scipy.interpolate import griddata, interp1d
 import matplotlib as mpl
 import matplotlib.tri as tri
+from matplotlib import collections as mc
 from heapq import nsmallest
 import warnings
 from scipy import constants
@@ -380,7 +381,7 @@ class solps_case:
         with open(self.path +os.sep+self.solps_run+os.sep+'fort.46', 'r') as f:
             contents = f.readlines()
 
-        out['DIM']=contents[0].split()[0]
+        out['NTRII']=contents[0].split()[0]
 
         NATM = out['NATM'] = int(contents[1].split()[0][0])
         NMOL = out['NMOL'] = int(contents[1].split()[1][0])
@@ -409,7 +410,7 @@ class solps_case:
             elif key.endswith('m'): num=NMOL
             elif key.endswith('i'): num=NION
             else: num=1
-            if key in ['species','DIM']:
+            if key in ['species','NTRII']:
                 continue
             out[key] = np.array(out[key]).reshape(-1,num,order='F')
 
@@ -430,7 +431,33 @@ class solps_case:
 
         return xnodes, ynodes, triangles-1  # -1 for python indexing
 
-                
+   
+    def plot_wall_geometry(self):
+        '''Method to plot vessel wall segment geometry from wall_geometry field in fort.44 file'''
+        
+        out=self.load_fort44()
+        wall_geometry=out['wall_geometry']
+        
+        Wall_Seg=[]
+        RR=wall_geometry[0::2]
+        ZZ=wall_geometry[1::2]
+        NLIM=out['NLIM']
+        
+        for i in range(0,NLIM):
+            line=[(RR[2*i],ZZ[2*i]),(RR[2*i+1],ZZ[2*i+1])]
+            Wall_Seg.append(line)
+            
+        Wall_Collection=mc.LineCollection(Wall_Seg,colors='b',linewidth=2)
+        
+        wallfig, wallax = plt.subplots()
+        
+        wallax.add_collection(Wall_Collection)
+        wallax.set_xlim(RR.min()-0.05,RR.max()+0.05)
+        wallax.set_ylim(ZZ.min()-0.05,ZZ.max()+0.05)
+        wallax.set_xlabel('Radial Coordinate (m)')
+        wallax.set_ylabel('Vertical Coordinate (m)')
+        wallax.set_aspect('equal')
+                     
     def plot2d_b2(self, vals, ax=None, scale='log', label='', lb=None, ub=None, **kwargs):
         '''Method to plot 2D fields on B2 grids. 
         Colorbars are set to be manually adjustable, allowing variable image saturation.
@@ -887,3 +914,33 @@ def get_fort44_info(NDX,NDY,NATM,NMOL,NION,NSTRA,NCL,NPLS,NSTS,NLIM):
     #fort44_info.update({'wall_geometry' : [r'Wall geometry points', ((NSTRA+1)*(5*NSTS+1),)]})  # check dimensions
     fort44_info.update({'wall_geometry' : [r'Wall geometry points', (4*NLIM,)]})  # check dimensions
     return fort44_info
+
+def get_fort46_info(NTRII,NATM,NMOL,NION):
+    '''Collection of labels and dimensions for all fort.46 variables, as collected in the 
+    SOLPS-ITER 2020 manual.
+    '''
+    
+    fort46_info = {
+        'PDENA': [r'Atom particle density ($cm^{-3}$)',(NTRII,NATM)],
+        'PDENM': [r'Molecule particle density ($cm^{-3}$)', (NTRII,NMOL)],
+        'PDENI': [r'Test ion particle density ($cm^{-3}$)', (NTRII,NION)],
+        'EDENA': [r'Energy density carried by atoms ($eV*cm^{-3}$)', (NTRII,NATM)],
+        'EDENM': [r'Energy density carried by molecules ($eV*cm^{-3}$)', (NTRII,NMOL)],
+        'EDENI': [r'Energy density carried by test ions ($eV*cm^{-3}$)', (NTRII,NION)],
+        'VXDENA': [r'X-directed momentum density carried by atoms ($g*cm^{-2}*s^{-1}$)', (NTRII,NATM)],
+        'VXDENM': [r'X-directed momentum density carried by molecules ($g*cm^{-2}*s^{-1}$)', (NTRII,NMOL)],
+        'VXDENI': [r'X-directed momentum density carried by test ions ($g*cm^{-2}*s^{-1}$)', (NTRII,NION)],
+        'VYDENA': [r'Y -directed momentum density carried by atoms ($g*cm^{-2}*s^{-1}$)', (NTRII,NATM)],
+        'VYDENM': [r'Y -directed momentum density carried by molecules ($g*cm^{-2}*s^{-1}$)', (NTRII,NMOL)],
+        'VYDENI': [r'Y -directed momentum density carried by test ions ($g*cm^{-2}*s^{-1}$)', (NTRII,NION)],
+        'VZDENA': [r'Z-directed momentum density carried by atoms ($g*cm^{-2}*s^{-1}$)', (NTRII,NATM)],
+        'VZDENM': [r'Z-directed momentum density carried by molecules ($g*cm^{-2}*s^{-1}$)', (NTRII,NMOL)],
+        'VZDENI': [r'Z-directed momentum density carried by test ions ($g*cm^{-2}*s^{-1}$)', (NTRII,NION)],
+        'VOLUMES': [r'Triangle volumes ($cm^{-3}$)', (NTRII)],
+        'PUX': [r'X-component of the poloidal unit vector at the triangle center', (NTRII)],
+        'PUY': [r'Y-component of the poloidal unit vector at the triangle center', (NTRII)],
+        'PVX': [r'X-component of the radial unit vector at the triangle center', (NTRII)],
+        'PVY': [r'Y-component of the radial unit vector at the triangle center', (NTRII)],
+    }
+    
+    return fort46_info
