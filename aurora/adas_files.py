@@ -60,10 +60,10 @@ def get_adas_file_loc(filename, filetype='adf11'):
 
     elif os.path.exists(filename):
         # check if user actually gave a complete filepath. Don't copy the file from the original location
-        filepath = filename
-        filename = filepath.split('/')[-1]
+        #filepath = filename
+        #filename = filepath.split('/')[-1]
         #shutil.copyfile(filepath, adas_data_dir+filetype+os.sep+filename)
-        return adas_data_dir+filetype+os.sep+filename
+        return filename #adas_data_dir+filetype+os.sep+filename
     
     elif 'AURORA_ADAS_DIR' in os.environ:
         loc = os.environ['AURORA_ADAS_DIR']+os.sep+filetype+os.sep+filename

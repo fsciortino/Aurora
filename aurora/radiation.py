@@ -953,11 +953,11 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
                                            include_cx=True if n0_cm3!=0.0 else False)
 
     # line radiation
-    atom_data = atomic.get_atom_data(imp,{'pls' if sxr else 'plt': None if line_rad_file is None else line_rad_file})
+    atom_data = atomic.get_atom_data(imp,{'pls' if sxr else 'plt': line_rad_file})
     pltt= atomic.interp_atom_prof(atom_data['pls' if sxr else 'plt'], None, np.log10(Te_eV)) # line radiation [W.cm^3]
 
     # recombination and bremsstrahlung radiation
-    atom_data = atomic.get_atom_data(imp,{'prs' if sxr else 'prb': None if cont_rad_file is None else cont_rad_file})
+    atom_data = atomic.get_atom_data(imp,{'prs' if sxr else 'prb': cont_rad_file})
     prb = atomic.interp_atom_prof(atom_data['prs' if sxr else 'prb'],None, np.log10(Te_eV)) # continuum radiation [W.cm^3]
 
     pltt*= fz[:,:-1]
