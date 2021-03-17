@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 plt.ion()
 from scipy import constants
 import warnings, copy
-from scipy.constants import e as q_electron,k as k_B, h, m_p, c as c_speed
+from scipy import constants
 
 from . import atomic
 from . import adas_files
@@ -206,6 +206,57 @@ def compute_rad(imp, nz, ne, Te,
     return res
 
 
+def sync_rad(B_T, ne_cm3, Te_eV, r_min_cm, R_maj_cm):
+    '''Calculate synchrotron radiation following Trubnikov's formula [1]_.
+
+    Parameters
+    -----------------
+    B_T : float or 1D array
+        Magnetic field amplitude [T].
+    ne_cm3 : float or 1D array
+        Electron density [:math:`cm^{-3}`]
+    Te_eV : float or 1D array
+        Electron temperature [:math:`eV`]
+    r_min_cm : float
+        Minor radius [cm].
+    R_maj_cm : float
+         Major radius [cm].
+
+    Returns
+    array
+        Rate of synchrotron radiation [:math:`W/cm^3`]
+
+    References
+    -----------------
+    
+    .. [1] Trubnikov, JETP Lett. 16 25 (1972)
+    
+    '''
+    # reflection coefficient of plasma boundary
+    refl_coeff=0.8
+
+    # plasma frequency
+    w_pe = np.sqrt(4.*np.pi*ne_cm3*constants.e**2/constants.m_e)
+    
+    # electron cyclotron frequency
+    w_ce = constants.e*abs(B_T)/(constants.m_e*constants.c)
+
+    # Trubnikov reduced temperature
+    t   = constants.k*Te_eV/(constants.m_e*constants.c**2)
+
+    # dimensionless opacity parameter
+    pa = r_min_cm*w_pe**2/(constants.c*w_ce)
+
+    # parameter of inhomogeneity of magnetic field in torus 
+    chi_T = 1./(R_maj_cm/r_min_cm)/np.sqrt(t)
+
+    # universal formula (1)
+    phi = 60.*t**1.5*np.sqrt((1. - refl_coeff)*(1.+chi_T)/pa)
+
+    # total rate (eq. 3, but no volume multiplication)
+    sync_rate = 1e7*constants.m_e/(3.*np.pi*constants.c)*t*(w_pe*w_ce)**2.*phi  # erg-->J
+
+    return sync_rate
 
 
 
@@ -812,16 +863,16 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
             pec_dr[ii] = 10**log10pec_dict[lam]['drsat'].ev(np.log10(ne_cm3),np.log10(Te_eV))
     
     # Doppler broadening
-    mass = m_p * ion_A
-    dnu_g = np.sqrt(2.*(Ti_eV*q_electron)/mass)*(c_speed/wave_A)/c_speed
+    mass = constants.m_p * ion_A
+    dnu_g = np.sqrt(2.*(Ti_eV*constants.e)/mass)*(constants.c/wave_A)/constants.c
     
     # set a variable delta lambda based on the width of the broadening
-    _dlam_A = wave_A**2/c_speed* dnu_g * 5 # 5 standard deviations
+    _dlam_A = wave_A**2/constants.c* dnu_g * 5 # 5 standard deviations
     
     lams_profs_A =np.linspace(wave_A-_dlam_A, wave_A + _dlam_A, 100, axis=1) 
     
     theta_tmp = 1./(np.sqrt(np.pi)*dnu_g[:,None])*\
-                np.exp(-((c_speed/lams_profs_A-c_speed/wave_A[:,None])/dnu_g[:,None])**2)
+                np.exp(-((constants.c/lams_profs_A-constants.c/wave_A[:,None])/dnu_g[:,None])**2)
 
     # Normalize Gaussian profile
     theta = np.einsum('ij,i->ij', theta_tmp, 1./np.trapz(theta_tmp,x=lams_profs_A,axis=1))

@@ -283,16 +283,16 @@ class aurora_sim:
         lTe = np.log10(self._Te)
 
         # get electron impact ionization and radiative recombination rates in units of [s^-1]
-        S_rates = atomic.interp_atom_prof(self.atom_data['scd'],lne, lTe)
-        R_rates = atomic.interp_atom_prof(self.atom_data['acd'],lne, lTe)
+        S_rates = atomic.interp_atom_prof(self.atom_data['scd'],lne, lTe, x_multiply=True)
+        R_rates = atomic.interp_atom_prof(self.atom_data['acd'],lne, lTe, x_multiply=True)
 
         if self.namelist['cxr_flag']:
             # include thermal charge exchange recombination
             lTi = np.log10(self._Ti)
             alpha_CX_rates = atomic.interp_atom_prof(self.atom_data['ccd'], lne, lTi, x_multiply=False)
 
-            # change rates from units of [1/s/cm^3] to [1/s]
-            R_rates += self._n0[:,None] * alpha_CX_rates[:,:R_rates.shape[1],:]   # select only relevant CCD ion stages (useful for Foster scaling)
+            # change rates from units of [1/s/cm^3] to [1/s] - select only relevant CCD ion stages (useful for Foster scaling)
+            R_rates += self._n0[:,None] * alpha_CX_rates[:,:R_rates.shape[1],:]   
 
         if self.namelist['nbi_cxr_flag']:
             # include charge exchange between NBI neutrals and impurities
