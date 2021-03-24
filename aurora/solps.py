@@ -359,8 +359,12 @@ class solps_case:
             if key in ['species','NDX','NDY','NATM','NMOL','NION','NSTRA','NCL','NPLS','NSTS','NLIM']:
                 continue
             # find appropriate shape from fort44_info dictionary
-            out[key] = np.array(out[key]).reshape(*fort44_info[key][1],order='F')
-            
+            try:
+                out[key] = np.array(out[key]).reshape(*fort44_info[key][1],order='F')
+            except:
+                # could not parse this quantity. Check why!
+                print(f'Variable {key} in fort.44 could not be parsed!')
+
         return out
 
 
@@ -661,6 +665,10 @@ class solps_case:
             prof_LFS = np.nanmean(_prof_LFS.reshape(-1,10),axis=1) # average across 10 near points
             prof_HFS = np.nanmean(_prof_HFS.reshape(-1,10),axis=1)  # average across 10 near points
 
+            # take std as a measure of variation/noise around chosen location
+            prof_LFS_std = np.nanstd(_prof_LFS.reshape(-1,10),axis=1) # std across 10 near points
+            prof_HFS_std = np.nanstd(_prof_HFS.reshape(-1,10),axis=1)  # std across 10 near points
+            
         # now obtain also the simple poloidal grid slice near the midplane (LFS and HFS)
         # These are commonly used for SOLPS analysis, using the JXA and JXI indices (which we re-compute here)
         Z_core = self.Z[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
@@ -685,12 +693,12 @@ class solps_case:
             # compare FSA radial profiles with midplane (LFS and HFS) ones
             fig,ax = plt.subplots()
             ax.plot(rhop_FSA, prof_FSA, label='FSA')
-            ax.plot(rhop_LFS, prof_LFS, label='LFS midplane')
-            ax.plot(rhop_HFS, prof_HFS, label='HFS midplane')
-            ax.plot(rhop_chord_LFS, vals[:,JXA], #self.quants[quant][:,JXA],
-                    label='LFS grid midplane')
-            ax.plot(rhop_chord_HFS, vals[:,JXI], #self.quants[quant][:,JXI],
-                    label='HFS grid midplane')
+            l = ax.plot(rhop_LFS, prof_LFS, label='LFS midplane')
+            ax.errorbar(rhop_LFS, prof_LFS, prof_LFS_std, c=l[0].get_color(), alpha=0.8)
+            l = ax.plot(rhop_HFS, prof_HFS, label='HFS midplane')
+            ax.errorbar(rhop_HFS, prof_HFS, prof_HFS_std, c=l[0].get_color(), alpha=0.8)
+            #ax.plot(rhop_chord_LFS, vals[:,JXA], label='LFS grid midplane')
+            #ax.plot(rhop_chord_HFS, vals[:,JXI], label='HFS grid midplane')
             ax.set_xlabel(r'$\rho_p$')
             ax.set_ylabel(label) #self.labels[quant]) #lab)
             ax.legend(loc='best').set_draggable(True)
@@ -883,7 +891,6 @@ def get_fort44_info(NDX,NDY,NATM,NMOL,NION,NSTRA,NCL,NPLS,NSTS,NLIM):
         }
     )
 
-    # extra, undocumente?
-    #fort44_info.update({'wall_geometry' : [r'Wall geometry points', ((NSTRA+1)*(5*NSTS+1),)]})  # check dimensions
-    fort44_info.update({'wall_geometry' : [r'Wall geometry points', (4*NLIM,)]})  # check dimensions
+    # extra, undocumented
+    fort44_info.update({'wall_geometry' : [r'Wall geometry points', (4*NLIM,)]})
     return fort44_info
