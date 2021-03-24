@@ -41,14 +41,14 @@ class aurora_sim:
         for fast neutrals
         - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
         This method still needs more testing within this class. Contact sciortino-at-psfc.mit.edu for details. 
-    setup2load : str, optional
-        Path to file from which Aurora simulation setup should be loaded. 
-        This is expected in pickle format, e.g. "test.pkl". Any `aurora_sim` instance
-        can be saved to file using the :py:meth:`~aurora.core.save` method.             
+          
     '''
-    def __init__(self, namelist={}, geqdsk=None, nbi_cxr=None, pickle2load=None):
-        if pickle2load is not None:
-            self.load(pickle2load)
+    def __init__(self, namelist, geqdsk=None, nbi_cxr=None):
+
+        if namelist is None:
+            # option useful for calls like omfit_classes.OMFITaurora(filename)
+            # A call like omfit_classes.OMFITaurora('test', namelist, geqdsk=geqdsk) is also possible
+            # to initialize the class as a dictionary.
             return
         
         self.namelist = namelist
@@ -283,16 +283,16 @@ class aurora_sim:
         lTe = np.log10(self._Te)
 
         # get electron impact ionization and radiative recombination rates in units of [s^-1]
-        S_rates = atomic.interp_atom_prof(self.atom_data['scd'],lne, lTe)
-        R_rates = atomic.interp_atom_prof(self.atom_data['acd'],lne, lTe)
+        S_rates = atomic.interp_atom_prof(self.atom_data['scd'],lne, lTe, x_multiply=True)
+        R_rates = atomic.interp_atom_prof(self.atom_data['acd'],lne, lTe, x_multiply=True)
 
         if self.namelist['cxr_flag']:
             # include thermal charge exchange recombination
             lTi = np.log10(self._Ti)
             alpha_CX_rates = atomic.interp_atom_prof(self.atom_data['ccd'], lne, lTi, x_multiply=False)
 
-            # change rates from units of [1/s/cm^3] to [1/s]
-            R_rates += self._n0[:,None] * alpha_CX_rates[:,:R_rates.shape[1],:]   # select only relevant CCD ion stages (useful for Foster scaling)
+            # change rates from units of [1/s/cm^3] to [1/s] - select only relevant CCD ion stages (useful for Foster scaling)
+            R_rates += self._n0[:,None] * alpha_CX_rates[:,:R_rates.shape[1],:]   
 
         if self.namelist['nbi_cxr_flag']:
             # include charge exchange between NBI neutrals and impurities

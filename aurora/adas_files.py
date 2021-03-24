@@ -59,11 +59,11 @@ def get_adas_file_loc(filename, filetype='adf11'):
         return adas_data_dir+filetype+os.sep+filename
 
     elif os.path.exists(filename):
-        # check if user actually gave a complete filepath. If so, copy file to adas_data directory
-        filepath = filename
-        filename = filepath.split('/')[-1]
-        shutil.copyfile(filepath, adas_data_dir+filetype+os.sep+filename)
-        return adas_data_dir+filetype+os.sep+filename
+        # check if user actually gave a complete filepath. Don't copy the file from the original location
+        #filepath = filename
+        #filename = filepath.split('/')[-1]
+        #shutil.copyfile(filepath, adas_data_dir+filetype+os.sep+filename)
+        return filename #adas_data_dir+filetype+os.sep+filename
     
     elif 'AURORA_ADAS_DIR' in os.environ:
         loc = os.environ['AURORA_ADAS_DIR']+os.sep+filetype+os.sep+filename
@@ -359,9 +359,9 @@ def adas_files_dict():
     files["Ar"]["pbs"] = "pbsx5_ar.dat"
     files["Ar"]["prc"] = "prc89_ar.dat"
     files["Ca"] = {}     #20
-    files["Ca"]['acd'] = "acd89_ca.type_a_large" #"acd85_ca.dat"
-    files["Ca"]['scd'] = "scd50_ca.dat" #"scd85_ca.dat"
-    files["Ca"]['ccd'] = "ccd89_w.dat"  # file not available, use first 20 ion stages using Foster scaling
+    files["Ca"]['acd'] = "acd85_ca.dat"
+    files["Ca"]['scd'] = "scd85_ca.dat"
+    files["Ca"]['ccd'] = "ccd89_w.dat"  #Ca CCD file not available, use first 20 ion stages using Foster scaling
     files["Ca"]['prb'] = "prb85_ca.dat" # not public on OPEN-ADAS, must request 
     files["Ca"]['plt'] = "plt85_ca.dat" # not public on OPEN-ADAS, must request 
     files["Ca"]['pls'] = "pls_Ca_14.dat"

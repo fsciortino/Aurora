@@ -400,8 +400,19 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
 
         # cubic interpolation for smoother visualization:
         x_fine = np.linspace(np.min(x), np.max(x),10000)
+
+        def monotonic(x):
+            dx = np.diff(x)
+            return np.all(dx <= 0) or np.all(dx >= 0)
+            
         for cs in range(fz.shape[1]):
-            fz_i = interp1d(x, fz[:,cs], kind='cubic')(x_fine)
+            if monotonic(x):
+                fz_i = interp1d(x, fz[:,cs], kind='cubic')(x_fine)
+            else:
+                # cannot interpolate on non-monotonic grids (hollow temperature?)
+                fz_i = fz[:,cs]
+                x_fine = x
+
             axx.plot(x_fine, fz_i, ls=ls)
             imax = np.argmax(fz_i)
             axx.text(np.max([0.05,x_fine[imax]]), fz_i[imax], cs,
