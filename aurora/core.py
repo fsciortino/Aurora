@@ -326,9 +326,11 @@ class aurora_sim:
         from omfit_classes.utils_math import atomic_element
 
         # background mass number (=2 for D)
+        self.main_element = self.namelist['main_element']
         out = atomic_element(symbol=self.namelist['main_element'])
         spec = list(out.keys())[0]
         self.main_ion_A = int(out[spec]['A'])
+        self.main_ion_Z = int(out[spec]['Z'])
 
         # factor for v = machnumber * sqrt((3T_i+T_e)k/m)
         vpf = self.namelist['SOL_mach']*np.sqrt(q_electron/m_p/self.main_ion_A)  
