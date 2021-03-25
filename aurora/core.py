@@ -172,7 +172,7 @@ class aurora_sim:
         self.ne = self._ne[self.save_time,:]
         self.Te = self._Te[self.save_time,:]
         self.Ti = self._Ti[self.save_time,:]
-        self.n0 = self._n0  # at present, n0 is assumed to be time-indpt
+        self.n0 = self._n0[self.save_time,:]
         
         # Get time-dependent parallel loss rate
         self.par_loss_rate = self.get_par_loss_rate()
@@ -268,8 +268,8 @@ class aurora_sim:
         Ti[Ti < min_T] = min_T
         ne[ne < min_ne] = min_ne
 
-        # make sure that Te,ne have the same shape at this stage (allow n0 to be time-indpt)
-        ne,Te,Ti = np.broadcast_arrays(ne,Te,Ti)
+        # make sure that Te,ne,Ti and n0 have the same shape at this stage
+        ne,Te,Ti,n0 = np.broadcast_arrays(ne,Te,Ti,n0)
 
         return ne,Te,Ti,n0
 

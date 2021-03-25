@@ -96,5 +96,9 @@ def animate_aurora(x,y,z, xlabel='', ylabel='', zlabel='',
                                    frames=len(y), interval=20, blit=True)
 
     if save_filename is not None:
-        anim.save(save_filename+'.mp4',fps=30, extra_args=['-vcodec','libx264'])
+        if 'gif' in save_filename:
+            anim.save(save_filename,fps=30)
+        else:
+            anim.save(save_filename+'.mp4',fps=30, extra_args=['-vcodec','libx264'])
+        
 

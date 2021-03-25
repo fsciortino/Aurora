@@ -181,7 +181,7 @@ def get_exc_state_ratio(m, N1, ni, ne, Te, rad_prof=None, rad_label=r'rmin [cm]'
     Nm : array of shape [len(ni)=len(N1),len(ne),len(Te)]
         Density of electrons in excited state `n`  [:math:`cm^{-3}`]
     """
-    if m < 1:
+    if m <= 1:
         raise ValueError('Excited state principal quantum number must be greater than 1!')
     if m > 9:
         raise ValueError('Selected excited state value not available!')
@@ -347,8 +347,7 @@ def Lya_to_neut_dens(emiss_prof, ne, Te, ni=None, plot=True, rhop=None,
     >>> N2_colrad,axs = Lya_to_neut_dens_basic(emiss_prof, ne, Te, ni, 
     >>>                                  plot=True, rhop=rhop, rates_source='colrad')
     
-    >>> N2_adas,axs = Lya_to_neut_dens_basic(
-    >>>                       emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
+    >>> N2_adas,axs = Lya_to_neut_dens_basic(emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
     >>>                       rates_source='adas',axs=axs)
     
     '''
