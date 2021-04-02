@@ -718,7 +718,7 @@ def _plot_pec(dens, temp, PEC, PEC_eval, lam,cs,rate_type, ax=None, plot_3d=Fals
 
 def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
                        Ti_eV=None, n0_cm3=0.0, ion_exc_rec_dens=None, dlam_A=0.0,
-                       plot=True, ax=None, plot_spec_tot=True, no_leg=False, plot_all_lines=False):
+                       plot_spec_tot=True, plot_all_lines=False, no_leg=False, ax=None):
     r'''Plot spectrum based on the lines contained in an ADAS ADF15 file
     at specific values of electron density and temperature. Charge state densities
     can be given explicitely, or alternatively charge state fractions will be automatically 
@@ -749,18 +749,16 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
         Doppler shift in A. This can either be a scalar or an array of the same shape as the 
         output wavelength array. For the latter option, it is recommended to call this function
         twice to find the wave_final_A array first.         
-    plot : bool
-        If True, all spectral emission components are plotted.
-    ax : matplotlib Axes instance
-        Axes to plot on if plot=True. If left to None, a new figure is created.
     plot_spec_tot : bool
         If True, plot total spectrum (sum over all components) from given ADF15 file. 
-    no_leg : bool
-        If True, no plot legend is shown. Default is False, i.e. show legend.
     plot_all_lines : bool
         If True, plot all individual lines, rather than just the profiles due to different atomic processes.
         If more than 50 lines are included, a down-selection is automatically made to avoid excessive
         memory consumption.
+    no_leg : bool
+        If True, no plot legend is shown. Default is False, i.e. show legend.
+    ax : matplotlib Axes instance
+        Axes to plot on if plot=True. If left to None, a new figure is created.
 
     Returns
     -------
@@ -882,19 +880,15 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
     
     wave_final_A = np.linspace(np.min(lams_profs_A), np.max(lams_profs_A), 100000)
     
-    if plot and ax is None:
+    if (plot_all_lines or plot_spec_tot) and ax is None:
         fig,ax = plt.subplots()
-
-    many_lines=False
-    if len(wave_A)>50:
-        many_lines=True
 
     # contributions to spectrum
     spec_ion = np.zeros_like(wave_final_A)
     for ii in np.arange(lams_profs_A.shape[0]):
         comp_ion = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[0]*pec_ion[ii]*theta[ii,:],
                                bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines and many_lines and pec_ion[ii]>np.max(pec_ion)/100:
+        if plot_all_lines and pec_ion[ii]>np.max(pec_ion)/1000:
             ax.plot(wave_final_A+dlam_A, comp_ion, c='r')
         spec_ion += comp_ion
 
@@ -902,7 +896,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
     for ii in np.arange(lams_profs_A.shape[0]):
         comp_exc = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[1]*pec_exc[ii]*theta[ii,:],
                                bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines and many_lines and pec_exc[ii]>np.max(pec_exc)/100:
+        if plot_all_lines and pec_exc[ii]>np.max(pec_exc)/100:
             ax.plot(wave_final_A+dlam_A, comp_exc, c='b')
         spec_exc += comp_exc
 
@@ -910,7 +904,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
     for ii in np.arange(lams_profs_A.shape[0]):
         comp_rr = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[2]*pec_rr[ii]*theta[ii,:],
                                bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines and many_lines and pec_rr[ii]>np.max(pec_rr)/100:
+        if plot_all_lines and pec_rr[ii]>np.max(pec_rr)/100:
             ax.plot(wave_final_A+dlam_A, comp_rr, c='g')
         spec_rr += comp_rr
 
@@ -918,29 +912,30 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
     for ii in np.arange(lams_profs_A.shape[0]):
         comp_dr = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[2]*pec_dr[ii]*theta[ii,:],
                                bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines and many_lines and pec_dr[ii]>np.max(pec_dr)/100:
-            ax.plot(wave_final_A+dlam_A, comp_dr, c='g')
+        if plot_all_lines and pec_dr[ii]>np.max(pec_dr)/100:
+            ax.plot(wave_final_A+dlam_A, comp_dr, c='m')
         spec_dr += comp_dr
 
     spec_cx = np.zeros_like(wave_final_A)
     for ii in np.arange(lams_profs_A.shape[0]):
         comp_cx = interp1d(lams_profs_A[ii,:], n0_cm3*ion_exc_rec_dens[2]*pec_cx[ii]*theta[ii,:],
                                bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines and many_lines and pec_cx[ii]>np.max(pec_cx)/100:
-            ax.plot(wave_final_A+dlam_A, comp_cx, c='g')
+        if plot_all_lines and pec_cx[ii]>np.max(pec_cx)/100:
+            ax.plot(wave_final_A+dlam_A, comp_cx, c='c')
         spec_cx += comp_cx
 
     spec_tot = spec_ion+spec_exc+spec_rr+spec_dr+spec_cx
     
-    if plot:
+    if plot_spec_tot:
         # plot contributions from different processes
-        ax.plot(wave_final_A+dlam_A, spec_ion, c='r', label='' if no_leg else 'ionization')
-        ax.plot(wave_final_A+dlam_A, spec_exc, c='b', label='' if no_leg else 'excitation')
-        ax.plot(wave_final_A+dlam_A, spec_rr, c='g', label='' if no_leg else 'radiative recomb')
-        ax.plot(wave_final_A+dlam_A, spec_dr, c='m', label='' if no_leg else 'dielectronic recomb')
-        ax.plot(wave_final_A+dlam_A, spec_cx, c='c', label='' if no_leg else 'charge exchange recomb')
-        if plot_spec_tot:
-            ax.plot(wave_final_A+dlam_A, spec_tot, c='k', label='' if no_leg else 'total')
+        ax.plot(wave_final_A+dlam_A, spec_ion, c='r', ls='--', label='' if no_leg else 'ionization')
+        ax.plot(wave_final_A+dlam_A, spec_exc, c='b', ls='--', label='' if no_leg else 'excitation')
+        ax.plot(wave_final_A+dlam_A, spec_rr, c='g', ls='--', label='' if no_leg else 'radiative recomb')
+        ax.plot(wave_final_A+dlam_A, spec_dr, c='m', ls='--', label='' if no_leg else 'dielectronic recomb')
+        ax.plot(wave_final_A+dlam_A, spec_cx, c='c', ls='--', label='' if no_leg else 'charge exchange recomb')
+
+        # total envelope
+        ax.plot(wave_final_A+dlam_A, spec_tot, c='k', ls='--', label='' if no_leg else 'total')
 
         if not no_leg: ax.legend(loc='best').set_draggable(True)
         ax.set_xlabel(r'$\lambda$ [$\AA$]')
