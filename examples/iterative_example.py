@@ -76,7 +76,7 @@ n_rep = 5
 dt = 1e-4
 
 # Total time to run [s] -- will be approximated by nearest multiplier of n_rep*dt
-sim_time = 5e-3  # 20 ms
+sim_time = 5e-3
 num_sims = int(sim_time/(n_rep*dt))
 ##################################################################################
 
@@ -138,7 +138,7 @@ Te_all = []
 Te_all.append(Te_eV)
 for i in np.arange(num_sims):
     # Update time array
-    namelist['timing']['times'] = np.array([i*n_rep*dt+dt, (i+1)*n_rep*dt])
+    namelist['timing']['times'] = np.array([(i+1)*n_rep*dt+dt, (i+2)*n_rep*dt])
     asim.setup_grids()
     
     # get charge state densities from latest time step

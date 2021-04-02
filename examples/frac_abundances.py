@@ -7,7 +7,7 @@ It is recommended to run this in IPython.
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-import omfit_gapy
+from omfit_classes import omfit_gapy
 import scipy,sys,os
 import time
 from scipy.interpolate import interp1d
@@ -21,6 +21,8 @@ try: # pass any argument via the command line to show plots
 except:
     plot = False
 
+ion = 'Al'
+
 # read in some kinetic profiles
 examples_dir = os.path.dirname(os.path.abspath(__file__))
 inputgacode = omfit_gapy.OMFITgacode(examples_dir+'/example.input.gacode')
@@ -31,7 +33,7 @@ ne_vals = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
 Te_vals = inputgacode['Te']*1e3  # keV --> eV
 
 # get charge state distributions from ionization equilibrium for Ca
-atom_data = aurora.atomic.get_atom_data('Ca',['scd','acd'])
+atom_data = aurora.atomic.get_atom_data(ion,['scd','acd'])
 
 # get fractional abundances on ne (cm^-3) and Te (eV) grid
 logTe, fz, rates = aurora.atomic.get_frac_abundances(

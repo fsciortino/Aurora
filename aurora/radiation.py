@@ -16,7 +16,7 @@ from . import plot_tools
 def compute_rad(imp, nz, ne, Te,
                 n0 = None, Ti = None, ni = None, adas_files_sub = {},
                 prad_flag=False, sxr_flag=False,
-                thermal_cx_rad_flag=False, spectral_brem_flag=False, ):
+                thermal_cx_rad_flag=False, spectral_brem_flag=False):
     '''Calculate radiation terms corresponding to a simulation result. The nz,ne,Te,n0,Ti,ni arrays
     are normally assumed to be given as a function of (time,nZ,space), but time and space may 
     be substituted by other coordinates (e.g. R,Z)
@@ -568,9 +568,10 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
     log10pec_dict = {}
 
     for i in range(0, num_lines):
-        
-        if '----' in lines[0]: 
-            _ = lines.pop(0) # separator may exist before each transition
+
+        while 'isel' not in lines[0].lower():
+            # eliminate variable number of label lines at the top
+            _ = lines.pop(0)
 
         # Get the wavelength, number of densities and number of temperatures
         # from the first line of the entry:
@@ -699,11 +700,13 @@ def _plot_pec(dens, temp, PEC, PEC_eval, lam,cs,rate_type, ax=None, plot_3d=Fals
     else:
         # plot in 2D
         labels = ['{:.0e}'.format(ne)+r' $cm^{-3}$' for ne in dens] #ne_eval]
-            
-        for ine in np.arange(PEC.shape[0]):
-            l, = ax1.plot(temp, PEC_eval[ine,:], label=labels[ine])
-            ax1.plot(temp, PEC[ine,:], color=l.get_color(), marker='o', mfc=l.get_color(), ms=5.)
 
+        ls_cycle = plot_tools.get_ls_cycle()
+        for ine in np.arange(PEC.shape[0]):
+            ls = next(ls_cycle)
+            l, = ax1.plot(temp, PEC_eval[ine,:], ls, label=labels[ine])
+            #ax1.plot(temp, PEC[ine,:], color=l.get_color(), marker='o', mfc=l.get_color(), ms=5.)
+            ax1.plot(temp, PEC[ine,:], ls, marker='o', mfc=l.get_color(), ms=5.)
         ax1.set_xlabel(r'$T_e$ [eV]')
         ax1.set_ylabel('PEC [photons $\cdot cm^3/s$]')
         ax1.set_yscale('log')
@@ -996,7 +999,7 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
 
     '''
     files = ['scd','acd']
-    if n0_cm3 is not 0.0: files+=['ccd']
+    if n0_cm3 != 0.0: files+=['ccd']
     atom_data_eq = atomic.get_atom_data(imp,files)
 
     logTe, fz, rates = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV,plot=False,
