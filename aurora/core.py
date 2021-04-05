@@ -182,6 +182,26 @@ class aurora_sim:
 
         if self.namelist['explicit_source_vals'] is not None:
 
+            if np.ndim(self.namelist['explicit_source_vals'])==1:
+                # explicit source was given as 1-D, assume it is a function of time
+                # get radial profile of source function -  NB: assumed to be time-independent!
+                _source_rad_prof = source_utils.get_radial_source(
+                    self.namelist, self.rvol_grid, self.pro_grid,
+                    np.atleast_2d(self.S_rates[:,0,0]).T,   # 0th charge state (neutral) and 0th time
+                    np.atleast_2d(self._Ti[0,:]).T # 0th time
+                    )[:,0]
+
+                # normalize such that integral over _source_rad_prof is 1
+                pnorm = np.pi*np.sum(_source_rad_prof*self.S_rates[:,0,0]*(self.rvol_grid/self.pro_grid)[:,None],0)               
+                _source_rad_prof *= pnorm
+                _source_rad_prof /= np.sum(_source_rad_prof)
+                
+                # make explicit_source_vals 2D
+                self.namelist['explicit_source_vals'] = _source_rad_prof[None,:]*\
+                                                        self.namelist['explicit_source_vals'][:,None]
+
+                self.namelist['explicit_source_rhop'] = self.rhop_grid
+
             # interpolate explicit source values on time and rhop grids of simulation
             source_rad_prof = RectBivariateSpline(self.namelist['explicit_source_rhop'],
                                                   self.namelist['explicit_source_time'],

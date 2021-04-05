@@ -937,6 +937,8 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
         # total envelope
         ax.plot(wave_final_A+dlam_A, spec_tot, c='k', ls='--', label='' if no_leg else 'total')
 
+
+    if plot_all_lines or plot_spec_tot:
         if not no_leg: ax.legend(loc='best').set_draggable(True)
         ax.set_xlabel(r'$\lambda$ [$\AA$]')
         ax.set_ylabel(r'$\epsilon$ [A.U.]')
