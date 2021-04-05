@@ -19,6 +19,7 @@ requirements:
     - matplotlib
     - xarray
     - pexpect
+    - omfit_classes
 
   run:
     - python
@@ -27,6 +28,7 @@ requirements:
     - matplotlib
     - xarray
     - pexpect
+    - omfit_classes
     
 test:
   imports:
@@ -42,10 +44,10 @@ about:
     It offers a 1.5D impurity transport forward model inheriting from the historical STRAHL code, 
     with which it has been thoroughly benchmarked. Routines to analyze neutral states of hydrogen 
     isotopes, both from the edge of fusion plasmas and from neutral beam injection, allow integration 
-    of impurity and neutral transport analysis. Aurora’s code is mostly written in Python 3 and 
-    Fortran 90, with a Julia interface also recently added. The package enables radiation calculations 
-    using ADAS atomic rates, which can easily be applied to the output of Aurora’s own forward model, 
-    or coupled with other 1D, 2D or 3D transport codes.
+    of impurity and neutral transport analysis.
+    Aurora’s code is mostly written in Python 3, with fast low-level components om Fortran90 and Julia.
+    The package enables radiation calculations using ADAS atomic rates, which can easily be applied
+    to the output of Aurora’s own forward model, or coupled with other 1D, 2D or 3D transport codes.
   doc_url: https://aurora-fusion.readthedocs.io/
   dev_url: https://github.com/fsciortino/aurora
 
