@@ -184,37 +184,31 @@ class aurora_sim:
 
             if np.ndim(self.namelist['explicit_source_vals'])==1:
                 # explicit source was given as 1-D, assume it is a function of time
-                # get radial profile of source function -  NB: assumed to be time-independent!
-                _source_rad_prof = source_utils.get_radial_source(
-                    self.namelist, self.rvol_grid, self.pro_grid,
-                    np.atleast_2d(self.S_rates[:,0,0]).T,   # 0th charge state (neutral) and 0th time
-                    np.atleast_2d(self._Ti[0,:]).T # 0th time
-                    )[:,0]
-
-                # normalize such that integral over _source_rad_prof is 1
-                pnorm = np.pi*np.sum(_source_rad_prof*self.S_rates[:,0,0]*(self.rvol_grid/self.pro_grid)[:,None],0)               
-                _source_rad_prof *= pnorm
-                _source_rad_prof /= np.sum(_source_rad_prof)
+    
+                self.source_time_history = interp1d(self.namelist['explicit_source_time'], self.namelist['explicit_source_vals'],
+                                                    bounds_error=False, fill_value=0.0)(self.time_grid)
                 
-                # make explicit_source_vals 2D
-                self.namelist['explicit_source_vals'] = _source_rad_prof[None,:]*\
-                                                        self.namelist['explicit_source_vals'][:,None]
+                self.source_rad_prof = source_utils.get_radial_source(self.namelist, self.rvol_grid, self.pro_grid, 
+                                                                      self.S_rates[:,0,:],   # 0th charge state (neutral) and 0th time 
+                                                                      self._Ti[:,:] 
+                                                                  ) 
+                
+            else:
+                # interpolate explicit source values on time and rhop grids of simulation
+                source_rad_prof = RectBivariateSpline(self.namelist['explicit_source_rhop'],
+                                                      self.namelist['explicit_source_time'],
+                                                      self.namelist['explicit_source_vals'].T,
+                                                      kx=1,ky=1)(self.rhop_grid, self.time_grid)
 
-                self.namelist['explicit_source_rhop'] = self.rhop_grid
-
-            # interpolate explicit source values on time and rhop grids of simulation
-            source_rad_prof = RectBivariateSpline(self.namelist['explicit_source_rhop'],
-                                                  self.namelist['explicit_source_time'],
-                                                  self.namelist['explicit_source_vals'].T,
-                                                  kx=1,ky=1)(self.rhop_grid, self.time_grid)
-
-            pnorm = np.pi*np.sum(source_rad_prof*self.S_rates[:,0,:]*(self.rvol_grid/self.pro_grid)[:,None],0)
-            self.source_time_history = np.asfortranarray(pnorm)
-
-            # neutral density for influx/unit-length = 1/cm
-            self.source_rad_prof = np.asfortranarray(source_rad_prof/pnorm)
+                # first ionization stage
+                pnorm = np.pi*np.sum(source_rad_prof*self.S_rates[:,0,:]*(self.rvol_grid/self.pro_grid)[:,None],0)
+                self.source_time_history = np.asfortranarray(pnorm)
+                
+                # neutral density for influx/unit-length = 1/cm
+                self.source_rad_prof = np.asfortranarray(source_rad_prof/pnorm)
 
         else:
+            # get time history and radial profiles separately
             self.source_time_history = source_utils.get_source_time_history(
                 self.namelist, self.Raxis_cm, self.time_grid
             )
@@ -461,8 +455,6 @@ class aurora_sim:
         rclw_rate : array (nt,)
              Recycling from the wall [:math:`s^{-1} cm^{-3}`]
         '''
-        # import here to avoid import when building documentation or package (negligible slow down)
-        from ._aurora import run as fortran_run
         
         # D_z and V_z must have the same shape
         assert np.array(D_z).shape == np.array(V_z).shape
@@ -515,6 +507,9 @@ class aurora_sim:
                                      self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                      nz_init, alg_opt, evolneut)
         else:
+            # import here to avoid import when building documentation or package (negligible slow down)
+            from ._aurora import run as fortran_run
+
             self.res =  fortran_run(len(self.time_out),  # number of times at which simulation outputs results
                                     times_DV,
                                     D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)

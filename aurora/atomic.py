@@ -342,18 +342,22 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
         Rate coefficients in units of [:math:`s^{-1}`]. 
     '''
     # if input arrays are multi-dimensional, flatten them here and restructure at the end
-    if not isinstance(ne_cm3,float):
-        _ne = ne_cm3.flatten()
-    else:
-        _ne = copy.deepcopy(ne_cm3)
-    if not isinstance(Te_eV,float): 
-        _Te = Te_eV.flatten()
-    else:
-        _Te = copy.deepcopy(Te_eV)
-    if not isinstance(n0_by_ne,float):
-        _n0_by_ne = n0_by_ne.flatten()
-    else:
-        _n0_by_ne = copy.deepcopy(n0_by_ne)
+    _ne = np.array(ne_cm3).flatten()
+    _Te = np.array(Te_eV).flatten()
+    _n0_by_ne = np.array(n0_by_ne).flatten()
+
+    # if not isinstance(ne_cm3,float):
+    #     _ne = np.array(ne_cm3).flatten()
+    # else:
+    #     _ne = copy.deepcopy(ne_cm3)
+    # if not isinstance(Te_eV,float): 
+    #     _Te = np.array(Te_eV).flatten()
+    # else:
+    #     _Te = copy.deepcopy(Te_eV)
+    # if not isinstance(n0_by_ne,float):
+    #     _n0_by_ne = n0_by_ne.flatten()
+    # else:
+    #     _n0_by_ne = copy.deepcopy(n0_by_ne)
 
     logTe, logS,logR,logcx = get_cs_balance_terms(
         atom_data, _ne, _Te, maxTe=10e3, include_cx=include_cx)
@@ -380,7 +384,7 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
 
     rate_coeffs*=(_ne * 1e-6)
 
-    if plot:
+    if plot and np.size(_ne)>1:
         # plot fractional abundances (only 1D)
         if ax is None:
             fig,axx = plt.subplots()
@@ -421,10 +425,11 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
         axx.set_ylim(0,1.05)
         axx.set_xlim(x[0],x[-1])
 
-    # re-structure to original array dimensions
-    logTe = logTe.reshape(ne_cm3.shape)
-    fz = fz.reshape(*ne_cm3.shape, fz.shape[1])
-    rate_coeffs = rate_coeffs.reshape(*ne_cm3.shape)
+    if np.size(ne_cm3)>1:
+        # re-structure to original array dimensions
+        logTe = logTe.reshape(np.array(ne_cm3).shape)
+        fz = fz.reshape(*np.array(ne_cm3).shape, fz.shape[1])
+        rate_coeffs = rate_coeffs.reshape(*np.array(ne_cm3).shape)
     
     return logTe, fz, rate_coeffs
 
