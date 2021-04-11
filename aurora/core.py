@@ -5,7 +5,6 @@ import copy,os,sys
 import numpy as np
 from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.constants import e as q_electron, m_p
-import xarray
 import pickle as pkl
 
 from . import interp
@@ -593,6 +592,8 @@ class aurora_sim:
         axs : matplotlib.Axes instances , only returned if plot=True
             New or updated axes returned by :py:meth:`~aurora.particle_conserv.check_particle_conserv`
         '''
+        import xarray # import only if necessary
+        
         nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         nz = nz.transpose(2,1,0)   # time,nZ,space
 
