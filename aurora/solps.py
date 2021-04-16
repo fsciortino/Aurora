@@ -97,7 +97,7 @@ class solps_case:
             _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
             self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
 
-            
+
         elif form=='full':
             from omfit_classes import omfit_solps # import omfit_solps here to avoid issues with docs and packaging
             self.b2fstate = omfit_solps.OMFITsolps(self.path+os.sep+self.solps_run+os.sep+'b2fstate')
@@ -536,9 +536,8 @@ class solps_case:
         ax.set_title(label)
         ax.set_xlabel('R [m]')
         ax.set_ylabel('Z [m]')
-        plt.grid(True)
+        #plt.grid(True)
         ax.axis('scaled')
-
         
 
 

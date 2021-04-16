@@ -378,8 +378,8 @@ class aurora_sim:
 
 
     def run_aurora(self, D_z, V_z,
-                   times_DV=None, nz_init=None, alg_opt=1, evolneut=False,
-                   use_julia=False, plot=False):
+                   times_DV=None, nz_init=None, superstages = [],
+                   alg_opt=1, evolneut=False, use_julia=False, plot=False):
         '''Run a simulation using inputs in the given dictionary and diffusion and convection profiles 
         as a function of space, time and potentially also ionization state. Users may give an initial 
         state of each ion charge state as an input.
@@ -415,6 +415,13 @@ class aurora_sim:
         nz_init: array, shape of (space, nZ)
             Impurity charge states at the initial time of the simulation. If left to None, this is
             internally set to an array of 0's.
+        superstages : list or 1D array
+            Indices of charge states of chosen ion that should be modeled. If left empty, all ion stages
+            are modeled. If only some indices are given, these are modeled as "superstages".
+            If `D_z` and `V_z` are given as a function of charge state, only the indices corresponding
+            to the superstages are used.
+            NB: users must explicitly add the element 0 (neutral stage) to the list of superstages, 
+            or else an exception will be raised.
         alg_opt : int, optional
             If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
             If `alg_opt=0`, use the older finite-differences algorithm in the 2018 version of STRAHL.
@@ -435,6 +442,8 @@ class aurora_sim:
         -------
         nz : array, (nr,nZ,nt)
             Charge state densities [:math:`cm^{-3}`] over the space and time grids.
+            If a number of superstages are indicated in the input, only charge state densities for
+            these are returned.
         N_wall : array (nt,)
             Number of particles at the wall reservoir over time.
         N_div : array (nt,)
@@ -460,15 +469,33 @@ class aurora_sim:
         
         if (times_DV is None) and (D_z.ndim>1 or V_z.ndim>1):
             raise ValueError('D_z and V_z given as time dependent, but times were not specified!')
-        
+
+        if len(superstages):
+            assert superstages[0] == 0   # 0th superstage must be neutral
+            num_cs = len(superstages)
+            
+            S_rates = copy.deepcopy(self.S_rates)
+            R_rates = copy.deepcopy(self.R_rates)
+            for stage in np.arange(S_rates.shape[1])[::-1]:
+                if stage not in superstages:   # superstages are the stages to keep
+                    S_rates = np.delete(S_rates, stage, axis=1)
+                    R_rates = np.delete(R_rates, stage, axis=1)
+                    if D_z.ndim==3:
+                        D_z = np.delete(D_z, stage, axis=2)
+                        V_z = np.delete(V_z, stage, axis=2)
+        else:
+            num_cs = int(self.Z_imp+1)
+            S_rates = self.S_rates
+            R_rates = self.R_rates
+            
         if nz_init is None:
             # default: start in a state with no impurity ions
-            nz_init = np.zeros((len(self.rvol_grid),int(self.Z_imp+1)))
+            nz_init = np.zeros((len(self.rvol_grid),num_cs))
 
         if D_z.ndim==2:
             # set all charge states to have the same transport
-            D_z = np.tile(np.atleast_3d(D_z),(1,1,self.Z_imp+1))  # include elements for neutrals
-            V_z = np.tile(np.atleast_3d(V_z),(1,1,self.Z_imp+1))
+            D_z = np.tile(np.atleast_3d(D_z),(1,1,num_cs))  # include elements for neutrals
+            V_z = np.tile(np.atleast_3d(V_z),(1,1,num_cs))
             
             # unless specified, set transport coefficients for neutrals to 0
             D_z[:,:,0] = 0.0
@@ -476,8 +503,8 @@ class aurora_sim:
 
         if D_z.ndim==1:
             # D_z was given as time-independent
-            D_z = np.tile(np.atleast_3d(D_z[:,None]),(1,1,self.Z_imp+1))  # include elements for neutrals
-            V_z = np.tile(np.atleast_3d(V_z[:,None]),(1,1,self.Z_imp+1))
+            D_z = np.tile(np.atleast_3d(D_z[:,None]),(1,1,num_cs))  # include elements for neutrals
+            V_z = np.tile(np.atleast_3d(V_z[:,None]),(1,1,num_cs))
             times_DV = [1.] # dummy, no time dependence
 
         # NOTE: for both Fortran and Julia, use f_configuous arrays for speed!
@@ -493,8 +520,8 @@ class aurora_sim:
                                      D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                      self.par_loss_rate,  # time dependent
                                      self.source_rad_prof,# source profile in radius
-                                     self.S_rates, # ioniz_rate,
-                                     self.R_rates, # recomb_rate,
+                                     S_rates, # ioniz_rate,
+                                     R_rates, # recomb_rate,
                                      self.rvol_grid, self.pro_grid, self.qpr_grid,
                                      self.mixing_radius, self.decay_length_boundary,
                                      self.time_grid, self.saw_on,
@@ -514,8 +541,8 @@ class aurora_sim:
                                     D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                     self.par_loss_rate,  # time dependent
                                     self.source_rad_prof,# source profile in radius
-                                    self.S_rates, # ioniz_rate,
-                                    self.R_rates, # recomb_rate,
+                                    S_rates, # ioniz_rate,
+                                    R_rates, # recomb_rate,
                                     self.rvol_grid, self.pro_grid, self.qpr_grid,
                                     self.mixing_radius, self.decay_length_boundary,
                                     self.time_grid, self.saw_on,
