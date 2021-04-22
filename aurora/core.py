@@ -474,15 +474,12 @@ class aurora_sim:
             assert superstages[0] == 0   # 0th superstage must be neutral
             num_cs = len(superstages)
             
-            S_rates = copy.deepcopy(self.S_rates)
-            R_rates = copy.deepcopy(self.R_rates)
-            for stage in np.arange(S_rates.shape[1])[::-1]:
-                if stage not in superstages:   # superstages are the stages to keep
-                    S_rates = np.delete(S_rates, stage, axis=1)
-                    R_rates = np.delete(R_rates, stage, axis=1)
-                    if D_z.ndim==3:
-                        D_z = np.delete(D_z, stage, axis=2)
-                        V_z = np.delete(V_z, stage, axis=2)
+            S_rates = self.S_rates[:,superstages,:]
+            R_rates = self.R_rates[:,superstages,:]
+            if D_z.ndim==3:
+                D_z = D_z[:,:, superstages]
+                V_z = V_z[:,:,superstages]
+
         else:
             num_cs = int(self.Z_imp+1)
             S_rates = self.S_rates
