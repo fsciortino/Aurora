@@ -346,19 +346,6 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
     _Te = np.array(Te_eV).flatten()
     _n0_by_ne = np.array(n0_by_ne).flatten()
 
-    # if not isinstance(ne_cm3,float):
-    #     _ne = np.array(ne_cm3).flatten()
-    # else:
-    #     _ne = copy.deepcopy(ne_cm3)
-    # if not isinstance(Te_eV,float): 
-    #     _Te = np.array(Te_eV).flatten()
-    # else:
-    #     _Te = copy.deepcopy(Te_eV)
-    # if not isinstance(n0_by_ne,float):
-    #     _n0_by_ne = n0_by_ne.flatten()
-    # else:
-    #     _n0_by_ne = copy.deepcopy(n0_by_ne)
-
     logTe, logS,logR,logcx = get_cs_balance_terms(
         atom_data, _ne, _Te, maxTe=10e3, include_cx=include_cx)
     
