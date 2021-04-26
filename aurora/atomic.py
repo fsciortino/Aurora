@@ -293,11 +293,10 @@ def null_space(A):
     return Q, s[-2]  # matrix is singular, so last index is ~0
 
 
-def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
-                        include_cx=False, ne_tau=np.inf,
-                        plot=True, ax = None, rho = None, rho_lbl=None,ls='-'):
+def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=0.0,
+                        ne_tau=np.inf, plot=True, ax = None, rho = None, rho_lbl=None,ls='-'):
     r'''Calculate fractional abundances from ionization and recombination equilibrium.
-    If include_cx=True, radiative recombination and thermal charge exchange are summed.
+    If n0_by_ne is not 0, radiative recombination and thermal charge exchange are summed.
 
     This method can work with ne,Te and n0_by_ne arrays of arbitrary dimension, but plotting 
     is only supported in 1D (defaults to flattened arrays).
@@ -312,9 +311,7 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
         Electron temperature in units of eV. If left to None, the Te grid given in the 
         atomic data is used.
     n0_by_ne: float or array, optional
-        Ratio of background neutral hydrogen to electron density, used if include_cx=True. 
-    include_cx : bool
-        If True, charge exchange with background thermal neutrals is included. 
+        Ratio of background neutral hydrogen to electron density. If not 0, CX is considered. 
     ne_tau : float, opt
         Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
         This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
@@ -338,14 +335,18 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
         rate coefficients are given.
     fz : array, (space,nZ)
         Fractional abundances across the same grid used by the input ne,Te values. 
-    rate_coeffs : array, (space, nZ)
-        Rate coefficients in units of [:math:`s^{-1}`]. 
+
     '''
     # if input arrays are multi-dimensional, flatten them here and restructure at the end
     _ne = np.array(ne_cm3).flatten()
     _Te = np.array(Te_eV).flatten()
     _n0_by_ne = np.array(n0_by_ne).flatten()
 
+    include_cx = False if (isinstance(n0_by_ne,(int,float)) and n0_by_ne==0.0) else True
+
+    #from IPython import embed
+    #embed()
+    
     logTe, logS,logR,logcx = get_cs_balance_terms(
         atom_data, _ne, _Te, maxTe=10e3, include_cx=include_cx)
     
@@ -353,23 +354,10 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
         # Get an effective recombination rate by summing radiative & CX recombination rates
         logR= np.logaddexp(logR,np.log(_n0_by_ne)[:,None] +logcx)
 
-    # numerical method that calculates also rate_coeffs
-    nion = logR.shape[1]
-    fz  = np.zeros((logTe.size,nion+1))
-    rate_coeffs = np.zeros(logTe.size)
-
-    for it,t in enumerate(logTe):
-
-        A = (
-              - np.diag(np.r_[np.exp(logS[it]), 0] + np.r_[0, np.exp(logR[it])] + 1e6 / ne_tau)
-              + np.diag(np.exp(logS[it]), -1)
-              + np.diag(np.exp(logR[it]), 1)
-              )
-
-        N,rate_coeffs[it] = null_space(A)
-        fz[it] = N/np.sum(N)
-
-    rate_coeffs*=(_ne * 1e-6)
+    # simplest method to compute fractional abundances
+    rate_ratio = np.hstack((np.zeros_like(logTe)[:, None], logS - logR))
+    fz = np.exp(np.cumsum(rate_ratio, axis=1))
+    fz /= fz.sum(1)[:, None]
 
     if plot and np.size(_ne)>1:
         # plot fractional abundances (only 1D)
@@ -416,9 +404,8 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=1e-5,
         # re-structure to original array dimensions
         logTe = logTe.reshape(np.array(ne_cm3).shape)
         fz = fz.reshape(*np.array(ne_cm3).shape, fz.shape[1])
-        rate_coeffs = rate_coeffs.reshape(*np.array(ne_cm3).shape)
     
-    return logTe, fz, rate_coeffs
+    return logTe, fz
 
 
 
@@ -485,29 +472,98 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, maxTe=10e3, include
 
 
 
-def plot_relax_time(logTe, rate_coeff, ax = None):
-    ''' Plot relaxation time of the ionization equilibrium corresponding
-    to the inverse of the given rate coefficients.
+def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, n0_by_ne=0.0,
+                        ne_tau=np.inf, plot=True, ax = None, ls='-'):
+    r'''Obtain the relaxation time of the ionization equilibrium for a given atomic species.
+
+    If n0_by_ne is not 0, thermal charge exchange is added to radiative and dielectronic recombination.
+    This function can work with ne,Te and n0_by_ne arrays of arbitrary dimension.
+    It uses a matrix SVD approach in order to find the relaxation rates, as opposed to the simpler
+    approach of :py:func:`~aurora.get_frac_abundances`, but fractional abundances produced by the two
+    methods should be the same.
 
     Parameters
     ----------
-    logTe : array (nr,)
-        log-10 of Te [eV], on an arbitrary grid (same as other arguments, but not
-        necessarily radial)
-    rate_coeff : array (nr,)
-        Rate coefficients from ionization balance, as returned by the :py:fun:`~aurora.atomic.get_frac_abundances` function.
-        N.B.: these rate coefficients will depend also on electron density, which does affect relaxation times. 
-    ax : matplotlib axes instance, optional
-        If provided, plot relaxation times on these axes.    
-    '''
-    if ax is None:
-        ax = plt.subplot(111)
+    atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
+        necessary only if n0_by_ne is not 0).
+    ne_cm3 : float or array
+        Electron density in units of :math:`cm^{-3}`.
+    Te_eV : float or array, optional
+        Electron temperature in units of eV. If left to None, the Te grid given in the 
+        atomic data is used.
+    n0_by_ne: float or array, optional
+        Ratio of background neutral hydrogen to electron density. If set to 0, CX is not 
+        considered.
+    ne_tau : float, opt
+        Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
+        This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
+        Setting ne_tau=np.inf (default) corresponds to no effect from transport. 
+    plot : bool, optional
+        If True, the atomic relaxation time is plotted as a function of Te. Default is True.
+    ax : matplotlib.pyplot Axes instance
+        Axes on which to plot if plot=True. If False, new axes are created.
+    ls : str, optional
+        Line style for plots. Continuous lines are used by default. 
 
-    ax.loglog(10**logTe,1e3/rate_coeff,'b' )
-    ax.set_xlim(10**logTe[0],10**logTe[-1])
-    ax.grid('on')
-    ax.set_xlabel('T$_e$ [eV]')
-    ax.set_ylabel(r'$\tau_\mathrm{relax}$ [ms]')
+    Returns
+    -------
+    logTe : array
+        log10 of electron temperatures as a function of which the fractional abundances and
+        rate coefficients are given.
+    fz : array, (space,nZ)
+        Fractional abundances across the same grid used by the input ne,Te values. 
+    rate_coeffs : array, (space, nZ)
+        Rate coefficients in units of [:math:`s^{-1}`]. 
+    '''
+    # if input arrays are multi-dimensional, flatten them here and restructure at the end
+    _ne = np.array(ne_cm3).flatten()
+    _Te = np.array(Te_eV).flatten()
+    _n0_by_ne = np.array(n0_by_ne).flatten()
+
+    include_cx = False if (isinstance(n0_by_ne,(int,float)) and n0_by_ne==0.0) else True
+
+    logTe, logS,logR,logcx = get_cs_balance_terms(
+        atom_data, _ne, _Te, maxTe=10e3, include_cx=include_cx)
+    
+    if include_cx:
+        # Get an effective recombination rate by summing radiative & CX recombination rates
+        logR= np.logaddexp(logR,np.log(_n0_by_ne)[:,None] +logcx)
+
+    # numerical method that calculates also rate_coeffs
+    nion = logR.shape[1]
+    fz  = np.zeros((logTe.size,nion+1))
+    rate_coeffs = np.zeros(logTe.size)
+
+    for it,t in enumerate(logTe):
+        A = (
+              - np.diag(np.r_[np.exp(logS[it]), 0] + np.r_[0, np.exp(logR[it])] + 1e6 / ne_tau)
+              + np.diag(np.exp(logS[it]), -1)
+              + np.diag(np.exp(logR[it]), 1)
+              )
+
+        N,rate_coeffs[it] = null_space(A)
+        fz[it] = N/np.sum(N)
+
+    rate_coeffs*=(_ne * 1e-6)
+
+    if np.size(ne_cm3)>1:
+        # re-structure to original array dimensions
+        logTe = logTe.reshape(np.array(ne_cm3).shape)
+        fz = fz.reshape(*np.array(ne_cm3).shape, fz.shape[1])
+        rate_coeffs = rate_coeffs.reshape(*np.array(ne_cm3).shape)
+
+    if plot:
+        # Now plot relaxation times
+        if ax is None:
+            fig,ax = plt.subplots()
+            
+        ax.loglog(10**logTe,1e3/rate_coeffs,'b' )
+        ax.set_xlim(10**logTe[0],10**logTe[-1])
+        ax.grid('on')
+        ax.set_xlabel('T$_e$ [eV]')
+        ax.set_ylabel(r'$\tau_\mathrm{relax}$ [ms]')
+        
+    return logTe, fz, rate_coeffs
 
 
 

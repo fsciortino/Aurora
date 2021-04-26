@@ -122,6 +122,10 @@ class aurora_sim:
         self.sawtooth_erfc_width = self.namelist['saw_model']['crash_width']
         self.cxr_flag = self.namelist['cxr_flag']
         self.nbi_cxr_flag = self.namelist['nbi_cxr_flag']
+
+        # get fractional abundances on radial grid
+        logTe, self.fz = atomic.get_frac_abundances(self.atom_data, self.ne, self.Te, plot=False)
+            
         
     def save(self, filename):
         '''Save state of `aurora_sim` object.
@@ -378,7 +382,7 @@ class aurora_sim:
 
 
     def run_aurora(self, D_z, V_z,
-                   times_DV=None, nz_init=None, superstages = [],
+                   times_DV=None, nz_init=None, superstages = [], unstage=False,
                    alg_opt=1, evolneut=False, use_julia=False, plot=False):
         '''Run a simulation using inputs in the given dictionary and diffusion and convection profiles 
         as a function of space, time and potentially also ionization state. Users may give an initial 
@@ -422,6 +426,11 @@ class aurora_sim:
             to the superstages are used.
             NB: users must explicitly add the element 0 (neutral stage) to the list of superstages, 
             or else an exception will be raised.
+        unstage : bool, optional
+            If a list of superstages are provided, this parameter sets whether the output should be "unstaged"
+            by multiplying by the appropriate fractional abundances of all charge states at ionization 
+            equilibrium. Note that this unstaging process cannot account for transport and is therefore
+            only an approximation, to be used carefully.
         alg_opt : int, optional
             If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
             If `alg_opt=0`, use the older finite-differences algorithm in the 2018 version of STRAHL.
@@ -563,6 +572,11 @@ class aurora_sim:
             
             # check particle conservation by summing over simulation reservoirs
             _ = self.check_conservation(plot=True)
+
+        if unstage:
+            # "unstage" superstages to recover estimates for density of all charge states
+            nz_unstaged = np.einsum('rst,trc->rct', self.res[0], self.fz)
+            self.res = nz_unstaged, *self.res[1:]
 
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         return self.res
