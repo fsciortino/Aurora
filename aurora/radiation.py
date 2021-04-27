@@ -1041,6 +1041,117 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
 
 
 
+
+def adf15_line_identification(pec_files, wvl_A=None, Te_eV = 1e3, ne_cm3=5e13, mult=[]):
+    '''Display all photon emissivity coefficients from the given list of ADF15 files and (optionally) compare to a set
+    of chosen wavelengths, given in units of Angstrom.
+
+    Parameters
+    -----------------
+    pec_files : str or list of str
+        Path to a single ADF15 file or a list of files.
+    wvl_A : list or 1D array
+        Wavelengths to overplot with the loaded PECs, to consider overlap within spectrum.
+    Te_eV : float
+        Single value of electron temperature at which PECs should be evaluated [:math:`eV`].
+    ne_cm3 : float
+        Single value of electron density at which PECs should be evaluated [:math:`cm^{-3}`].
+    mult : list or array
+        Multiplier to apply to lines from each PEC file. This could be used for example to rescale the results of
+        multiple ADF15 files by the expected fractional abundance or density of each element/charge state.
+
+    Notes
+    --------
+    To attempt identification of spectral lines, one can load a set of ADF15 files, calculate approximate fractional
+    abundances at equilibrium and overplot expected emissivities in a few steps::
+
+    >>> pec_files = ['mypecs1','mypecs2','mypecs3']
+    >>> Te_eV=500; ne_cm3=5e13; ion='Ar'   # examples
+    >>> atom_data = aurora.atomic.get_atom_data(ion,['scd','acd'])
+    >>> logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_cm3, Te_eV, plot=False)
+    >>> mult = [fz[0,10], fz[0,11], fz[0,12]] # to select charge states 11+, 12+ and 13+, for example
+    >>> adf15_line_identification(pec_files, Te_eV=Te_eV, ne_cm3=ne_cm3, mult=mult)
+    '''
+
+    fig = plt.figure(figsize=(10,7))
+    ax = plt.subplot2grid((10,10),(0,0),rowspan = 10, colspan = 8, fig=fig) 
+    a_legend = plt.subplot2grid((10,10),(0,8),rowspan = 10, colspan = 2, fig=fig) 
+    a_legend.axis('off')
+    
+    ymin = np.inf
+    ymax= -np.inf
+
+    if isinstance(pec_files,str):
+        pec_files = [pec_files,]
+
+    if len(mult) and len(pec_files)!=len(mult):
+        raise ValueError('Different number of ADF15 files and multipliers detected!')
+    
+    cols = iter(plt.cm.rainbow(np.linspace(0,1,len(pec_files))))
+
+    lams = []
+    for pp, pec_file in enumerate(pec_files):
+        
+        # load single PEC file from given list
+        log10_pecs = read_adf15(pec_file)
+
+        _mult = mult[pp] if len(mult) else 1.
+
+        c = next(cols)
+
+        # now plot all ionization-, excitation- and recombination-driven components
+        for lam, log10pec_interps in log10_pecs.items():
+
+            if 'ioniz' in log10pec_interps:
+                pec_ion = _mult * 10 ** log10pec_interps['ioniz'](np.log10(ne_cm3), np.log10(Te_eV))[0, 0]
+                if pec_ion > 1e-20:  # plot only stronger lines
+                    ymin = min(pec_ion, ymin)
+                    ymax = max(pec_ion, ymax)
+                    ax.semilogy([lam, lam], [1e-70, pec_ion], '-.', c=c)
+            if 'excit' in log10pec_interps:
+                pec_exc = _mult * 10 ** log10pec_interps['excit'](np.log10(ne_cm3), np.log10(Te_eV))[0, 0]
+                if pec_exc > 1e-20:  # plot only stronger lines
+                    ymin = min(pec_exc, ymin)
+                    ymax = max(pec_exc, ymax)
+                    ax.semilogy([lam, lam], [1e-70, pec_exc], '-', c=c)
+            if 'recom' in log10pec_interps:
+                pec_rec = _mult * 10 ** log10pec_interps['recom'](np.log10(ne_cm3), np.log10(Te_eV))[0, 0]
+                if pec_rec > 1e-20:
+                    ymin = min(pec_rec, ymin)
+                    ymax = max(pec_rec, ymax)
+                    ax.semilogy([lam, lam], [1e-70, pec_rec], '--', c=c)
+
+        lams += log10_pecs.keys()
+        a_legend.plot([],[], c=c, label=pec_file.split('/')[-1])
+
+    
+    ax.set_ylim(ymin, ymax*2)
+    ax.set_xlim(min(lams) / 1.5, max(lams) * 1.5)
+
+    ax.set_xlabel(r'$\lambda$ [$\AA$]')
+    ax.set_ylabel('PEC [phot $\cdot$ cm$^3$/s]')
+    ax.set_title(r'$T_e$ = %deV, $n_e$ = %.2ecm$^{-3}$' % (Te_eV, ne_cm3))
+
+    # plot location of certain lines of interest
+    if wvl_A is not None:
+        ax.axvline(np.nan, label='Input lines')
+        for i, l in enumerate(wvl_A):
+            ax.axvline(l)
+
+    a_legend.plot([], [], c='w', label = ' ') # empty
+    a_legend.plot([], [], '-.', c='k', label='PEC ionization')
+    a_legend.plot([], [], '-', c='k', label='PEC excitation')
+    a_legend.plot([], [], '--', c='k', label='PEC recombination')
+    
+    
+    if len(pec_files)==1:
+        # show path of single file that was passed
+        a_legend.text(1.05, -0.05, pec_files[0], rotation=90, transform=a_legend.transAxes)
+        
+    a_legend.legend(loc='best').set_draggable(True)
+
+
+
 def adf04_files():
     '''Collection of trust-worthy ADAS ADF04 files. 
     This function will be moved and expanded in ColRadPy in the near future. 
