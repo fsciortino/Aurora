@@ -263,7 +263,7 @@ def sync_rad(B_T, ne_cm3, Te_eV, r_min_cm, R_maj_cm):
 def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
                     adas_files_sub={}, n0_cm3=None, Ti_eV=None, nz_cm3=None, frac=None, plot=False):
     '''Model radiation from a fixed-impurity-fraction model or from detailed impurity density
-    profiles for the chosen ion. This method acts as a wrapper for :py:method:compute_rad(), 
+    profiles for the chosen ion. This method acts as a wrapper for :py:func:`~aurora.compute_rad`,
     calculating radiation terms over the radius and integrated over the plasma cross section. 
 
     Parameters
