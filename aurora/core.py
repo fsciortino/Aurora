@@ -479,7 +479,7 @@ class aurora_sim:
         if (times_DV is None) and (D_z.ndim>1 or V_z.ndim>1):
             raise ValueError('D_z and V_z given as time dependent, but times were not specified!')
 
-        if len(superstages):
+        if superstages:
             assert superstages[0] == 0   # 0th superstage must be neutral
             num_cs = len(superstages)
             
