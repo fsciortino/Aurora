@@ -573,7 +573,7 @@ class aurora_sim:
             # check particle conservation by summing over simulation reservoirs
             _ = self.check_conservation(plot=True)
 
-        if unstage:
+        if unstage and len(superstages):  # prevent users from unstaging if superstages were not used
             # "unstage" superstages to recover estimates for density of all charge states
             nz_unstaged = np.einsum('rst,trc->rct', self.res[0], self.fz)
             self.res = nz_unstaged, *self.res[1:]
