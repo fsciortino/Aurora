@@ -20,6 +20,7 @@ requirements:
     - xarray
     - pexpect
     - omfit_classes
+    - requests
 
   run:
     - python
@@ -29,6 +30,7 @@ requirements:
     - xarray
     - pexpect
     - omfit_classes
+    - requests
     
 test:
   imports:
