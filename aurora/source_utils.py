@@ -60,12 +60,12 @@ def get_source_time_history(namelist, Raxis_cm, time):
 
     elif namelist['source_type'] == 'const':
         src_times = copy.deepcopy(time)
-        src_rates = np.ones(len(time)) * namelist['Phi0']
+        src_rates = np.ones(len(time)) * namelist['source_rate']
         src_rates[0] = 0.0 # start with 0
 
     elif namelist['source_type'] == 'step':
         # Create the time-dependent step source
-        tbuf = namelist['step_source_duration']   # e.g. 1.e-6
+        tbuf = namelist.get('step_source_duration',1e-6)   # e.g. 1.e-6
 
         # Start with zero source at t=0
         src_times = [0.]
@@ -86,7 +86,8 @@ def get_source_time_history(namelist, Raxis_cm, time):
     elif namelist['source_type'] == 'synth_LBO':
         # use idealized source function
         src_times, src_rates = lbo_source_function(namelist['LBO']['t_start'],
-                                                   namelist['LBO']['t_rise'], namelist['LBO']['t_fall'],
+                                                   namelist['LBO']['t_rise'], 
+                                                   namelist['LBO']['t_fall'],
                                                    namelist['LBO']['n_particles'])
     else:
         raise ValueError('Unspecified source function time history!')
@@ -216,7 +217,7 @@ def lbo_source_function(t_start, t_rise, t_fall, n_particles=1.0, time_vec=None)
 
 
 
-def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
+def get_radial_source(namelist, rvol_grid, pro_grid, S_rates,nt, Ti_eV=None):
     '''Obtain spatial dependence of source function.
 
     If namelist['source_width_in']==0 and namelist['source_width_out']==0, the source
@@ -287,10 +288,11 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
         from omfit_classes.utils_math import atomic_element
 
         # velocity of neutrals [cm/s]
-        out = atomic_element(symbol=namelist['main_element'])
+        out = atomic_element(symbol=namelist['imp_elements'])
         spec = list(out.keys())[0]
-        main_ion_A = int(out[spec]['A'])
-        v = - np.sqrt(2.*q_electron*E0/(main_ion_A*m_p))
+        imp_ion_A = int(out[spec]['A'])
+        v = - np.sqrt(2.*q_electron*E0/(imp_ion_A*m_p))*100 #cm/s
+ 
 
         #integration of ne*S for atoms and calculation of ionization length for normalizing neutral density
         source_rad_prof[i_src]= -0.0625*S_rates[i_src]/pro_grid[i_src]/v[i_src]   #1/16
@@ -319,6 +321,10 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
     
     # neutral density for influx/unit-length = 1/cm
     source_rad_prof /= pnorm
+    
+    # broadcast in right shape if time averaged profiles are used
+    source_rad_prof = np.broadcast_to(source_rad_prof, (source_rad_prof.shape[0], nt))
+
 
     return np.asfortranarray(source_rad_prof)
 
