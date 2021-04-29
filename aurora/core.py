@@ -499,6 +499,10 @@ class aurora_sim:
             
             S_rates = self.S_rates[:,superstages,:]
             R_rates = self.R_rates[:,superstages,:]
+            #the last ion must have zero ionisation rate
+            S_rates[:,-1] = 0
+            R_rates[:,-1] = 0
+            
             if D_z.ndim==3:
                 D_z = D_z[:,:,superstages]
                 V_z = V_z[:,:,superstages]
@@ -586,23 +590,25 @@ class aurora_sim:
             # check particle conservation by summing over simulation reservoirs
             _ = self.check_conservation(plot=True)
 
-        if unstage and len(superstages):  # prevent users from unstaging if superstages were not used
+        if unstage and len(superstages):
             # "unstage" superstages to recover estimates for density of all charge states
             nz_unstaged = np.zeros(( len(self.rvol_grid), self.Z_imp+1, len(self.time_out)))
-            _superstages = np.r_[superstages, self.Z_imp+1]
-            nz_unstaged[:,0] = self.res[0][:,0] #neutral density
+            _superstages = np.copy(superstages)
+            _superstages[-1] = self.Z_imp
             
-            for i in range(1,len(superstages)):
-                if _superstages[i-1] < _superstages[i]-1:
+            for i in range(len(superstages)):
+                if i > 0 and _superstages[i-1]+1 < _superstages[i]:
                     #fill skipped stages from coronal equalibrium
-                    sind = slice(_superstages[i-1],_superstages[i])
+                    sind = slice(_superstages[i-1]+1,_superstages[i]+1)
                     _fz = self.fz[:,:,sind].T
-                    _fz = _fz/_fz.sum(0)
+                    fz_sum = np.maximum(1e-5,_fz.sum(0) ) #prevents zero division
+                    _fz = _fz/fz_sum
                     nz_unstaged[:,sind] = self.res[0][:,[i]]*np.swapaxes(_fz,0,1)
                 else:
                     nz_unstaged[:,_superstages[i]] = self.res[0][:,i]
  
             self.res = nz_unstaged, *self.res[1:]
+        
 
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         return self.res
