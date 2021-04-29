@@ -9,7 +9,7 @@ def load_default_namelist():
         'imp': 'Ca',
         'main_element': 'D',  # background
         # --------------------
-        'Phi0': 1e+21,
+        'source_rate': 1e+21,
         'source_type':'const', 
         # explicit source:
         'explicit_source_vals' : None, # provide 2D array on explicit_source_time and explicit_source_rhop grids

@@ -50,7 +50,7 @@ Next, we specify the ion species that we want to simulate. We can simply do::
 and Aurora will internally find ADAS data for that ion (assuming that this is one of the common ones for fusion modeling). The namelist also contains information on what kind of source of impurities we need to simulate; here we are going to select a constant source (starting at t=0) of :math:`10^{24}` particles/second.::
 
   namelist['source_type'] = 'const'
-  namelist['Phi0'] = 1e24
+  namelist['source_rate'] = 1e24
 
 Time dependent time histories of the impurity source may however be given by selecting `namelist['source_type']="step"` (for a series of step functions), `"synth_LBO"` (for an analytic function resembling a laser-blow-off (LBO) time history) or `"file"` (to load a detailed function from a file). Refer to the :py:meth:`~aurora.source_utils.get_source_time_history` method for more details. 
 

@@ -37,7 +37,7 @@ kp['Te']['vals'] = inputgacode['Te'][None,:]*1e3  # keV --> eV
 # set impurity species and sources rate
 imp = namelist['imp'] = 'C'
 namelist['source_type'] = 'const'
-namelist['Phi0'] = 1e21  # particles/s
+namelist['source_rate'] = 1e21  # particles/s
 
 # Change radial resolution from default:
 # namelist['dr_0']=0.3
