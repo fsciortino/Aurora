@@ -169,45 +169,38 @@ class aurora_sim:
         # get kinetic profiles on the radial and (internal) temporal grids
         self._ne,self._Te,self._Ti,self._n0 = self.get_aurora_kin_profs()
 
-        # store also kinetic profiles on output time grid
-        if len(self._ne) > 1: #all have the same shape now
-            save_time = self.save_time
-        else:
-            save_time = [0]
-            
-        self.ne = self._ne[save_time,:]
-        self.Te = self._Te[save_time,:]
-        self.Ti = self._Ti[save_time,:]
-        self.n0 = self._n0[save_time,:]
+        # store also kinetic profiles on output time grid or, if time-independent, at single time slice
+        time_idxs = self.save_time if len(self._ne)>1 else [0]
         
-            
+        self.ne = self._ne[time_idxs,:]
+        self.Te = self._Te[time_idxs,:]
+        self.Ti = self._Ti[time_idxs,:]
+        self.n0 = self._n0[time_idxs,:]
+          
         # Get time-dependent parallel loss rate
         self.par_loss_rate = self.get_par_loss_rate()
 
         # Obtain atomic rates on the computational time and radial grids
         self.S_rates, self.R_rates = self.get_time_dept_atomic_rates()
-        
-        S0 = self.S_rates[:,0,:]
-        # get radial profile of source function
-        if len(save_time) == 1:  # if time averaged profiles were used
-            S0 = S0[:, [0]]  # 0th charge state (neutral)
- 
 
+        # get radial profile of source function
+        S0 = self.S_rates[:,0,:]  # 0th charge state (neutral)
+        if len(time_idxs) == 1:  # if time averaged profiles were used
+            S0 = S0[:, [0]]  # 0th time index
+ 
         if self.namelist['source_type'] == 'interp':
 
             if np.ndim(self.namelist['explicit_source_vals'])==1:
                 # explicit source was given as 1-D, assume it is a function of time
     
-                self.source_time_history = interp1d(self.namelist['explicit_source_time'], self.namelist['explicit_source_vals'],
+                self.source_time_history = interp1d(self.namelist['explicit_source_time'],
+                                                    self.namelist['explicit_source_vals'],
                                                     bounds_error=False, fill_value=0.0)(self.time_grid)
                 
-                self.source_rad_prof = source_utils.get_radial_source(self.namelist, self.rvol_grid, self.pro_grid, 
-                                                                      S0,   # 0th charge state (neutral) and 0th time 
-                                                                      len(self.time_grid),self._Ti, ) 
-                
-                
-      
-                
+                self.source_rad_prof = source_utils.get_radial_source(
+                    self.namelist, self.rvol_grid, self.pro_grid,
+                    S0, len(self.time_grid),self._Ti)
+
             else:
                 # interpolate explicit source values on time and rhop grids of simulation
                 source_rad_prof = RectBivariateSpline(self.namelist['explicit_source_rhop'],
@@ -519,20 +512,18 @@ class aurora_sim:
             # default: start in a state with no impurity ions
             nz_init = np.zeros((len(self.rvol_grid),num_cs))
 
-
+            
         if D_z.ndim < 3:
             # set all charge states to have the same transport
             # num_cs = Z+1 - include elements for neutrals
-            D_z =  np.tile(D_z.T, (num_cs, 1, 1)).T #create fortran contiguous arrays
+            D_z =  np.tile(D_z.T, (num_cs, 1, 1)).T # create fortran contiguous arrays
             V_z =  np.tile(V_z.T, (num_cs, 1, 1)).T
 
-            
             D_z[:,:,0] = 0.0
             V_z[:,:,0] = 0.0
             if not times_DV:
                 times_DV = [1.] # dummy, no time dependence
  
-            
 
         # NOTE: for both Fortran and Julia, use f_configuous arrays for speed!
         if use_julia:
