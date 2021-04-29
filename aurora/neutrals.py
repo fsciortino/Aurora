@@ -11,9 +11,19 @@ import urllib
 import shutil, os, copy
 from scipy.constants import e,h,c as c_light,Rydberg
 from scipy.interpolate import interp2d
+import requests
 
 from . import plot_tools
 from . import radiation
+
+if 'AURORA_ADAS_DIR' in os.environ:
+    # if user indicated a directory for atomic data, use that
+    atomic_data_dir = os.environ['AURORA_ADAS_DIR']
+else:
+    # location of the "adas_data" directory relative to this script:
+    atomic_data_dir =  os.path.dirname(os.path.realpath(__file__))+os.sep+'adas_data'+os.sep
+
+
 
 def download_ehr5_file():
     '''Download the ehr5.dat file containing atomic data describing the multi-step ionization and 
@@ -22,9 +32,13 @@ def download_ehr5_file():
     See https://w3.pppl.gov/degas2/ for details. 
     '''
     filename='ehr5.dat'
-    url = 'https://w3.pppl.gov/degas2/ehr5.dat' 
-    local_filename,headers = urllib.request.urlretrieve(url, filename)
-    shutil.move(filename, os.path.dirname(os.path.realpath(__file__))+'/ehr5.dat')
+    url = 'https://w3.pppl.gov/degas2/ehr5.dat'    
+    r = requests.get(url)
+    
+    # write file to directory where ADAS data is also located
+    with open(atomic_data_dir+'/ehr5.dat', 'wb') as f:
+        f.write(r.content)
+
     print('Successfully downloaded the DEGAS2 ehr5.dat file.')
     
 
@@ -58,10 +72,10 @@ class ehr5_file:
         '''
 
         if filepath is None:
-            if not os.path.exists(os.path.dirname(os.path.realpath(__file__))+'/ehr5.dat'):
+            if not os.path.exists(atomic_data_dir+'/ehr5.dat'):
                 # if ehr5.dat file is not available, download it
                 download_ehr5_file()
-            self.filepath = os.path.dirname(os.path.realpath(__file__))+'/ehr5.dat'
+            self.filepath = atomic_data_dir+'/ehr5.dat'
         else:
             self.filepath = filepath
 
