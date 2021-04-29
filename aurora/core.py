@@ -594,27 +594,23 @@ class aurora_sim:
             
             # check particle conservation by summing over simulation reservoirs
             _ = self.check_conservation(plot=True)
-
+  
         if unstage and len(superstages):
             # "unstage" superstages to recover estimates for density of all charge states
-            #nz_unstaged = np.einsum('rst,trc->rct', self.res[0], self.fz)
             nz_unstaged = np.zeros(( len(self.rvol_grid), self.Z_imp+1, len(self.time_out)))
             _superstages = np.r_[superstages, self.Z_imp+1]
-            for i in range(len(superstages)):
-                if _superstages[i] +1 < _superstages[i+1]:
+            nz_unstaged[:,0] = self.res[0][:,0] #neutral density
+            
+            for i in range(1,len(superstages)):
+                if _superstages[i-1] < _superstages[i]-1:
                     #fill skipped stages from coronal equalibrium
-                    sind = slice(_superstages[i],_superstages[i+1])
+                    sind = slice(_superstages[i-1],_superstages[i])
                     _fz = self.fz[:,:,sind].T
                     _fz = _fz/_fz.sum(0)
-                    #nz_unstaged[:,sind] = self.res[0][:,[i]]*np.swapaxes(_fz,0,1)
-                    nz_unstaged[:,_superstages[i]] = self.res[0][:,i]
+                    nz_unstaged[:,sind] = self.res[0][:,[i]]*np.swapaxes(_fz,0,1)
                 else:
                     nz_unstaged[:,_superstages[i]] = self.res[0][:,i]
-
-                
-            #(1, 313, 75) (313, 20, 143)
-            
-            #3, 313,1(313, 1, 143)
+ 
             self.res = nz_unstaged, *self.res[1:]
 
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
