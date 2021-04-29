@@ -41,7 +41,7 @@ kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
 # set impurity species and sources rate
 imp = namelist['imp'] = 'Ar' #'C'
 namelist['source_type'] = 'const'
-namelist['Phi0'] = 2e20  # particles/s
+namelist['source_rate'] = 2e20  # particles/s
 
 # setup Aurora simulation without neutrals and CXR
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)

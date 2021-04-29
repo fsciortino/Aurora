@@ -288,7 +288,7 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates,nt, Ti_eV=None):
         from omfit_classes.utils_math import atomic_element
 
         # velocity of neutrals [cm/s]
-        out = atomic_element(symbol=namelist['imp_elements'])
+        out = atomic_element(symbol=namelist['imp'])
         spec = list(out.keys())[0]
         imp_ion_A = int(out[spec]['A'])
         v = - np.sqrt(2.*q_electron*E0/(imp_ion_A*m_p))*100 #cm/s

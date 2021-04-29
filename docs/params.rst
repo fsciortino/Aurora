@@ -22,7 +22,7 @@ The table below describes the main input parameters to Aurora's forward model of
    * - `main_element`
      - D
      - Background ion species, usually hydrogen isotopes.
-   * - `Phi0`
+   * - `source_rate`
      - 1e+21
      - Flux [particles/s] of simulated ions.
    * - `source_type`
