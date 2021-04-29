@@ -33,7 +33,7 @@ def _setup_kin_profs(rhop, ne_cm3_in, Te_eV_in, Ti_eV_in,
                      ne_decay_len_cm=1.0, Te_decay_len_cm=1.0, Ti_decay_len_cm=1.0, 
                      ne_min_cm3=1e12, Te_min_eV=1.0, Ti_min_eV=1.0):
     '''Private method to set up kinetic profiles to the format required by 
-    :py:fun:`~aurora.kn1d.run_kn1d`. Refer to this function for descriptions of inputs.
+    :py:func:`~aurora.kn1d.run_kn1d`. Refer to this function for descriptions of inputs.
     
     This function returns ne, Te and Ti profiles on the rmid_to_wall_cm radial grid, 
     from the core to the wall. 
@@ -559,7 +559,7 @@ def plot_overview(res):
     Parameters
     ----------
     res : dict
-        Output dictionary from function :py:fun:`~aurora.kn1d.run_kn1d`.
+        Output dictionary from function :py:func:`~aurora.kn1d.run_kn1d`.
     '''
     
     ins = res['kn1d_input']
@@ -632,7 +632,7 @@ def plot_exc_states(res):
     Parameters
     ----------
     res : dict
-        Output dictionary from function :py:fun:`~aurora.kn1d.run_kn1d`.
+        Output dictionary from function :py:func:`~aurora.kn1d.run_kn1d`.
     '''
     ins = res['kn1d_input']
     outs = res['out']
@@ -693,7 +693,7 @@ def plot_emiss(res, check_collrad=True):
     Parameters
     ----------
     res : dict
-        Output dictionary from function :py:fun:`~aurora.kn1d.run_kn1d`.
+        Output dictionary from function :py:func:`~aurora.kn1d.run_kn1d`.
     check_collrad : bool
         If True, compare KN1D prediction of Ly-a and D-a emission using Johnson-Hinnov
         rates using rates from COLLRAD. 
@@ -770,7 +770,7 @@ def plot_transport(res):
     Parameters
     ----------
     res : dict
-        Output dictionary from function :py:fun:`~aurora.kn1d.run_kn1d`.
+        Output dictionary from function :py:func:`~aurora.kn1d.run_kn1d`.
     '''
     ins = res['kn1d_input']
     outs = res['out']

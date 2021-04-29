@@ -257,8 +257,11 @@ def get_atom_data(imp, files=['acd','scd']):
         as attributes atom_data[key].logNe, atom_data[key].logT, atom_data[key].data
     '''
 
-    # default files dictionary
-    all_files = adas_files.adas_files_dict()[imp] # all default files for a given species
+    try:
+        # default files dictionary
+        all_files = adas_files.adas_files_dict()[imp] # all default files for a given species
+    except KeyError:
+        raise KeyError(f'ADAS data not available for ion {imp}!')
     
     if isinstance(files, dict):
         # user provided files choices as a dictionary
@@ -271,12 +274,16 @@ def get_atom_data(imp, files=['acd','scd']):
     for key in keys_to_delete:
         del all_files[key]
 
+    for filecheck in files:
+        if filecheck not in all_files:
+            raise ValueError(f'Could not fetch {imp} {filecheck.upper()} file!')
+    
     atom_data = {}
     for filetype in all_files:
 
         # find location of required ADF11 file
         fileloc = adas_files.get_adas_file_loc(all_files[filetype],filetype='adf11')
-
+    
         # load specific file and add it to output dictionary
         res = adas_file(fileloc)
         atom_data[filetype] = res.logNe, res.logT, res.data
