@@ -117,10 +117,10 @@ def compute_rad(imp, nz, ne, Te,
     # calculate total radiation
     if prad_flag:
 
-        atom_data = atomic.get_atom_data(imp, files = {'plt': adas_files_sub['plt'] if 'plt' in adas_files_sub else None})
+        atom_data = atomic.get_atom_data(imp, files = {'plt': adas_files_sub.get('plt',None)})
         pltt = atomic.interp_atom_prof(atom_data['plt'],logne,logTe) # W
 
-        atom_data = atomic.get_atom_data(imp, files = {'prb': adas_files_sub['prb'] if 'prb' in adas_files_sub else None})
+        atom_data = atomic.get_atom_data(imp, files = {'prb': adas_files_sub.get('prb',None)})
         prb = atomic.interp_atom_prof(atom_data['prb'],logne,logTe) # W
 
         # line radiation for each charge state
@@ -150,25 +150,26 @@ def compute_rad(imp, nz, ne, Te,
             assert n0.ndim==2 and Ti.ndim==2
             
             logTi = np.log10(Ti)
-            
-            # thermal CX radiation to total recombination and continuum radiation terms:
-            atom_data = atomic.get_atom_data(imp, files = {'prc': adas_files_sub['prc'] if 'prc' in adas_files_sub else None})
+            try:
+                # thermal CX radiation to total recombination and continuum radiation terms:
+                atom_data = atomic.get_atom_data(imp, files = {'prc': adas_files_sub.get('prc',None)})
 
-            # prc has weak dependence on density, so no difference between using ni or ne
-            prc = atomic.interp_atom_prof(atom_data['prc'],logne,logTi,x_multiply=False) # W
+                # prc has weak dependence on density, so no difference between using ni or ne
+                prc = atomic.interp_atom_prof(atom_data['prc'],logne,logTi,x_multiply=False) # W
 
-            # broadcast n0 to dimensions (nt,nZ,nr):
-            res['thermal_cx_cont_rad'] = nz[:,1:] * n0[:,None] * prc
+                # broadcast n0 to dimensions (nt,nZ,nr):
+                res['thermal_cx_cont_rad'] = nz[:,1:] * n0[:,None] * prc
 
-            # add to total unfiltered radiation:
-            res['tot'] += res['thermal_cx_cont_rad'].sum(1)
+                # add to total unfiltered radiation:
+                res['tot'] += res['thermal_cx_cont_rad'].sum(1)
+            except:
+                res['thermal_cx_cont_rad'] = 0
                        
     if sxr_flag: # SXR-filtered radiation (spectral range depends on filter used for files)
-
-        atom_data = atomic.get_atom_data(imp, files = {'pls': adas_files_sub['pls'] if 'pls' in adas_files_sub else None})
+        atom_data = atomic.get_atom_data(imp, files = {'pls': adas_files_sub.get('pls',None)})
         pls = atomic.interp_atom_prof(atom_data['pls'],logne,logTe) # W
 
-        atom_data = atomic.get_atom_data(imp, files = {'prs': adas_files_sub['prs'] if 'prs' in adas_files_sub else None})
+        atom_data = atomic.get_atom_data(imp, files = {'prs': adas_files_sub.get('prs', None)})
         prs = atomic.interp_atom_prof(atom_data['prs'],logne,logTe) # W
 
         # SXR line radiation for each charge state
@@ -179,10 +180,10 @@ def compute_rad(imp, nz, ne, Te,
 
         try:
             # impurity bremsstrahlung in SXR range -- already included in 'sxr_cont_rad'
-            atom_data = atomic.get_atom_data(imp, files = {'pbs': adas_files_sub['pbs'] if 'pbs' in adas_files_sub else None})
+            atom_data = atomic.get_atom_data(imp, files = {'pbs': adas_files_sub.get('pbs',None)})
             pbs = atomic.interp_atom_prof(atom_data['pbs'],logne,logTe) # W
             res['sxr_brems'] = nz[:,1:] * pbs 
-        except IndexError:
+        except:
             # pbs file not available by default for this ion. Users may specify it in adas_files_sub
             pass
         
@@ -192,7 +193,7 @@ def compute_rad(imp, nz, ne, Te,
         
     if spectral_brem_flag:  # spectral bremsstrahlung (i.e. brems at a specific wavelength)
 
-        atom_data = atomic.get_atom_data(imp, files = {'brs': adas_files_sub['brs'] if 'brs' in adas_files_sub else None})
+        atom_data = atomic.get_atom_data(imp, files = {'brs': adas_files_sub.get('brs',None)})
         x,y,tab = atom_data['brs']
         brs = atomic.interp_atom_prof((x,y,tab.T),None,logTe) # W
 
@@ -332,10 +333,10 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     if nz_cm3 is None:
         # load ionization and recombination rates
         atom_files = {}
-        atom_files['acd'] = adas_files_sub['acd'] if 'acd' in adas_files_sub else adas_files.adas_files_dict()[imp]['acd']
-        atom_files['scd'] = adas_files_sub['scd'] if 'scd' in adas_files_sub else adas_files.adas_files_dict()[imp]['scd']
+        atom_files['acd'] = adas_files_sub.get('acd', adas_files.adas_files_dict()[imp]['acd'])
+        atom_files['scd'] = adas_files_sub.get('scd', adas_files.adas_files_dict()[imp]['scd'])
         if n0_cm3 is not None:
-            atom_files['ccd'] = adas_files_sub['ccd'] if 'ccd' in adas_files_sub else adas_files.adas_files_dict()[imp]['ccd']
+            atom_files['ccd'] = adas_files_sub.get('ccd',adas_files.adas_files_dict()[imp]['ccd'])
         
         # now load ionization and recombination rates
         atom_data = atomic.get_atom_data(imp,files=atom_files)
@@ -366,7 +367,7 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
                       Ti=Te_eV[None,:] if Ti_eV is None else Ti_eV[None,:],
                       adas_files_sub=adas_files_sub,
                       prad_flag=True, sxr_flag=False,
-                      thermal_cx_rad_flag=False if n0_cm3 is None else True,
+                      thermal_cx_rad_flag= n0_cm3 is not None,
                       spectral_brem_flag=False)
 
     # radiation terms -- converted from W/cm^3 to W/m^3
@@ -843,26 +844,18 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
             atom_data, np.array([ne_cm3,]), np.array([Te_eV,]),
             n0_by_ne=np.array([n0_cm3/ne_cm3,]), include_cx=True, plot=False)
         ion_exc_rec_dens = [fz[0][-4], fz[0][-3], fz[0][-2]] # Li-like, He-like, H-like
-
-    wave_A = np.zeros((len(list(log10pec_dict.keys()))))
-    pec_ion = np.zeros((len(list(log10pec_dict.keys()))))
-    pec_exc = np.zeros((len(list(log10pec_dict.keys()))))
-    pec_rr = np.zeros((len(list(log10pec_dict.keys()))))
-    pec_cx = np.zeros((len(list(log10pec_dict.keys()))))
-    pec_dr = np.zeros((len(list(log10pec_dict.keys()))))
-    for ii,lam in enumerate(log10pec_dict):
-        wave_A[ii] = lam
-        if 'ioniz' in log10pec_dict[lam]:
-            pec_ion[ii] = 10**log10pec_dict[lam]['ioniz'].ev(np.log10(ne_cm3),np.log10(Te_eV))
-        if 'excit' in log10pec_dict[lam]:
-            pec_exc[ii] = 10**log10pec_dict[lam]['excit'].ev(np.log10(ne_cm3),np.log10(Te_eV))
-        if 'recom' in log10pec_dict[lam]:
-            pec_rr[ii] = 10**log10pec_dict[lam]['recom'].ev(np.log10(ne_cm3),np.log10(Te_eV))
-        if 'chexc' in log10pec_dict[lam]:
-            pec_cx[ii] = 10**log10pec_dict[lam]['checx'].ev(np.log10(ne_cm3),np.log10(Te_eV))
-        if 'drsat' in log10pec_dict[lam]:
-            pec_dr[ii] = 10**log10pec_dict[lam]['drsat'].ev(np.log10(ne_cm3),np.log10(Te_eV))
     
+    nlines = len(list(log10pec_dict.keys()))
+    wave_A = np.zeros(nlines)
+ 
+    pec = {}
+    for typ in ['ioniz', 'excit', 'recom','chexc', 'drsat' ]:
+        pec[typ] = np.zeros(nlines)
+        for ii,lam in enumerate(log10pec_dict):
+            wave_A[ii] = lam
+            if typ in log10pec_dict[lam]:
+                pec[typ][ii] = 10**log10pec_dict[lam][typ].ev(np.log10(ne_cm3),np.log10(Te_eV))
+        
     # Doppler broadening
     mass = constants.m_p * ion_A
     dnu_g = np.sqrt(2.*(Ti_eV*constants.e)/mass)*(constants.c/wave_A)/constants.c
@@ -884,55 +877,28 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
         fig,ax = plt.subplots()
 
     # contributions to spectrum
+    source = {'ioniz': 0, 'excit': 1, 'recom': 2, 'chexc': 2, 'drsat': 2}
     spec_ion = np.zeros_like(wave_final_A)
-    for ii in np.arange(lams_profs_A.shape[0]):
-        comp_ion = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[0]*pec_ion[ii]*theta[ii,:],
-                               bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines and pec_ion[ii]>np.max(pec_ion)/1000:
-            ax.plot(wave_final_A+dlam_A, comp_ion, c='r')
-        spec_ion += comp_ion
-
-    spec_exc = np.zeros_like(wave_final_A)
-    for ii in np.arange(lams_profs_A.shape[0]):
-        comp_exc = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[1]*pec_exc[ii]*theta[ii,:],
-                               bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines and pec_exc[ii]>np.max(pec_exc)/100:
-            ax.plot(wave_final_A+dlam_A, comp_exc, c='b')
-        spec_exc += comp_exc
-
-    spec_rr = np.zeros_like(wave_final_A)
-    for ii in np.arange(lams_profs_A.shape[0]):
-        comp_rr = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[2]*pec_rr[ii]*theta[ii,:],
-                               bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines and pec_rr[ii]>np.max(pec_rr)/100:
-            ax.plot(wave_final_A+dlam_A, comp_rr, c='g')
-        spec_rr += comp_rr
-
-    spec_dr = np.zeros_like(wave_final_A)
-    for ii in np.arange(lams_profs_A.shape[0]):
-        comp_dr = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[2]*pec_dr[ii]*theta[ii,:],
-                               bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines and pec_dr[ii]>np.max(pec_dr)/100:
-            ax.plot(wave_final_A+dlam_A, comp_dr, c='m')
-        spec_dr += comp_dr
-
-    spec_cx = np.zeros_like(wave_final_A)
-    for ii in np.arange(lams_profs_A.shape[0]):
-        comp_cx = interp1d(lams_profs_A[ii,:], n0_cm3*ion_exc_rec_dens[2]*pec_cx[ii]*theta[ii,:],
-                               bounds_error=False, fill_value=0.0)(wave_final_A)
-        if plot_all_lines and pec_cx[ii]>np.max(pec_cx)/100:
-            ax.plot(wave_final_A+dlam_A, comp_cx, c='c')
-        spec_cx += comp_cx
-
-    spec_tot = spec_ion+spec_exc+spec_rr+spec_dr+spec_cx
+    spec = {}
+    spec_tot = np.zeros_like(wave_final_A)
+    for typ in ['ioniz', 'excit', 'recom','chexc', 'drsat' ]:
+        spec[typ] = np.zeros_like(wave_final_A)
+        for ii in np.arange(lams_profs_A.shape[0]):
+            comp = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[source[typ]]*pec[typ][ii]*theta[ii,:],
+                                bounds_error=False, fill_value=0.0)(wave_final_A)
+            if plot_all_lines and pec[typ][ii]>np.max(pec[typ])/1000:
+                ax.plot(wave_final_A+dlam_A, comp, c='r')
+            spec[typ] += comp
+        spec_tot += spec[typ]
+  
     
     if plot_spec_tot:
         # plot contributions from different processes
-        ax.plot(wave_final_A+dlam_A, spec_ion, c='r', ls='--', label='' if no_leg else 'ionization')
-        ax.plot(wave_final_A+dlam_A, spec_exc, c='b', ls='--', label='' if no_leg else 'excitation')
-        ax.plot(wave_final_A+dlam_A, spec_rr, c='g', ls='--', label='' if no_leg else 'radiative recomb')
-        ax.plot(wave_final_A+dlam_A, spec_dr, c='m', ls='--', label='' if no_leg else 'dielectronic recomb')
-        ax.plot(wave_final_A+dlam_A, spec_cx, c='c', ls='--', label='' if no_leg else 'charge exchange recomb')
+        ax.plot(wave_final_A+dlam_A, spec['ioniz'], c='r', ls='--', label='' if no_leg else 'ionization')
+        ax.plot(wave_final_A+dlam_A, spec['excit'], c='b', ls='--', label='' if no_leg else 'excitation')
+        ax.plot(wave_final_A+dlam_A, spec['recom'], c='g', ls='--', label='' if no_leg else 'radiative recomb')
+        ax.plot(wave_final_A+dlam_A, spec['drsat'], c='m', ls='--', label='' if no_leg else 'dielectronic recomb')
+        ax.plot(wave_final_A+dlam_A, spec['chexc'], c='c', ls='--', label='' if no_leg else 'charge exchange recomb')
 
         # total envelope
         ax.plot(wave_final_A+dlam_A, spec_tot, c='k', ls='--', label='' if no_leg else 'total')
@@ -946,7 +912,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
         ax=None
 
     # return Doppler-shifted wavelength if dlam_A was given as non-zero
-    return wave_final_A+dlam_A, spec_ion, spec_exc, spec_rr, spec_dr, spec_cx, ax
+    return wave_final_A+dlam_A, spec['ioniz'], spec['excit'], spec['recom'], spec['drsat'], spec['chexc'], ax
 
 
 
