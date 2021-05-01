@@ -26,17 +26,15 @@ Aurora can be installed from PyPI using
     
 Add a `--user` flag to the command above if you don't have write-access to the default package directory on your system (i.e. if you don't have root permissions). 
 
-Installing via conda is now also possible using
+Installing via conda is also possible using
 
-    conda install -c sciortino aurorafusion 
-
-.. image:: https://anaconda.org/sciortino/aurorafusion/badges/version.svg
-    :target: https://anaconda.org/sciortino/aurorafusion
+    conda install -c conda-forge aurorafusion 
     
-.. image:: https://anaconda.org/sciortino/aurorafusion/badges/latest_release_relative_date.svg
-    :target: https://anaconda.org/sciortino/aurorafusion
+    
+.. image:: https://anaconda.org/conda-forge/aurorafusion/badges/version.svg   :target: https://anaconda.org/conda-forge/aurorafusion
 
-Note that the conda version is NOT updated very regularly. If this kind of installation is your preference, feel free to contact the F.Sciortino to request an update. The conda installation does not currently install dependencies on `omfit_classes`, which users may need to install via `pip` (see the `PyPI repo <https://pypi.org/project/omfit-classes/>`_). 
+
+Both the PyPI and conda installation are automatically updated at every package release. Note that the conda installation does not currently install dependencies on `omfit_classes`, which users may need to install via `pip` (see the `PyPI repo <https://pypi.org/project/omfit-classes/>`_). 
 
 To look at the code and contribute to the Aurora repository, it is recommended to install from source, by git-cloning the  `Aurora repo <https://github.com/fsciortino/aurora>`_ from Github. This will ensure that you can access the latest version of the tools. 
 
@@ -50,18 +48,30 @@ or use the makefile in the package directory to build the Fortran code using
    
 Note that the makefile will not install any of the dependencies, listed in the `requirements.txt` file in the main directory. You can use this file to quickly install dependencies within a Python virtual environment, or install each dependency one at a time.
 
-Note that the Julia version of the code is not built by default. If you have Julia installed on your system, you can do  
+The Julia version of the code is not built by default. If you have Julia installed on your system, you can do  
 
     make julia
 
-from the main package directory. This will build a Julia `sysimage` to speed up access of Julia source code from Python, but it is not strictly necessary. See the documentation to read about interfacing Python3 and Julia. 
+from the main package directory. This will build a Julia `sysimage` to speed up access of Julia source code from Python, but it is not strictly necessary. See the documentation to read about interfacing Python and Julia. 
+
+
+Atomic data
+-----------
+
+Aurora offers a simple interface to download, read, process and plot atomic data from the Atomic Data and Structure Analysis (ADAS) database, particularly through the OPEN-ADAS website: www.open-adas.ac.uk . ADAS data files can be fetched remotely and stored within the Aurora distribution directory, or users may choose to fetch ADAS files from a chosen, pre-existing directory by setting
+
+    export AURORA_ADAS_DIR=my_adas_directory
+    
+within their Linux environment (or analogous). If an ADAS files that is not available in AURORA_ADAS_DIR is requested by a user, Aurora attempts to download it and store it there. If you are using a public installation of Aurora and you do not have write-access to the directory where Aurora is installed, make sure to set AURORA_ADAS_DIR to a directory where you do have write-access before starting.
+
+Several ADAS formats can currently be managed -- please see the docs. Please contact the authors to request and/or suggest expansions of current capabilities.
 
 
 
 License
 -------
 
-The package is made open-source with the hope that this will speed up research on fusion energy and make further code development easier. However, we kindly ask that all users communicate to us their purposes, difficulties and successes with Aurora, so that we may support users as much as possible and grow the code further. 
+Aurora is distributed under the MIT License. The package is made open-source with the hope that this will speed up research on fusion energy and make further code development easier. However, we kindly ask that all users communicate to us their purposes, difficulties and successes with Aurora, so that we may support users as much as possible and grow the code further. 
 
 
 Citing Aurora
