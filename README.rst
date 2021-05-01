@@ -1,7 +1,25 @@
 Aurora: a modern toolbox for impurity transport, neutrals and radiation modeling
 ================================================================================
 
-Aurora is an expanding package to simulate heavy-ion transportm neutrals and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model which inherits many of the methods from the historical STRAHL code and has been thoroughly benchmarked with it. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. Aurora's code is mostly written in Python 3 and Fortran 90. A Julia interface has also recently been added. The package enables radiation calculations using ADAS atomic rates, which can easily be applied to the output of Aurora's own forward model, or coupled with other 1D, 2D or 3D transport codes. 
+.. image:: https://badge.fury.io/py/aurorafusion.svg
+    :target: https://badge.fury.io/py/aurorafusion
+    
+.. image:: https://anaconda.org/conda-forge/aurorafusion/badges/version.svg   
+    :target: https://anaconda.org/conda-forge/aurorafusion
+
+.. image:: https://anaconda.org/conda-forge/aurorafusion/badges/latest_release_date.svg   
+    :target: https://anaconda.org/conda-forge/aurorafusion
+
+.. image:: https://anaconda.org/conda-forge/aurorafusion/badges/platforms.svg   
+    :target: https://anaconda.org/conda-forge/aurorafusion
+
+.. image:: https://anaconda.org/conda-forge/aurorafusion/badges/license.svg   
+    :target: https://anaconda.org/conda-forge/aurorafusion
+
+.. image:: https://anaconda.org/conda-forge/aurorafusion/badges/downloads.svg   
+    :target: https://anaconda.org/conda-forge/aurorafusion
+
+Aurora is a package to simulate heavy-ion transportm neutrals and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model, thoroughly benchmarked with the widely-adopted STRAHL code. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. A simple interface to atomic data for fusion plasmas makes it a convenient tool for spectroscopy and integrated modeling. Aurora's code is mostly written in Python 3 and Fortran 90. An experimental Julia interface has also been added. 
 
 Documentation is available at https://aurora-fusion.readthedocs.io.
 
@@ -17,23 +35,18 @@ Generally, we would appreciate if you could work with us to merge your features 
 
 Installation
 ------------
-.. image:: https://badge.fury.io/py/aurorafusion.svg
-    :target: https://badge.fury.io/py/aurorafusion
-    
+
 Aurora can be installed from PyPI using
 
-    pip install aurorafusion
+    pip install aurorafusion --user
     
-Add a `--user` flag to the command above if you don't have write-access to the default package directory on your system (i.e. if you don't have root permissions). 
+You can omit the `--user` flag if you have write-access to the default package directory on your system and wish to install there.
 
 Installing via conda is also possible using
 
     conda install -c conda-forge aurorafusion 
     
     
-.. image:: https://anaconda.org/conda-forge/aurorafusion/badges/version.svg   :target: https://anaconda.org/conda-forge/aurorafusion
-
-
 Both the PyPI and conda installation are automatically updated at every package release. Note that the conda installation does not currently install dependencies on `omfit_classes`, which users may need to install via `pip` (see the `PyPI repo <https://pypi.org/project/omfit-classes/>`_). 
 
 To look at the code and contribute to the Aurora repository, it is recommended to install from source, by git-cloning the  `Aurora repo <https://github.com/fsciortino/aurora>`_ from Github. This will ensure that you can access the latest version of the tools. 
