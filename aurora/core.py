@@ -1,7 +1,7 @@
 '''This module includes the core class to set up simulations with :py:mod:`aurora`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.
 '''
 
-import copy,os,sys
+import os,sys
 import numpy as np
 from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.constants import e as q_electron, m_p
@@ -55,9 +55,10 @@ class aurora_sim:
         self.nbi_cxr = nbi_cxr
         self.imp = namelist['imp']
 
-        # import omfit_eqdsk here to avoid issues with docs and packaging
-        from omfit_classes import omfit_eqdsk
+
         if geqdsk is None:
+            # import omfit_eqdsk here to avoid issues with docs and packaging
+            from omfit_classes import omfit_eqdsk
             # Fetch geqdsk from MDS+ (using EFIT01) and post-process it using the OMFIT geqdsk format.
             self.geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(
                 device=namelist['device'],shot=namelist['shot'],
@@ -67,7 +68,6 @@ class aurora_sim:
             )
         else:
             self.geqdsk = geqdsk
-
         self.Raxis_cm = self.geqdsk['RMAXIS']*100. # cm
         self.namelist['Baxis'] = self.geqdsk['BCENTR']
         
@@ -123,7 +123,7 @@ class aurora_sim:
         self.nbi_cxr_flag = self.namelist['nbi_cxr_flag']
 
         # get fractional abundances on radial grid
-        logTe, self.fz = atomic.get_frac_abundances(self.atom_data, self.ne, self.Te, plot=False)
+        #logTe, self.fz = atomic.get_frac_abundances(self.atom_data, self.ne, self.Te,n0_by_ne= plot=False)
         
     def save(self, filename):
         '''Save state of `aurora_sim` object.
@@ -137,6 +137,12 @@ class aurora_sim:
         with open(filename,'rb') as f:
             obj= pkl.load(f)
         self.__dict__.update(obj.__dict__)
+    
+    def save_dict(self):
+        return self.__dict__
+    
+    def load_dict(self, aurora_dict):
+        self.__dict__.update(aurora_dict)    
             
     def setup_grids(self):
         '''Method to set up radial and temporal grids given namelist inputs.
@@ -152,7 +158,7 @@ class aurora_sim:
         self.rvol_grid,self.pro_grid,self.qpr_grid,self.prox_param = grid_params
 
         # get rho_poloidal grid corresponding to aurora internal (rvol) grid
-        self.rhop_grid = interp1d(_rvol,rho_pol)(self.rvol_grid)
+        self.rhop_grid = interp1d(_rvol,rho_pol, fill_value='extrapolate')(self.rvol_grid)
         self.rhop_grid[0] = 0.0 # enforce on axis
         
         # Save R on LFS and HFS
@@ -169,38 +175,45 @@ class aurora_sim:
         # get kinetic profiles on the radial and (internal) temporal grids
         self._ne,self._Te,self._Ti,self._n0 = self.get_aurora_kin_profs()
 
-        # store also kinetic profiles on output time grid or, if time-independent, at single time slice
-        time_idxs = self.save_time if len(self._ne)>1 else [0]
+        # store also kinetic profiles on output time grid
+        if len(self._ne) > 1: #all have the same shape now
+            save_time = self.save_time
+        else:
+            save_time = [0]
+            
+        self.ne = self._ne[save_time,:]
+        self.Te = self._Te[save_time,:]
+        self.Ti = self._Ti[save_time,:]
+        self.n0 = self._n0[save_time,:]
         
-        self.ne = self._ne[time_idxs,:]
-        self.Te = self._Te[time_idxs,:]
-        self.Ti = self._Ti[time_idxs,:]
-        self.n0 = self._n0[time_idxs,:]
-          
+            
         # Get time-dependent parallel loss rate
         self.par_loss_rate = self.get_par_loss_rate()
 
         # Obtain atomic rates on the computational time and radial grids
         self.S_rates, self.R_rates = self.get_time_dept_atomic_rates()
-
+        
+        S0 = self.S_rates[:,0,:]
         # get radial profile of source function
-        S0 = self.S_rates[:,0,:]  # 0th charge state (neutral)
-        if len(time_idxs) == 1:  # if time averaged profiles were used
-            S0 = S0[:, [0]]  # 0th time index
+        if len(save_time) == 1:  # if time averaged profiles were used
+            S0 = S0[:, [0]]  # 0th charge state (neutral)
  
+
         if self.namelist['source_type'] == 'interp':
 
             if np.ndim(self.namelist['explicit_source_vals'])==1:
                 # explicit source was given as 1-D, assume it is a function of time
     
-                self.source_time_history = interp1d(self.namelist['explicit_source_time'],
-                                                    self.namelist['explicit_source_vals'],
+                self.source_time_history = interp1d(self.namelist['explicit_source_time'], self.namelist['explicit_source_vals'],
                                                     bounds_error=False, fill_value=0.0)(self.time_grid)
                 
-                self.source_rad_prof = source_utils.get_radial_source(
-                    self.namelist, self.rvol_grid, self.pro_grid,
-                    S0, len(self.time_grid),self._Ti)
-
+                self.source_rad_prof = source_utils.get_radial_source(self.namelist, self.rvol_grid, self.pro_grid, 
+                                                                      S0,   # 0th charge state (neutral) and 0th time 
+                                                                      len(self.time_grid),self._Ti, ) 
+                
+                
+      
+                
             else:
                 # interpolate explicit source values on time and rhop grids of simulation
                 source_rad_prof = RectBivariateSpline(self.namelist['explicit_source_rhop'],
@@ -258,9 +271,7 @@ class aurora_sim:
         # linear interpolation in time
         if len(times) > 1:  # time-dept
             data = interp1d(times,data,axis=0)(np.clip(self.time_grid,*times[[0,-1]]))
-        #else:  # time-indpt: same kin profs at every time point
-            #data = np.tile(data, (len(self.time_grid),1))
-            
+    
         return data
 
 
@@ -502,7 +513,7 @@ class aurora_sim:
             #the last ion must have zero ionisation rate
             S_rates[:,-1] = 0
             R_rates[:,-1] = 0
-            
+
             if D_z.ndim==3:
                 D_z = D_z[:,:,superstages]
                 V_z = V_z[:,:,superstages]
@@ -511,23 +522,29 @@ class aurora_sim:
             num_cs = int(self.Z_imp+1)
             S_rates = self.S_rates
             R_rates = self.R_rates
+
+        #prevent recombination back to neutral state, these neutrals were lost causing error in particle conservation 
+        if not evolneut:
+            R_rates[:,0] = 0
             
         if nz_init is None:
             # default: start in a state with no impurity ions
             nz_init = np.zeros((len(self.rvol_grid),num_cs))
 
-            
+
         if D_z.ndim < 3:
             # set all charge states to have the same transport
             # num_cs = Z+1 - include elements for neutrals
-            D_z =  np.tile(D_z.T, (num_cs, 1, 1)).T # create fortran contiguous arrays
+            D_z =  np.tile(D_z.T, (num_cs, 1, 1)).T #create fortran contiguous arrays
             V_z =  np.tile(V_z.T, (num_cs, 1, 1)).T
 
+            
             D_z[:,:,0] = 0.0
             V_z[:,:,0] = 0.0
             if not times_DV:
                 times_DV = [1.] # dummy, no time dependence
  
+        nt = len(self.time_out)
 
         # NOTE: for both Fortran and Julia, use f_configuous arrays for speed!
         if use_julia:
@@ -537,7 +554,7 @@ class aurora_sim:
                        sysimage=os.path.dirname(os.path.realpath(__file__)) + "/../aurora.jl/sysimage.so")
             from julia import aurora as aurora_jl
 
-            self.res = aurora_jl.run(len(self.time_out),  # number of times at which simulation outputs results
+            self.res = aurora_jl.run(nt,  # number of times at which simulation outputs results
                                      times_DV,
                                      D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                      self.par_loss_rate,  # time dependent
@@ -559,7 +576,7 @@ class aurora_sim:
             from ._aurora import run as fortran_run
             
             
-            self.res =  fortran_run(len(self.time_out),  # number of times at which simulation outputs results
+            self.res =  fortran_run(nt,  # number of times at which simulation outputs results
                                     times_DV,
                                     D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                     self.par_loss_rate,  # time dependent
@@ -589,27 +606,31 @@ class aurora_sim:
             
             # check particle conservation by summing over simulation reservoirs
             _ = self.check_conservation(plot=True)
-
+        
+ 
         if unstage and len(superstages):
             # "unstage" superstages to recover estimates for density of all charge states
-            nz_unstaged = np.zeros(( len(self.rvol_grid), self.Z_imp+1, len(self.time_out)))
+            nz_unstaged = np.zeros(( len(self.rvol_grid), self.Z_imp+1, nt))
             _superstages = np.copy(superstages)
             _superstages[-1] = self.Z_imp
             
             for i in range(len(superstages)):
                 if i > 0 and _superstages[i-1]+1 < _superstages[i]:
                     #fill skipped stages from coronal equalibrium
-                    sind = slice(_superstages[i-1]+1,_superstages[i]+1)
-                    _fz = self.fz[:,:,sind].T
-                    fz_sum = np.maximum(1e-5,_fz.sum(0) ) #prevents zero division
-                    _fz = _fz/fz_sum
-                    nz_unstaged[:,sind] = self.res[0][:,[i]]*np.swapaxes(_fz,0,1)
+                    fz = np.ones((len(self.rvol_grid), _superstages[i]-_superstages[i-1], nt))
+                    for j in range(_superstages[i-1]+2,_superstages[i]+1):
+                        S,R = self.S_rates[:,j,self.save_time], self.R_rates[:,j,self.save_time]
+                        fz[:,j-_superstages[i]] = fz[:,j-1-_superstages[i]]*S/R
+                        
+                    fz /= np.maximum(1e-5,fz.sum(1))[:,None] #prevents zero division
+                    #split the superstage in the separate stages using coronal equalibrium
+                    nz_unstaged[:,_superstages[i-1]+1:_superstages[i]+1] = self.res[0][:,[i]]*fz
+                    
                 else:
                     nz_unstaged[:,_superstages[i]] = self.res[0][:,i]
  
             self.res = nz_unstaged, *self.res[1:]
         
-
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         return self.res
     
