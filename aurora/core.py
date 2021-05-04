@@ -535,7 +535,7 @@ class aurora_sim:
             
             D_z[:,:,0] = 0.0
             V_z[:,:,0] = 0.0
-            if not times_DV:
+            if np.size(times_DV) == 0:
                 times_DV = [1.] # dummy, no time dependence
  
         nt = len(self.time_out)
