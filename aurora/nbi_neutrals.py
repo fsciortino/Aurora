@@ -8,10 +8,11 @@ These script collects functions that should be device-agnostic.
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline, interp1d, interp2d
 import copy, itertools
 
 from .janev_smith_rates import js_sigma
+from .plot_tools import get_ls_cycle
 
 
 def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
@@ -155,19 +156,8 @@ def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
     return neut_fsa
 
 
-def get_ls_cycle():
-    # create useful list of plotting styles
-    color_vals = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
-    style_vals = ['-', '--', '-.', ':']
-    ls_vals = []
-    for s in style_vals:
-        for c in color_vals:
-            ls_vals.append(c + s)
-            ls_cycle = itertools.cycle(ls_vals)
-    return ls_cycle
 
-
-def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_prof, include_fast=True, include_halo=True, debug_plots=False):
+def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_eV, include_fast=True, include_halo=True, debug_plots=False):
     """Compute flux-surface-averaged (FSA) charge exchange recombination for a given impurity with
     neutral beam components, applying appropriate Maxwellian averaging of cross sections and
     obtaining rates in [:math:`s^-1`] units. This method expects all neutral components to be given in a
@@ -186,8 +176,8 @@ def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_prof, include_fast=True
     rhop_Ti : array-like
         Sqrt of poloidal flux radial coordinate for Ti profiles.
     times_Ti : array-like
-        Time base on which Ti_prof is given [s]. 
-    Ti_prof : array-like
+        Time base on which Ti_eV is given [s]. 
+    Ti_eV : array-like
         Ion temperature profile on the rhop_Ti, times_Ti bases.
     include_fast : bool, optional
         If True, include CXR rates from fast NBI neutrals. Default is True. 
@@ -217,9 +207,9 @@ def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_prof, include_fast=True
     rhop = neut_fsa['rhop']
 
     if len(times_Ti) == 1:
-        Ti = np.atleast_2d(interp1d(rhop_Ti, Ti_prof[:, 0] / 1e3, bounds_error=False, fill_value=3e-3)(rhop)).T  # keV
+        Ti = np.atleast_2d(interp1d(rhop_Ti, Ti_eV[:, 0] / 1e3, bounds_error=False, fill_value=3e-3)(rhop)).T  # keV
     else:
-        Ti = RectBivariateSpline(times_Ti, rhop_Ti, Ti_prof / 1e3)(times_Ti, rhop)  # keV
+        Ti = RectBivariateSpline(times_Ti, rhop_Ti, Ti_eV / 1e3)(times_Ti, rhop)  # keV
 
     # collect rates for each energy component and excited state (ONLY fast neutrals here)
     rates = {}
@@ -427,7 +417,7 @@ def xyz_uvw(x, y, z, origin, R):
 
 
 
-def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
+def bt_rate_maxwell_average(sigma_fun, Ti_keV, E_beam, m_bckg, m_beam, n_level):
     """Calculates Maxwellian reaction rate for a beam with atomic mass "m_beam", 
     energy "E_beam", firing into a target with atomic mass "m_bckg" and temperature "T".
 
@@ -439,8 +429,8 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
     sigma_fun: :py:meth
         Function to compute a specific cross section [:math:`cm^2`], function of energy/amu ONLY.
         Expected call form: sigma_fun(erel/ared)
-    Ti : float, 1D or 2D array
-        Target temperature [keV]. Results will be computed for each Ti value in a vectorized manner.
+    Ti_keV : float, 1D or 2D array
+        Target temperature [keV]. Results will be computed for each Ti_keV value in a vectorized manner.
     E_beam : float
         Beam energy [keV]
     m_bckg : float
@@ -459,7 +449,7 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
     from scipy import constants as consts
 
     # enforce expected shape
-    Ti = np.atleast_2d(Ti)
+    Ti_keV = np.atleast_2d(Ti_keV)
 
     # radial and parallel velocity grids, in units of thermal velocity
     vr = np.linspace(0.0, 4.0, 30)
@@ -467,7 +457,7 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
 
     # normalized energy and temperature
     E_beam_per_amu = E_beam / m_beam  # E_bar
-    T_per_amu = np.maximum(Ti, 1.0e-6) / m_bckg  # T_bar
+    T_per_amu = np.maximum(Ti_keV, 1.0e-6) / m_bckg  # T_bar
 
     # beam/target reduced mass:
     ared = m_bckg * m_beam / (m_bckg + m_beam)
@@ -481,8 +471,8 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
     if ared <= 0.5:  # for electron interactions
         ared = 1.0
 
-    fr = np.zeros((Ti.shape[0], Ti.shape[1], len(vr)))
-    fz = np.zeros((Ti.shape[0], Ti.shape[1], len(vz)))
+    fr = np.zeros((Ti_keV.shape[0], Ti_keV.shape[1], len(vr)))
+    fz = np.zeros((Ti_keV.shape[0], Ti_keV.shape[1], len(vz)))
 
     for i in np.arange(len(vz)):
         for j in np.arange(len(vr)):
@@ -507,7 +497,7 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
 
 
 
-def tt_rate_maxwell_average(sigma_fun, Ti, m_i, m_n, n_level):
+def tt_rate_maxwell_average(sigma_fun, Ti_keV, m_i, m_n, n_level):
     """Calculates Maxwellian reaction rate for an interaction between two thermal populations,
     assumed to be of neutrals (mass m_n) and background ions (mass m_i).
 
@@ -520,7 +510,7 @@ def tt_rate_maxwell_average(sigma_fun, Ti, m_i, m_n, n_level):
     sigma_fun: python function
         Function to compute a specific cross section [:math:`cm^2`], function of energy/amu ONLY.
         Expected call form: sigma_fun(erel/ared)
-    Ti: float or 1D array
+    Ti_keV: float or 1D array
         background ion and halo temperature [keV]
     m_i: float
         mass of background ions [amu]
@@ -540,16 +530,16 @@ def tt_rate_maxwell_average(sigma_fun, Ti, m_i, m_n, n_level):
     This does not currently account for the effect of rotation! Doing so will require making the integration in this
     function 2-dimensional.
     """
-    Ti = np.atleast_1d(Ti)
+    Ti_keV = np.atleast_1d(Ti_keV)
 
     vz = np.linspace(0, 4.0, 60)
-    Erel = Ti[:, np.newaxis] * vz[np.newaxis, :] ** 2
+    Erel = Ti_keV[:, np.newaxis] * vz[np.newaxis, :] ** 2
 
     # normalized energy and temperature
-    T_per_amu = np.maximum(Ti, 1.0e-6) / m_n  # T_bar
+    T_per_amu = np.maximum(Ti_keV, 1.0e-6) / m_n  # T_bar
 
     integrand = (
-        lambda erel: bt_rate_maxwell_average(sigma_fun, Ti, erel, m_i, m_n, n_level) * (2.0 * m_n * erel) ** (-0.5) * np.exp(-erel / Ti)
+        lambda erel: bt_rate_maxwell_average(sigma_fun, Ti_keV, erel, m_i, m_n, n_level) * (2.0 * m_n * erel) ** (-0.5) * np.exp(-erel / Ti_keV)
     )
 
     dE = (13.6e-3) / (n_level ** 2)  # hydrogen ionization potential
@@ -557,7 +547,7 @@ def tt_rate_maxwell_average(sigma_fun, Ti, m_i, m_n, n_level):
 
     for ie in np.arange(len(vz)):  # loop over vz
         mask = Erel[:, ie] >= dE  # no possible interaction below hydrogen ionization potential
-        sigma[mask, ie] = bt_rate_maxwell_average(sigma_fun, Ti[mask], Erel[mask, ie], m_i, m_n, n_level)
+        sigma[mask, ie] = bt_rate_maxwell_average(sigma_fun, Ti_keV[mask], Erel[mask, ie], m_i, m_n, n_level)
 
     prefactor = np.sqrt(2.0 / (np.pi * T_per_amu)) ** (-0.5)
     sigmav = prefactor * scipy.integrate.simps(sigma, Erel, axis=-1)
