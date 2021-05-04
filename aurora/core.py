@@ -68,6 +68,7 @@ class aurora_sim:
             )
         else:
             self.geqdsk = geqdsk
+
         self.Raxis_cm = self.geqdsk['RMAXIS']*100. # cm
         self.namelist['Baxis'] = self.geqdsk['BCENTR']
         
@@ -77,6 +78,7 @@ class aurora_sim:
         atom_files['scd'] = self.namelist.get('scd',adas_files.adas_files_dict()[self.imp]['scd'])
         if self.namelist['cxr_flag']:
             atom_files['ccd'] = self.namelist.get('ccd', adas_files.adas_files_dict()[self.imp]['ccd'])
+
         # now load ionization and recombination rates
         self.atom_data = atomic.get_atom_data(self.imp,files=atom_files)
 
@@ -122,8 +124,6 @@ class aurora_sim:
         self.cxr_flag = self.namelist['cxr_flag']
         self.nbi_cxr_flag = self.namelist['nbi_cxr_flag']
 
-        # get fractional abundances on radial grid
-        #logTe, self.fz = atomic.get_frac_abundances(self.atom_data, self.ne, self.Te,n0_by_ne= plot=False)
         
     def save(self, filename):
         '''Save state of `aurora_sim` object.
@@ -242,9 +242,6 @@ class aurora_sim:
                                                                   len(self.time_grid),self._Ti)
 
 
-
-        
-        
     def interp_kin_prof(self, prof): 
         ''' Interpolate the given kinetic profile on the radial and temporal grids [units of s].
         This function extrapolates in the SOL based on input options using the same methods as in STRAHL.
@@ -341,9 +338,6 @@ class aurora_sim:
         R_rates_t[:, :-1] = R_rates.T
 
         return S_rates_t, R_rates_t
-
-
-
 
 
     def get_par_loss_rate(self, trust_SOL_Ti=False):
@@ -535,7 +529,7 @@ class aurora_sim:
         if D_z.ndim < 3:
             # set all charge states to have the same transport
             # num_cs = Z+1 - include elements for neutrals
-            D_z =  np.tile(D_z.T, (num_cs, 1, 1)).T #create fortran contiguous arrays
+            D_z =  np.tile(D_z.T, (num_cs, 1, 1)).T # create fortran contiguous arrays
             V_z =  np.tile(V_z.T, (num_cs, 1, 1)).T
 
             
@@ -616,14 +610,15 @@ class aurora_sim:
             
             for i in range(len(superstages)):
                 if i > 0 and _superstages[i-1]+1 < _superstages[i]:
-                    #fill skipped stages from coronal equalibrium
+                    # fill skipped stages from ionization equilibrium
                     fz = np.ones((len(self.rvol_grid), _superstages[i]-_superstages[i-1], nt))
                     for j in range(_superstages[i-1]+2,_superstages[i]+1):
                         S,R = self.S_rates[:,j,self.save_time], self.R_rates[:,j,self.save_time]
                         fz[:,j-_superstages[i]] = fz[:,j-1-_superstages[i]]*S/R
                         
-                    fz /= np.maximum(1e-5,fz.sum(1))[:,None] #prevents zero division
-                    #split the superstage in the separate stages using coronal equalibrium
+                    fz /= np.maximum(1e-5,fz.sum(1))[:,None] # prevents zero division
+                    
+                    # split the superstage into the separate stages using ionization equilibrium
                     nz_unstaged[:,_superstages[i-1]+1:_superstages[i]+1] = self.res[0][:,[i]]*fz
                     
                 else:
