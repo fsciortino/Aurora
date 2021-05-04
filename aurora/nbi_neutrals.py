@@ -12,7 +12,7 @@ from scipy.interpolate import RectBivariateSpline, interp1d, interp2d
 import copy, itertools
 
 from .janev_smith_rates import js_sigma
-from .plot_tools import ls_cycle
+from .plot_tools import get_ls_cycle
 
 
 def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
