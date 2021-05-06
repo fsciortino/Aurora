@@ -630,9 +630,17 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
             # attempt to report unknown rate type -- this should be fairly robust
             rate_type = l.replace(' ','').lower().split('type=')[1].split('/')[0]
 
+        # sometimes multiple lines of the same rate_type can be listed at the same wavelength
+        # separate them here by 1e-6 A
+        while True:
+            if lam in log10pec_dict and rate_type in log10pec_dict[lam]:
+                lam += 1e-6
+            else:
+                break
+
         # create dictionary with keys for each wavelength:
         if lam not in log10pec_dict:
-            log10pec_dict[lam] = {}                
+            log10pec_dict[lam] = {}
 
         # add a key to the log10pec_dict[lam] dictionary for each type of rate: recom, excit or chexc
         # interpolate PEC on log dens,temp scales
@@ -881,13 +889,13 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
     spec_ion = np.zeros_like(wave_final_A)
     spec = {}
     spec_tot = np.zeros_like(wave_final_A)
-    for typ in ['ioniz', 'excit', 'recom','chexc', 'drsat' ]:
+    for typ,c in zip(['ioniz', 'excit', 'recom','drsat','chexc'],['r','b','g','m','c']):
         spec[typ] = np.zeros_like(wave_final_A)
         for ii in np.arange(lams_profs_A.shape[0]):
             comp = interp1d(lams_profs_A[ii,:], ne_cm3*ion_exc_rec_dens[source[typ]]*pec[typ][ii]*theta[ii,:],
                                 bounds_error=False, fill_value=0.0)(wave_final_A)
             if plot_all_lines and pec[typ][ii]>np.max(pec[typ])/1000:
-                ax.plot(wave_final_A+dlam_A, comp, c='r')
+                ax.plot(wave_final_A+dlam_A, comp, c=c)
             spec[typ] += comp
         spec_tot += spec[typ]
   
