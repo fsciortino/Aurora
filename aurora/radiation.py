@@ -1016,7 +1016,7 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
 
 
 
-def adf15_line_identification(pec_files, wvl_A=None, Te_eV = 1e3, ne_cm3=5e13, mult=[]):
+def adf15_line_identification(pec_files, lines=None, Te_eV = 1e3, ne_cm3=5e13, mult=[]):
     '''Display all photon emissivity coefficients from the given list of ADF15 files and (optionally) compare to a set
     of chosen wavelengths, given in units of Angstrom.
 
@@ -1024,8 +1024,10 @@ def adf15_line_identification(pec_files, wvl_A=None, Te_eV = 1e3, ne_cm3=5e13, m
     -----------------
     pec_files : str or list of str
         Path to a single ADF15 file or a list of files.
-    wvl_A : list or 1D array
-        Wavelengths to overplot with the loaded PECs, to consider overlap within spectrum.
+    lines : dict, list or 1D array
+        Lines to overplot with the loaded PECs to consider overlap within spectrum. This argument may be a dictionary, with
+        keys corresponding to line names and values corresponding to wavelengths (in units of Angstrom). If provided as a 
+        list or array, this is assumed to contain only wavelengths in Angstrom.
     Te_eV : float
         Single value of electron temperature at which PECs should be evaluated [:math:`eV`].
     ne_cm3 : float
@@ -1048,8 +1050,10 @@ def adf15_line_identification(pec_files, wvl_A=None, Te_eV = 1e3, ne_cm3=5e13, m
     '''
 
     fig = plt.figure(figsize=(10,7))
-    ax = plt.subplot2grid((10,10),(0,0),rowspan = 10, colspan = 8, fig=fig) 
+    a_id = plt.subplot2grid((10,10),(0,0),rowspan = 2, colspan = 8, fig=fig)
+    ax = plt.subplot2grid((10,10),(2,0),rowspan = 8, colspan = 8, fig=fig, sharex=a_id)
     a_legend = plt.subplot2grid((10,10),(0,8),rowspan = 10, colspan = 2, fig=fig) 
+    a_id.axis('off')
     a_legend.axis('off')
     
     ymin = np.inf
@@ -1081,22 +1085,23 @@ def adf15_line_identification(pec_files, wvl_A=None, Te_eV = 1e3, ne_cm3=5e13, m
                 if pec_ion > 1e-20:  # plot only stronger lines
                     ymin = min(pec_ion, ymin)
                     ymax = max(pec_ion, ymax)
-                    ax.semilogy([lam, lam], [1e-70, pec_ion], '-.', c=c)
+                    ax.semilogy([lam, lam], [1e-70, pec_ion], 'o-.', c=c)
             if 'excit' in log10pec_interps:
                 pec_exc = _mult * 10 ** log10pec_interps['excit'](np.log10(ne_cm3), np.log10(Te_eV))[0, 0]
                 if pec_exc > 1e-20:  # plot only stronger lines
                     ymin = min(pec_exc, ymin)
                     ymax = max(pec_exc, ymax)
-                    ax.semilogy([lam, lam], [1e-70, pec_exc], '-', c=c)
+                    ax.semilogy([lam, lam], [1e-70, pec_exc], 'o-', c=c)
             if 'recom' in log10pec_interps:
                 pec_rec = _mult * 10 ** log10pec_interps['recom'](np.log10(ne_cm3), np.log10(Te_eV))[0, 0]
                 if pec_rec > 1e-20:
                     ymin = min(pec_rec, ymin)
                     ymax = max(pec_rec, ymax)
-                    ax.semilogy([lam, lam], [1e-70, pec_rec], '--', c=c)
+                    ax.semilogy([lam, lam], [1e-70, pec_rec], 'o--', c=c)
 
         lams += log10_pecs.keys()
-        a_legend.plot([],[], c=c, label=pec_file.split('/')[-1])
+        if len(pec_files)>1:
+            a_legend.plot([],[], c=c, label=pec_file.split('/')[-1])
 
     
     ax.set_ylim(ymin, ymax*2)
@@ -1104,19 +1109,23 @@ def adf15_line_identification(pec_files, wvl_A=None, Te_eV = 1e3, ne_cm3=5e13, m
 
     ax.set_xlabel(r'$\lambda$ [$\AA$]')
     ax.set_ylabel('PEC [phot $\cdot$ cm$^3$/s]')
-    ax.set_title(r'$T_e$ = %deV, $n_e$ = %.2ecm$^{-3}$' % (Te_eV, ne_cm3))
+    a_id.set_title(r'$T_e$ = %d eV, $n_e$ = %.2e cm$^{-3}$' % (Te_eV, ne_cm3))
 
     # plot location of certain lines of interest
-    if wvl_A is not None:
-        ax.axvline(np.nan, label='Input lines')
-        for i, l in enumerate(wvl_A):
-            ax.axvline(l)
-
-    a_legend.plot([], [], c='w', label = ' ') # empty
-    a_legend.plot([], [], '-.', c='k', label='PEC ionization')
-    a_legend.plot([], [], '-', c='k', label='PEC excitation')
-    a_legend.plot([], [], '--', c='k', label='PEC recombination')
-    
+    if lines is not None:
+        a_legend.axvline(np.nan, label='Input lines')
+        if isinstance(lines, dict):
+            for name, wvl in lines.items():
+                ax.axvline(wvl, c='k', lw=2.0)
+                a_id.text(wvl, 0.1, name, rotation=90) #, clip_on=True)
+        else:
+            for i, wvl in enumerate(lines):
+                ax.axvline(wvl, c='k', lw=2.0)
+                a_id.text(wvl, 0.1, str(i), rotation=90) #, clip_on=True)
+                
+    a_legend.plot([], [], 'o-.', label='PEC ionization')
+    a_legend.plot([], [], 'o-', label='PEC excitation')
+    a_legend.plot([], [], 'o--', label='PEC recombination')
     
     if len(pec_files)==1:
         # show path of single file that was passed
