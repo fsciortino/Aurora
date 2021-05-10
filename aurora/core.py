@@ -197,36 +197,21 @@ class aurora_sim:
         # get radial profile of source function
         if len(save_time) == 1:  # if time averaged profiles were used
             S0 = S0[:, [0]]  # 0th charge state (neutral)
- 
 
-        if self.namelist['source_type'] == 'interp':
-
-            if np.ndim(self.namelist['explicit_source_vals'])==1:
-                # explicit source was given as 1-D, assume it is a function of time
     
-                self.source_time_history = interp1d(self.namelist['explicit_source_time'], self.namelist['explicit_source_vals'],
-                                                    bounds_error=False, fill_value=0.0)(self.time_grid)
-                
-                self.source_rad_prof = source_utils.get_radial_source(self.namelist, self.rvol_grid, self.pro_grid, 
-                                                                      S0,   # 0th charge state (neutral) and 0th time 
-                                                                      len(self.time_grid),self._Ti, ) 
-                
-                
-      
-                
-            else:
-                # interpolate explicit source values on time and rhop grids of simulation
-                source_rad_prof = RectBivariateSpline(self.namelist['explicit_source_rhop'],
-                                                      self.namelist['explicit_source_time'],
-                                                      self.namelist['explicit_source_vals'].T,
-                                                      kx=1,ky=1)(self.rhop_grid, self.time_grid)
-
-                # first ionization stage
-                pnorm = np.pi*np.sum(source_rad_prof*self.S_rates[:,0,:]*(self.rvol_grid/self.pro_grid)[:,None],0)
-                self.source_time_history = np.asfortranarray(pnorm)
-                
-                # neutral density for influx/unit-length = 1/cm
-                self.source_rad_prof = np.asfortranarray(source_rad_prof/pnorm)
+        if np.ndim(self.namelist['explicit_source_vals'])==2:
+            # interpolate explicit source values on time and rhop grids of simulation
+            source_rad_prof = RectBivariateSpline(self.namelist['explicit_source_rhop'],
+                                                  self.namelist['explicit_source_time'],
+                                                  self.namelist['explicit_source_vals'].T,
+                                                  kx=1,ky=1)(self.rhop_grid, self.time_grid)
+            
+            # get first ionization stage
+            pnorm = np.pi*np.sum(source_rad_prof*self.S_rates[:,0,:]*(self.rvol_grid/self.pro_grid)[:,None],0)
+            self.source_time_history = np.asfortranarray(pnorm)
+            
+            # neutral density for influx/unit-length = 1/cm
+            self.source_rad_prof = np.asfortranarray(source_rad_prof/pnorm)
 
         else:
             # get time history and radial profiles separately
@@ -234,13 +219,12 @@ class aurora_sim:
                 self.namelist, self.Raxis_cm, self.time_grid
             )
             
-            
             # get radial profile of source function for each time step
             self.source_rad_prof = source_utils.get_radial_source(self.namelist,
                                                                   self.rvol_grid, self.pro_grid,
-                                                                  S0,   # 0th charge state (neutral)
+                                                                  S0,   # 0th charge state (neutral) and 0th time
                                                                   len(self.time_grid),self._Ti)
-
+            
 
     def interp_kin_prof(self, prof): 
         ''' Interpolate the given kinetic profile on the radial and temporal grids [units of s].
