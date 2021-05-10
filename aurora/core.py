@@ -612,6 +612,123 @@ class aurora_sim:
         
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         return self.res
+
+
+    def run_aurora_steady(self, D_z, V_z, nz_init=None, superstages = [], unstage=False,
+                          alg_opt=1, evolneut=False, use_julia=False,
+                          tolerance=0.01, max_sim_time = 500e-3, dt=1e-4, n_steps = 100,
+                          plot=False):
+        '''Run an AURORA simulation until reaching steady state profiles. This method calls :py:meth:`~aurora.core.run_aurora`
+        checking at every iteration whether profile shapes are still changing within a given fractional tolerance.
+
+        Parameters
+        ----------
+        D_z: array, shape of (space,nZ) or (space,)
+            Diffusion coefficients, in units of :math:`cm^2/s`. This may be given as a function of space only or (space,nZ). 
+            No time dependence is allowed in this function. Here, nZ indicates the number of charge states.
+            Note that it is assumed that radial profiles are already on the self.rvol_grid radial grid.
+        V_z: array, shape of (space,nZ) or (space,)
+            Convection coefficients, in units of :math:`cm/s`. This may be given as a function of space only or (space,nZ). 
+            No time dependence is allowed in this function. Here, nZ indicates the number of charge states.
+        nz_init: array, shape of (space, nZ)
+            Impurity charge states at the initial time of the simulation. If left to None, this is
+            internally set to an array of 0's.
+        superstages : list or 1D array
+            Indices of charge states of chosen ion that should be modeled. If left empty, all ion stages
+            are modeled. See docs for :py:meth:`~aurora.core.run_aurora` for details.
+        unstage : bool, optional
+            If a list of superstages are provided, this parameter sets whether the output should be "unstaged".
+            See docs for :py:meth:`~aurora.core.run_aurora` for details.
+        alg_opt : int, optional
+            If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
+            If `alg_opt=0`, use the older finite-differences algorithm in the 2018 version of STRAHL.
+        evolneut : bool, optional
+            If True, evolve neutral impurities based on their D,V coefficients. Default is False.
+            See docs for :py:meth:`~aurora.core.run_aurora` for details.
+        use_julia : bool, optional
+            If True, run the Julia pre-compiled version of the code. See docs for :py:meth:`~aurora.core.run_aurora` for details.
+        tolerance : float
+            Fractional tolerance in charge state profile shapes. This method reports charge state density profiles obtained when 
+            the discrepancy between normalized profiles at adjacent time steps varies by less than this tolerance fraction. 
+        max_sim_time : float
+            Maximum time in units of seconds for which simulations should be run if a steady state is not found.        
+        dt : float
+            Time step to apply, in units of seconds.
+        n_steps : int
+            Number of time steps before convergence is checked. 
+        plot : bool
+            If True, plot time evolution of charge state density profiles to show convergence.
+        '''
+        if not self.namelist['source_type']=='const':
+            raise ValueError('This method is designed to operate with time-independent sources! Modify namelist["source_type"].')
+
+        if not self.ne.shape[0]==1:
+            raise ValueError('This method is designed to operate with time-independent background profiles!')
+
+        # number of maximum simulations to be run before possibly giving up
+        num_sims = int(max_sim_time/(n_steps*dt))
+        
+        # do only a few time steps per "run"
+        self.namelist['timing'] = {'dt_increase': np.array([1., 1.]),
+                                   'dt_start': np.array([dt, dt]),
+                                   'steps_per_cycle': np.array([1, 1]),
+                                   'times': np.array([0. , n_steps*dt])}
+
+        self.setup_grids()
+        
+        times_DV = None
+        if D_z.ndim==2:
+            # make sure that transport coefficients were given as a function of space and nZ
+            assert D_z.shape[0]==self.rhop_grid and D_z.shape[1]==self.Z_imp+1
+            assert V_z.shape[0]==self.rhop_grid and V_z.shape[1]==self.Z_imp+1
+            
+            # transport coefficients were given as a function of (space,nZ). Need to add fictitious time dependence
+            D_z =  np.asfortranarray(np.tile(D_z, (n_steps, 1, 1)).transpose(1,0,2))
+            V_z =  np.asfortranarray(np.tile(V_z, (n_steps, 1, 1)).transpose(1,0,2))
+
+            # mock up time dependence of D and V
+            times_DV = self.namelist['timing']['times']
+            
+        # run first iteration
+        nz_new = self.run_aurora(D_z, V_z, times_DV, nz_init=nz_init,
+                                     superstages = superstages, unstage=unstage, alg_opt=alg_opt,
+                                     evolneut=evolneut, use_julia=use_julia, plot=False)[0]
+        nz_all = np.copy(nz_new)
+        nz_norm = nz_new[:,:,-1]/np.max(nz_new[:,:,-1])
+        time_grid = np.copy(self.time_grid)
+        
+        for i in np.arange(num_sims-1):
+            # Update time array
+            self.namelist['timing']['times'] = np.array([(i+1)*n_steps*dt+dt, (i+2)*n_steps*dt])
+            self.setup_grids()
+            
+            # get charge state densities from latest time step
+            nz_init_new = nz_all[:,:,-1]
+            nz_new = self.run_aurora(D_z, V_z, times_DV, nz_init=nz_init_new,
+                                     superstages = superstages, unstage=unstage, alg_opt=alg_opt,
+                                     evolneut=evolneut, use_julia=use_julia, plot=False)[0]
+            
+            nz_all = np.dstack((nz_all, nz_new))
+            time_grid = np.concatenate((time_grid, self.time_grid))
+            
+            # check if normalized profiles have converged
+            nz_norm_new = nz_new[:,:,-1]/np.max(nz_new[:,:,-1]) 
+            if np.linalg.norm(nz_norm_new-nz_norm,ord=2)<1e-2:   # tolerance of 1%
+                break
+            
+            nz_norm = np.copy(nz_norm_new)
+
+        if plot:
+            # plot charge state distributions over radius and time
+            plot_tools.slider_plot(self.rhop_grid, time_grid, nz_all.transpose(1,0,2),
+                                          xlabel=r'$\rho_p$', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
+                                          labels=[str(i) for i in np.arange(0,nz_all.shape[1])],
+                                          plot_sum=True)
+            
+        if i==num_sims-1:
+            raise ValueError(f'Could not reach convergence before {max_sim_time:.2f} of simulation time!')
+
+        return nz_norm
     
         
     def calc_Zeff(self):
