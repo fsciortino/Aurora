@@ -843,20 +843,6 @@ def impurity_brems(nz, ne, Te):
        
         
 
-def balance(logTe_val, cs, n0_by_ne, logTe_, S,R,cx):
-    '''Evaluate balance of effective ionization, recombination and charge exchange at a given temperature. '''
-
-    a = R +n0_by_ne * cx
-    SS_0 = 10**(interp1d(logTe_, np.log10(S[cs-1,:]), kind='cubic', bounds_error=False)(logTe_val))
-    aa_0 = 10**(interp1d(logTe_, np.log10(a[cs-1,:]), kind='cubic', bounds_error=False)(logTe_val))
-    SS_1 = 10**(interp1d(logTe_, np.log10(S[cs,:]), kind='cubic', bounds_error=False)(logTe_val))
-    aa_1 = 10**(interp1d(logTe_, np.log10(a[cs,:]), kind='cubic', bounds_error=False)(logTe_val))
-
-    val = SS_0 - SS_1 - aa_0 + aa_1
-    return val*1e20 # get this to large-ish units to avoid tolerance issues due to small powers of 10
-
-
-
 
 def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
                        nz_profs=None, rhop=None, plot=True, eps_prof=None):
@@ -941,3 +927,167 @@ def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
         ax.set_xlim([0,1])
 
 
+
+def read_adf12(filename, block, Ebeam, ne_cm3, Ti_eV, zeff):
+    '''Read charge exchange effective emission coefficients from ADAS ADF12 files.
+
+    See https://open.adas.ac.uk/adf12 for details and to download files.
+
+    Parameters
+    ----------
+    filename : str
+        adf12 file name/path
+    block : int
+        Source block selected
+    Ebeam : float
+        Energy of the neutral beam population of interest, in units of :math:`eV/amu`.
+    ne_cm3 : float or 1D array
+        Electron densities at which to evaluate coefficients, in units of :math:`cm^{-3}`.
+    Ti_eV : float or 1D array
+        Bulk ion temperature at which to evaluate coefficients, in units of :math:`eV`.
+    Zeff : float or 1D array
+        Effective background charge.
+
+    Returns
+    -------
+    float or 1D array :
+        Interpolated coefficients, units of :math:`cm^3/s`.
+
+    '''
+    with open(filename, 'r') as f:
+        nlines = int(f.readline())
+
+        for iline in range(block):
+            cer_line = {}
+            params = []
+            first_line = '0'
+            while not first_line[0].isalpha():
+                first_line = f.readline()
+
+            cer_line['header'] = first_line
+            cer_line['qefref'] = np.float(f.readline()[:63].replace('D', 'e'))
+            cer_line['parmref'] = np.float_(f.readline()[:63].replace('D', 'e').split())
+            cer_line['nparmsc'] = np.int_(f.readline()[:63].split())
+
+            for ipar, npar in enumerate(cer_line['nparmsc']):
+                for q in range(2):
+                    data = []
+                    while npar > len(data):
+                        line = f.readline()
+                        if len(line) > 63:
+                            name = line[63:].strip().lower()
+                            cer_line[name] = []
+                            if q == 0:
+                                params.append(name)
+
+                        values = np.float_(line[:63].replace('D', 'E').split())
+                        values = values[values > 0]
+                        if not len(values):
+                            continue
+                        data += values.tolist()
+                    cer_line[name] = data
+
+    # interpolate in logspace
+    lqefref = np.log(cer_line['qefref'])
+    
+    lnq = np.zeros(np.broadcast(Ebeam, ne_cm3, Ti_eV, zeff).shape)
+    lnq += lqefref * (1 - 4)
+    lnq += np.interp(np.log(Ti_eV), np.log(cer_line['tiev']), np.log(cer_line['qtiev']))
+    lnq += np.interp(np.log(ne_cm3), np.log(cer_line['densi']), np.log(cer_line['qdensi']))
+    lnq += np.interp(np.log(Ebeam), np.log(cer_line['ener']), np.log(cer_line['qener']))
+    lnq += np.interp(np.log(zeff), np.log(cer_line['zeff']), np.log(cer_line['qzeff']))
+    
+    return np.exp(lnq)
+
+
+        
+def read_adf21(filename, Ebeam, ne_cm3, Te_eV):
+    '''Read ADAS ADF21 or ADF22 files.
+
+    ADF21 files contain effective beam stopping/excitation coefficients.
+    ADF22 contain effective beam emission/population coefficients.
+
+    See https://open.adas.ac.uk/adf21 and https://open.adas.ac.uk/adf22 for details
+    and to download files.
+
+    Parameters
+    ----------
+    filename : str
+        adf21 or adf22 file name/path
+    Ebeam : float
+        Energy of the neutral beam, in units of :math:`eV/amu`.
+    ne_cm3 : float or 1D array
+        Electron densities at which to evaluate coefficients.
+    Te_eV : float or 1D array
+        Electron temperature at which to evaluate coefficients.
+
+    Returns
+    -------
+    float or 1D array :
+        Interpolated coefficients. For ADF21 files, these have units of :math:`cm^3/s`for ADF21 files.
+        For ADF22, they correspond to n=2 fractional abundances.
+    '''
+    
+    with open(filename, 'r') as f:
+        line = f.readline()
+        ref = float(line.split()[1].split('=')[1])
+        f.readline()
+        line = f.readline()
+        nE, nne, Teref = line.split()
+        nE, nne = int(nE), int(nne)
+        Teref = float(Teref.split('=')[1])
+        f.readline()
+
+        E = []
+        while len(E) < nE:
+            line = f.readline()
+            E.extend([float(f) for f in line.split()])
+        E = np.array(E)
+
+        ne = []
+        while len(ne) < nne:
+            line = f.readline()
+            ne.extend([float(f) for f in line.split()])
+        ne = np.array(ne)
+        f.readline()
+
+        Q2 = []
+        while len(Q2) < nne * nE:
+            line = f.readline()
+            Q2.extend([float(f) for f in line.split()])
+        Q2 = np.reshape(Q2, (nne, nE))
+
+        f.readline()
+        line = f.readline()
+        nTe, Eref, Neref = line.split()
+        nTe, Eref, Neref = int(nTe), float(Eref.split('=')[1]), float(Neref.split('=')[1])
+
+        f.readline()
+
+        Te = []
+        while len(Te) < nTe:
+            line = f.readline()
+            Te.extend([float(f) for f in line.split()])
+        Te = np.array(Te)
+
+        f.readline()
+
+        Q1 = []
+        while len(Q1) < nTe:
+            line = f.readline()
+            Q1.extend([float(f) for f in line.split()])
+        Q1 = np.array(Q1)
+
+    # clip data in available range to avoid extrapolation
+    Ebeam = np.clip(Ebeam, *E[[0, -1]])
+    ne_cm3 = np.clip(ne_cm3, *ne[[0, -1]])
+    Te_eV = np.clip(Te_eV, *Te[[0, -1]])
+
+    lref = np.log(ref)
+
+    # interpolate on the requested values
+    RectInt1 = interp.interp1d(np.log(Te), np.log(Q1) - lref, assume_sorted=True, kind='quadratic')
+    RectInt2 = interp.RectBivariateSpline(np.log(ne), np.log(E), np.log(Q2) - lref, kx=2, ky=2)
+
+    adf = RectInt1(np.log(Te_eV)) + RectInt2.ev(np.log(ne_cm3), np.log(Ebeam))
+    return np.exp(adf + lref)
