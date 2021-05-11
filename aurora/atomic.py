@@ -928,7 +928,7 @@ def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
 
 
 
-def read_adf12(filename, block, Ein, ne_cm3, Ti_eV, zeff):
+def read_adf12(filename, block, Ebeam, ne_cm3, Ti_eV, zeff):
     '''Read charge exchange effective emission coefficients from ADAS ADF12 files.
 
     See https://open.adas.ac.uk/adf12 for details and to download files.
@@ -938,20 +938,20 @@ def read_adf12(filename, block, Ein, ne_cm3, Ti_eV, zeff):
     filename : str
         adf12 file name/path
     block : int
-        source block selected
-    Ein : float
-        Energy of the neutral beam population of interest.
+        Source block selected
+    Ebeam : float
+        Energy of the neutral beam population of interest, in units of :math:`eV/amu`.
     ne_cm3 : float or 1D array
-        Electron densities at which to evaluate coefficients.
+        Electron densities at which to evaluate coefficients, in units of :math:`cm^{-3}`.
     Ti_eV : float or 1D array
-        Bulk ion temperature at which to evaluate coefficients.
+        Bulk ion temperature at which to evaluate coefficients, in units of :math:`eV`.
     Zeff : float or 1D array
-        Effective background charge
+        Effective background charge.
 
     Returns
     -------
     float or 1D array :
-        Interpolated coefficients.
+        Interpolated coefficients, units of :math:`cm^3/s`.
 
     '''
     with open(filename, 'r') as f:
@@ -989,12 +989,14 @@ def read_adf12(filename, block, Ein, ne_cm3, Ti_eV, zeff):
 
     # interpolate in logspace
     lqefref = np.log(cer_line['qefref'])
-    lnq = np.zeros(np.broadcast(Ein, ne_cm3, Ti_eV, zeff).shape)
+    
+    lnq = np.zeros(np.broadcast(Ebeam, ne_cm3, Ti_eV, zeff).shape)
     lnq += lqefref * (1 - 4)
     lnq += np.interp(np.log(Ti_eV), np.log(cer_line['tiev']), np.log(cer_line['qtiev']))
     lnq += np.interp(np.log(ne_cm3), np.log(cer_line['densi']), np.log(cer_line['qdensi']))
-    lnq += np.interp(np.log(Ein), np.log(cer_line['ener']), np.log(cer_line['qener']))
+    lnq += np.interp(np.log(Ebeam), np.log(cer_line['ener']), np.log(cer_line['qener']))
     lnq += np.interp(np.log(zeff), np.log(cer_line['zeff']), np.log(cer_line['qzeff']))
+    
     return np.exp(lnq)
 
 
@@ -1013,7 +1015,7 @@ def read_adf21(filename, Ebeam, ne_cm3, Te_eV):
     filename : str
         adf21 or adf22 file name/path
     Ebeam : float
-        Energy of the neutral beam, in eV/amu.
+        Energy of the neutral beam, in units of :math:`eV/amu`.
     ne_cm3 : float or 1D array
         Electron densities at which to evaluate coefficients.
     Te_eV : float or 1D array
@@ -1022,7 +1024,8 @@ def read_adf21(filename, Ebeam, ne_cm3, Te_eV):
     Returns
     -------
     float or 1D array :
-        Interpolated coefficients.
+        Interpolated coefficients. For ADF21 files, these have units of :math:`cm^3/s`for ADF21 files.
+        For ADF22, they correspond to n=2 fractional abundances.
     '''
     
     with open(filename, 'r') as f:
