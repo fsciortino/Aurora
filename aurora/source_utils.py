@@ -12,35 +12,11 @@ from scipy.special import erfc
 def get_source_time_history(namelist, Raxis_cm, time):
     '''Load source time history based on current state of the namelist.
 
-    There are 4 options to describe the time-dependence of the source:
-
-    (1) namelist['source_type'] == 'file': in this case, a simply formatted 
-    source file, with one time point and corresponding and source amplitude on each
-    line, is read in. This can describe an arbitrary time dependence, e.g. 
-    as measured from an experimental diagnostic. 
-
-    (2) namelist['source_type'] == 'const': in this case, a constant source 
-    (e.g. a gas puff) is simulated. It is recommended to run the simulation for 
-    >100ms in order to see self-similar charge state profiles in time. 
-
-    (3) namelist['source_type'] == 'step': this allows the creation of a source
-    that suddenly appears and suddenly stops, i.e. a rectangular "step". The 
-    duration of this step is given by namelist['step_source_duration']. Multiple 
-    step times can be given as a list in namelist['src_step_times']; the amplitude
-    of the source at each step is given in namelist['src_step_rates']
-
-    (4) namelist['source_type'] == 'synth_LBO': this produces a model source from a LBO
-    injection, given by a convolution of a gaussian and an exponential. The required 
-    parameters in this case are inside a namelist['LBO'] dictionary:
-    namelist['LBO']['t_start'], namelist['LBO']['t_rise'], namelist['LBO']['t_fall'], 
-    namelist['LBO']['n_particles']. The "n_particles" parameter corresponds to the 
-    amplitude of the source (the number of particles corresponding to the integral over
-    the source function. 
-
     Parameters
     ----------
     namelist : dict
-        Aurora namelist dictionary.
+        Aurora namelist dictionary. The field namelist['source_type'] specifies how the 
+        source function is being specified -- see the notes below.
     Raxis_cm : float
         Major radius at the magnetic axis [cm]. This is needed to normalize the 
         source such that it is treated as toroidally symmetric -- a necessary
@@ -52,13 +28,52 @@ def get_source_time_history(namelist, Raxis_cm, time):
     -------
     source_time_history : array (nt,)
         The source time history on the input time base.
+
+    Notes
+    -----
+    There are 4 options to describe the time-dependence of the source:
+
+    #. namelist['source_type'] == 'file': in this case, a simply formatted 
+    source file, with one time point and corresponding and source amplitude on each
+    line, is read in. This can describe an arbitrary time dependence, e.g. 
+    as measured from an experimental diagnostic. 
+
+    #. namelist['source_type'] == 'interp': the time history for the source is 
+    provided by the user within the 'explicit_source_time' and 'explicit_source_vals'
+    fields of the namelist dictionary and this data is simply interpolated.
+
+    #. namelist['source_type'] == 'const': in this case, a constant source 
+    (e.g. a gas puff) is simulated. It is recommended to run the simulation for 
+    >100ms in order to see self-similar charge state profiles in time. 
+
+    #. namelist['source_type'] == 'step': this allows the creation of a source
+    that suddenly appears and suddenly stops, i.e. a rectangular "step". The 
+    duration of this step is given by namelist['step_source_duration']. Multiple 
+    step times can be given as a list in namelist['src_step_times']; the amplitude
+    of the source at each step is given in namelist['src_step_rates']
+
+    #. namelist['source_type'] == 'synth_LBO': this produces a model source from a LBO
+    injection, given by a convolution of a gaussian and an exponential. The required 
+    parameters in this case are inside a namelist['LBO'] dictionary:
+    namelist['LBO']['t_start'], namelist['LBO']['t_rise'], namelist['LBO']['t_fall'], 
+    namelist['LBO']['n_particles']. The "n_particles" parameter corresponds to the 
+    amplitude of the source (the number of particles corresponding to the integral over
+    the source function. 
+
     '''
     imp = namelist['imp']
 
     if namelist['source_type'] == 'file':
-        src_times, src_rates = read_source(namelist['source_file'])  
+        # read time history from a simple file with 2 columns
+        src_times, src_rates = read_source(namelist['source_file'])
+        
+    elif namelist['source_type'] == 'interp' and np.ndim(namelist['explicit_source_vals'])==1:
+        # user provided time history, only 1D interpolation is needed
+        src_times = namelist['explicit_source_time']
+        src_rates = namelist['explicit_source_vals']
 
     elif namelist['source_type'] == 'const':
+        # constant source
         src_times = copy.deepcopy(time)
         src_rates = np.ones(len(time)) * namelist['source_rate']
         src_rates[0] = 0.0 # start with 0
@@ -92,11 +107,13 @@ def get_source_time_history(namelist, Raxis_cm, time):
     else:
         raise ValueError('Unspecified source function time history!')
 
-    source = np.interp(time,src_times, src_rates, left=0,right=0)
-    circ = 2*np.pi*Raxis_cm   #cm
+    source = np.interp(time, src_times, src_rates, left=0,right=0)
+    
+    # get number of particles per cm and sec
+    circ = 2*np.pi*Raxis_cm
 
-    # number of particles per cm and sec
-    source_time_history = np.r_[source[1:],0]/circ #NOTE source in STRAHL is by one timestep shifted
+    # For ease of comparison with STRAHL, shift source by one time step
+    source_time_history = np.r_[source[1:],0]/circ
 
     return np.asfortranarray(source_time_history)
 
@@ -294,13 +311,13 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates,nt, Ti_eV=None):
         v = - np.sqrt(2.*q_electron*E0/(imp_ion_A*m_p))*100 #cm/s
  
 
-        #integration of ne*S for atoms and calculation of ionization length for normalizing neutral density
+        # integration of ne*S for atoms and calculation of ionization length for normalizing neutral density
         source_rad_prof[i_src]= -0.0625*S_rates[i_src]/pro_grid[i_src]/v[i_src]   #1/16
         for i in np.arange(i_src-1,0,-1):
             source_rad_prof[i]=source_rad_prof[i+1]+0.25*(
                 S_rates[i+1]/pro_grid[i+1]/v[i+1] + S_rates[i]/pro_grid[i]/v[i])
 
-        #prevents FloatingPointError: underflow encountered
+        # prevents FloatingPointError: underflow encountered
         source_rad_prof[1:i_src] = np.exp(np.maximum(source_rad_prof[1:i_src],-100))
 
         # calculate relative density of neutrals
