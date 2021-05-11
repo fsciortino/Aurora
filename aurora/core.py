@@ -88,13 +88,6 @@ class aurora_sim:
         # set up kinetic profiles and atomic rates
         self.setup_kin_profs_depts()
 
-        # create array of 0's of length equal to self.time_grid, with 1's where sawteeth must be triggered
-        self.saw_on = np.zeros_like(self.time_grid)
-        input_saw_times = self.namelist['saw_model']['times']
-        self.saw_times = np.array(input_saw_times)[input_saw_times<self.time_grid[-1]]
-        if self.namelist['saw_model']['saw_flag'] and len(self.saw_times)>0:
-            self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
-
         # import here to avoid issues when building docs or package
         from omfit_classes.utils_math import atomic_element
 
@@ -168,6 +161,12 @@ class aurora_sim:
         self.time_grid, self.save_time = grids_utils.create_time_grid(timing=self.namelist['timing'], plot=False)
         self.time_out = self.time_grid[self.save_time]
 
+        # create array of 0's of length equal to self.time_grid, with 1's where sawteeth must be triggered
+        self.saw_on = np.zeros_like(self.time_grid)
+        input_saw_times = self.namelist['saw_model']['times']
+        self.saw_times = np.array(input_saw_times)[input_saw_times<self.time_grid[-1]]
+        if self.namelist['saw_model']['saw_flag'] and len(self.saw_times)>0:
+            self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
 
     def setup_kin_profs_depts(self):
         '''Method to set up Aurora inputs related to the kinetic background from namelist inputs.
@@ -616,8 +615,8 @@ class aurora_sim:
 
     def run_aurora_steady(self, D_z, V_z, nz_init=None, superstages = [], unstage=False,
                           alg_opt=1, evolneut=False, use_julia=False,
-                          tolerance=0.01, max_sim_time = 500e-3, dt=1e-4, n_steps = 100,
-                          plot=False):
+                          tolerance=0.01, max_sim_time = 500e-3, dt=1e-4, dt_increase=1.0, 
+                          n_steps = 100, plot=False):
         '''Run an AURORA simulation until reaching steady state profiles. This method calls :py:meth:`~aurora.core.run_aurora`
         checking at every iteration whether profile shapes are still changing within a given fractional tolerance.
 
@@ -653,7 +652,10 @@ class aurora_sim:
         max_sim_time : float
             Maximum time in units of seconds for which simulations should be run if a steady state is not found.        
         dt : float
-            Time step to apply, in units of seconds.
+            Initial time step to apply, in units of seconds. This can be increased by a multiplier given by :param:`dt_increase`
+            after each time step.
+        dt_increase : float
+            Multiplier for time steps.
         n_steps : int
             Number of time steps before convergence is checked. 
         plot : bool
@@ -665,16 +667,22 @@ class aurora_sim:
         if not self.ne.shape[0]==1:
             raise ValueError('This method is designed to operate with time-independent background profiles!')
 
+        # round to avoid rounding errors
+        dt = np.round(dt,9)
+        
         # number of maximum simulations to be run before possibly giving up
         num_sims = int(max_sim_time/(n_steps*dt))
-        
-        # do only a few time steps per "run"
-        self.namelist['timing'] = {'dt_increase': np.array([1., 1.]),
-                                   'dt_start': np.array([dt, dt]),
+
+        # build timing dictionary
+        self.namelist['timing'] = {'dt_start': np.array([float(dt), float(dt)]),
+                                   'dt_increase': np.array([float(dt_increase), 1.]),
                                    'steps_per_cycle': np.array([1, 1]),
-                                   'times': np.array([0. , n_steps*dt])}
+                                   'times' : np.array([0. , n_steps*dt])}
 
         self.setup_grids()
+
+        # update kinetic profile dependencies to get everything to the right shape (TODO: avoid this to reduce computational cost)
+        self.setup_kin_profs_depts()
         
         times_DV = None
         if D_z.ndim==2:
@@ -696,12 +704,20 @@ class aurora_sim:
         nz_all = np.copy(nz_new)
         nz_norm = nz_new[:,:,-1]/np.max(nz_new[:,:,-1])
         time_grid = np.copy(self.time_grid)
-        
+
+        if num_sims<1:
+            raise ValueError('The input max_sim_time, n_steps and dt do not allow for any iteration to steady state profiles!')
+
         for i in np.arange(num_sims-1):
             # Update time array
-            self.namelist['timing']['times'] = np.array([(i+1)*n_steps*dt+dt, (i+2)*n_steps*dt])
+            t0 = np.round(self.time_grid[-1]+dt,6)
+            dt0 = np.diff(self.time_grid)[-1]
+            t1 = np.round(self.time_grid[-1] + dt0*(1-dt_increase**(n_steps-1))/(1-dt_increase),6)
             self.setup_grids()
-            
+
+            # update kinetic profile dependencies to get everything to the right shape (TODO: avoid this to reduce computational cost)
+            self.setup_kin_profs_depts()
+        
             # get charge state densities from latest time step
             nz_init_new = nz_all[:,:,-1]
             nz_new = self.run_aurora(D_z, V_z, times_DV, nz_init=nz_init_new,
@@ -718,9 +734,12 @@ class aurora_sim:
             
             nz_norm = np.copy(nz_norm_new)
 
+        # store final time grid
+        self.time_grid = time_grid
+        
         if plot:
             # plot charge state distributions over radius and time
-            plot_tools.slider_plot(self.rhop_grid, time_grid, nz_all.transpose(1,0,2),
+            plot_tools.slider_plot(self.rhop_grid, self.time_grid, nz_all.transpose(1,0,2),
                                           xlabel=r'$\rho_p$', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
                                           labels=[str(i) for i in np.arange(0,nz_all.shape[1])],
                                           plot_sum=True)
