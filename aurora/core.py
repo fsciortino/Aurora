@@ -747,6 +747,17 @@ class aurora_sim:
         if i==num_sims-1:
             raise ValueError(f'Could not reach convergence before {max_sim_time:.2f} of simulation time!')
 
+        # compute effective particle confinement time from latest few time steps 
+        circ = 2*np.pi*self.Raxis_cm # cm
+        zvol = circ * np.pi * self.rvol_grid / self.pro_grid
+
+        wh = (self.rhop_grid <= 1.0)
+        zvol = zvol[wh]
+        var_volint = np.nansum(nz_new[wh]*zvol[:,None,None],axis=(0,1))
+
+        # compute effective particle confinement time (avoid last time point because source is set to 0 there)
+        self.tau_imp = np.mean(var_volint[:-1] / self.source_time_history[:-1])
+        
         return nz_norm
     
         
