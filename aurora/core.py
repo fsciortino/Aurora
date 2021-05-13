@@ -298,8 +298,8 @@ class aurora_sim:
 
         # get electron impact ionization and radiative recombination rates in units of [s^-1]
 
-        S_rates = atomic.interp_atom_prof(self.atom_data['scd'],lne, lTe, x_multiply=True)
-        R_rates = atomic.interp_atom_prof(self.atom_data['acd'],lne, lTe, x_multiply=True)
+        S_rates = atomic.interp_atom_prof(self.atom_data['scd'], lne, lTe, x_multiply=True)
+        R_rates = atomic.interp_atom_prof(self.atom_data['acd'], lne, lTe, x_multiply=True)
 
         if self.namelist['cxr_flag']:
             # include thermal charge exchange recombination
@@ -416,8 +416,8 @@ class aurora_sim:
             are modeled. If only some indices are given, these are modeled as "superstages".
             If `D_z` and `V_z` are given as a function of charge state, only the indices corresponding
             to the superstages are used.
-            NB: users must explicitly add the element 0 (neutral stage) to the list of superstages, 
-            or else an exception will be raised.
+            NB: if not given, indices 0 (neutral stage) and 1 (first ionized stage) are automatically added
+            since these are critical for good modeling.
         unstage : bool, optional
             If a list of superstages are provided, this parameter sets whether the output should be "unstaged"
             by multiplying by the appropriate fractional abundances of all charge states at ionization 
@@ -475,6 +475,28 @@ class aurora_sim:
             superstages = []
             
         if len(superstages):
+            # ensure that 0thm, 1st and last stages are included            
+            superstages[-1] = self.Z_imp
+            if 0 not in superstages:
+                superstages = np.r_[0, superstages]
+            if 1 not in superstages:
+                superstages = np.r_[1, superstages]
+            superstages = np.sort(superstages)
+
+            logR, logS = atomic.superstage_rates(np.log(np.maximum(self.R_rates[:,:-1,:],1e-70)),
+                                                 np.log(np.maximum(self.S_rates[:,:-1,:],1e-70)),
+                                                 superstages)
+            _R_rates, _S_rates = np.exp(logR), np.exp(logS)
+
+            # nz=nion of rates arrays must be filled with zeros - final shape: (nr,nion,nt)        
+            S_rates = np.zeros((_S_rates.shape[0], _S_rates.shape[1] + 1, self.time_grid.size), order='F')
+            S_rates[:, :-1] = _S_rates
+            
+            R_rates = np.zeros((_R_rates.shape[0], _R_rates.shape[1] + 1, self.time_grid.size), order='F')
+            R_rates[:, :-1] = _R_rates
+
+            num_cs = len(superstages)
+            '''
             if not superstages[0] == 0:
                 print('Warning: 0th superstage for neutral was included')
                 superstages = np.r_[0,superstages]
@@ -482,15 +504,13 @@ class aurora_sim:
                 raise Exception('Superstages needs to be in a monotonous order')
             if superstages[-1] > self.Z_imp:
                 raise Exception('The higher superstage must be less than Z_imp = %d'%self.Z_imp)
-                
-            num_cs = len(superstages)
-            
+
             S_rates = self.S_rates[:,superstages,:]
             R_rates = self.R_rates[:,superstages,:]
             #the last ion must have zero ionisation rate
             S_rates[:,-1] = 0
             R_rates[:,-1] = 0
-
+            '''
             if D_z.ndim==3:
                 D_z = D_z[:,:,superstages]
                 V_z = V_z[:,:,superstages]
