@@ -135,7 +135,12 @@ class aurora_sim:
         return self.__dict__
     
     def load_dict(self, aurora_dict):
-        self.__dict__.update(aurora_dict)    
+        self.__dict__.update(aurora_dict) 
+        
+        
+
+        
+        
             
     def setup_grids(self):
         '''Method to set up radial and temporal grids given namelist inputs.
@@ -475,25 +480,48 @@ class aurora_sim:
             superstages = []
             
         if len(superstages):
-            if not superstages[0] == 0:
+
+            superstages = np.array(superstages)
+            
+            if 1 not in superstages:
+                print('Warning: 1th superstage needs to be included')
+                superstages = np.r_[1,superstages]
+            if 0 not in superstages:
                 print('Warning: 0th superstage for neutral was included')
                 superstages = np.r_[0,superstages]
             if np.any(np.diff(superstages)<=0):
-                raise Exception('Superstages needs to be in a monotonous order')
+                print('Warning: 0th superstage for neutral was included')
+                superstages = np.sort(superstages)
             if superstages[-1] > self.Z_imp:
                 raise Exception('The higher superstage must be less than Z_imp = %d'%self.Z_imp)
-                
-            num_cs = len(superstages)
-            
-            S_rates = self.S_rates[:,superstages,:]
-            R_rates = self.R_rates[:,superstages,:]
-            #the last ion must have zero ionisation rate
-            S_rates[:,-1] = 0
-            R_rates[:,-1] = 0
 
+            ##the last ion must have zero ionisation rate
+            R_rates = self.R_rates[:,np.r_[superstages[1:]-1,-1]]
+            S_rates = self.S_rates[:,np.r_[superstages[1:]-1,-1]]
+
+            _superstages = np.copy(superstages)
+            _superstages[-1] = self.Z_imp
+
+            for i in range(len(superstages)-1):
+                if superstages[i]+1!= superstages[i+1]:
+                    sind = slice(superstages[i]-1, superstages[i+1]-1)
+ 
+                    rate_ratio =  self.S_rates[:,sind]/self.R_rates[:,sind]
+                    fz = np.cumprod(rate_ratio, axis=1) 
+                    #bundled stages can have a very high values,
+                    #which reduces a numerical stability of calculation
+                    #np.minimum(rate,1) prevents numerical instability, any better solution???
+                    R_rates[:,i] /=  fz[:,-1]/fz.sum(1)
+                    S_rates[:,i-1] /= fz[:,0]/fz.sum(1)
+                    #R_rates[:,i] = np.minimum(R_rates[:,i],1)
+                    #S_rates[:,i] = np.minimum(S_rates[:,i],1)
+
+            num_cs = len(superstages)
+   
             if D_z.ndim==3:
                 D_z = D_z[:,:,superstages]
                 V_z = V_z[:,:,superstages]
+                
 
         else:
             num_cs = int(self.Z_imp+1)
@@ -512,9 +540,9 @@ class aurora_sim:
         if D_z.ndim < 3:
             # set all charge states to have the same transport
             # num_cs = Z+1 - include elements for neutrals
+
             D_z =  np.tile(D_z.T, (num_cs, 1, 1)).T # create fortran contiguous arrays
             V_z =  np.tile(V_z.T, (num_cs, 1, 1)).T
-
             
             D_z[:,:,0] = 0.0
             V_z[:,:,0] = 0.0
@@ -592,20 +620,22 @@ class aurora_sim:
             _superstages[-1] = self.Z_imp
             
             for i in range(len(superstages)):
-                if i > 0 and _superstages[i-1]+1 < _superstages[i]:
-                    # fill skipped stages from ionization equilibrium
-                    fz = np.ones((len(self.rvol_grid), _superstages[i]-_superstages[i-1], nt))
-                    for j in range(_superstages[i-1]+2,_superstages[i]+1):
-                        S,R = self.S_rates[:,j,self.save_time], self.R_rates[:,j,self.save_time]
-                        fz[:,j-_superstages[i]] = fz[:,j-1-_superstages[i]]*S/R
-                        
-                    fz /= np.maximum(1e-5,fz.sum(1))[:,None] # prevents zero division
+                #if i > 0 and _superstages[i-1]+1 < _superstages[i]:
+                # fill skipped stages from ionization equilibrium
+                #fz = np.ones((len(self.rvol_grid), _superstages[i]-_superstages[i-1], nt))
+                #for j in range(1,_superstages[i]-_superstages[i-1]):
+                    #S = self.S_rates[:,_superstages[i]+j-2,self.save_time] 
+                    #R = self.R_rates[:,_superstages[i]+j-2,self.save_time]
+                    #fz[:,j] = fz[:,j-1]*S/R
                     
-                    # split the superstage into the separate stages using ionization equilibrium
-                    nz_unstaged[:,_superstages[i-1]+1:_superstages[i]+1] = self.res[0][:,[i]]*fz
-                    
-                else:
-                    nz_unstaged[:,_superstages[i]] = self.res[0][:,i]
+                #fz /= np.maximum(1e-5,fz.sum(1))[:,None] # prevents zero division
+                
+    
+                ## split the superstage into the separate stages using ionization equilibrium
+                #nz_unstaged[:,_superstages[i-1]+1:_superstages[i]+1] = self.res[0][:,[i]]*fz
+
+                #else:
+                nz_unstaged[:,_superstages[i]] = self.res[0][:,i]
  
             self.res = nz_unstaged, *self.res[1:]
         
