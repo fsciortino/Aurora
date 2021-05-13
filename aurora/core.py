@@ -620,22 +620,18 @@ class aurora_sim:
             _superstages[-1] = self.Z_imp
             
             for i in range(len(superstages)):
-                #if i > 0 and _superstages[i-1]+1 < _superstages[i]:
-                # fill skipped stages from ionization equilibrium
-                #fz = np.ones((len(self.rvol_grid), _superstages[i]-_superstages[i-1], nt))
-                #for j in range(1,_superstages[i]-_superstages[i-1]):
-                    #S = self.S_rates[:,_superstages[i]+j-2,self.save_time] 
-                    #R = self.R_rates[:,_superstages[i]+j-2,self.save_time]
-                    #fz[:,j] = fz[:,j-1]*S/R
+                if i > 0 and _superstages[i-1]+1 < _superstages[i]:
+                    # fill skipped stages from ionization equilibrium
+                    ind = slice(_superstages[i-1],_superstages[i])
+                    S = self.S_rates[:,ind,self.save_time] 
+                    R = self.R_rates[:,ind,self.save_time]
+                    fz = np.cumprod(S/R,axis=1)
+                    fz /= np.maximum(1e-5,fz.sum(1))[:,None] # prevents zero division
                     
-                #fz /= np.maximum(1e-5,fz.sum(1))[:,None] # prevents zero division
-                
-    
-                ## split the superstage into the separate stages using ionization equilibrium
-                #nz_unstaged[:,_superstages[i-1]+1:_superstages[i]+1] = self.res[0][:,[i]]*fz
-
-                #else:
-                nz_unstaged[:,_superstages[i]] = self.res[0][:,i]
+                    # split the superstage into the separate stages using ionization equilibrium
+                    nz_unstaged[:,_superstages[i-1]+1:_superstages[i]+1] = self.res[0][:,[i]]*fz
+                else:
+                    nz_unstaged[:,_superstages[i]] = self.res[0][:,i]
  
             self.res = nz_unstaged, *self.res[1:]
         
