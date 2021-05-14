@@ -70,6 +70,9 @@ def load_default_namelist():
                        'n0': {'fun':'interpa',
                               'times': [1.]}
                    },
+        # and NBI CXR rates
+        'nbi_cxr' : {'rhop': None,
+                     'vals': None}, # time indpt profiles; (rhop,nZ)
         # ----------------
         # charge exchange flags
         'cxr_flag' : False,

@@ -28,21 +28,9 @@ class aurora_sim:
         EFIT gfile as returned after postprocessing by the :py:mod:`omfit_classes.omfit_eqdsk` 
         package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary 
         is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
-    nbi_cxr : array, optional
-        If namelist['nbi_cxr']=True, this array represents the charge exchange rates 
-        with NBI neutrals, fast and/or thermal, across the entire radius and on the 
-        time base of interest. 
-        Creating this input is not trivial and must be done externally to aurora. 
-        General steps:
-        - get density of fast NBI neutrals (both fast and thermal/halo) ---> n0_nbi, n0_halo
-        - get total rates (n-unresolved) for CX with NBI neutrals --> _alpha_CX_NBI_rates
-        - thermal rates for the halo may be from ADAS CCD files or from the same methods used 
-        for fast neutrals
-        - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
-        This method still needs more testing within this class. Contact sciortino-at-psfc.mit.edu for details. 
           
     '''
-    def __init__(self, namelist, geqdsk=None, nbi_cxr=None):
+    def __init__(self, namelist, geqdsk=None):
 
         if namelist is None:
             # option useful for calls like omfit_classes.OMFITaurora(filename)
@@ -52,10 +40,17 @@ class aurora_sim:
         
         self.namelist = namelist
         self.kin_profs = namelist['kin_profs']
-        self.nbi_cxr = nbi_cxr
         self.imp = namelist['imp']
 
+        # import here to avoid issues when building docs or package
+        from omfit_classes.utils_math import atomic_element
 
+        # get nuclear charge Z and atomic mass number A
+        out = atomic_element(symbol=self.imp)
+        spec = list(out.keys())[0]
+        self.Z_imp = int(out[spec]['Z'])
+        self.A_imp = int(out[spec]['A'])
+        
         if geqdsk is None:
             # import omfit_eqdsk here to avoid issues with docs and packaging
             from omfit_classes import omfit_eqdsk
@@ -87,15 +82,6 @@ class aurora_sim:
 
         # set up kinetic profiles and atomic rates
         self.setup_kin_profs_depts()
-
-        # import here to avoid issues when building docs or package
-        from omfit_classes.utils_math import atomic_element
-
-        # get nuclear charge Z and atomic mass number A
-        out = atomic_element(symbol=self.imp)
-        spec = list(out.keys())[0]
-        self.Z_imp = int(out[spec]['Z'])
-        self.A_imp = int(out[spec]['A'])
         
         # Extract other inputs from namelist:
         self.mixing_radius = self.namelist['saw_model']['rmix']
@@ -311,7 +297,10 @@ class aurora_sim:
 
         if self.namelist['nbi_cxr_flag']:
             # include charge exchange between NBI neutrals and impurities
-            R_rates += self.nbi_cxr.transpose(1,0,2)
+            self.nbi_cxr = interp1d(self.namelist['nbi_cxr']['rhop'], self.namelist['nbi_cxr']['vals'], axis=0,
+                                    bounds_error=False, fill_value=0.0)(self.rhop_grid)
+
+            R_rates += self.nbi_cxr.T[None,:,:]
 
         # nz=nion of rates arrays must be filled with zeros - final shape: (nr,nion,nt)        
         S_rates_t = np.zeros((S_rates.shape[2], S_rates.shape[1] + 1, self.time_grid.size), order='F')

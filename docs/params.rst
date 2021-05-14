@@ -148,6 +148,9 @@ The table below describes the main input parameters to Aurora's forward model of
    * - `kin_profs["n0"]`
      - {'fun': 'interpa', 'times': [1.0]}
      - Specification of background (H-isotope) neutral density [:math:`cm^{-3}`].
+   * - `nbi_cxr`
+     - {'rhop': None, 'vals': None}
+     - Radial profiles of charge exchange rates from NBI neutrals (fast+thermal) for each simulated charge state.
    * - `cxr_flag`
      - False
      - If True, activate charge exchange recombination with background thermal neutrals. Requires `kin_profs["n0"]`.
