@@ -293,7 +293,7 @@ def get_NBI_imp_cxr_q(neut_fsa, q, rhop_kp, times_kp, Ti_eV, ne_cm3, include_fas
 
         lss = next(ls_cycle)
         a1.plot(rhop, rates['cxr_total'], lss)
-        a2.plot([], [], label=f'CXR total', lss)
+        a2.plot([], [], lss, label=f'CXR total')
         a1.set_xlabel(r'$\rho_p$')
         a1.set_ylabel(fr'CXR rate (q={q}) [$s^{{-1}}$]')
         a2.legend(fontsize=14)
