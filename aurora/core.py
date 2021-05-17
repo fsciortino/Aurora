@@ -97,6 +97,15 @@ class aurora_sim:
         self.Z_imp = int(out[spec]['Z'])
         self.A_imp = int(out[spec]['A'])
         
+        self.reload_namelist()
+        
+    def reload_namelist(self, namelist=None):
+    
+        '''reloadd namelist in the case that any of the input scalar parameters has changed 
+        '''
+        if namelist is not None:
+            self.namelist = namelist
+        
         # Extract other inputs from namelist:
         self.mixing_radius = self.namelist['saw_model']['rmix']
         self.decay_length_boundary = self.namelist['SOL_decay']
@@ -211,7 +220,7 @@ class aurora_sim:
                                                   kx=1,ky=1)(self.rhop_grid, self.time_grid)
             
             # get first ionization stage
-            pnorm = np.pi*np.sum(source_rad_prof*self.S_rates[:,0,:]*(self.rvol_grid/self.pro_grid)[:,None],0)
+            pnorm = np.pi*np.sum(source_rad_prof*S0*(self.rvol_grid/self.pro_grid)[:,None],0)
             self.source_time_history = np.asfortranarray(pnorm)
             
             # neutral density for influx/unit-length = 1/cm
@@ -228,7 +237,9 @@ class aurora_sim:
                                                                   self.rvol_grid, self.pro_grid,
                                                                   S0,   # 0th charge state (neutral) and 0th time
                                                                   len(self.time_grid),self._Ti)
-            
+    
+    
+    
 
     def interp_kin_prof(self, prof): 
         ''' Interpolate the given kinetic profile on the radial and temporal grids [units of s].
@@ -531,6 +542,14 @@ class aurora_sim:
         #prevent recombination back to neutral state, these neutrals were lost causing error in particle conservation 
         if not evolneut:
             R_rates[:,0] = 0
+        
+        #update 1D sources if the namelist has changed
+        if np.ndim(self.namelist['explicit_source_vals']) < 2:
+            # get time history and radial profiles separately
+            self.source_time_history = source_utils.get_source_time_history(
+                    self.namelist, self.Raxis_cm, self.time_grid
+                )
+                
             
         if nz_init is None:
             # default: start in a state with no impurity ions
