@@ -40,7 +40,9 @@ namelist['source_type'] = 'const'
 namelist['source_rate'] = 2e20  # particles/s
 
 # choose superstages: always include 0 and 1!
-namelist['superstages'] = [0,1,10,11,12,13,14,15,16,17,18]
+namelist['superstages'] = [0,1,2,10,11,12,13,14,15,16,17,18]
+
+#namelist['superstages'] = []
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -58,8 +60,8 @@ V_z = -2e2 * np.ones(len(asim.rvol_grid)) # cm/s
 #D_z = np.tile(D_z, (len(namelist['superstages'])+1,1,1)).T
 #V_z = np.tile(V_z, (len(namelist['superstages'])+1,1,1)).T
 
-D_z = np.tile(D_z, (asim.Z_imp+1,1,1)).T
-V_z = np.tile(V_z, (asim.Z_imp+1,1,1)).T
+#D_z = np.tile(D_z, (asim.Z_imp+1,1,1)).T
+#V_z = np.tile(V_z, (asim.Z_imp+1,1,1)).T
 
 # run Aurora forward model and plot results
 out = asim.run_aurora(D_z, V_z, times_DV=[1.0,], unstage=True, plot=plot)
@@ -67,40 +69,24 @@ out = asim.run_aurora(D_z, V_z, times_DV=[1.0,], unstage=True, plot=plot)
 # extract densities and particle numbers in each simulation reservoir
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 
-# add radiation
-asim.rad = aurora.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te,
-                              prad_flag=True, thermal_cx_rad_flag=False, 
-                              spectral_brem_flag=False, sxr_flag=False)
 
-if plot:
+# plot charge state distributions over radius and time
+aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_grid, nz.transpose(1,0,2),
+                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
+                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                              plot_sum=True, x_line=asim.rvol_lcfs)
+
+
+if nz.shape[1]==asim.Z_imp+1:
+    # add radiation
+    asim.rad = aurora.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te,
+                                  prad_flag=True, thermal_cx_rad_flag=False, 
+                                  spectral_brem_flag=False, sxr_flag=False)
+    
     # plot radiation profiles over radius and time
     aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
                        xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'Line radiation [$MW/m^3$]',
                        labels=[str(i) for i in np.arange(0,nz.shape[1])],
                        plot_sum=True, x_line=asim.rvol_lcfs)
-
-
-# plot Delta-Zeff profiles over radius and time
-asim.calc_Zeff()
-
-if plot:
-    # plot variation of Zeff due to simulated impurity:
-    aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.delta_Zeff.transpose(1,0,2),
-                       xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$\Delta$ $Z_{eff}$',
-                       labels=[str(i) for i in np.arange(0,nz.shape[1])],
-                       plot_sum=True,x_line=asim.rvol_lcfs)
     
 
-# plot expected centrifugal asymmetry from finite rotation
-rhop_gacode = aurora.rad_coord_transform(inputgacode['rho'],'rhon','rhop', asim.geqdsk)
-
-# omega appears unreliable near axis in input.gacode
-omega = interp1d(rhop_gacode[3:], inputgacode['omega0'][3:],
-                 bounds_error=False,fill_value='extrapolate')(asim.rhop_grid)
-
-# obtain net Zeff in this discharge (exclude last point, unreliable)
-Zeff = interp1d(rhop_gacode[:-1], inputgacode['z_eff'][:-1],
-                 bounds_error=False,fill_value='extrapolate')(asim.rhop_grid)
-
-# Obtain estimates for centrifigal asymmetry and plot expected 2D distribution inside LCFS
-#asim.centrifugal_asym(omega, Zeff, plot=plot)

@@ -327,7 +327,7 @@ def superstage_rates(logR, logS, superstages):
 
     '''
     Z_imp = logS.shape[1]
-    superstages[-1] = Z_imp
+    
     if np.max(superstages)> Z_imp:
         raise Exception('The highest superstage must be less than Z_imp = %d'%Z_imp)
     if 0 not in superstages:
@@ -339,18 +339,13 @@ def superstage_rates(logR, logS, superstages):
     if np.any(np.diff(superstages)<=0):
         print('Warning: superstages were sorted in increasing order')
         superstages = np.sort(superstages)
+
     superstages = np.array(superstages)
     
-    #_logR,_logS = np.copy(logR), np.copy(logS)
-
-    #logR_s = logR[:,np.array(superstages[1:])-1]
-    #logS_s = logS[:,np.array(superstages[1:])-1]
-    logR_s = logR[:,np.r_[superstages[1:]-1,-1]]
-    logS_s = logS[:,np.r_[superstages[1:]-1,-1]]
+    # no zeros at the end
+    logR_s = logR[:,superstages[1:]-1]
+    logS_s = logS[:,superstages[1:]-1]
     
-    #_superstages = np.copy(superstages)
-    #_superstages[-1] = Z_imp
-
     for i in range(len(superstages)-1):
         if superstages[i]+1 != superstages[i+1]:
             sind = slice(superstages[i]-1, superstages[i+1]-1)
@@ -358,7 +353,7 @@ def superstage_rates(logR, logS, superstages):
             rate_ratio =  logS[:,sind] - logR[:,sind]
             fz = np.exp(np.cumsum(rate_ratio, axis=1))
 
-            logR_s[:,i] -= np.log(np.maximum(fz[:,-1]/fz.sum(1),1e-60))
+            logR_s[:,i] -= np.log(np.maximum(fz[:,-1]/fz.sum(1), 1e-60))
             logS_s[:,i-1] -= np.log(np.maximum(fz[:,0]/fz.sum(1), 1e-60))
             
     # bundled stages can have very high values -- clip here
@@ -443,7 +438,7 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
         fz_super /= fz_super.sum(1)[:, None]
 
         # make sure that last superstage is Z_imp now, just for plot labels
-        superstages[-1] = logS.shape[1]
+        #superstages[-1] = logS.shape[1]
 
     if plot:
         # plot fractional abundances (only 1D)
@@ -473,7 +468,7 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
             if len(superstages) and cs in superstages[:-1]:
                 axx.semilogy(x, fz_super[:,css], c=l[0].get_color(), ls='-')
                 imax = np.argmax(fz_super[:,css])
-                axx.text(np.max([0.05,x[imax]]), fz_super[imax,css], r'{'+f'{superstages[css]},{superstages[css+1]-1}'+r'}',
+                axx.text(np.max([0.05,x[imax]]), fz_super[imax,css], r'{'+f'{superstages[css]},{superstages[css+1]}'+r'}',
                          horizontalalignment='center', clip_on=True, backgroundcolor='w')
                 css += 1
 
@@ -547,7 +542,8 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include
     if include_cx:
         logcx = interp_atom_prof(atom_data['ccd'], logne, logTi, log_val=True, x_multiply=False)
 
-        # select appropriate number of charge states -- this allows use of CCD files from higher-Z ions because of simple CX scaling
+        # select appropriate number of charge states
+        # this allows use of CCD files from higher-Z ions because of simple CX scaling
         logcx = logcx[:,:logS.shape[1]]
     else:
         logcx = None
