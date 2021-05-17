@@ -335,7 +335,7 @@ def superstage_rates(logR, logS, superstages):
         superstages = np.r_[0, superstages]
     if 1 not in superstages:
         print('Warning: 1st superstage has been included')
-        superstages = np.r_[1, superstages]
+        superstages = np.r_[0, 1, superstages[1:]]
     if np.any(np.diff(superstages)<=0):
         print('Warning: superstages were sorted in increasing order')
         superstages = np.sort(superstages)
@@ -464,17 +464,22 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
             imax = np.argmax(fz_full[:,cs])
             axx.text(np.max([0.1,x[imax]]), fz_full[imax,cs], cs,
                      horizontalalignment='center', clip_on=True)
-            
-            if len(superstages) and cs in superstages[:-1]:
+
+            if len(superstages) and cs in superstages:
                 axx.semilogy(x, fz_super[:,css], c=l[0].get_color(), ls='-')
                 imax = np.argmax(fz_super[:,css])
-                axx.text(np.max([0.05,x[imax]]), fz_super[imax,css], r'{'+f'{superstages[css]},{superstages[css+1]}'+r'}',
+                try:
+                    lbl = r'{'+f'{superstages[css]},{superstages[css+1]-1}'+r'}'
+                except IndexError: # fully-stripped stage
+                    lbl = r'{'+f'{superstages[css]},{superstages[css]}'+r'}'
+                axx.text(np.max([0.05,x[imax]]), fz_super[imax,css], lbl,
                          horizontalalignment='center', clip_on=True, backgroundcolor='w')
                 css += 1
 
         axx.grid('on')
         axx.set_ylim(5e-2,1.5)
         axx.set_xlim(x[0],x[-1])
+        plt.tight_layout()
 
     if np.size(ne_cm3)>1:
         # re-structure to original array dimensions

@@ -210,7 +210,7 @@ class aurora_sim:
         if 'superstages' in self.namelist and len(self.namelist['superstages']):
             self.S_rates_super, self.R_rates_super = self.get_time_dept_atomic_rates(
                 superstages = self.namelist['superstages'])
-            #S0 = self.S_rates_super[:,0,:]
+            S0 = self.S_rates_super[:,0,:]
         
         # get radial profile of source function
         if len(save_time) == 1:  # if time averaged profiles were used
@@ -391,41 +391,82 @@ class aurora_sim:
         return np.asfortranarray(dv)
 
 
-    def superstage_DV(self, D_z, V_z):
-        '''Apply superstaging approximation to Z-dependent D and V profiles by weighting their 
-        values by the fractional abundance of each charge state at equilibrium.
+    def superstage_DV(self, D_z, V_z, opt=1):
+        '''Reduce the dimensionality of D and V time-dependent profiles for the case in which superstaging is applied.
 
+        Two options are currently available: 
+        opt=1: simple selection of D_z and V_z fields corresponding to each superstage index.
+        opt=2: weight D_z and V_z corresponding to each superstage by the fractional abundances at ionization
+        equilibrium.
+
+        Parameters
+        ---------
+        D_z: array, shape of (space,time,nZ)
+            Diffusion coefficients, in units of :math:`cm^2/s`.
+        V_z: array, shape of (space,time,nZ)
+            Convection coefficients, in units of :math:`cm/s`.
+
+        Returns
+        -------
+        Dzf: array, shape of (space,time,nZ-superstages)
+            Diffusion coefficients of superstages, in units of :math:`cm^2/s`.
+        Vzf: array, shape of (space,time,nZ-superstages)
+            Convection coefficients of superstages, in units of :math:`cm/s`.
+        
+        Notes
+        -----
         NB: this operation should not be run within an iterative scheme because it is slow.
         '''
-        logTe, logS, logR, logcx = atomic.get_cs_balance_terms(
-            self.atom_data, ne_cm3=self._ne, Te_eV = self._Te, Ti_eV=self._Ti,
-            include_cx=self.namelist['cxr_flag'])
 
-        Dz = D_z[:,:,np.r_[self.superstages[1:]-1,-1]]
-        Vz = V_z[:,:,np.r_[self.superstages[1:]-1,-1]]
+        if opt==1:
+            # option #1: simple 
+            Dzf = D_z[:,:,superstages]
+            Vzf = V_z[:,:,superstages]
 
-        for i in range(len(self.superstages)-1):
-            if self.superstages[i]+1 != self.superstages[i+1]:
-                sind = slice(self.superstages[i]-1, self.superstages[i+1]-1)
+            # nz=nion of rates arrays must be filled with zeros - final shape: (nr,nion,nt)        
+            #D_z = np.zeros((D_z.shape[0], D_z.shape[1], _D_z.shape[2]+1), order='F')
+            #D_z[:, :, 1:] = _D_z
+            
+            #V_z = np.zeros((V_z.shape[0], V_z.shape[1], _V_z.shape[2]+1), order='F')
+            #V_z[:, :, 1:] = _V_z
+
+        elif opt==2:
+            # don't read/access atomic data files unless necessary
+            if not hasattr(self,'logR') or not hasattr(self,'logS') or not hasattr(self,'logcx'):
+                logTe, self.logS, self.logR, self.logcx = atomic.get_cs_balance_terms(
+                    self.atom_data, ne_cm3=self._ne, Te_eV = self._Te, Ti_eV=self._Ti,
+                    include_cx=self.namelist['cxr_flag'])
                 
-                rate_ratio =  logS[:,sind] - logR[:,sind]
-                fz = np.exp(np.cumsum(rate_ratio, axis=1))
+            logS, logR, logcx = self.logS, self.logR, self.logcx
+        
+            Dz = D_z[:,:,self.superstages[1:]-1]
+            Vz = V_z[:,:,self.superstages[1:]-1]
 
-                Dz[:,:,i] *= (fz[:,-1]/fz.sum(1)).T
-                Vz[:,:,i] *= (fz[:,-1]/fz.sum(1)).T
+            for i in range(len(self.superstages)-1):
+                if self.superstages[i]+1 != self.superstages[i+1]:
+                    sind = slice(self.superstages[i]-1, self.superstages[i+1]-1)
 
-        # nz=nion of rates arrays must be filled with zeros - final shape: (nr,nion,nt)        
-        Dzf = np.zeros((Dz.shape[0], Dz.shape[1], Dz.shape[2]+1), order='F')
-        Dzf[:, :, :-1] = Dz
+                    rate_ratio =  logS[:,sind] - logR[:,sind]
+                    fz = np.exp(np.cumsum(rate_ratio, axis=1))
 
-        Vzf = np.zeros((Vz.shape[0], Vz.shape[1], Vz.shape[2]+1), order='F')
-        Vzf[:, :, :-1] = Vz
+                    Dz[:,:,i] *= (fz[:,-1]/fz.sum(1)).T
+                    Vz[:,:,i] *= (fz[:,-1]/fz.sum(1)).T
 
+            # nz=nion of rates arrays must be filled with zeros - final shape: (nr,nion,nt)        
+            Dzf = np.zeros((Dz.shape[0], Dz.shape[1], Dz.shape[2]+1), order='F')
+            Dzf[:, :, :-1] = Dz
+
+            Vzf = np.zeros((Vz.shape[0], Vz.shape[1], Vz.shape[2]+1), order='F')
+            Vzf[:, :, :-1] = Vz
+
+        else:
+            raise ValueError('Unrecognized option for D and V superstaging!')
+        
         return Dzf, Vzf
 
 
     def run_aurora(self, D_z, V_z,
-                   times_DV=None, nz_init=None, superstages = [], unstage=True,
+                   times_DV=None, nz_init=None, unstage=True,
                    alg_opt=1, evolneut=False, use_julia=False, plot=False):
         '''Run a simulation using inputs in the given dictionary and diffusion and convection profiles 
         as a function of space, time and potentially also ionization state. Users may give an initial 
@@ -462,17 +503,11 @@ class aurora_sim:
         nz_init: array, shape of (space, nZ)
             Impurity charge states at the initial time of the simulation. If left to None, this is
             internally set to an array of 0's.
-        superstages : list or 1D array
-            Indices of charge states of chosen ion that should be modeled. If left empty, all ion stages
-            are modeled. If only some indices are given, these are modeled as "superstages".
-            If `D_z` and `V_z` are given as a function of charge state, only the indices corresponding
-            to the superstages are used.
-            NB: if not given, indices 0 (neutral stage) and 1 (first ionized stage) are automatically added
-            since these are critical for good modeling.
         unstage : bool, optional
-            If a list of superstages are provided, this parameter sets whether the output should be "unstaged"
-            by multiplying by the appropriate fractional abundances of all charge states at ionization 
-            equilibrium. Note that this unstaging process cannot account for transport and is therefore
+            If superstages are indicated in the namelist, this parameter sets whether the output 
+            should be "unstaged" by multiplying by the appropriate fractional abundances of all 
+            charge states at ionization equilibrium. 
+            Note that this unstaging process cannot account for transport and is therefore
             only an approximation, to be used carefully.
         alg_opt : int, optional
             If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
@@ -481,8 +516,7 @@ class aurora_sim:
             If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
             which case neutrals are only taken as a source and those that are not ionized immediately after
             injection are neglected.
-            This option is NOT CURRENTLY RECOMMENDED, because this method is still under development/
-            examination. 
+            NB: It is recommended to only use this with explicit 2D sources, otherwise
         use_julia : bool, optional
             If True, run the Julia pre-compiled version of the code. Run the julia makefile option to set 
             this up. Default is False (still under development)
@@ -515,6 +549,7 @@ class aurora_sim:
         rclw_rate : array (nt,)
              Recycling from the wall [:math:`s^{-1} cm^{-3}`]
         '''
+        D_z, V_z = np.array(D_z), np.array(V_z)
         
         # D_z and V_z must have the same shape
         assert np.array(D_z).shape == np.array(V_z).shape
@@ -522,77 +557,19 @@ class aurora_sim:
         if (times_DV is None) and (D_z.ndim>1 or V_z.ndim>1):
             raise ValueError('D_z and V_z given as time dependent, but times were not specified!')
         
-        if not len(superstages):
-            superstages = self.namelist.get('superstages', [])
-
         S_rates = self.S_rates
         R_rates = self.R_rates
 
-        option=2
+        # if superstages were indicated, use their rates
+        if len(self.superstages):
+            S_rates = self.S_rates_super
+            R_rates = self.R_rates_super
 
-        if len(superstages) and option==1: # FS option
-            
-            if not np.array_equal(self.superstages,superstages):
-                # update superstaged rates based on method arguments
-                self.S_rates_super, self.R_rates_super = self.get_time_dept_atomic_rates(superstages)
+            if D_z.ndim==3 and D_z.shape[2]==self.Z_imp+1:
+                # D and V were given for all stages -- define D and V for superstages
+                D_z, V_z = self.superstage_DV(D_z, V_z, opt=1)
 
-            if len(superstages):
-                S_rates = self.S_rates_super
-                R_rates = self.R_rates_super
-
-
-        elif len(superstages) and option==2: # TO option
-
-            superstages = np.array(superstages)
-            
-            if 1 not in superstages:
-               print('Warning: 1th superstage needs to be included')
-               superstages = np.r_[1,superstages]
-            if 0 not in superstages:
-               print('Warning: 0th superstage for neutral was included')
-               superstages = np.r_[0,superstages]
-            if np.any(np.diff(superstages)<=0):
-               print('Warning: 0th superstage for neutral was included')
-               superstages = np.sort(superstages)
-            if superstages[-1] > self.Z_imp:
-               raise Exception('The higher superstage must be less than Z_imp = %d'%self.Z_imp)
-
-            # the last ion must have zero ionisation rate
-            R_rates = self.R_rates[:,np.r_[superstages[1:]-1,-1]]
-            #R_rates = self.R_rates[:,superstages]
-
-            S_rates = self.S_rates[:,np.r_[superstages[1:]-1,-1]]
-
-            #superstages[-1] = self.Z_imp
-
-            for i in range(len(superstages)-1):
-               if superstages[i]+1!= superstages[i+1]:
-                   sind = slice(superstages[i]-1, superstages[i+1]-1)
- 
-                   rate_ratio =  self.S_rates[:,sind]/self.R_rates[:,sind]
-                   fz = np.cumprod(rate_ratio, axis=1) 
-          
-                   R_rates[:,i] /=  fz[:,-1]/fz.sum(1)
-                   S_rates[:,i-1] /= fz[:,0]/fz.sum(1)
-
-     
-        if len(superstages) and D_z.ndim==3 and D_z.shape[2]==self.Z_imp+1:
-            # D and V were given for all stages. Select only values corresponding to superstages
-            _D_z = D_z[:,:,superstages]
-            _V_z = V_z[:,:,superstages]
-
-            # nz=nion of rates arrays must be filled with zeros - final shape: (nr,nion,nt)        
-            D_z = np.zeros((D_z.shape[0], D_z.shape[1], _D_z.shape[2]+1), order='F')
-            D_z[:, :, 1:] = _D_z
-            
-            V_z = np.zeros((V_z.shape[0], V_z.shape[1], _V_z.shape[2]+1), order='F')
-            V_z[:, :, 1:] = _V_z
-            
-            # superstage D and V. NB: in iterative schemes,
-            # this can be avoided by passing D_z and V_z already in the appropriate shapes for superstages
-            #D_z, V_z = self.superstage_DV(D_z, V_z)
-
-        num_cs = len(superstages) if len(superstages) else int(self.Z_imp+1)
+        num_cs = len(self.superstages) if len(self.superstages) else int(self.Z_imp+1)
         
         if not evolneut:
             # prevent recombination back to neutral state to maintain good particle conservation 
@@ -676,27 +653,28 @@ class aurora_sim:
             # check particle conservation by summing over simulation reservoirs
             _ = self.check_conservation(plot=True)
         
- 
-        if unstage and len(superstages):
+
+
+        if len(self.superstages) and unstage:
             # "unstage" superstages to recover estimates for density of all charge states
             nz_unstaged = np.zeros(( len(self.rvol_grid), self.Z_imp+1, nt))
 
-            _superstages = np.copy(superstages)
+            _superstages = np.copy(self.superstages)
             _superstages[-1] = self.Z_imp
-            
+
             for i in range(len(_superstages)):
                 if i > 0 and _superstages[i-1]+1 < _superstages[i]:
                     # fill skipped stages from ionization equilibrium
-                    ind = slice(_superstages[i-1],_superstages[i])
+                    ind = slice(_superstages[i-1]-1,_superstages[i]-1)
                     S = self.S_rates[:,ind,self.save_time] 
                     R = self.R_rates[:,ind,self.save_time]
                     fz = np.cumprod(S/R,axis=1)
-                    fz /= np.maximum(1e-5,fz.sum(1))[:,None] # prevents zero division
+                    fz /= np.maximum(1e-20,fz.sum(1))[:,None] # prevents zero division
                     
                     # split the superstage into the separate stages using ionization equilibrium
-                    nz_unstaged[:,_superstages[i-1]+1:_superstages[i]+1] = self.res[0][:,[i]]*fz
+                    nz_unstaged[:,_superstages[i-1]:_superstages[i]] = self.res[0][:,[i-1]]*fz
                 else:
-                    nz_unstaged[:,_superstages[i]] = self.res[0][:,i]
+                    nz_unstaged[:,_superstages[i-1]] = self.res[0][:,i-1]
  
             self.res = nz_unstaged, *self.res[1:]
         
@@ -704,7 +682,7 @@ class aurora_sim:
         return self.res
 
 
-    def run_aurora_steady(self, D_z, V_z, nz_init=None, superstages = [], unstage=False,
+    def run_aurora_steady(self, D_z, V_z, nz_init=None, unstage=False,
                           alg_opt=1, evolneut=False, use_julia=False,
                           tolerance=0.01, max_sim_time = 500e-3, dt=1e-4, dt_increase=1.0, 
                           n_steps = 100, plot=False):
@@ -789,9 +767,8 @@ class aurora_sim:
             times_DV = self.namelist['timing']['times']
             
         # run first iteration
-        nz_new = self.run_aurora(D_z, V_z, times_DV, nz_init=nz_init,
-                                     superstages = superstages, unstage=unstage, alg_opt=alg_opt,
-                                     evolneut=evolneut, use_julia=use_julia, plot=False)[0]
+        nz_new = self.run_aurora(D_z, V_z, times_DV, nz_init=nz_init, unstage=unstage,
+                                 alg_opt=alg_opt,  evolneut=evolneut, use_julia=use_julia, plot=False)[0]
         nz_all = np.copy(nz_new)
         nz_norm = nz_new[:,:,-1]/np.max(nz_new[:,:,-1])
         time_grid = np.copy(self.time_grid)
