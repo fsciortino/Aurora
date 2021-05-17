@@ -300,8 +300,76 @@ def null_space(A):
     return Q, s[-2]  # matrix is singular, so last index is ~0
 
 
-def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=0.0,
-                        ne_tau=np.inf, plot=True, ax = None, rho = None, rho_lbl=None,ls='-'):
+
+def superstage_rates(logR, logS, superstages):
+    '''Compute rate for a set of ion superstages. 
+    Input and output rates are log-values in arbitrary base.
+
+    Parameters
+    ----------
+    logR : array
+        Array containing the log of effective recombination rates for all ion stages, 
+        These are typically combinations of radiative and dielectronic recombination, 
+        possibly also of charge exchange recombination.
+    logS : array
+        Array containing the log of effective ionization rates for all ion stages.
+    superstages : list or 1D array
+        Indices of charge states of chosen ion that should be included. 
+    
+    Returns
+    -------
+    superstages : array
+        Set of superstages including 0,1 and final stages if these were missing in the input.
+    logR_s : array
+        log of effective recombination rates for superstages
+    logS_s : array
+        log of effective ionization rates for superstages
+
+    '''
+    Z_imp = logS.shape[1]
+    superstages[-1] = Z_imp
+    if np.max(superstages)> Z_imp:
+        raise Exception('The highest superstage must be less than Z_imp = %d'%Z_imp)
+    if 0 not in superstages:
+        print('Warning: 0th superstage has been included')
+        superstages = np.r_[0, superstages]
+    if 1 not in superstages:
+        print('Warning: 1st superstage has been included')
+        superstages = np.r_[1, superstages]
+    if np.any(np.diff(superstages)<=0):
+        print('Warning: superstages were sorted in increasing order')
+        superstages = np.sort(superstages)
+    superstages = np.array(superstages)
+    
+    #_logR,_logS = np.copy(logR), np.copy(logS)
+
+    #logR_s = logR[:,np.array(superstages[1:])-1]
+    #logS_s = logS[:,np.array(superstages[1:])-1]
+    logR_s = logR[:,np.r_[superstages[1:]-1,-1]]
+    logS_s = logS[:,np.r_[superstages[1:]-1,-1]]
+    
+    #_superstages = np.copy(superstages)
+    #_superstages[-1] = Z_imp
+
+    for i in range(len(superstages)-1):
+        if superstages[i]+1 != superstages[i+1]:
+            sind = slice(superstages[i]-1, superstages[i+1]-1)
+            
+            rate_ratio =  logS[:,sind] - logR[:,sind]
+            fz = np.exp(np.cumsum(rate_ratio, axis=1))
+
+            logR_s[:,i] -= np.log(np.maximum(fz[:,-1]/fz.sum(1),1e-60))
+            logS_s[:,i-1] -= np.log(np.maximum(fz[:,0]/fz.sum(1), 1e-60))
+            
+    # bundled stages can have very high values -- clip here
+    logR = np.clip(logR_s, -50, 1) #
+    logS = np.clip(logS_s, -50, 1)
+        
+    return superstages, logR_s, logS_s
+
+def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0, superstages=[],
+                        ne_tau=np.inf, plot=True, ax = None, rho = None,
+                        rho_lbl=None):
     r'''Calculate fractional abundances from ionization and recombination equilibrium.
     If n0_by_ne is not 0, radiative recombination and thermal charge exchange are summed.
 
@@ -317,8 +385,13 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=0.0,
     Te_eV : float or array, optional
         Electron temperature in units of eV. If left to None, the Te grid given in the 
         atomic data is used.
+    Ti_eV : float or array, optional
+        Bulk ion temperature in units of eV. If left to None, Ti is set to be equal to Te
     n0_by_ne: float or array, optional
-        Ratio of background neutral hydrogen to electron density. If not 0, CX is considered. 
+        Ratio of background neutral hydrogen to electron density. If not 0, CX is considered.
+    superstages : list or 1D array
+        Indices of charge states of chosen ion that should be included. If left empty, all ion stages
+        are included. If only some indices are given, these are modeled as "superstages".
     ne_tau : float, opt
         Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
         This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
@@ -331,9 +404,7 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=0.0,
         Vector of radial coordinates on which ne,Te (and possibly n0_by_ne) are given. 
         This is only used for plotting, if given. 
     rho_lbl: str, optional
-        Label to be used for rho. If left to None, defaults to a general "rho".
-    ls : str, optional
-        Line style for plots. Continuous lines are used by default. 
+        Label to be used for rho. If left to None, defaults to a general "x".
 
     Returns
     -------
@@ -346,27 +417,35 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=0.0,
     '''
     # if input arrays are multi-dimensional, flatten them here and restructure at the end
     _ne = np.array(ne_cm3).flatten()
-    _Te = np.array(Te_eV).flatten()
+    _Te = np.array(Te_eV).flatten() if Te_eV is not None else None
+    _Ti = np.array(Ti_eV).flatten() if Ti_eV is not None else _Te
     _n0_by_ne = np.array(n0_by_ne).flatten()
-
+    if superstages is None: superstages = []
+    
     include_cx = False if (isinstance(n0_by_ne,(int,float)) and n0_by_ne==0.0) else True
 
-    #from IPython import embed
-    #embed()
-    
-    logTe, logS,logR,logcx = get_cs_balance_terms(
-        atom_data, _ne, _Te, maxTe=10e3, include_cx=include_cx)
+    logTe, logS, logR, logcx = get_cs_balance_terms(atom_data, _ne, _Te, _Ti, include_cx=include_cx)
     
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
-        logR= np.logaddexp(logR,np.log(_n0_by_ne)[:,None] +logcx)
+        logR = np.logaddexp(logR,np.log(_n0_by_ne)[:,None] +logcx)
 
-    # simplest method to compute fractional abundances
     rate_ratio = np.hstack((np.zeros_like(logTe)[:, None], logS - logR))
-    fz = np.exp(np.cumsum(rate_ratio, axis=1))
-    fz /= fz.sum(1)[:, None]
+    fz_full = np.exp(np.cumsum(rate_ratio, axis=1))
+    fz_full /= fz_full.sum(1)[:, None]
+    
+    # Enable use of superstages
+    if len(superstages):
+        superstages, logR, logS = superstage_rates(logR, logS, superstages)
+        
+        rate_ratio = np.hstack((np.zeros_like(logTe)[:, None], logS - logR))
+        fz_super = np.exp(np.cumsum(rate_ratio, axis=1))
+        fz_super /= fz_super.sum(1)[:, None]
 
-    if plot and np.size(_ne)>1:
+        # make sure that last superstage is Z_imp now, just for plot labels
+        superstages[-1] = logS.shape[1]
+
+    if plot:
         # plot fractional abundances (only 1D)
         if ax is None:
             fig,axx = plt.subplots()
@@ -378,48 +457,46 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, n0_by_ne=0.0,
             axx.set_xlabel('T$_e$ [eV]')
             axx.set_xscale('log')
         else:
-            if rho_lbl is None: rho_lbl=r'$\rho$'
+            if rho_lbl is None: rho_lbl='x'
             x = rho
             axx.set_xlabel(rho_lbl)
 
-        axx.set_prop_cycle('color',cm.plasma(np.linspace(0,1,fz.shape[1])))
+        axx.set_prop_cycle('color',cm.plasma(np.linspace(0,1,fz_full.shape[1])))
 
-        # cubic interpolation for smoother visualization:
-        x_fine = np.linspace(np.min(x), np.max(x),10000)
-
-        def monotonic(x):
-            dx = np.diff(x)
-            return np.all(dx <= 0) or np.all(dx >= 0)
-            
-        for cs in range(fz.shape[1]):
-            if monotonic(x):
-                fz_i = interp1d(x, fz[:,cs], kind='cubic')(x_fine)
-            else:
-                # cannot interpolate on non-monotonic grids (hollow temperature?)
-                fz_i = fz[:,cs]
-                x_fine = x
-
-            axx.plot(x_fine, fz_i, ls=ls)
-            imax = np.argmax(fz_i)
-            axx.text(np.max([0.05,x_fine[imax]]), fz_i[imax], cs,
+        css=0
+        for cs in range(fz_full.shape[1]):
+            l = axx.semilogy(x, fz_full[:,cs], ls='--')
+            imax = np.argmax(fz_full[:,cs])
+            axx.text(np.max([0.1,x[imax]]), fz_full[imax,cs], cs,
                      horizontalalignment='center', clip_on=True)
+            
+            if len(superstages) and cs in superstages[:-1]:
+                axx.semilogy(x, fz_super[:,css], c=l[0].get_color(), ls='-')
+                imax = np.argmax(fz_super[:,css])
+                axx.text(np.max([0.05,x[imax]]), fz_super[imax,css], r'{'+f'{superstages[css]},{superstages[css+1]-1}'+r'}',
+                         horizontalalignment='center', clip_on=True, backgroundcolor='w')
+                css += 1
+
         axx.grid('on')
-        axx.set_ylim(0,1.05)
+        axx.set_ylim(5e-2,1.5)
         axx.set_xlim(x[0],x[-1])
 
     if np.size(ne_cm3)>1:
         # re-structure to original array dimensions
         logTe = logTe.reshape(np.array(ne_cm3).shape)
-        fz = fz.reshape(*np.array(ne_cm3).shape, fz.shape[1])
+        fz_full = fz_full.reshape(*np.array(ne_cm3).shape, fz_full.shape[1])
+        if len(superstages):
+            fz_super = fz_super.reshape(*np.array(ne_cm3).shape, fz_super.shape[1])
     
-    return logTe, fz
+    return [logTe,] + [fz_super if len(superstages) else fz_full,]
+ 
 
 
 
 
 
-def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, maxTe=10e3, include_cx=True):
-    '''Get S, R and cx on the same logTe grid. 
+def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include_cx=True):
+    '''Get S, R and cx rates on the same logTe grid. 
     
     Parameters
     ----------
@@ -430,8 +507,8 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, maxTe=10e3, include
     Te_eV : float or array
         Electron temperature in units of eV. If left to None, the Te grid
         given in the atomic data is used.
-    maxTe : float
-        Maximum temperature of interest; only used if Te is left to None. 
+    Ti_eV : float or array
+        Bulk ion temperature in units of eV, only needed for CX. If left to None, Ti is set equal to Te.
     include_cx : bool
         If True, obtain charge exchange terms as well. 
     
@@ -446,12 +523,11 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, maxTe=10e3, include
     '''
     if Te_eV is None:
         # find smallest Te grid from all files
-        logne1, logTe1,_ = atom_data['scd']  # ionization
-        logne2, logTe2,_ = atom_data['acd']  # radiative recombination
+        logne1, logTe1,_ = atom_data['scd']
+        logne2, logTe2,_ = atom_data['acd']
 
         minTe = max(logTe1[0],logTe2[0])
-        maxTe = np.log10(maxTe)# don't go further than some given temperature keV
-        maxTe = min(maxTe,logTe1[-1],logTe2[-1])  # avoid extrapolation
+        maxTe = min(logTe1[-1],logTe2[-1])  # avoid extrapolation
 
         if include_cx:
             logne3, logTe3,_ = atom_data['ccd']  # thermal cx recombination
@@ -463,12 +539,13 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, maxTe=10e3, include
     else:
         logTe = np.log10(Te_eV)
 
+    logTi = np.log10(Ti_eV) if Ti_eV is not None else logTe
     logne = np.log10(ne_cm3)
 
-    logS = interp_atom_prof(atom_data['scd'],logne, logTe,log_val=True, x_multiply=False)
-    logR = interp_atom_prof(atom_data['acd'],logne, logTe,log_val=True, x_multiply=False)
+    logS = interp_atom_prof(atom_data['scd'], logne, logTe, log_val=True, x_multiply=False)
+    logR = interp_atom_prof(atom_data['acd'], logne, logTe, log_val=True, x_multiply=False)
     if include_cx:
-        logcx = interp_atom_prof(atom_data['ccd'],logne, logTe,log_val=True, x_multiply=False)
+        logcx = interp_atom_prof(atom_data['ccd'], logne, logTi, log_val=True, x_multiply=False)
 
         # select appropriate number of charge states -- this allows use of CCD files from higher-Z ions because of simple CX scaling
         logcx = logcx[:,:logS.shape[1]]
@@ -479,7 +556,7 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, maxTe=10e3, include
 
 
 
-def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, n0_by_ne=0.0,
+def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
                         ne_tau=np.inf, plot=True, ax = None, ls='-'):
     r'''Obtain the relaxation time of the ionization equilibrium for a given atomic species.
 
@@ -496,11 +573,11 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, n0_by_ne=0.0,
     ne_cm3 : float or array
         Electron density in units of :math:`cm^{-3}`.
     Te_eV : float or array, optional
-        Electron temperature in units of eV. If left to None, the Te grid given in the 
-        atomic data is used.
+        Electron temperature in units of eV. If left to None, the Te grid given in the atomic data is used.
+    Ti_eV : float or array
+        Bulk ion temperature in units of eV, only needed for CX. If left to None, Ti is set equal to Te.
     n0_by_ne: float or array, optional
-        Ratio of background neutral hydrogen to electron density. If set to 0, CX is not 
-        considered.
+        Ratio of background neutral hydrogen to electron density. If set to 0, CX is not considered.
     ne_tau : float, opt
         Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
         This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
@@ -524,17 +601,22 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, n0_by_ne=0.0,
     '''
     # if input arrays are multi-dimensional, flatten them here and restructure at the end
     _ne = np.array(ne_cm3).flatten()
-    _Te = np.array(Te_eV).flatten()
+    _Te = np.array(Te_eV).flatten() if Te_eV is not None else None
+    _Ti = np.array(Ti_eV).flatten() if Ti_eV is not None else _Te
     _n0_by_ne = np.array(n0_by_ne).flatten()
 
     include_cx = False if (isinstance(n0_by_ne,(int,float)) and n0_by_ne==0.0) else True
 
     logTe, logS,logR,logcx = get_cs_balance_terms(
-        atom_data, _ne, _Te, maxTe=10e3, include_cx=include_cx)
+        atom_data, _ne, _Te, include_cx=include_cx)
     
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
         logR= np.logaddexp(logR,np.log(_n0_by_ne)[:,None] +logcx)
+        
+    # Enable use of superstages
+    if len(superstages):
+        superstages, logR, logS = superstage_rates(logR, logS, superstages)
 
     # numerical method that calculates also rate_coeffs
     nion = logR.shape[1]

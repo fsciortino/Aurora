@@ -1,5 +1,5 @@
-! aurora - a modern radial impurity transport forward model
-! Copyright (c) 2020 Francesco Sciortino
+! AURORA - a modern radial impurity transport forward model
+! Copyright (c) 2020- Francesco Sciortino
 
 subroutine run(  &
         nion, ir, nt, &
