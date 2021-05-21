@@ -86,6 +86,7 @@ def load_default_namelist():
         'acd': None, # use default
         'scd': None, # use default
         'ccd': None, # use default
+        'superstages': []
     }
     return namelist
 

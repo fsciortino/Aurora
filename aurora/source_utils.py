@@ -343,5 +343,5 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates,nt, Ti_eV=None):
     source_rad_prof = np.broadcast_to(source_rad_prof, (source_rad_prof.shape[0], nt))
 
 
-    return np.asfortranarray(source_rad_prof)
+    return source_rad_prof
 
