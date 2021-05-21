@@ -49,6 +49,11 @@ namelist['source_rate'] = 2e20  # particles/s
 #namelist['timing']['steps_per_cycle'] = np.array([1,1,1])
 #namelist['timing']['times'] = np.array([0.,0.05,0.2])
 
+# Possibly add some arbitrary recombination from NBI neutrals
+#namelist['nbi_cxr_flag'] = True
+#namelist['nbi_cxr'] = {'rhop': kp['Te']['rhop']}
+#namelist['nbi_cxr']['vals'] = kp['Te']['vals'][:,None]*np.arange(18)[None,:]  # units of s^-1
+
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 

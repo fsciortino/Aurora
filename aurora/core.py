@@ -29,21 +29,9 @@ class aurora_sim:
         EFIT gfile as returned after postprocessing by the :py:mod:`omfit_classes.omfit_eqdsk` 
         package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary 
         is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
-    nbi_cxr : array, optional
-        If namelist['nbi_cxr']=True, this array represents the charge exchange rates 
-        with NBI neutrals, fast and/or thermal, across the entire radius and on the 
-        time base of interest. 
-        Creating this input is not trivial and must be done externally to aurora. 
-        General steps:
-        - get density of fast NBI neutrals (both fast and thermal/halo) ---> n0_nbi, n0_halo
-        - get total rates (n-unresolved) for CX with NBI neutrals --> _alpha_CX_NBI_rates
-        - thermal rates for the halo may be from ADAS CCD files or from the same methods used 
-        for fast neutrals
-        - sum n0_nbi *  alpha_CX_NBI_rates + n0_halo * alpha_CX_rates
-        This method still needs more testing within this class. Contact sciortino-at-psfc.mit.edu for details. 
           
     '''
-    def __init__(self, namelist, geqdsk=None, nbi_cxr=None):
+    def __init__(self, namelist, geqdsk=None):
 
         if namelist is None:
             # option useful for calls like omfit_classes.OMFITaurora(filename)
@@ -54,9 +42,8 @@ class aurora_sim:
         # make sure that any changes in namelist will not propagate back to the calling function
         self.namelist = deepcopy(namelist)
         self.kin_profs = self.namelist['kin_profs']
-        self.nbi_cxr = nbi_cxr
-        self.imp = self.namelist['imp']
-        
+        self.imp = namelist['imp']
+
         # import here to avoid issues when building docs or package
         from omfit_classes.utils_math import atomic_element
 
@@ -335,7 +322,10 @@ class aurora_sim:
         
         if self.namelist['nbi_cxr_flag']:
             # include charge exchange between NBI neutrals and impurities
-            R += self.nbi_cxr.transpose(1,0,2)
+            self.nbi_cxr = interp1d(self.namelist['nbi_cxr']['rhop'], self.namelist['nbi_cxr']['vals'], axis=0,
+                                    bounds_error=False, fill_value=0.0)(self.rhop_grid)
+
+            R += self.nbi_cxr.T[None,:,:]
  
         if len(superstages):
             self.superstages, R, S, self.fz_upstage = \
@@ -351,7 +341,7 @@ class aurora_sim:
 
         return S_rates, R_rates
     
-    
+
     def get_par_loss_rate(self, trust_SOL_Ti=False):
         '''Calculate the parallel loss frequency on the radial and temporal grids [1/s].
 
