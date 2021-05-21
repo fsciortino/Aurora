@@ -6,7 +6,7 @@ import numpy as np
 from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.constants import e as q_electron, m_p
 import pickle as pkl
-
+from time import time
 from . import interp
 from . import atomic
 from . import grids_utils
@@ -15,6 +15,7 @@ from . import particle_conserv
 from . import plot_tools
 from . import synth_diags
 from . import adas_files
+from copy import deepcopy
 
 class aurora_sim:
     '''Setup the input dictionary for an Aurora ion transport simulation from the given namelist.
@@ -49,11 +50,25 @@ class aurora_sim:
             # A call like omfit_classes.OMFITaurora('test', namelist, geqdsk=geqdsk) is also possible
             # to initialize the class as a dictionary.
             return
-        
-        self.namelist = namelist
-        self.kin_profs = namelist['kin_profs']
+
+        #make sure that any changes in namelist will not propaate back to the calling function
+        self.namelist = deepcopy(namelist)
+        self.kin_profs = self.namelist['kin_profs']
         self.nbi_cxr = nbi_cxr
-        self.imp = namelist['imp']
+        self.imp = self.namelist['imp']
+        
+        # import here to avoid issues when building docs or package
+        from omfit_classes.utils_math import atomic_element
+
+        # get nuclear charge Z and atomic mass number A
+        out = atomic_element(symbol=self.imp)
+        spec = list(out.keys())[0]
+        self.Z_imp = int(out[spec]['Z'])
+        self.A_imp = int(out[spec]['A'])
+        
+        self.reload_namelist()
+        
+
 
         if geqdsk is None:
             # import omfit_eqdsk here to avoid issues with docs and packaging
@@ -78,28 +93,21 @@ class aurora_sim:
         if self.namelist['cxr_flag']:
             atom_files['ccd'] = self.namelist.get('ccd', adas_files.adas_files_dict()[self.imp]['ccd'])
 
+
+
         # now load ionization and recombination rates
         self.atom_data = atomic.get_atom_data(self.imp,files=atom_files)
 
         # allow for ion superstaging
         self.superstages = self.namelist.get('superstages',[])
-        
+
         # set up radial and temporal grids
         self.setup_grids()
 
         # set up kinetic profiles and atomic rates
         self.setup_kin_profs_depts()
-
-        # import here to avoid issues when building docs or package
-        from omfit_classes.utils_math import atomic_element
-
-        # get nuclear charge Z and atomic mass number A
-        out = atomic_element(symbol=self.imp)
-        spec = list(out.keys())[0]
-        self.Z_imp = int(out[spec]['Z'])
-        self.A_imp = int(out[spec]['A'])
         
-        self.reload_namelist()
+
 
 
     def reload_namelist(self, namelist=None):
@@ -153,12 +161,12 @@ class aurora_sim:
     def setup_grids(self):
         '''Method to set up radial and temporal grids given namelist inputs.
         '''
-        
         # Get r_V to rho_pol mapping
         rho_pol, _rvol = grids_utils.get_rhopol_rvol_mapping(self.geqdsk)
+
         rvol_lcfs = interp1d(rho_pol,_rvol)(1.0)
         self.rvol_lcfs = self.namelist['rvol_lcfs'] = np.round(rvol_lcfs,3)  # set limit on accuracy
-        
+
         # create radial grid
         grid_params = grids_utils.create_radial_grid(self.namelist, plot=False)
         self.rvol_grid,self.pro_grid,self.qpr_grid,self.prox_param = grid_params
@@ -166,7 +174,7 @@ class aurora_sim:
         # get rho_poloidal grid corresponding to aurora internal (rvol) grid
         self.rhop_grid = interp1d(_rvol,rho_pol, fill_value='extrapolate')(self.rvol_grid)
         self.rhop_grid[0] = 0.0 # enforce on axis
-        
+
         # Save R on LFS and HFS
         self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(self.geqdsk, rho_pol=self.rhop_grid)
 
@@ -198,20 +206,16 @@ class aurora_sim:
         self.Te = self._Te[save_time,:]
         self.Ti = self._Ti[save_time,:]
         self.n0 = self._n0[save_time,:]
-        
+
         # Get time-dependent parallel loss rate
         self.par_loss_rate = self.get_par_loss_rate()
 
         # Obtain atomic rates on the computational time and radial grids
-        self.S_rates, self.R_rates = self.get_time_dept_atomic_rates()
+        self.S_rates, self.R_rates = self.get_time_dept_atomic_rates(
+            superstages = self.namelist.get('superstages',[]))
+
+  
         S0 = self.S_rates[:,0,:]
-        
-        # if superstaging, save appropriate rates too
-        if 'superstages' in self.namelist and len(self.namelist['superstages']):
-            self.S_rates_super, self.R_rates_super = self.get_time_dept_atomic_rates(
-                superstages = self.namelist['superstages'])
-            S0 = self.S_rates_super[:,0,:]
-        
         # get radial profile of source function
         if len(save_time) == 1:  # if time averaged profiles were used
             S0 = S0[:, [0]]  # 0th charge state (neutral)
@@ -225,23 +229,24 @@ class aurora_sim:
             
             # get first ionization stage
             pnorm = np.pi*np.sum(source_rad_prof*S0*(self.rvol_grid/self.pro_grid)[:,None],0)
-            self.source_time_history = np.asfortranarray(pnorm)
+            self.source_time_history = pnorm
             
             # neutral density for influx/unit-length = 1/cm
-            self.source_rad_prof = np.asfortranarray(source_rad_prof/pnorm)
+            self.source_rad_prof = source_rad_prof/pnorm
 
         else:
             # get time history and radial profiles separately
             self.source_time_history = source_utils.get_source_time_history(
-                self.namelist, self.Raxis_cm, self.time_grid
-            )
+                self.namelist, self.Raxis_cm, self.time_grid)
             
             # get radial profile of source function for each time step
             self.source_rad_prof = source_utils.get_radial_source(self.namelist,
                                                                   self.rvol_grid, self.pro_grid,
                                                                   S0,   # 0th charge state (neutral) and 0th time
                                                                   len(self.time_grid),self._Ti)
-    
+            
+        
+        self.source_rad_prof = np.asfortranarray(self.source_rad_prof)
 
     def interp_kin_prof(self, prof): 
         ''' Interpolate the given kinetic profile on the radial and temporal grids [units of s].
@@ -306,46 +311,41 @@ class aurora_sim:
         return ne,Te,Ti,n0
 
 
-    def get_time_dept_atomic_rates(self, superstages=[]):
+    def get_time_dept_atomic_rates(self,  superstages=[]):
         '''Obtain time-dependent ionization and recombination rates for a simulation run.
         If kinetic profiles are given as time-independent, atomic rates for each time slice
         will be set to be the same.
         '''
+        
 
-        # don't read/access atomic data files unless necessary
-        if not hasattr(self,'logR') or not hasattr(self,'logS') or not hasattr(self,'logcx'):
-            logTe, self.logS, self.logR, self.logcx = atomic.get_cs_balance_terms(
+        ## get electron impact ionization and radiative recombination rates in units of [s^-1]
+        _, S, R, cx = atomic.get_cs_balance_terms(
                 self.atom_data, ne_cm3=self._ne, Te_eV = self._Te, Ti_eV=self._Ti,
                 include_cx=self.namelist['cxr_flag'])
-    
-        logS, logR, logcx = self.logS, self.logR, self.logcx
-        
+                    
         if self.namelist['cxr_flag']:
             # Get an effective recombination rate by summing radiative & CX recombination rates
-            logR = np.logaddexp(logR, np.log(np.minimum(self._n0[:,None]/self._ne,1e-20)) +logcx)
+            R += cx*(self._n0/self._ne)[:,None] 
         
         if self.namelist['nbi_cxr_flag']:
             # include charge exchange between NBI neutrals and impurities
-            logR = np.logaddexp(logR, np.log(np.minimum(self.nbi_cxr.transpose(1,0,2),1e-70)))
-        
+            R += self.nbi_cxr.transpose(1,0,2)
+ 
         if len(superstages):
-            # superstage rates:
-            self.superstages, logR, logS = atomic.superstage_rates(logR, logS, superstages)
+            self.superstages, R, S,self.fz_upstage = \
+                atomic.superstage_rates(R, S, superstages,save_time=self.save_time)
+             
+        #S and R for the Z+1  stage must be zero and create Fortran alighned arrays
+        S_rates_t = np.zeros((S.shape[2], S.shape[1] + 1, self.time_grid.size), order='F')
+        S_rates_t[:, :-1] = S.T
 
-        # nz=nion of rates arrays must be filled with zeros - final shape: (nr,nion,nt)        
-        logS_t = - np.infty * np.ones((logS.shape[2], logS.shape[1] + 1, self.time_grid.size), order='F')
-        logS_t[:, :-1] = logS.T
-
-        logR_t = - np.infty * np.ones((logR.shape[2], logR.shape[1] + 1, self.time_grid.size), order='F')
-        logR_t[:, :-1] = logR.T
-        
-        # get electron impact ionization and radiative recombination rates in units of [s^-1]
-        S_rates = self._ne.T[:,None,:] * np.exp(logS_t)        
-        R_rates = self._ne.T[:,None,:] * np.exp(logR_t)
-
-        return S_rates, R_rates
+        R_rates_t = np.zeros((R.shape[2], R.shape[1] + 1, self.time_grid.size), order='F')
+        R_rates_t[:, :-1] = R.T
 
 
+        return S_rates_t, R_rates_t
+    
+    
     def get_par_loss_rate(self, trust_SOL_Ti=False):
         '''Calculate the parallel loss frequency on the radial and temporal grids [1/s].
 
@@ -374,11 +374,8 @@ class aurora_sim:
         # Calculate parallel loss frequency using different connection lengths in the SOL and in the limiter shadow
         dv = np.zeros_like(self._Te.T) # space x time
 
-        if not trust_SOL_Ti:
-            # Ti may not be reliable in SOL, replace it by Te
-            Ti = self._Te
-        else:
-            Ti = self._Ti
+        # Ti may not be reliable in SOL, replace it by Te
+        Ti = self._Ti if trust_SOL_Ti else self._Te
 
         # open SOL
         dv[ids:idl] = vpf*np.sqrt(3.*Ti.T[ids:idl] + self._Te.T[ids:idl])/self.namelist['clen_divertor']
@@ -389,7 +386,6 @@ class aurora_sim:
         dv,_ = np.broadcast_arrays(dv,self.time_grid[None])
         
         return np.asfortranarray(dv)
-
 
     def superstage_DV(self, D_z, V_z, opt=1):
         '''Reduce the dimensionality of D and V time-dependent profiles for the case in which superstaging is applied.
@@ -417,47 +413,34 @@ class aurora_sim:
         -----
         NB: this operation should not be run within an iterative scheme because it is slow.
         '''
-
+        
+        Dzf = D_z[:,:,self.superstages]
+        Vzf = V_z[:,:,self.superstages]
+        
         if opt==1:
-            # option #1: simple 
-            Dzf = D_z[:,:,superstages]
-            Vzf = V_z[:,:,superstages]
+            # option #1: simple, use average D,V over superstage
 
-            # nz=nion of rates arrays must be filled with zeros - final shape: (nr,nion,nt)        
-            #D_z = np.zeros((D_z.shape[0], D_z.shape[1], _D_z.shape[2]+1), order='F')
-            #D_z[:, :, 1:] = _D_z
-            
-            #V_z = np.zeros((V_z.shape[0], V_z.shape[1], _V_z.shape[2]+1), order='F')
-            #V_z[:, :, 1:] = _V_z
+            superstages = np.r_[self.superstages, self.Z_imp+1]
+
+            for i in range(len(self.superstages)):
+                if superstages[i]+1 != superstages[i+1]:
+                    Dzf[:,:,i] = D_z[:,:,superstages[i]: superstages[i+1]].mean(2)
+
+ 
 
         elif opt==2:
-            # don't read/access atomic data files unless necessary
-            if not hasattr(self,'logR') or not hasattr(self,'logS') or not hasattr(self,'logcx'):
-                logTe, self.logS, self.logR, self.logcx = atomic.get_cs_balance_terms(
-                    self.atom_data, ne_cm3=self._ne, Te_eV = self._Te, Ti_eV=self._Ti,
-                    include_cx=self.namelist['cxr_flag'])
-                
-            logS, logR, logcx = self.logS, self.logR, self.logcx
-        
-            Dz = D_z[:,:,self.superstages[1:]-1]
-            Vz = V_z[:,:,self.superstages[1:]-1]
+            #TODO !!!!!  needs to be tested !!!!!
 
-            for i in range(len(self.superstages)-1):
-                if self.superstages[i]+1 != self.superstages[i+1]:
-                    sind = slice(self.superstages[i]-1, self.superstages[i+1]-1)
+            superstages = np.r_[self.superstages, self.Z_imp+1]
+           
+            #calculate fractional abundances inside of each superstage
+            for i in range(len(superstages)-1):
+                if  superstages[i]+1 < superstages[i+1]:
+                    # average D and V using fz for each superstage
+                    ind = slice(superstages[i],superstages[i+1])
+                    Dzf[:,:,i] = np.sum(D_z[:,:,ind]*self.fz_upstage[:,ind],2)
+                    Vzf[:,:,i] = np.sum(V_z[:,:,ind]*self.fz_upstage[:,ind],2)
 
-                    rate_ratio =  logS[:,sind] - logR[:,sind]
-                    fz = np.exp(np.cumsum(rate_ratio, axis=1))
-
-                    Dz[:,:,i] *= (fz[:,-1]/fz.sum(1)).T
-                    Vz[:,:,i] *= (fz[:,-1]/fz.sum(1)).T
-
-            # nz=nion of rates arrays must be filled with zeros - final shape: (nr,nion,nt)        
-            Dzf = np.zeros((Dz.shape[0], Dz.shape[1], Dz.shape[2]+1), order='F')
-            Dzf[:, :, :-1] = Dz
-
-            Vzf = np.zeros((Vz.shape[0], Vz.shape[1], Vz.shape[2]+1), order='F')
-            Vzf[:, :, :-1] = Vz
 
         else:
             raise ValueError('Unrecognized option for D and V superstaging!')
@@ -549,31 +532,25 @@ class aurora_sim:
         rclw_rate : array (nt,)
              Recycling from the wall [:math:`s^{-1} cm^{-3}`]
         '''
-        D_z, V_z = np.array(D_z), np.array(V_z)
+        D_z, V_z = np.asarray(D_z), np.asarray(V_z)
         
         # D_z and V_z must have the same shape
-        assert np.array(D_z).shape == np.array(V_z).shape
+        assert np.shape(D_z) == np.shape(V_z)
         
         if (times_DV is None) and (D_z.ndim>1 or V_z.ndim>1):
             raise ValueError('D_z and V_z given as time dependent, but times were not specified!')
-        
-        S_rates = self.S_rates
-        R_rates = self.R_rates
-
-        # if superstages were indicated, use their rates
+ 
+        num_cs = int(self.Z_imp+1)
+        # D and V were given for all stages -- define D and V for superstages
         if len(self.superstages):
-            S_rates = self.S_rates_super
-            R_rates = self.R_rates_super
-
+            num_cs = len(self.superstages)
             if D_z.ndim==3 and D_z.shape[2]==self.Z_imp+1:
-                # D and V were given for all stages -- define D and V for superstages
                 D_z, V_z = self.superstage_DV(D_z, V_z, opt=1)
 
-        num_cs = len(self.superstages) if len(self.superstages) else int(self.Z_imp+1)
-        
+         
         if not evolneut:
             # prevent recombination back to neutral state to maintain good particle conservation 
-            R_rates[:,0] = 0
+            self.R_rates[:,0] = 0
 
         if nz_init is None:
             # default: start in a state with no impurity ions
@@ -582,14 +559,17 @@ class aurora_sim:
         if D_z.ndim < 3:
             # set all charge states to have the same transport
             # num_cs = Z+1 - include elements for neutrals
-
             D_z =  np.tile(D_z.T, (num_cs, 1, 1)).T # create fortran contiguous arrays
-            V_z =  np.tile(V_z.T, (num_cs, 1, 1)).T
-
             D_z[:,:,0] = 0.0
+        
+        if V_z.ndim < 3:
+            # set all charge states to have the same transport
+            # num_cs = Z+1 - include elements for neutrals
+            V_z =  np.tile(V_z.T, (num_cs, 1, 1)).T# create fortran contiguous arrays
             V_z[:,:,0] = 0.0
-            if np.size(times_DV) == 0:
-                times_DV = [1.] # dummy, no time dependence
+        
+        if times_DV is None or np.size(times_DV) == 0:
+            times_DV = [1.] # dummy, no time dependence
  
         nt = len(self.time_out)
 
@@ -606,8 +586,8 @@ class aurora_sim:
                                      D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                      self.par_loss_rate,  # time dependent
                                      self.source_rad_prof,# source profile in radius
-                                     S_rates, # ioniz_rate,
-                                     R_rates, # recomb_rate,
+                                     self.S_rates, # ioniz_rate,
+                                     self.R_rates, # recomb_rate,
                                      self.rvol_grid, self.pro_grid, self.qpr_grid,
                                      self.mixing_radius, self.decay_length_boundary,
                                      self.time_grid, self.saw_on,
@@ -615,20 +595,19 @@ class aurora_sim:
                                      self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
                                      self.wall_recycling,
                                      self.source_div_fraction, # divbls [fraction of source into divertor]
-                                     self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3,  #[s] 
+                                     self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3,#[s] 
                                      self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                      nz_init, alg_opt, evolneut)
         else:
             # import here to avoid import when building documentation or package (negligible slow down)
             from ._aurora import run as fortran_run
-            
             self.res = fortran_run(nt,  # number of times at which simulation outputs results
                                    times_DV,
                                    D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                    self.par_loss_rate,  # time dependent
                                    self.source_rad_prof,# source profile in radius
-                                   S_rates, # ioniz_rate,
-                                   R_rates, # recomb_rate,
+                                   self.S_rates, # ioniz_rate,
+                                   self.R_rates, # recomb_rate,
                                    self.rvol_grid, self.pro_grid, self.qpr_grid,
                                    self.mixing_radius, self.decay_length_boundary,
                                    self.time_grid, self.saw_on,
@@ -636,7 +615,7 @@ class aurora_sim:
                                    self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
                                    self.wall_recycling,
                                    self.source_div_fraction, # divbls [fraction of source into divertor]
-                                   self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3,  # [s]  
+                                   self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3, # [s]  
                                    self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                    rn_t0 = nz_init,  # if omitted, internally set to 0's
                                    alg_opt=alg_opt,
@@ -658,33 +637,27 @@ class aurora_sim:
         if len(self.superstages) and unstage:
             # "unstage" superstages to recover estimates for density of all charge states
             nz_unstaged = np.zeros(( len(self.rvol_grid), self.Z_imp+1, nt))
-
-            _superstages = np.copy(self.superstages)
-            _superstages[-1] = self.Z_imp
-
-            for i in range(len(_superstages)):
-                if i > 0 and _superstages[i-1]+1 < _superstages[i]:
+            
+            superstages = np.r_[self.superstages, self.Z_imp+1]
+           
+            #calculate fractional abundances inside of each superstage
+            for i in range(len(superstages)-1):
+                if  superstages[i]+1 < superstages[i+1]:
                     # fill skipped stages from ionization equilibrium
-                    ind = slice(_superstages[i-1]-1,_superstages[i]-1)
-                    S = self.S_rates[:,ind,self.save_time] 
-                    R = self.R_rates[:,ind,self.save_time]
-                    fz = np.cumprod(S/R,axis=1)
-                    fz /= np.maximum(1e-20,fz.sum(1))[:,None] # prevents zero division
-                    
-                    # split the superstage into the separate stages using ionization equilibrium
-                    nz_unstaged[:,_superstages[i-1]:_superstages[i]] = self.res[0][:,[i-1]]*fz
+                    ind = slice(superstages[i],superstages[i+1])
+                    nz_unstaged[:,ind] = self.res[0][:,[i]]*self.fz_upstage[:,ind]
                 else:
-                    nz_unstaged[:,_superstages[i-1]] = self.res[0][:,i-1]
- 
+                    nz_unstaged[:,superstages[i]] = self.res[0][:,i]
+
             self.res = nz_unstaged, *self.res[1:]
-        
+         
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         return self.res
 
 
-    def run_aurora_steady(self, D_z, V_z, nz_init=None, unstage=False,
+    def run_aurora_steady(self, D_z, V_z, nz_init=None,unstage=False,
                           alg_opt=1, evolneut=False, use_julia=False,
-                          tolerance=0.01, max_sim_time = 500e-3, dt=1e-4, dt_increase=1.0, 
+                          tolerance=0.01, max_sim_time = 100, dt=1e-4, dt_increase=1.05, 
                           n_steps = 100, plot=False):
         '''Run an AURORA simulation until reaching steady state profiles. This method calls :py:meth:`~aurora.core.run_aurora`
         checking at every iteration whether profile shapes are still changing within a given fractional tolerance.
@@ -730,80 +703,71 @@ class aurora_sim:
         plot : bool
             If True, plot time evolution of charge state density profiles to show convergence.
         '''
-        if not self.namelist['source_type']=='const':
-            raise ValueError('This method is designed to operate with time-independent sources! Modify namelist["source_type"].')
 
-        if not self.ne.shape[0]==1:
+        if  self.ne.shape[0] > 1:
             raise ValueError('This method is designed to operate with time-independent background profiles!')
 
-        # round to avoid rounding errors
-        dt = np.round(dt,9)
+        if  D_z.ndim > 2 or V_z.ndim > 2:
+            raise ValueError('This method is designed to operate with time-independent D and V profiles!')
+
+        #set constant timesource
+        self.namelist['source_type'] = 'const'
+        self.namelist['source_rate'] = 1.
+ 
         
-        # number of maximum simulations to be run before possibly giving up
-        num_sims = int(max_sim_time/(n_steps*dt))
-
         # build timing dictionary
-        self.namelist['timing'] = {'dt_start': np.array([float(dt), float(dt)]),
-                                   'dt_increase': np.array([float(dt_increase), 1.]),
-                                   'steps_per_cycle': np.array([1, 1]),
-                                   'times' : np.array([0. , n_steps*dt])}
-
+        self.namelist['timing'] = {'dt_start': [dt,dt],
+                                   'dt_increase':[dt_increase, 1.],
+                                   'steps_per_cycle': [1, 1],
+                                   'times' : [0. , max_sim_time]}
+        
+        #prepare radial and temporal grid
         self.setup_grids()
 
-        # update kinetic profile dependencies to get everything to the right shape (TODO: avoid this to reduce computational cost)
+        # update kinetic profile dependencies to get everything to the right shape
         self.setup_kin_profs_depts()
         
         times_DV = None
         if D_z.ndim==2:
-            # make sure that transport coefficients were given as a function of space and nZ
+            # make sure that transport coefficients were given as a function of space and nZ, not time!
             assert D_z.shape[0]==self.rhop_grid and D_z.shape[1]==self.Z_imp+1
             assert V_z.shape[0]==self.rhop_grid and V_z.shape[1]==self.Z_imp+1
             
-            # transport coefficients were given as a function of (space,nZ). Need to add fictitious time dependence
-            D_z =  np.asfortranarray(np.tile(D_z, (n_steps, 1, 1)).transpose(1,0,2))
-            V_z =  np.asfortranarray(np.tile(V_z, (n_steps, 1, 1)).transpose(1,0,2))
+            D_z = D_z[:,None] #(ir,nt_trans,nion)
+            V_z = V_z[:,None] 
 
-            # mock up time dependence of D and V
-            times_DV = self.namelist['timing']['times']
-            
-        # run first iteration
-        nz_new = self.run_aurora(D_z, V_z, times_DV, nz_init=nz_init, unstage=unstage,
-                                 alg_opt=alg_opt,  evolneut=evolneut, use_julia=use_julia, plot=False)[0]
-        nz_all = np.copy(nz_new)
-        nz_norm = nz_new[:,:,-1]/np.max(nz_new[:,:,-1])
-        time_grid = np.copy(self.time_grid)
-
-        if num_sims<1:
-            raise ValueError('The input max_sim_time, n_steps and dt do not allow for any iteration to steady state profiles!')
-
-        for i in np.arange(num_sims-1):
-            # Update time array
-            t0 = np.round(self.time_grid[-1]+dt,6)
-            dt0 = np.diff(self.time_grid)[-1]
-            t1 = np.round(self.time_grid[-1] + dt0*(1-dt_increase**(n_steps-1))/(1-dt_increase),6)
-            self.setup_grids()
-
-            # update kinetic profile dependencies to get everything to the right shape (TODO: avoid this to reduce computational cost)
-            self.setup_kin_profs_depts()
+        sim_steps = 0
         
+        time_grid = self.time_grid.copy()
+        save_time = self.save_time.copy()
+        nz_all = nz_init[:,:,None]
+        
+        while sim_steps < len(time_grid):
+            
+            self.time_grid = self.time_out = time_grid[sim_steps:sim_steps+n_steps]
+            self.save_time = save_time[sim_steps:sim_steps+n_steps]
+            
+            sim_steps+= n_steps
+
             # get charge state densities from latest time step
-            nz_init_new = nz_all[:,:,-1]
-            nz_new = self.run_aurora(D_z, V_z, times_DV, nz_init=nz_init_new,
+            nz_init = nz_all[:,:,-1]
+            nz_new = self.run_aurora(D_z, V_z, times_DV, nz_init=nz_init,
                                      superstages = superstages, unstage=unstage, alg_opt=alg_opt,
                                      evolneut=evolneut, use_julia=use_julia, plot=False)[0]
             
             nz_all = np.dstack((nz_all, nz_new))
-            time_grid = np.concatenate((time_grid, self.time_grid))
             
             # check if normalized profiles have converged
-            nz_norm_new = nz_new[:,:,-1]/np.max(nz_new[:,:,-1]) 
-            if np.linalg.norm(nz_norm_new-nz_norm,ord=2)<1e-2:   # tolerance of 1%
+            if np.linalg.norm(nz_new[:,:,-1]-nz_init)/np.linalg.norm(nz_init) < tolerance: 
                 break
             
-            nz_norm = np.copy(nz_norm_new)
 
-        # store final time grid
-        self.time_grid = time_grid
+        # store final time grids
+        self.time_grid = time_grid[:sim_steps]
+        self.time_out  = time_out[:sim_steps]
+        self.save_time = save_time[:sim_steps]
+        
+        
         
         if plot:
             # plot charge state distributions over radius and time
@@ -812,24 +776,25 @@ class aurora_sim:
                                           labels=[str(i) for i in np.arange(0,nz_all.shape[1])],
                                           plot_sum=True)
             
-        if i==num_sims-1:
+        if sim_steps >= len(time_grid):
             raise ValueError(f'Could not reach convergence before {max_sim_time:.2f} of simulation time!')
 
         # compute effective particle confinement time from latest few time steps 
         circ = 2*np.pi*self.Raxis_cm # cm
         zvol = circ * np.pi * self.rvol_grid / self.pro_grid
 
-        wh = (self.rhop_grid <= 1.0)
+        wh = self.rhop_grid <= 1
         zvol = zvol[wh]
-        var_volint = np.nansum(nz_new[wh]*zvol[:,None,None],axis=(0,1))
+        var_volint = np.nansum(nz_new[:,:,-2]*zvol[:,None])
 
         # compute effective particle confinement time (avoid last time point because source is set to 0 there)
-        self.tau_imp = np.mean(var_volint[:-1] / self.source_time_history[:-1])
+        self.tau_imp = var_volint / self.source_time_history[-2]
         
         return nz_norm
     
         
     def calc_Zeff(self):
+        #TODO does not work when superstaging and no upstaging is applied
         '''Compute Zeff from each charge state density, using the result of an Aurora simulation.
         The total Zeff change over time and space due to the simulated impurity can be simply obtained by summing 
         over charge states
@@ -920,6 +885,7 @@ class aurora_sim:
 
 
     def centrifugal_asym(self, omega, Zeff, plot=False):
+        #TODO does not work when superstaging and no upstaging is applied
         """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the 
         :py:func:`~aurora.synth_diags.centrifugal_asym` function docstring for details.
 
@@ -943,7 +909,7 @@ class aurora_sim:
             docstring.
         """
         fz = self.res[0][...,-1] / np.sum(self.res[0][...,-1],axis=1)[:,None]
-        Z_ave_vec = np.mean(self.Z_imp * fz * np.arange(self.Z_imp+1)[None,:],axis=1)
+        Z_ave_vec = np.mean(self.Z_imp * fz * np.arange(self.Z_imp+1)[None,:],axis=1) #BUG why is there first self.Z_imp??
         
         self.CF_lambda = synth_diags.centrifugal_asym(self.rhop_grid, self.Rlfs, omega, Zeff, 
                                                       self.A_imp, Z_ave_vec, 
