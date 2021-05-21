@@ -307,11 +307,11 @@ def superstage_rates(R, S, superstages,save_time=None):
 
     Parameters
     ----------
-    R : array
+    R : array (time,nZ,space)
         Array containing the effective recombination rates for all ion stages, 
         These are typically combinations of radiative and dielectronic recombination, 
         possibly also of charge exchange recombination.
-    S : array
+    S : array (time,nZ,space)
         Array containing the effective ionization rates for all ion stages.
     superstages : list or 1D array
         Indices of charge states of chosen ion that should be included. 
@@ -322,17 +322,17 @@ def superstage_rates(R, S, superstages,save_time=None):
     -------
     superstages : array
         Set of superstages including 0,1 and final stages if these were missing in the input.
-    R_s : array
+    R_rates_super : array (time,nZ-super,space)
         effective recombination rates for superstages
-    S_s : array
+    S_rates_super : array (time,nZ-super,space)
         effective ionization rates for superstages
-    fz : array
+    fz_upstage : array (space, nZ, time_
         fractional abundances of stages within superstages
 
     '''
     Z_imp = S.shape[1]
 
-    #check the superstages
+    # check input superstages
     if 1 not in superstages:
         print('Warning: 1th superstage needs to be included')
         superstages = np.r_[1,superstages]
@@ -349,43 +349,38 @@ def superstage_rates(R, S, superstages,save_time=None):
     R_rates_super = R[:,superstages[1:]-1]
     S_rates_super = S[:,superstages[1:]-1]
     
-
-    #time averaged kinetic profiles
-    if len(S) == 1 or save_time is None:
+    if len(S) == 1 or save_time is None: # time averaged kinetic profiles
         t_slice = slice(None,None) 
         nt = 1
-    else:#time resolved kinetic profiles
+    else: # time resolved kinetic profiles
         t_slice = save_time
         nt = save_time.sum()
     
-    #fractional abundance of supestages used for upstaging. 
+    # fractional abundance of supestages used for upstaging. 
     fz_upstage = np.ones(( R.shape[-1],Z_imp+1, nt))
 
 
-    #add last point
+    # add fully-stripped charge state
     _superstages = np.r_[superstages, Z_imp+1]
 
     for i in range(len(_superstages)-1):
         if _superstages[i]+1!= _superstages[i+1]:
             sind = slice(_superstages[i]-1, _superstages[i+1]-1)
             
-            #calculate fractional abundances within the superstage
+            # calculate fractional abundances within the superstage
             rate_ratio =  S[:,sind]/R[:,sind]
             fz = np.cumprod(rate_ratio, axis=1) 
             fz /= np.maximum(1e-60,fz.sum(1))[:,None] # prevents zero division
             
-            #bundled stages can have a very high values of S and R
+            # bundled stages can have very high values of S and R
             if i < len(_superstages)-2:
                 R_rates_super[:,i  ] /= np.maximum(fz[:,-1],1e-60)
             if i > 1:
                 S_rates_super[:,i-1] /= np.maximum(fz[:, 0],1e-60)
 
-
-            #fractional abundances inside of each superstage
+            # fractional abundances inside of each superstage
             fz_upstage[:,_superstages[i]:_superstages[i+1]] = fz.T[t_slice]
-                
-                    
- 
+
     return superstages, R_rates_super, S_rates_super, fz_upstage
 
 def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0, superstages=[],

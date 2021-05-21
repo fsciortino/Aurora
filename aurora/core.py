@@ -51,7 +51,7 @@ class aurora_sim:
             # to initialize the class as a dictionary.
             return
 
-        #make sure that any changes in namelist will not propaate back to the calling function
+        # make sure that any changes in namelist will not propagate back to the calling function
         self.namelist = deepcopy(namelist)
         self.kin_profs = self.namelist['kin_profs']
         self.nbi_cxr = nbi_cxr
@@ -68,8 +68,6 @@ class aurora_sim:
         
         self.reload_namelist()
         
-
-
         if geqdsk is None:
             # import omfit_eqdsk here to avoid issues with docs and packaging
             from omfit_classes import omfit_eqdsk
@@ -93,8 +91,6 @@ class aurora_sim:
         if self.namelist['cxr_flag']:
             atom_files['ccd'] = self.namelist.get('ccd', adas_files.adas_files_dict()[self.imp]['ccd'])
 
-
-
         # now load ionization and recombination rates
         self.atom_data = atomic.get_atom_data(self.imp,files=atom_files)
 
@@ -107,8 +103,6 @@ class aurora_sim:
         # set up kinetic profiles and atomic rates
         self.setup_kin_profs_depts()
         
-
-
 
     def reload_namelist(self, namelist=None):
         '''(Re-)load namelist to update scalar variables.
@@ -315,10 +309,22 @@ class aurora_sim:
         '''Obtain time-dependent ionization and recombination rates for a simulation run.
         If kinetic profiles are given as time-independent, atomic rates for each time slice
         will be set to be the same.
+
+        Parameters
+        ----------
+        superstages : list or 1D array
+            Indices of charge states that should be kept as superstages.
+            The default is to have this as an empty list, in which case all charge states are kept.
+
+        Returns
+        -------
+        S_rates : array (space, nZ(-super), time)
+            Effective ionization rates. If superstages were indicated, these are the rates of superstages.
+        R_rates : array (space, nZ(-super), time)
+            Effective recombination rates. If superstages were indicated, these are the rates of superstages.
         '''
         
-
-        ## get electron impact ionization and radiative recombination rates in units of [s^-1]
+        # get electron impact ionization and radiative recombination rates in units of [s^-1]
         _, S, R, cx = atomic.get_cs_balance_terms(
                 self.atom_data, ne_cm3=self._ne, Te_eV = self._Te, Ti_eV=self._Ti,
                 include_cx=self.namelist['cxr_flag'])
@@ -332,25 +338,34 @@ class aurora_sim:
             R += self.nbi_cxr.transpose(1,0,2)
  
         if len(superstages):
-            self.superstages, R, S,self.fz_upstage = \
+            self.superstages, R, S, self.fz_upstage = \
                 atomic.superstage_rates(R, S, superstages,save_time=self.save_time)
              
-        #S and R for the Z+1  stage must be zero and create Fortran alighned arrays
-        S_rates_t = np.zeros((S.shape[2], S.shape[1] + 1, self.time_grid.size), order='F')
-        S_rates_t[:, :-1] = S.T
+        # S and R for the Z+1 stage must be zero for the forward model.
+        # Use Fortran-ordered arrays for speed in forward modeling (both Fortran and Julia)
+        S_rates = np.zeros((S.shape[2], S.shape[1] + 1, self.time_grid.size), order='F')
+        S_rates[:, :-1] = S.T
 
-        R_rates_t = np.zeros((R.shape[2], R.shape[1] + 1, self.time_grid.size), order='F')
-        R_rates_t[:, :-1] = R.T
+        R_rates = np.zeros((R.shape[2], R.shape[1] + 1, self.time_grid.size), order='F')
+        R_rates[:, :-1] = R.T
 
-
-        return S_rates_t, R_rates_t
+        return S_rates, R_rates
     
     
     def get_par_loss_rate(self, trust_SOL_Ti=False):
         '''Calculate the parallel loss frequency on the radial and temporal grids [1/s].
 
-        :param:`trust_SOL_Ti` should generally be set to False, unless specific Ti measurements are available
-        in the SOL.
+        Parameters
+        ----------
+        trust_SOL_Ti : bool
+            If True, the input Ti is trusted also in the SOL to calculate a parallel loss rate. 
+            Often, Ti measurements in the SOL are unrealiable, so this parameter is set to False by default.
+
+        Returns
+        -------
+        dv : array (space,time)
+            Parallel loss rates in :math:`s^{-1}` units. 
+            Values are zero in the core region and non-zero in the SOL. 
         
         '''
         # import here to avoid issues when building docs or package
@@ -384,16 +399,20 @@ class aurora_sim:
         dv[idl:] = vpf*np.sqrt(3.*Ti.T[idl:] + self._Te.T[idl:])/self.namelist['clen_limiter']
 
         dv,_ = np.broadcast_arrays(dv,self.time_grid[None])
-        
+
         return np.asfortranarray(dv)
 
     def superstage_DV(self, D_z, V_z, opt=1):
         '''Reduce the dimensionality of D and V time-dependent profiles for the case in which superstaging is applied.
 
-        Two options are currently available: 
-        opt=1: simple selection of D_z and V_z fields corresponding to each superstage index.
-        opt=2: weight D_z and V_z corresponding to each superstage by the fractional abundances at ionization
-        equilibrium.
+        Three options are currently available: 
+
+        #. opt=1 gives a simple selection of D_z and V_z fields corresponding to each superstage index.
+        
+        #. opt=2 averages D_z and V_z over the charge states that are part of each superstage.
+
+        #. opt=3 weights D_z and V_z corresponding to each superstage by the fractional abundances at ionization
+        equilibrium. This is mostly untested -- use with care!
 
         Parameters
         ---------
@@ -409,15 +428,13 @@ class aurora_sim:
         Vzf: array, shape of (space,time,nZ-superstages)
             Convection coefficients of superstages, in units of :math:`cm/s`.
         
-        Notes
-        -----
-        NB: this operation should not be run within an iterative scheme because it is slow.
         '''
-        
-        Dzf = D_z[:,:,self.superstages]
-        Vzf = V_z[:,:,self.superstages]
-        
+
         if opt==1:
+            Dzf = D_z[:,:,self.superstages]
+            Vzf = V_z[:,:,self.superstages]
+            
+        if opt==2:
             # option #1: simple, use average D,V over superstage
 
             superstages = np.r_[self.superstages, self.Z_imp+1]
@@ -426,21 +443,17 @@ class aurora_sim:
                 if superstages[i]+1 != superstages[i+1]:
                     Dzf[:,:,i] = D_z[:,:,superstages[i]: superstages[i+1]].mean(2)
 
- 
-
-        elif opt==2:
-            #TODO !!!!!  needs to be tested !!!!!
-
+        elif opt==3:
+            # UNTESTED -- use at your own risk
             superstages = np.r_[self.superstages, self.Z_imp+1]
            
-            #calculate fractional abundances inside of each superstage
+            # calculate fractional abundances inside of each superstage
             for i in range(len(superstages)-1):
                 if  superstages[i]+1 < superstages[i+1]:
                     # average D and V using fz for each superstage
                     ind = slice(superstages[i],superstages[i+1])
                     Dzf[:,:,i] = np.sum(D_z[:,:,ind]*self.fz_upstage[:,ind],2)
                     Vzf[:,:,i] = np.sum(V_z[:,:,ind]*self.fz_upstage[:,ind],2)
-
 
         else:
             raise ValueError('Unrecognized option for D and V superstaging!')
@@ -546,7 +559,6 @@ class aurora_sim:
             num_cs = len(self.superstages)
             if D_z.ndim==3 and D_z.shape[2]==self.Z_imp+1:
                 D_z, V_z = self.superstage_DV(D_z, V_z, opt=1)
-
          
         if not evolneut:
             # prevent recombination back to neutral state to maintain good particle conservation 
@@ -564,7 +576,6 @@ class aurora_sim:
         
         if V_z.ndim < 3:
             # set all charge states to have the same transport
-            # num_cs = Z+1 - include elements for neutrals
             V_z =  np.tile(V_z.T, (num_cs, 1, 1)).T# create fortran contiguous arrays
             V_z[:,:,0] = 0.0
         
@@ -573,7 +584,7 @@ class aurora_sim:
  
         nt = len(self.time_out)
 
-        # NOTE: for both Fortran and Julia, use f_configuous arrays for speed!
+        # NOTE: for both Fortran and Julia, use f_configuous arrays for speed
         if use_julia:
             # run Julia version of the code
             from julia.api import Julia
@@ -640,7 +651,7 @@ class aurora_sim:
             
             superstages = np.r_[self.superstages, self.Z_imp+1]
            
-            #calculate fractional abundances inside of each superstage
+            # calculate fractional abundances inside of each superstage
             for i in range(len(superstages)-1):
                 if  superstages[i]+1 < superstages[i+1]:
                     # fill skipped stages from ionization equilibrium
@@ -714,7 +725,6 @@ class aurora_sim:
         self.namelist['source_type'] = 'const'
         self.namelist['source_rate'] = 1.
  
-        
         # build timing dictionary
         self.namelist['timing'] = {'dt_start': [dt,dt],
                                    'dt_increase':[dt_increase, 1.],
@@ -761,13 +771,10 @@ class aurora_sim:
             if np.linalg.norm(nz_new[:,:,-1]-nz_init)/np.linalg.norm(nz_init) < tolerance: 
                 break
             
-
         # store final time grids
         self.time_grid = time_grid[:sim_steps]
         self.time_out  = time_out[:sim_steps]
         self.save_time = save_time[:sim_steps]
-        
-        
         
         if plot:
             # plot charge state distributions over radius and time
@@ -794,10 +801,9 @@ class aurora_sim:
     
         
     def calc_Zeff(self):
-        #TODO does not work when superstaging and no upstaging is applied
-        '''Compute Zeff from each charge state density, using the result of an Aurora simulation.
+        '''Compute Zeff from each charge state density, using the result of an AURORA simulation.
         The total Zeff change over time and space due to the simulated impurity can be simply obtained by summing 
-        over charge states
+        over charge states.
 
         Results are stored as an attribute of the simulation object instance. 
         '''
@@ -806,6 +812,12 @@ class aurora_sim:
 
         # extract charge state densities from the simulation result
         nz = self.res[0]
+
+        # this method requires all charge states to be made available
+        try:
+            assert nz.shape[1] == self.Z_imp+1
+        except AssertionError:
+            raise ValueError('calc_Zeff method requires all charge state densities to be availble! Unstage superstages.')
 
         # Compute the variation of Zeff from these charge states
         Zmax = nz.shape[1]-1
@@ -885,7 +897,6 @@ class aurora_sim:
 
 
     def centrifugal_asym(self, omega, Zeff, plot=False):
-        #TODO does not work when superstaging and no upstaging is applied
         """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the 
         :py:func:`~aurora.synth_diags.centrifugal_asym` function docstring for details.
 
@@ -908,8 +919,14 @@ class aurora_sim:
             Asymmetry factor, defined as :math:`\lambda` in the :py:func:`~aurora.synth_diags.centrifugal_asym` function
             docstring.
         """
+        # this method requires all charge states to be made available
+        try:
+            assert self.res[0].shape[1] == self.Z_imp+1
+        except AssertionError:
+            raise ValueError('centrifugal_asym method requires all charge state densities to be availble! Unstage superstages.')
+
         fz = self.res[0][...,-1] / np.sum(self.res[0][...,-1],axis=1)[:,None]
-        Z_ave_vec = np.mean(self.Z_imp * fz * np.arange(self.Z_imp+1)[None,:],axis=1) #BUG why is there first self.Z_imp??
+        Z_ave_vec = np.mean(self.Z_imp * fz * np.arange(self.Z_imp+1)[None,:],axis=1)
         
         self.CF_lambda = synth_diags.centrifugal_asym(self.rhop_grid, self.Rlfs, omega, Zeff, 
                                                       self.A_imp, Z_ave_vec, 
