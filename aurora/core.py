@@ -457,12 +457,15 @@ class aurora_sim:
         return Dzf, Vzf
 
 
-    def run_aurora(self, D_z, V_z,
-                   times_DV=None, nz_init=None, unstage=True,
+    def run_aurora(self, D_z, V_z, times_DV=None, nz_init=None, 
+                   unstage=True, simple_superstages=[],
                    alg_opt=1, evolneut=False, use_julia=False, plot=False):
-        '''Run a simulation using inputs in the given dictionary and diffusion and convection profiles 
-        as a function of space, time and potentially also ionization state. Users may give an initial 
-        state of each ion charge state as an input.
+        '''Run a simulation using the provided diffusion and convection profiles as a function of space, time 
+        and potentially also ionization state. Users can give an initial state of each ion charge state as an input. 
+
+        Superstaging is allowed either by indicating a superstaging partition in the AURORA
+        namelist, or via a simpler and more approximate method that takes superstages
+        simply in this function at runtime via the "simple_superstages" argument. 
 
         Results can be conveniently visualized with time-slider using
 
@@ -501,6 +504,13 @@ class aurora_sim:
             charge states at ionization equilibrium. 
             Note that this unstaging process cannot account for transport and is therefore
             only an approximation, to be used carefully.
+        simple_superstages : list, optional
+            Apply superstaging at runtime using a simple indexing method. This is only an approximation
+            of the more complete superstaging that can be applied using the `superstages` field of the
+            namelist. This "simple" option is only available when superstaging is not included in the original
+            namelist. Its main application is for cases where radiative and dielectronic recombination
+            must be scaled at every simulation with CX without creating new superstaged atomic rates.
+            Note that for this option the 0th stage must be explicitly indicated, but the 1st stage is not needed.
         alg_opt : int, optional
             If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
             If `alg_opt=0`, use the older finite-differences algorithm in the 2018 version of STRAHL.
@@ -553,6 +563,21 @@ class aurora_sim:
             times_DV = [1.] # dummy, no time dependence
 
         num_cs = int(self.Z_imp+1)
+        S_rates = self.S_rates
+        R_rates = self.R_rates
+
+        if len(self.superstages)==0 and len(simple_superstages):
+            # use simplest superstaging strategy at runtime, no preparation
+            assert simple_superstages[0] == 0  # 0th superstage must be neutral
+
+            num_cs = len(simple_superstages)
+            S_rates = self.S_rates[:,simple_superstages,:]
+            R_rates = self.R_rates[:,simple_superstages,:]
+
+            if D_z.ndim==3:
+                D_z = D_z[:,:,simple_superstages]
+                V_z = V_z[:,:,simple_superstages]
+
         # D and V were given for all stages -- define D and V for superstages
         if len(self.superstages):
             num_cs = len(self.superstages)
