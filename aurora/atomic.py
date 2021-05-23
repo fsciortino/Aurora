@@ -350,7 +350,7 @@ def superstage_rates(R, S, superstages,save_time=None):
     S_rates_super = S[:,superstages[1:]-1]
     
     if len(S) == 1 or save_time is None: # time averaged kinetic profiles
-        t_slice = slice(None,None) 
+        t_slice = slice(None,None)
         nt = 1
     else: # time resolved kinetic profiles
         t_slice = save_time
@@ -358,7 +358,6 @@ def superstage_rates(R, S, superstages,save_time=None):
     
     # fractional abundance of supestages used for upstaging. 
     fz_upstage = np.ones(( R.shape[-1],Z_imp+1, nt))
-
 
     # add fully-stripped charge state
     _superstages = np.r_[superstages, Z_imp+1]
@@ -379,7 +378,7 @@ def superstage_rates(R, S, superstages,save_time=None):
                 S_rates_super[:,i-1] /= np.maximum(fz[:, 0],1e-60)
 
             # fractional abundances inside of each superstage
-            fz_upstage[:,_superstages[i]:_superstages[i+1]] = fz.T[t_slice]
+            fz_upstage[:,_superstages[i]:_superstages[i+1]] = fz.T[:,:,t_slice]
 
     return superstages, R_rates_super, S_rates_super, fz_upstage
 
