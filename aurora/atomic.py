@@ -359,7 +359,6 @@ def superstage_rates(R, S, superstages,save_time=None):
     # fractional abundance of supestages used for upstaging. 
     fz_upstage = np.ones(( R.shape[-1],Z_imp+1, nt))
 
-
     # add fully-stripped charge state
     _superstages = np.r_[superstages, Z_imp+1]
 
@@ -437,8 +436,8 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
     _Ti = np.ravel(Ti_eV) if Ti_eV is not None else _Te
     _n0_by_ne = np.ravel(n0_by_ne)
     if superstages is None: superstages = []
-    
-    include_cx = False if (isinstance(n0_by_ne,(int,float)) and n0_by_ne==0.0) else True
+
+    include_cx = False if not np.any(n0_by_ne) else True
 
     Te, S, R, cx = get_cs_balance_terms(atom_data, _ne, _Te, _Ti, include_cx=include_cx)
     
@@ -453,17 +452,16 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
     # Enable use of superstages
     if len(superstages):
         superstages, R, S,_ = superstage_rates(R, S, superstages)
-        
+
+        R += n0_by_ne[:,None]*cx
         rate_ratio = np.hstack((np.ones_like(Te)[:, None], S/R))
         fz_super = np.cumprod(rate_ratio, axis=1)
         fz_super /= fz_super.sum(1)[:, None]
         
-        #bundled stages can have very high values -- clip here
+        # bundled stages can have very high values -- clip here
         R = np.clip(R, 1e-25, 1) 
         S = np.clip(S, 1e-25, 1)
         
-        # make sure that last superstage is Z_imp now, just for plot labels
-        #superstages[-1] = logS.shape[1]
 
     if plot:
         # plot fractional abundances (only 1D)
@@ -630,7 +628,7 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.
     _Ti = np.ravel(Ti_eV) if Ti_eV is not None else _Te
     _n0_by_ne = np.ravel(n0_by_ne)
 
-    include_cx = False if (isinstance(n0_by_ne,(int,float)) and n0_by_ne==0.0) else True
+    include_cx = False if not np.any(n0_by_ne) else True
 
     Te, S, R, cx = get_cs_balance_terms(atom_data, _ne, _Te, include_cx=include_cx)
     

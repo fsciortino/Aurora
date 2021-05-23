@@ -343,10 +343,10 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
 
         if n0_cm3 is None:
             # obtain fractional abundances without CX:
-            logTe, out['fz'],rates = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot)
+            logTe, out['fz'] = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot)
         else:
             # include CX for ionization balance:
-            logTe, out['fz'],rates = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot,
+            logTe, out['fz'] = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot,
                                                    include_cx=True, n0_by_ne=n0_cm3/ne_cm3)
         out['logTe'] = logTe
         
@@ -924,8 +924,8 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
 
 
 
-def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
-                        line_rad_file=None, cont_rad_file=None, sxr=False, plot=True, show_components=False, ax=None):
+def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, ion_resolved=False, superstages = [],
+                        line_rad_file=None, cont_rad_file=None, sxr=False, plot=True, ax=None):
     '''Calculate cooling coefficients for the given fractional abundances and kinetic profiles.
 
     Parameters
@@ -940,6 +940,13 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
         Background H/D/T neutral density [:math:`cm^{-3}`] used to account for charge exchange 
         when calculating ionization equilibrium. 
         If left to 0, charge exchange effects are not included.
+    ion_resolved : bool
+        If True, cooling factors are returned for each charge state. If False, they are summed over charge states.
+        The latter option is useful for modeling where charge states are assumed to be in ionization equilibrium 
+        (no transport). Default is False.
+    superstages : list or 1D array
+        List of superstages to consider. An empty list (default) corresponds to the inclusion of all charge states.
+        Note that when ion_resolved=False, cooling coefficients are independent of whether superstages are being used or not.
     line_rad_file : str or None
         Location of ADAS ADF11 file containing line radiation data. This can be a PLT (unfiltered) or 
         PLS (filtered) file. If left to None, the default file given in :py:func:`~aurora.adas_files.adas_files_dict` 
@@ -973,37 +980,91 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
     if n0_cm3 != 0.0: files+=['ccd']
     atom_data_eq = atomic.get_atom_data(imp,files)
 
-    logTe, fz, rates = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV,plot=False,
-                                           n0_by_ne=n0_cm3/ne_cm3,
-                                           include_cx=True if n0_cm3!=0.0 else False)
+    if superstages is None:
+        superstages = []
+
+    logTe, fz = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV, plot=False,
+                                           n0_by_ne=n0_cm3/ne_cm3)
+
+    if superstages:
+        fz_full = copy.deepcopy(fz)
+        logTe, fz = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV, plot=False,
+                                               n0_by_ne=n0_cm3/ne_cm3, superstages=superstages)
+    
 
     # line radiation
     atom_data = atomic.get_atom_data(imp,{'pls' if sxr else 'plt': line_rad_file})
-    pltt= atomic.interp_atom_prof(atom_data['pls' if sxr else 'plt'], None, np.log10(Te_eV)) # line radiation [W.cm^3]
+    PLT= atomic.interp_atom_prof(atom_data['pls' if sxr else 'plt'], None, np.log10(Te_eV)) # line radiation [W.cm^3]
 
     # recombination and bremsstrahlung radiation
     atom_data = atomic.get_atom_data(imp,{'prs' if sxr else 'prb': cont_rad_file})
-    prb = atomic.interp_atom_prof(atom_data['prs' if sxr else 'prb'],None, np.log10(Te_eV)) # continuum radiation [W.cm^3]
+    PRB = atomic.interp_atom_prof(atom_data['prs' if sxr else 'prb'],None, np.log10(Te_eV)) # continuum radiation [W.cm^3]
 
-    pltt*= fz[:,:-1]
-    prb *= fz[:, 1:]
+    # zero bremstrahlung of neutral stage
+    PRB = np.hstack(( np.zeros((logTe.size,1)), PRB))
 
-    line_rad_tot  = pltt.sum(1) *1e-6  # W.cm^3-->W.m^3
-    cont_rad_tot = prb.sum(1) *1e-6    # W.cm^3-->W.m^3
+    # zero line radiation of fully stripped ion stage
+    PLT = np.hstack((PLT, np.zeros((logTe.size,1))))
+
+    if len(superstages) and fz_full is not None:
+        # superstage also radiation files
+        Zimp = prs.shape[1]
+        # check input superstages
+        if 0 not in superstages:
+            print('Warning: 0th superstage for neutral was included')
+            superstages = np.r_[0,superstages]
+        if np.any(np.diff(superstages)<=0):
+            print('Warning: sorting superstages in increasing order')
+            superstages = np.sort(superstages)
+        if superstages[-1] > Z_imp:
+            raise Exception('The highest superstage must be less than Z_imp = %d'%Z_imp)
+
+        _PLT, _PRB = np.copy(PLT), np.copy(PRB)
+        PLT, PRB  =  _PLT[:,superstages],_PRB[:,superstages]
+        
+        _superstages = r_[superstages, Zimp+1]
+
+        for i in range(len(_superstages)-1):
+            if _superstages[i]+1 < _superstages[i+1]:
+                weight = np.copy(fz_full[:,_superstages[i]:_superstages[i+1]])
+                weight /= np.maximum(weight.sum(1),1e-20)[:,None]
+
+                PRB[:,i] = (_PRB[:,_superstages[i]:_superstages[i+1]]*weight).sum(1)
+                PLT[:,i] = (_PLT[:,_superstages[i]:_superstages[i+1]]*weight).sum(1)
+
+                
+    PLT *= fz*1e-6  # W.cm^3-->W.m^3
+    PRB *= fz*1e-6  # W.cm^3-->W.m^3
 
     if plot:
         if ax is None:
             fig, ax = plt.subplots()
 
-        # total radiation (includes hard X-ray, visible, UV, etc.)
-        l, = ax.loglog(Te_eV/1e3, cont_rad_tot+line_rad_tot, ls='-',
-                       label=f'{imp} $L_z$ (total)' if show_components else f'{imp}')
-        col = l.get_color()
-        
-        if show_components:
+        if ion_resolved:
+            # plot contributions from each charge state at ionization equilibrium
+            ls_cycle = plot_tools.get_ls_cycle()
+            
+            lss = next(ls_cycle)
+            for cs in np.arange(fz.shape[1]-1):
+                ax.loglog(Te_eV/1e3, PLT[:,cs], lss, lw=2.0, label=f'{imp}{cs+1}+')
+
+                # change line style here because there's no line rad for fully-ionized stage or recombination from neutral stage
+                lss = next(ls_cycle)
+                
+                # show line and continuum recombination components separately
+                ax.loglog(Te_eV/1e3, PRB[:,cs], lss, lw=1.0) #, label=f'{imp}{cs}+')
+
+        else:
+
+            # total radiation (includes hard X-ray, visible, UV, etc.)
+            l, = ax.loglog(Te_eV/1e3, PRB.sum(1)+ PLT.sum(1), ls='-',  # W.cm^3-->W.m^3
+                           label=f'{imp} $L_z$ (total)')
+            
             # show line and continuum recombination components separately
-            ax.loglog(Te_eV/1e3, line_rad_tot,c=col, ls='--',label='line radiation')
-            ax.loglog(Te_eV/1e3, cont_rad_tot,c=col, ls='-.',label='continuum radiation')
+            ax.loglog(Te_eV/1e3,  PLT.sum(1), c=l.get_color(), ls='--', # W.cm^3-->W.m^3
+                      label='line radiation')
+            ax.loglog(Te_eV/1e3, PRB.sum(1), c=l.get_color(), ls='-.', # W.cm^3-->W.m^3
+                      label='continuum radiation')
     
         ax.legend(loc='best').set_draggable(True)
         ax.grid('on', which='both')
@@ -1011,7 +1072,10 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0,
         ax.set_ylabel('$L_z$ [$W$ $m^3$]')
         plt.tight_layout()
 
-    return line_rad_tot, cont_rad_tot
+    if ion_resolved:
+        return PLT[:,:-1], PRB[:,1:]
+    else:
+        return PLT.sum(1), PRB.sum(1)
 
 
 
