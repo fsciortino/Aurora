@@ -346,7 +346,7 @@ def superstage_rates(R, S, superstages,save_time=None):
         raise Exception('The higher superstage must be less than Z_imp = %d'%Z_imp)
     
     superstages = np.array(superstages)
-    R_rates_super = R[:,superstages[1:]-1]
+    R_rates_super = R[:,superstages[1:]-1]  # indexing to avoid fully-stripped stage
     S_rates_super = S[:,superstages[1:]-1]
     
     if len(S) == 1 or save_time is None: # time averaged kinetic profiles
@@ -371,9 +371,11 @@ def superstage_rates(R, S, superstages,save_time=None):
             fz = np.cumprod(rate_ratio, axis=1) 
             fz /= np.maximum(1e-60,fz.sum(1))[:,None] # prevents zero division
             
-            # bundled stages can have very high values of S and R
+            # preserve recombination of fully-stripped stage
             if i < len(_superstages)-2:
-                R_rates_super[:,i  ] /= np.maximum(fz[:,-1],1e-60)
+                R_rates_super[:,i] /= np.maximum(fz[:,-1],1e-60)
+
+            # preserve ionization of neutral stage
             if i > 1:
                 S_rates_super[:,i-1] /= np.maximum(fz[:, 0],1e-60)
 
