@@ -195,7 +195,6 @@ class aurora_sim:
         self.S_rates, self.R_rates = self.get_time_dept_atomic_rates(
             superstages = self.namelist.get('superstages',[]))
 
-  
         S0 = self.S_rates[:,0,:]
         # get radial profile of source function
         if len(save_time) == 1:  # if time averaged profiles were used
@@ -392,7 +391,7 @@ class aurora_sim:
 
         return np.asfortranarray(dv)
 
-    def superstage_DV(self, D_z, V_z, opt=1):
+    def superstage_DV(self, D_z, V_z, times_DV=None, opt=1):
         '''Reduce the dimensionality of D and V time-dependent profiles for the case in which superstaging is applied.
 
         Three options are currently available: 
@@ -419,31 +418,38 @@ class aurora_sim:
             Convection coefficients of superstages, in units of :math:`cm/s`.
         
         '''
-
+        # simple selection of elements corresponding to superstage
+        Dzf = D_z[:,:,self.superstages]
+        Vzf = V_z[:,:,self.superstages]
+    
         if opt==1:
-            Dzf = D_z[:,:,self.superstages]
-            Vzf = V_z[:,:,self.superstages]
-            
-        if opt==2:
-            # option #1: simple, use average D,V over superstage
+            # see selection above 
+            pass
+
+        elif opt==2:
+            # average D,V over superstage
 
             superstages = np.r_[self.superstages, self.Z_imp+1]
 
             for i in range(len(self.superstages)):
                 if superstages[i]+1 != superstages[i+1]:
                     Dzf[:,:,i] = D_z[:,:,superstages[i]: superstages[i+1]].mean(2)
+                    Vzf[:,:,i] = V_z[:,:,superstages[i]: superstages[i+1]].mean(2)
 
         elif opt==3:
-            # UNTESTED -- use at your own risk
+            # weighted average of D and V 
             superstages = np.r_[self.superstages, self.Z_imp+1]
            
             # calculate fractional abundances inside of each superstage
             for i in range(len(superstages)-1):
                 if  superstages[i]+1 < superstages[i+1]:
-                    # average D and V using fz for each superstage
+                    # need to interpolate fz_upstage on time base of D and V -- do this only once
+                    if not hasattr(self, 'fz_upstage_DV') or self.fz_upstage_DV.shape[2]==len(times_DV):
+                        self.fz_upstage_DV = interp1d(self.time_grid, self.fz_upstage, axis=2)(times_DV)
+
                     ind = slice(superstages[i],superstages[i+1])
-                    Dzf[:,:,i] = np.sum(D_z[:,:,ind]*self.fz_upstage[:,ind],2)
-                    Vzf[:,:,i] = np.sum(V_z[:,:,ind]*self.fz_upstage[:,ind],2)
+                    Dzf[:,:,i] = np.sum(D_z[:,:,ind]*self.fz_upstage_DV[:,ind].transpose(0,2,1), 2)
+                    Vzf[:,:,i] = np.sum(V_z[:,:,ind]*self.fz_upstage_DV[:,ind].transpose(0,2,1), 2)
 
         else:
             raise ValueError('Unrecognized option for D and V superstaging!')
@@ -451,12 +457,15 @@ class aurora_sim:
         return Dzf, Vzf
 
 
-    def run_aurora(self, D_z, V_z,
-                   times_DV=None, nz_init=None, unstage=True,
+    def run_aurora(self, D_z, V_z, times_DV=None, nz_init=None, 
+                   unstage=True, simple_superstages=[],
                    alg_opt=1, evolneut=False, use_julia=False, plot=False):
-        '''Run a simulation using inputs in the given dictionary and diffusion and convection profiles 
-        as a function of space, time and potentially also ionization state. Users may give an initial 
-        state of each ion charge state as an input.
+        '''Run a simulation using the provided diffusion and convection profiles as a function of space, time 
+        and potentially also ionization state. Users can give an initial state of each ion charge state as an input. 
+
+        Superstaging is allowed either by indicating a superstaging partition in the AURORA
+        namelist, or via a simpler and more approximate method that takes superstages
+        simply in this function at runtime via the "simple_superstages" argument. 
 
         Results can be conveniently visualized with time-slider using
 
@@ -495,6 +504,13 @@ class aurora_sim:
             charge states at ionization equilibrium. 
             Note that this unstaging process cannot account for transport and is therefore
             only an approximation, to be used carefully.
+        simple_superstages : list, optional
+            Apply superstaging at runtime using a simple indexing method. This is only an approximation
+            of the more complete superstaging that can be applied using the `superstages` field of the
+            namelist. This "simple" option is only available when superstaging is not included in the original
+            namelist. Its main application is for cases where radiative and dielectronic recombination
+            must be scaled at every simulation with CX without creating new superstaged atomic rates.
+            Note that for this option the 0th stage must be explicitly indicated, but the 1st stage is not needed.
         alg_opt : int, optional
             If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
             If `alg_opt=0`, use the older finite-differences algorithm in the 2018 version of STRAHL.
@@ -543,12 +559,30 @@ class aurora_sim:
         if (times_DV is None) and (D_z.ndim>1 or V_z.ndim>1):
             raise ValueError('D_z and V_z given as time dependent, but times were not specified!')
  
+        if times_DV is None or np.size(times_DV) == 0:
+            times_DV = [1.] # dummy, no time dependence
+
         num_cs = int(self.Z_imp+1)
+        S_rates = self.S_rates
+        R_rates = self.R_rates
+
+        if len(self.superstages)==0 and len(simple_superstages):
+            # use simplest superstaging strategy at runtime, no preparation
+            assert simple_superstages[0] == 0  # 0th superstage must be neutral
+
+            num_cs = len(simple_superstages)
+            S_rates = self.S_rates[:,simple_superstages,:]
+            R_rates = self.R_rates[:,simple_superstages,:]
+
+            if D_z.ndim==3:
+                D_z = D_z[:,:,simple_superstages]
+                V_z = V_z[:,:,simple_superstages]
+
         # D and V were given for all stages -- define D and V for superstages
         if len(self.superstages):
             num_cs = len(self.superstages)
             if D_z.ndim==3 and D_z.shape[2]==self.Z_imp+1:
-                D_z, V_z = self.superstage_DV(D_z, V_z, opt=1)
+                D_z, V_z = self.superstage_DV(D_z, V_z, times_DV, opt=1)
          
         if not evolneut:
             # prevent recombination back to neutral state to maintain good particle conservation 
@@ -568,9 +602,6 @@ class aurora_sim:
             # set all charge states to have the same transport
             V_z =  np.tile(V_z.T, (num_cs, 1, 1)).T# create fortran contiguous arrays
             V_z[:,:,0] = 0.0
-        
-        if times_DV is None or np.size(times_DV) == 0:
-            times_DV = [1.] # dummy, no time dependence
  
         nt = len(self.time_out)
 
@@ -916,7 +947,7 @@ class aurora_sim:
             raise ValueError('centrifugal_asym method requires all charge state densities to be availble! Unstage superstages.')
 
         fz = self.res[0][...,-1] / np.sum(self.res[0][...,-1],axis=1)[:,None]
-        Z_ave_vec = np.mean(self.Z_imp * fz * np.arange(self.Z_imp+1)[None,:],axis=1)
+        Z_ave_vec = np.sum(fz * np.arange(self.Z_imp+1)[None,:],axis=1)
         
         self.CF_lambda = synth_diags.centrifugal_asym(self.rhop_grid, self.Rlfs, omega, Zeff, 
                                                       self.A_imp, Z_ave_vec, 
