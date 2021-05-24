@@ -44,7 +44,7 @@ logTe, fz = aurora.atomic.get_frac_abundances(
 n0_by_ne = (1e-2*np.exp(rhop**5-1))**2  # arbitrary, exponentially decreasing from LCFS
 logTe, fz = aurora.atomic.get_frac_abundances(
     atom_data, ne_cm3, Te_eV, n0_by_ne,
-    rho=rhop, plot=plot, ax = plt.gca() if plot else None, ls='-.')
+    rho=rhop, plot=plot, ax = plt.gca() if plot else None)
 
 # compare to fractial abundances obtained with ne*tau=1e19 m^-3.s
 # Use the get_atomic_relax_time function to use a finite ne*tau value

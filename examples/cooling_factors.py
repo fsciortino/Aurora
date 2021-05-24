@@ -16,8 +16,6 @@ plt.ion()
 Te_eV = np.logspace(np.log10(100), np.log10(1e5), 1000)
 ne_cm3 = 5e13 * np.ones_like(Te_eV)
 
-
-
 imp = 'C'
 
 # basic cooling curve, considering ionization equilibrium between charge states

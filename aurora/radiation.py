@@ -1005,11 +1005,15 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, ion_resolved=False, supe
 
     # zero line radiation of fully stripped ion stage
     PLT = np.hstack((PLT, np.zeros((logTe.size,1))))
-
+    
     if len(superstages) and fz_full is not None:
-        # superstage also radiation files
-        Zimp = prs.shape[1]
+        # superstage radiation data
+        Z_imp = PRB.shape[1] - 1
+        
         # check input superstages
+        if 1 not in superstages: # needed to match dimensions with superstage_rates
+            print('Warning: 1th superstage was included')
+            superstages = np.r_[1,superstages]
         if 0 not in superstages:
             print('Warning: 0th superstage for neutral was included')
             superstages = np.r_[0,superstages]
@@ -1022,7 +1026,7 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, ion_resolved=False, supe
         _PLT, _PRB = np.copy(PLT), np.copy(PRB)
         PLT, PRB  =  _PLT[:,superstages],_PRB[:,superstages]
         
-        _superstages = r_[superstages, Zimp+1]
+        _superstages = np.r_[superstages, Z_imp+1]
 
         for i in range(len(_superstages)-1):
             if _superstages[i]+1 < _superstages[i+1]:
@@ -1031,8 +1035,7 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, ion_resolved=False, supe
 
                 PRB[:,i] = (_PRB[:,_superstages[i]:_superstages[i+1]]*weight).sum(1)
                 PLT[:,i] = (_PLT[:,_superstages[i]:_superstages[i+1]]*weight).sum(1)
-
-                
+    
     PLT *= fz*1e-6  # W.cm^3-->W.m^3
     PRB *= fz*1e-6  # W.cm^3-->W.m^3
 

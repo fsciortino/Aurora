@@ -331,19 +331,19 @@ def superstage_rates(R, S, superstages,save_time=None):
 
     '''
     Z_imp = S.shape[1]
-
+    
     # check input superstages
     if 1 not in superstages:
-        print('Warning: 1th superstage needs to be included')
+        print('Warning: 1th superstage was included')
         superstages = np.r_[1,superstages]
     if 0 not in superstages:
-        print('Warning: 0th superstage for neutral was included')
+        print('Warning: 0th superstage was included')
         superstages = np.r_[0,superstages]
     if np.any(np.diff(superstages)<=0):
-        print('Warning: 0th superstage for neutral was included')
+        print('Warning: sorted superstages in increasing order')
         superstages = np.sort(superstages)
     if superstages[-1] > Z_imp:
-        raise Exception('The higher superstage must be less than Z_imp = %d'%Z_imp)
+        raise Exception('The highest superstage must be less than Z_imp = %d'%Z_imp)
     
     superstages = np.array(superstages)
     R_rates_super = R[:,superstages[1:]-1]  # indexing to avoid fully-stripped stage
@@ -453,9 +453,11 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
     
     # Enable use of superstages
     if len(superstages):
-        superstages, R, S,_ = superstage_rates(R, S, superstages)
+        
+        # superstage_rates expects values in shape (time,nZ,space)
+        superstages, R, S,_ = superstage_rates(R.T[None], S.T[None], superstages)
+        R = R[0].T; S = S[0].T
 
-        R += n0_by_ne[:,None]*cx
         rate_ratio = np.hstack((np.ones_like(Te)[:, None], S/R))
         fz_super = np.cumprod(rate_ratio, axis=1)
         fz_super /= fz_super.sum(1)[:, None]
@@ -581,7 +583,7 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include
 
 
 
-def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
+def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0, superstages=[],
                         ne_tau=np.inf, plot=True, ax = None, ls='-'):
     r'''Obtain the relaxation time of the ionization equilibrium for a given atomic species.
 
@@ -603,6 +605,9 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.
         Bulk ion temperature in units of eV, only needed for CX. If left to None, Ti is set equal to Te.
     n0_by_ne: float or array, optional
         Ratio of background neutral hydrogen to electron density. If set to 0, CX is not considered.
+    superstages : list or 1D array
+        Indices of charge states of chosen ion that should be included. If left empty, all ion stages
+        are included. If only some indices are given, these are modeled as "superstages".
     ne_tau : float, opt
         Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
         This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
