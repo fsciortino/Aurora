@@ -6,7 +6,6 @@ import numpy as np
 from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.constants import e as q_electron, m_p
 import pickle as pkl
-from time import time
 from . import interp
 from . import atomic
 from . import grids_utils
@@ -458,14 +457,9 @@ class aurora_sim:
 
 
     def run_aurora(self, D_z, V_z, times_DV=None, nz_init=None, 
-                   unstage=True, simple_superstages=[],
-                   alg_opt=1, evolneut=False, use_julia=False, plot=False):
+                   unstage=True, alg_opt=1, evolneut=False, use_julia=False, plot=False):
         '''Run a simulation using the provided diffusion and convection profiles as a function of space, time 
         and potentially also ionization state. Users can give an initial state of each ion charge state as an input. 
-
-        Superstaging is allowed either by indicating a superstaging partition in the AURORA
-        namelist, or via a simpler and more approximate method that takes superstages
-        simply in this function at runtime via the "simple_superstages" argument. 
 
         Results can be conveniently visualized with time-slider using
 
@@ -504,13 +498,6 @@ class aurora_sim:
             charge states at ionization equilibrium. 
             Note that this unstaging process cannot account for transport and is therefore
             only an approximation, to be used carefully.
-        simple_superstages : list, optional
-            Apply superstaging at runtime using a simple indexing method. This is only an approximation
-            of the more complete superstaging that can be applied using the `superstages` field of the
-            namelist. This "simple" option is only available when superstaging is not included in the original
-            namelist. Its main application is for cases where radiative and dielectronic recombination
-            must be scaled at every simulation with CX without creating new superstaged atomic rates.
-            Note that for this option the 0th stage must be explicitly indicated, but the 1st stage is not needed.
         alg_opt : int, optional
             If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
             If `alg_opt=0`, use the older finite-differences algorithm in the 2018 version of STRAHL.
@@ -563,20 +550,6 @@ class aurora_sim:
             times_DV = [1.] # dummy, no time dependence
 
         num_cs = int(self.Z_imp+1)
-        S_rates = self.S_rates
-        R_rates = self.R_rates
-
-        if len(self.superstages)==0 and len(simple_superstages):
-            # use simplest superstaging strategy at runtime, no preparation
-            assert simple_superstages[0] == 0  # 0th superstage must be neutral
-
-            num_cs = len(simple_superstages)
-            S_rates = self.S_rates[:,simple_superstages,:]
-            R_rates = self.R_rates[:,simple_superstages,:]
-
-            if D_z.ndim==3:
-                D_z = D_z[:,:,simple_superstages]
-                V_z = V_z[:,:,simple_superstages]
 
         # D and V were given for all stages -- define D and V for superstages
         if len(self.superstages):
@@ -687,7 +660,7 @@ class aurora_sim:
         return self.res
 
 
-    def run_aurora_steady(self, D_z, V_z, nz_init=None,unstage=False,
+    def run_aurora_steady(self, D_z, V_z, nz_init=None, unstage=False,
                           alg_opt=1, evolneut=False, use_julia=False,
                           tolerance=0.01, max_sim_time = 100, dt=1e-4, dt_increase=1.05, 
                           n_steps = 100, plot=False):
@@ -706,12 +679,9 @@ class aurora_sim:
         nz_init: array, shape of (space, nZ)
             Impurity charge states at the initial time of the simulation. If left to None, this is
             internally set to an array of 0's.
-        superstages : list or 1D array
-            Indices of charge states of chosen ion that should be modeled. If left empty, all ion stages
-            are modeled. See docs for :py:meth:`~aurora.core.run_aurora` for details.
         unstage : bool, optional
-            If a list of superstages are provided, this parameter sets whether the output should be "unstaged".
-            See docs for :py:meth:`~aurora.core.run_aurora` for details.
+            If a list of superstages are provided in the namelist, this parameter sets whether the 
+            output should be "unstaged". See docs for :py:meth:`~aurora.core.run_aurora` for details.
         alg_opt : int, optional
             If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
             If `alg_opt=0`, use the older finite-differences algorithm in the 2018 version of STRAHL.
@@ -731,11 +701,14 @@ class aurora_sim:
         dt_increase : float
             Multiplier for time steps.
         n_steps : int
-            Number of time steps before convergence is checked. 
+            Number of time steps (>2) before convergence is checked.
         plot : bool
             If True, plot time evolution of charge state density profiles to show convergence.
         '''
 
+        if n_steps<2:
+            raise ValueError('n_steps must be greater than 2!')
+        
         if  self.ne.shape[0] > 1:
             raise ValueError('This method is designed to operate with time-independent background profiles!')
 
@@ -770,55 +743,75 @@ class aurora_sim:
         sim_steps = 0
         
         time_grid = self.time_grid.copy()
+        time_out = self.time_out.copy()
         save_time = self.save_time.copy()
-        nz_all = nz_init[:,:,None]
-        
+        par_loss_rate = self.par_loss_rate.copy()
+        source_rad_prof = self.source_rad_prof.copy()
+        S_rates = self.S_rates.copy()
+        R_rates = self.R_rates.copy()
+        saw_on = self.saw_on.copy()
+        source_time_history = self.source_time_history.copy()
+        nz_all = None if nz_init is None else nz_init
+
         while sim_steps < len(time_grid):
             
             self.time_grid = self.time_out = time_grid[sim_steps:sim_steps+n_steps]
             self.save_time = save_time[sim_steps:sim_steps+n_steps]
-            
+            self.par_loss_rate = par_loss_rate[:,sim_steps:sim_steps+n_steps]
+            self.source_rad_prof = source_rad_prof[:,sim_steps:sim_steps+n_steps]
+            self.S_rates = S_rates[:,:,sim_steps:sim_steps+n_steps]
+            self.R_rates = R_rates[:,:,sim_steps:sim_steps+n_steps]
+            self.saw_on = saw_on[sim_steps:sim_steps+n_steps]
+            self.source_time_history = source_time_history[sim_steps:sim_steps+n_steps]
+
             sim_steps+= n_steps
 
             # get charge state densities from latest time step
-            nz_init = nz_all[:,:,-1]
+            if nz_all is None:
+                nz_init = None
+            else:
+                nz_init = nz_all[:,:,-1] if nz_all.ndim==3 else nz_all
+
             nz_new = self.run_aurora(D_z, V_z, times_DV, nz_init=nz_init,
-                                     superstages = superstages, unstage=unstage, alg_opt=alg_opt,
+                                     unstage=unstage, alg_opt=alg_opt,
                                      evolneut=evolneut, use_julia=use_julia, plot=False)[0]
-            
-            nz_all = np.dstack((nz_all, nz_new))
-            
+
+            if nz_all is None:
+                nz_all = np.dstack((np.zeros_like(nz_new[:,:,[0]]), nz_new))
+                nz_init = np.zeros_like(nz_new[:,:,0])
+            else:
+                nz_all = np.dstack((nz_all, nz_new))
+
             # check if normalized profiles have converged
-            if np.linalg.norm(nz_new[:,:,-1]-nz_init)/np.linalg.norm(nz_init) < tolerance: 
+            if np.linalg.norm(nz_new[:,:,-1]-nz_init)/(np.linalg.norm(nz_init)+1e-99) < tolerance: 
                 break
             
         # store final time grids
         self.time_grid = time_grid[:sim_steps]
-        self.time_out  = time_out[:sim_steps]
+        self.time_out  = time_grid[:sim_steps] # identical because steps_per_cycle is fixed to 1
         self.save_time = save_time[:sim_steps]
         
         if plot:
             # plot charge state distributions over radius and time
             plot_tools.slider_plot(self.rhop_grid, self.time_grid, nz_all.transpose(1,0,2),
-                                          xlabel=r'$\rho_p$', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
-                                          labels=[str(i) for i in np.arange(0,nz_all.shape[1])],
-                                          plot_sum=True)
-            
+                                   xlabel=r'$\rho_p$', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
+                                   labels=[str(i) for i in np.arange(0,nz_all.shape[1])],
+                                   plot_sum=True)
+        
         if sim_steps >= len(time_grid):
-            raise ValueError(f'Could not reach convergence before {max_sim_time:.2f} of simulation time!')
-
+            raise ValueError(f'Could not reach convergence before {max_sim_time:.3f}s of simulated time!')
+        
         # compute effective particle confinement time from latest few time steps 
         circ = 2*np.pi*self.Raxis_cm # cm
         zvol = circ * np.pi * self.rvol_grid / self.pro_grid
 
         wh = self.rhop_grid <= 1
-        zvol = zvol[wh]
-        var_volint = np.nansum(nz_new[:,:,-2]*zvol[:,None])
+        var_volint = np.nansum(nz_new[wh,:,-2]*zvol[wh,None])
 
         # compute effective particle confinement time (avoid last time point because source is set to 0 there)
         self.tau_imp = var_volint / self.source_time_history[-2]
         
-        return nz_norm
+        return nz_new[:,:,-1]
     
         
     def calc_Zeff(self):

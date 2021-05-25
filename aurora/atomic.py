@@ -344,9 +344,10 @@ def superstage_rates(R, S, superstages,save_time=None):
         superstages = np.sort(superstages)
     if superstages[-1] > Z_imp:
         raise Exception('The highest superstage must be less than Z_imp = %d'%Z_imp)
-    
     superstages = np.array(superstages)
-    R_rates_super = R[:,superstages[1:]-1]  # indexing to avoid fully-stripped stage
+
+    # indexing that accounts for no recomb of neutral stage or ionization of full-stripped stage
+    R_rates_super = R[:,superstages[1:]-1]
     S_rates_super = S[:,superstages[1:]-1]
     
     if len(S) == 1 or save_time is None: # time averaged kinetic profiles
@@ -357,7 +358,7 @@ def superstage_rates(R, S, superstages,save_time=None):
         nt = save_time.sum()
     
     # fractional abundance of supestages used for upstaging. 
-    fz_upstage = np.ones(( R.shape[-1],Z_imp+1, nt))
+    fz_upstage = np.ones((R.shape[-1], Z_imp+1, nt))
 
     # add fully-stripped charge state
     _superstages = np.r_[superstages, Z_imp+1]
@@ -370,14 +371,14 @@ def superstage_rates(R, S, superstages,save_time=None):
             rate_ratio =  S[:,sind]/R[:,sind]
             fz = np.cumprod(rate_ratio, axis=1) 
             fz /= np.maximum(1e-60,fz.sum(1))[:,None] # prevents zero division
-            
+
             # preserve recombination of fully-stripped stage
             if i < len(_superstages)-2:
                 R_rates_super[:,i] /= np.maximum(fz[:,-1],1e-60)
 
             # preserve ionization of neutral stage
             if i > 1:
-                S_rates_super[:,i-1] /= np.maximum(fz[:, 0],1e-60)
+                S_rates_super[:,i-1] /= np.maximum(fz[:,0],1e-60)
 
             # fractional abundances inside of each superstage
             fz_upstage[:,_superstages[i]:_superstages[i+1]] = fz.T[:,:,t_slice]
@@ -442,6 +443,7 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
     include_cx = False if not np.any(n0_by_ne) else True
 
     Te, S, R, cx = get_cs_balance_terms(atom_data, _ne, _Te, _Ti, include_cx=include_cx)
+    Z_imp = S.shape[1]
     
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
@@ -465,7 +467,8 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
         # bundled stages can have very high values -- clip here
         R = np.clip(R, 1e-25, 1) 
         S = np.clip(S, 1e-25, 1)
-        
+
+        _superstages = np.r_[superstages, Z_imp+1]
 
     if plot:
         # plot fractional abundances (only 1D)
@@ -492,19 +495,23 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
             axx.text(np.max([0.1,x[imax]]), fz_full[imax,cs], cs,
                      horizontalalignment='center', clip_on=True)
 
-            if len(superstages) and cs in superstages:
+            if len(_superstages) and cs in _superstages:
                 axx.semilogy(x, fz_super[:,css], c=l[0].get_color(), ls='-')
                 imax = np.argmax(fz_super[:,css])
-                try:
-                    lbl = r'{'+f'{superstages[css]},{superstages[css+1]-1}'+r'}'
-                except IndexError: # fully-stripped stage
-                    lbl = r'{'+f'{superstages[css]},{superstages[css]}'+r'}'
+                
+                if _superstages[css]==Z_imp:
+                    lbl = r'{'+f'{_superstages[css]}'+r'}'
+                else:
+                    if _superstages[css]!=_superstages[css+1]-1:
+                        lbl = r'{'+f'{_superstages[css]},{_superstages[css+1]-1}'+r'}'
+                    else:
+                        lbl = r'{'+f'{_superstages[css]}'+r'}'
                 axx.text(np.max([0.05,x[imax]]), fz_super[imax,css], lbl,
                          horizontalalignment='center', clip_on=True, backgroundcolor='w')
                 css += 1
 
         axx.grid('on')
-        axx.set_ylim(5e-2,1.5)
+        axx.set_ylim(1e-2,1.5)
         axx.set_xlim(x[0],x[-1])
         plt.tight_layout()
 
