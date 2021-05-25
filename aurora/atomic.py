@@ -370,14 +370,14 @@ def superstage_rates(R, S, superstages,save_time=None):
             rate_ratio =  S[:,sind]/R[:,sind]
             fz = np.cumprod(rate_ratio, axis=1) 
             fz /= np.maximum(1e-60,fz.sum(1))[:,None] # prevents zero division
-            
+
             # preserve recombination of fully-stripped stage
-            if i < len(_superstages)-2:
-                R_rates_super[:,i] /= np.maximum(fz[:,-1],1e-60)
+            if i < len(_superstages)-1:
+                R_rates_super[:,i-1] *= np.maximum(fz[:,0],1e-60)
 
             # preserve ionization of neutral stage
-            if i > 1:
-                S_rates_super[:,i-1] /= np.maximum(fz[:, 0],1e-60)
+            S_rates_super[:,i] *= np.maximum(fz[:, -1],1e-60)
+
 
             # fractional abundances inside of each superstage
             fz_upstage[:,_superstages[i]:_superstages[i+1]] = fz.T[:,:,t_slice]
