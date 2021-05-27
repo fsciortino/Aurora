@@ -150,7 +150,7 @@ Te_all = []
 Te_all.append(Te_eV)
 for i in np.arange(num_sims):
     # Update time array
-    namelist['timing']['times'] = np.array([(i+1)*n_rep*dt+dt, (i+2)*n_rep*dt])
+    asim.namelist['timing']['times'] = np.array([(i+1)*n_rep*dt+dt, (i+2)*n_rep*dt])
     asim.setup_grids()
     
     # get charge state densities from latest time step
