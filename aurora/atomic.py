@@ -1203,3 +1203,80 @@ def read_adf21(filename, Ebeam, ne_cm3, Te_eV):
 
     adf = RectInt1(np.log(Te_eV)) + RectInt2.ev(np.log(ne_cm3), np.log(Ebeam))
     return np.exp(adf + lref)
+
+
+
+def get_natural_partition(ion, plot=True):
+    '''Identify natural partition of charge states by plotting the variation of ionization energy
+    as a function of charge for a given ion, using the ADAS metric :math:`2 (I_{z+1}-I_z)/(I_{z+1}+I_z)`.
+    
+    Parameters
+    ----------
+    ion : str
+        Atomic symbol of species of interest.
+    plot : bool
+        If True, plot the variation of ionization energy.
+
+    Returns
+    -------
+    q : 1D array
+        Metric to identify natural partition.
+    
+    Notes
+    -----
+    A ColRadPy installation must be available for this function to work.
+    '''
+
+    try:
+        # temporarily import this here, until ColRadPy dependency can be set up properly
+        import colradpy
+    except ImportError:
+        raise ValueError('Could not import colradpy. Install this from the Github repo!')
+
+    # find location of files containing NIST data
+    colradpy_dist = os.sep.join(colradpy.__file__.split(os.sep)[:-2])
+    loc = colradpy_dist+os.sep+'atomic'+os.sep+'nist_energies'
+
+    # find energies for each charge state of interest
+    _E_eV = []
+    cs = []
+    for filename in os.listdir(loc):
+        if not filename.startswith('#') and not filename.endswith('~'):
+            _ion = filename.split('_')[0]
+
+            if _ion!=ion.lower():
+                continue
+            charge = int(filename.split('_')[1])
+
+            # read energy from file
+            with open(loc+os.sep+filename,'r') as f:
+                cont = f.readlines()
+
+            # last value is energy in cm^-1
+            E_cm_val = float(cont[-1].split(',')[-1].strip('/n'))
+            E_eV_val = constants.h*constants.c/constants.e*(E_cm_val*100.)
+
+            cs.append(charge)
+            _E_eV.append(E_eV_val)
+
+    idx = np.argsort(cs)
+    E_eV = np.array(_E_eV)[idx]
+
+    # compute ADAS natural partitioning metric
+    q = []
+    for i in np.arange(1,len(E_eV)-1):
+        q.append( 2*(E_eV[i+1] - E_eV[i])/(E_eV[i+1]+E_eV[i]))
+
+    if plot:
+        fig,ax = plt.subplots()
+        
+        ax.plot(np.arange(len(q)), q)
+        ax.set_xlabel('Z')
+        ax.set_title(r'$2\times (I_{z+1}-I_z)/(I_{z+1}+I_z)$')
+
+        # take running mean over 7 adjacent charge states as indicated by Foster's thesis
+        q_mean = np.convolve(q, np.ones(7)/7, mode='same')
+        plt.plot(q_mean)
+
+    return q
+
