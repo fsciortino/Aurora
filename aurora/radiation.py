@@ -261,7 +261,7 @@ def sync_rad(B_T, ne_cm3, Te_eV, r_min_cm, R_maj_cm):
 
 
 
-def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
+def radiation_model(imp, rhop, ne_cm3, Te_eV, geqdsk,
                     adas_files_sub={}, n0_cm3=None, Ti_eV=None, nz_cm3=None, frac=None, plot=False):
     '''Model radiation from a fixed-impurity-fraction model or from detailed impurity density
     profiles for the chosen ion. This method acts as a wrapper for :py:func:`~aurora.compute_rad`,
@@ -277,10 +277,9 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
         Electron density in :math:`cm^{-3}` units.
     Te_eV : array (nr,)
         Electron temperature in eV
-    vol : array (nr,)
-        Volume of each flux surface in :math:`m^3`. Note the units! We use :math:`m^3` here
-        rather than :math:`cm^3` because it is more common to work with :math:`m^3` for 
-        flux surface volumes of fusion devices.
+    geqdsk : dict, optional
+        EFIT gfile as returned after postprocessing by the :py:mod:`omfit_classes.omfit_eqdsk` 
+        package (OMFITgeqdsk class).
     adas_files_sub : dict
         Dictionary containing ADAS file names for forward modeling and/or radiation calculations.
         Possibly useful keys include
@@ -308,19 +307,29 @@ def radiation_model(imp,rhop, ne_cm3, Te_eV, vol,
     Returns
     -------
     res : dict
-        Dictionary containing results of radiation model.     
+        Dictionary containing results of radiation model.  
+
     '''
     if nz_cm3 is None:
         assert frac is not None
-    
+    else:
+        if nz_cm3.ndim!=2 or nz_cm3.shape[0]!=len(rhop):
+            raise ValueError('Input nz_cm3 must have dimensions (nr,nz)!')
+
     # limit all considerations to inside LCFS
     ne_cm3 = ne_cm3[rhop<=1.]
     Te_eV = Te_eV[rhop<=1.]
-    vol = vol[rhop<=1.]
+    if nz_cm3 is not None:
+        nz_cm3 = nz_cm3[rhop<=1.]
     if n0_cm3 is not None:
         n0_cm3 = n0_cm3[rhop<=1.]
     rhop = rhop[rhop<=1.]
 
+    # extract flux surface volumes from geqdsk
+    psin_ref = geqdsk['fluxSurfaces']['geo']['psin']
+    rhop_ref = np.sqrt(psin_ref) # sqrt(norm. pol. flux)
+    vol = interp1d(rhop_ref, geqdsk['fluxSurfaces']['geo']['vol'])(rhop)
+    
     # create results dictionary
     out = {}
     out['rhop'] = rhop

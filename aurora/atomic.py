@@ -366,23 +366,23 @@ def superstage_rates(R, S, superstages,save_time=None):
     for i in range(len(_superstages)-1):
         if _superstages[i]+1!= _superstages[i+1]:
             sind = slice(_superstages[i]-1, _superstages[i+1]-1)
-            
+
             # calculate fractional abundances within the superstage
             rate_ratio =  S[:,sind]/R[:,sind]
             fz = np.cumprod(rate_ratio, axis=1) 
             fz /= np.maximum(1e-60,fz.sum(1))[:,None] # prevents zero division
 
-            # preserve recombination of fully-stripped stage
-            if i < len(_superstages)-1:
-                R_rates_super[:,i-1] *= np.maximum(fz[:,0],1e-60)
+            # superstage rates
+            R_rates_super[:,i-1] *= np.maximum(fz[:,0],1e-60)
 
-            # preserve ionization of neutral stage
-            S_rates_super[:,i] *= np.maximum(fz[:, -1],1e-60)
+            if i<len(_superstages)-2: # last superstage cannot ionize further
+                S_rates_super[:,i] *= np.maximum(fz[:, -1],1e-60)
 
             # fractional abundances inside of each superstage
             fz_upstage[:,_superstages[i]:_superstages[i+1]] = fz.T[:,:,t_slice]
 
     return superstages, R_rates_super, S_rates_super, fz_upstage
+
 
 def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0, superstages=[],
                         ne_tau=np.inf, plot=True, ax = None, rho = None,

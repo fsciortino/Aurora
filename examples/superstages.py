@@ -35,17 +35,14 @@ kp['ne']['vals'] = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
 kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
 
 # set impurity species and sources rate
-imp = namelist['imp'] = 'Ar' #'W' #'Ar'
+imp = namelist['imp'] = 'Ar'
 namelist['source_type'] = 'const'
 namelist['source_rate'] = 2e20  # particles/s
 
-if imp=='Ar':
-    superstages = [0,1,2,14,15,16,17,18]
-elif imp=='W':
-    superstages = np.array([2*n**2 for n in np.arange(7)]) #np.concatenate((np.array([0.,]), np.arange(10,50,3)))
-    #superstages = np.concatenate((superstages, np.array([74,])))
-    #superstages = np.array([0,1, 2,8,15,18,30,40,50,60])
-    
+# selection of superstages for Ar
+superstages = [0,1,14,15,16,17,18]
+
+   
 ########
 # first run WITHOUT superstages
 namelist['superstages'] = []
@@ -53,18 +50,10 @@ namelist['superstages'] = []
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
-# set time-independent transport coefficients (flat D=1 m^2/s, V=-2 cm/s)
-#D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
-#V_z = -2e2 * np.ones(len(asim.rvol_grid)) # cm/s
+# set time-independent transport coefficients (flat D=1 m^2/s, V=0 cm/s)
 
-D_z = 1e3 * np.ones(len(asim.rvol_grid))  # cm^2/s
+D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
 V_z = 0.0 * np.ones(len(asim.rvol_grid)) # cm/s
-
-#D_z = np.tile(D_z, (len(namelist['superstages'])+1,1,1)).T
-#V_z = np.tile(V_z, (len(namelist['superstages'])+1,1,1)).T
-
-#D_z = np.tile(D_z, (asim.Z_imp+1,1,1)).T
-#V_z = np.tile(V_z, (asim.Z_imp+1,1,1)).T
 
 # run Aurora forward model and plot results
 out = asim.run_aurora(D_z, V_z, times_DV=[1.0,], unstage=True, plot=plot)
@@ -74,10 +63,10 @@ nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = o
 
 
 # plot charge state distributions over radius and time
-aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_grid, nz.transpose(1,0,2),
-                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
+aurora.plot_tools.slider_plot(asim.rhop_grid, asim.time_grid, nz.transpose(1,0,2),
+                              xlabel=r'$\rho_p$', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
                               labels=[str(i) for i in np.arange(0,nz.shape[1])],
-                              plot_sum=True, x_line=asim.rvol_lcfs)
+                              plot_sum=True)#, x_line=asim.rvol_lcfs)
 
 
 ########
@@ -91,12 +80,31 @@ asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 out = asim.run_aurora(D_z, V_z, times_DV=[1.0,], unstage=True, plot=plot)
 
 # extract densities and particle numbers in each simulation reservoir
-nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
+nzs, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 
 # plot charge state distributions over radius and time
-aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_grid, nz.transpose(1,0,2),
-                              xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
-                              labels=[str(i) for i in np.arange(0,nz.shape[1])],
-                              plot_sum=True, x_line=asim.rvol_lcfs)
+aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_grid, nzs.transpose(1,0,2),
+                              xlabel=r'$\rho_p$', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
+                              labels=[str(i) for i in np.arange(0,nzs.shape[1])],
+                              plot_sum=True)#, x_line=asim.rvol_lcfs)
 
 
+# compare at last slice
+ls_cycle= aurora.get_ls_cycle()
+
+fig = plt.figure()
+fig.set_size_inches(12,7, forward=True)
+a_plot = plt.subplot2grid((10,10),(0,0),rowspan = 10, colspan = 8, fig=fig) 
+a_legend = plt.subplot2grid((10,10),(0,8),rowspan = 10, colspan = 2, fig=fig)
+a_legend.axis('off')
+
+for cs in np.arange(nz.shape[1]):
+    ls = next(ls_cycle) 
+    a_plot.plot(asim.rhop_grid, nz[:,cs,-1],ls, lw=1.0)
+    a_plot.plot(asim.rhop_grid, nzs[:,cs,-1],ls, lw=2.)
+    a_legend.plot([],[], ls, label=imp+f'$^{{{cs}+}}$')
+    
+a_plot.set_xlabel(r'$\rho_p$')
+a_plot.set_ylabel(r'$n_z$ [A.U.]')
+
+a_legend.legend(loc='best', ncol=1).set_draggable(True)

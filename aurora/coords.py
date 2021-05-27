@@ -1,6 +1,7 @@
 import numpy as np,sys,os
 from scipy.interpolate import interp1d, RectBivariateSpline
 from . import grids_utils
+import copy
 
 def get_rhop_RZ(R,Z, geqdsk):
     '''Find rhop at every R,Z [m] based on the equilibrium in the geqdsk dictionary.
@@ -146,7 +147,7 @@ def rad_coord_transform(x,name_in,name_out, geqdsk):
     """
     if name_in == name_out:
         return x
-    x = np.atleast_1d(x)
+    x = copy.deepcopy(x)
 
     if 'rvol' not in geqdsk['fluxSurfaces']['geo']:
         R0 = geqdsk['RMAXIS']
