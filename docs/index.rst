@@ -3,6 +3,8 @@ Aurora: a modern toolbox for impurity transport, neutrals and radiation modeling
 
 Github repo: https://github.com/fsciortino/Aurora
 
+Paper/presentation on the arXiv: https://arxiv.org/abs/2106.04528
+
 Overview
 --------
 
