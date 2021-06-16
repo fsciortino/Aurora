@@ -40,7 +40,7 @@ namelist['source_type'] = 'const'
 namelist['source_rate'] = 2e20  # particles/s
 
 # selection of superstages for Ar
-superstages = [0,1,14,15,16,17,18]
+superstages = [0,14,15,16,17,18]
 
    
 ########
