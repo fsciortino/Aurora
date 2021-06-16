@@ -494,17 +494,17 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
             axx.text(np.max([0.1,x[imax]]), fz_full[imax,cs], cs,
                      horizontalalignment='center', clip_on=True)
 
-            if len(_superstages) and cs in _superstages:
+            if len(superstages) and cs in _superstages:
                 axx.semilogy(x, fz_super[:,css], c=l[0].get_color(), ls='-')
                 imax = np.argmax(fz_super[:,css])
                 
                 if _superstages[css]==Z_imp:
-                    lbl = r'{'+f'{_superstages[css]}'+r'}'
+                    lbl = r'\{'+f'{_superstages[css]}'+r'\}'
                 else:
                     if _superstages[css]!=_superstages[css+1]-1:
-                        lbl = r'{'+f'{_superstages[css]},{_superstages[css+1]-1}'+r'}'
+                        lbl = r'\{'+f'{_superstages[css]},{_superstages[css+1]-1}'+r'\}'
                     else:
-                        lbl = r'{'+f'{_superstages[css]}'+r'}'
+                        lbl = r'\{'+f'{_superstages[css]}'+r'\}'
                 axx.text(np.max([0.05,x[imax]]), fz_super[imax,css], lbl,
                          horizontalalignment='center', clip_on=True, backgroundcolor='w')
                 css += 1
