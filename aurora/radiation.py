@@ -1143,6 +1143,14 @@ def adf15_line_identification(pec_files, lines=None, Te_eV = 1e3, ne_cm3=5e13, m
     
     cols = iter(plt.cm.rainbow(np.linspace(0,1,len(pec_files))))
 
+    def _plot_line(log10pec_interp_fun, lam, ymin, ymax, c):
+        _pec = _mult * 10 ** log10pec_interp_fun(np.log10(ne_cm3), np.log10(Te_eV))[0, 0]
+        if _pec > 1e-20:  # plot only stronger lines
+            ymin = min(_pec, ymin)
+            ymax = max(_pec, ymax)
+            ax.semilogy([lam, lam], [1e-70, _pec], 'o-.', c=c)
+        return ymin,ymax
+
     lams = []
     for pp, pec_file in enumerate(pec_files):
         
@@ -1156,24 +1164,14 @@ def adf15_line_identification(pec_files, lines=None, Te_eV = 1e3, ne_cm3=5e13, m
         # now plot all ionization-, excitation- and recombination-driven components
         for lam, log10pec_interps in log10_pecs.items():
 
-            if 'ioniz' in log10pec_interps:
-                pec_ion = _mult * 10 ** log10pec_interps['ioniz'](np.log10(ne_cm3), np.log10(Te_eV))[0, 0]
-                if pec_ion > 1e-20:  # plot only stronger lines
-                    ymin = min(pec_ion, ymin)
-                    ymax = max(pec_ion, ymax)
-                    ax.semilogy([lam, lam], [1e-70, pec_ion], 'o-.', c=c)
-            if 'excit' in log10pec_interps:
-                pec_exc = _mult * 10 ** log10pec_interps['excit'](np.log10(ne_cm3), np.log10(Te_eV))[0, 0]
-                if pec_exc > 1e-20:  # plot only stronger lines
-                    ymin = min(pec_exc, ymin)
-                    ymax = max(pec_exc, ymax)
-                    ax.semilogy([lam, lam], [1e-70, pec_exc], 'o-', c=c)
-            if 'recom' in log10pec_interps:
-                pec_rec = _mult * 10 ** log10pec_interps['recom'](np.log10(ne_cm3), np.log10(Te_eV))[0, 0]
-                if pec_rec > 1e-20:
-                    ymin = min(pec_rec, ymin)
-                    ymax = max(pec_rec, ymax)
-                    ax.semilogy([lam, lam], [1e-70, pec_rec], 'o--', c=c)
+            for process in ['ioniz','excit','recom']:  # loop over populating processes
+                
+                if process in log10pec_interps: # often, only excit is relevant
+                    if isinstance(log10pec_interps[process],dict):  # metastable resolved
+                        for metastable in log10pec_interps[process]: # loop over all metastables
+                            ymin,ymax= _plot_line(log10pec_interps[process][metastable], lam, ymin, ymax, c)
+                    else: # no metastables
+                        ymin,ymax=_plot_line(log10pec_interps[process], lam, ymin, ymax, c)
 
         lams += log10_pecs.keys()
         if len(pec_files)>1:
