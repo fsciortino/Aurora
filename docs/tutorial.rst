@@ -207,6 +207,14 @@ This makes use of the electron density profiles (as a function of space and time
                      labels=[str(i) for i in np.arange(0,nz.shape[1])],
                      plot_sum=True,x_line=asim.rvol_lcfs)
 
+You should get something that looks like this:
+
+.. figure:: figs/aurora_Zeff_example.jpeg
+    :align: center
+    :alt: Example of Z-effective contributions at the end of an Aurora Ar simulation
+    :figclass: align-center
+
+    Example of Z-effective contributions at the end of an Aurora Ar simulation
 
 
 Ionization equilibrium
