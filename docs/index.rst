@@ -10,12 +10,12 @@ Overview
 
 Aurora is a package to simulate heavy-ion transport and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model which inherits many of the methods from the historical STRAHL code and has been thoroughly benchmarked with it. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. Aurora's code is mostly written in Python 3 and Fortran 90. A Julia interface has also recently been added. The package enables radiation calculations using ADAS atomic rates, which can easily be applied to the output of Aurora's own forward model, or coupled with other 1D, 2D or 3D transport codes. 
 
-.. figure:: ../figs/guido_reni_aurora.jpg
+.. figure:: figs/guido_reni_aurora.jpg
     :align: center
     :alt: Guido Reni - L'Aurora
     :figclass: align-center
 
-    Aurora fresco, by Guido Reni (circa 1612-1614)
+    `Aurora fresco <https://smarthistory.org/reni-aurora/>`, by Guido Reni (circa 1612-1614)
 
     
 
