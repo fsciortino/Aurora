@@ -247,3 +247,33 @@ Neutral densities for each fast ion population (full-,half- and third-energy), m
 :py:func:`~aurora.nbi_neutrals.bt_rate_maxwell_average` shows how beam-thermal Maxwell-averaged rates can be obtained; :py:func:`~aurora.nbi_neutrals.tt_rate_maxwell_average` shows the equivalent for thermal-thermal Maxwell-averaged rates.
 
 Finally, :py:func:`~aurora.nbi_neutrals.get_NBI_imp_cxr_q` shows how flux-surface-averaged charge exchnage recombination rates between an impurity ion of charge `q` with NBI neutrals (all populations, fast and thermal) can be computed for use in Aurora forward modeling. For more details, feel free to contact Francesco Sciortino (sciortino-at-psfc.mit.edu).
+
+
+Interfacing with SOLPS-ITER
+---------------------------
+
+While running SOLPS-ITER is a complex task, reading and processing its results does't need to be. Aurora offers a convenient Python interface to rapidly load results, set them to convenient data arrays, plot on 1D or 2D grids, etc.
+
+Here's an example of how you could load a SOLPS-ITER run and do some useful plots:
+
+
+.. literalinclude:: ../examples/solps_example.py
+
+
+This example is loading a SOLPS-ITER result for an ITER scenario (described in `this paper <>_` and `this paper<>_`). Note that this data is not distributed with Aurora! You must have the output of a SOLPS-ITER run available to you in order to try out these Aurora capabilities. 
+
+The example above should give the following 2 figures.
+
+.. figure:: figs/aurora_solps_iter.jpg
+    :align: center
+    :alt: example of SOLPS-ITER output
+    :figclass: align-center
+
+    Example of electron density and temperature + atomic D/T neutral density and temperature from a SOLPS-ITER simulation of ITER
+
+.. figure:: figs/aurora_solps_iter_b2_eirene_grids.jpg
+    :align: center
+    :alt: example of SOLPS-ITER output on different grids
+    :figclass: align-center
+
+    Comparison of D/T atomic neutral density on the B2 and EIRENE grids. 

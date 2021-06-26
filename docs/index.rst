@@ -1,4 +1,4 @@
-Aurora: a modern toolbox for impurity transport, neutrals and radiation modeling
+Aurora: a modern toolbox for particle transport and radiation modeling
 ================================================================================
 
 Github repo: https://github.com/fsciortino/Aurora
@@ -15,7 +15,7 @@ Aurora is a package to simulate heavy-ion transport and radiation in magneticall
     :alt: Guido Reni - L'Aurora
     :figclass: align-center
 
-    `Aurora fresco <https://smarthistory.org/reni-aurora/>`, by Guido Reni (circa 1612-1614)
+    `Aurora fresco <https://smarthistory.org/reni-aurora/>`_, by Guido Reni (circa 1612-1614)
 
     
 
@@ -26,7 +26,7 @@ What is Aurora useful for?
 --------------------------
 
 
-Aurora is useful for modeling of particle transport, neutrals and radiation in fusion plasmas.
+Aurora is useful for modeling of particle transport, impurities, neutrals and radiation in fusion plasmas.
 
 The package includes Python functionality to create inputs and read/plot outputs of impurity transport simulations. It was designed to be as efficient as possible in iterative workflows, where parameters (particularly diffusion and convection coefficients) are run through the forward model and repeatedly modified in order to match some experimental observations. For this reason, Aurora avoids any disk input-output (I/O) during operation. All data is kept in memory. 
 

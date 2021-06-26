@@ -589,7 +589,7 @@ class solps_case:
         ax.axis('scaled')
         ax.set_xlabel('R [m]')
         ax.set_ylabel('Z [m]')
-        cbar = plt.colorbar(cntr, format='%.3g', ax=ax)
+        cbar = plt.colorbar(cntr, ax=ax) # format='%.3g'
         #cbar.set_label(label)
         ax.set_title(label)
         cbar = plot_tools.DraggableColorbar(cbar,cntr)
