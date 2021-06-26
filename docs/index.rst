@@ -10,13 +10,15 @@ Overview
 
 Aurora is a package to simulate heavy-ion transport and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model which inherits many of the methods from the historical STRAHL code and has been thoroughly benchmarked with it. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. Aurora's code is mostly written in Python 3 and Fortran 90. A Julia interface has also recently been added. The package enables radiation calculations using ADAS atomic rates, which can easily be applied to the output of Aurora's own forward model, or coupled with other 1D, 2D or 3D transport codes. 
 
-.. figure:: https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Virmalised_18.03.15_%284%29.jpg/1920px-Virmalised_18.03.15_%284%29.jpg
-   :width: 50%
-   :alt: Aurora Borealis, photo by K.Pikner on Wikipedia	   
-   :align: left
+.. figure:: ../figs/guido_reni_aurora.jpg
+    :align: center
+    :alt: Guido Reni - L'Aurora
+    :figclass: align-center
 
-   Inspirational photo of the Aurora Borealis by K.Pikner
-   
+    Aurora fresco, by Guido Reni (circa 1612-1614)
+
+    
+
 This documentation aims at making Aurora usage as clear as possible. Getting started is easy - see the :ref:`Installation` section.  To learn the basics, head to the :ref:`Tutorial` section. 
 
    
@@ -37,7 +39,14 @@ A number of standard tests and examples are provided using a real set of Alcator
 Aurora was born as a fast forward model of impurity transport, but it can also be useful for synthetic spectroscopic diagnostics and radiation modeling in fusion plasmas. For example, it may be helpful for parameter scans to explore the performance of future devices. The :py:func:`~aurora.radiation.radiation_model` method allows one to use ADAS atomic rates and given kinetic profiles to compute line radiation, bremsstrahlung, continuum and soft-x-ray-filtered radiation. Ionization equilibria can also be computed using the :py:meth:`~aurora.atomic` methods, thus enabling simple "constant-fraction" models where the total density of an impurity species is fixed to a certain percentage of the electron density. Background neutrals, either from the edge or from neutral beam injection, can be analyzed using the :py:mod:`aurora.neutrals` and :py:mod:`aurora.nbi_neutrals` libraries.
 
 
-  
+.. figure:: https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Virmalised_18.03.15_%284%29.jpg/1920px-Virmalised_18.03.15_%284%29.jpg
+   :width: 50%
+   :alt: Aurora Borealis, photo by K.Pikner on Wikipedia	   
+   :align: left
+
+   Inspirational photo of the Aurora Borealis by K.Pikner
+
+   
 Documentation contents
 ----------------------
 .. toctree::
