@@ -1,3 +1,4 @@
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np, copy
 import matplotlib.gridspec as mplgs
@@ -66,9 +67,8 @@ def slider_plot(x, y, z, xlabel='', ylabel='', zlabel='', labels=None, plot_sum=
 
     if plot_sum:
         # add sum of the first axis to the plot (and legend)
-        ls = next(ls_cycle)
-        l_sum, = a_plot.plot(x, zz[:, :, 0].sum(axis=0), ls, **kwargs)
-        _ = a_legend.plot([],[], ls, label='total', **kwargs)
+        l_sum, = a_plot.plot(x, zz[:, :, 0].sum(axis=0), c='k', lw=mpl.rcParams['lines.linewidth']*2, **kwargs)
+        _ = a_legend.plot([],[],  c='k', lw=mpl.rcParams['lines.linewidth']*2, label='total', **kwargs)
 
     leg=a_legend.legend(loc='best', fontsize=12).set_draggable(True)
     title = fig.suptitle('')

@@ -77,7 +77,7 @@ You can easily check the quality of particle conservation in the various reservo
 
 which will show the results in full detail. The `reservoirs` output list contains information about how many particles are in the plasma, in the wall reservoir, in the pump, etc.. Refer to the :py:meth:`aurora.core.run_aurora` docstring for details. 
 
-A plot is worth a thousand words, so let's make one for the charge state densities (on a nice slider!):::
+A plot is worth a thousand words, so let's make one for the charge state densities:::
 
   nz = out[0]  # charge state densities are stored first in the output of the run_aurora method
   aurora.slider_plot(asim.rvol_grid, asim.time_out, nz.t.transpose(1,0,2),
@@ -85,6 +85,16 @@ A plot is worth a thousand words, so let's make one for the charge state densiti
                      labels=[str(i) for i in np.arange(0,nz.shape[1])],
 		     plot_sum=True, x_line=asim.rvol_lcfs )
 
+You should get a slider showing a result like the following:
+
+.. figure:: figs/aurora_nz_example.jpeg
+    :align: center
+    :alt: Example of charge state density profiles at the end of an Aurora Ar simulation
+    :figclass: align-center
+
+    Example of charge state density profiles at the end of an Aurora Ar simulation
+
+    
 Use the slider to go over time, as you look at the distributions over radius of all the charge states. It would be really great if you could just save this type of time- and spatially-dependent visualization to a video-format, right? That couldn't be easier, using the :py:func:`~aurora.animate.animate_aurora` function:::
 
   aurora.animate_aurora(asim.rhop_grid, asim.time_out, nz.transpose(1,0,2),
@@ -123,6 +133,17 @@ Results from :py:func:`~aurora.radiation.compute_rad` are collected in a diction
                      xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]',
                      labels=[str(i) for i in np.arange(0,nz.shape[1])],
                      plot_sum=True, x_line=asim.rvol_lcfs)
+
+		    
+This will give you a slider again, showing figures like this:
+
+.. figure:: figs/aurora_line_rad_example.jpeg
+    :align: center
+    :alt: Example of line radiation at the end of an Aurora Ar simulation
+    :figclass: align-center
+
+    Example of line radiation at the end of an Aurora Ar simulation
+
 
 Aurora's radiation modeling capabilities may also be useful when assessing total power radiation for integrated modeling. The :py:func:`~aurora.radiation.radiation_model` function allows one to easily obtain the most important radiation terms at a single time slice, both as power densities (units of :math:`MW/cm^{-3}`) and absolute power (units of :math:`MW`). To obtain the latter form, we need to integrate over flux surface volumes. We can use the `geqdsk` dictionary obtained via::
 
@@ -235,7 +256,24 @@ Note that in order to find the photon emissivity coefficient of specific neutral
   log10pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
   
 
-This will plot the Lyman-alpha photon emissivity coefficients (both the components due to excitation and recombination) as a function of temperature in eV. Some files (e.g. try `pec96#c_pju#c2.dat`) may also have charge exchange components. Note that both the inputs and outputs of the :py:func:`~aurora.atomic.read_adf15` function act on log-10 values, i.e. interpolants should be called on log-10 values of :math:`$n_e$` and :math:`$T_e$`, and the result of interpolation will only be in units of :math:`photons \cdot cm^3/s` after one takes the power of 10 of it.
+This will plot the Lyman-alpha photon emissivity coefficients (both the components due to excitation and recombination) as a function of temperature in eV, as shown in the figures below.
+
+.. figure:: figs/aurora_h_lya_exc_pec.jpeg
+    :align: center
+    :alt: ADAS photon emissivity coefficients for the excitation contribution to the H :math:`Ly_\alpha` transition.
+    :figclass: align-center
+
+    ADAS photon emissivity coefficients for the excitation contribution to the H :math:`Ly_\alpha` transition.
+
+.. figure:: figs/aurora_h_lya_rec_pec.jpeg
+    :align: center
+    :alt: ADAS photon emissivity coefficients for the recombination contribution to the H :math:`Ly_\alpha` transition.
+    :figclass: align-center
+
+    ADAS photon emissivity coefficients for the recombination contribution to the H :math:`Ly_\alpha` transition.
+
+
+Some files (e.g. try `pec96#c_pju#c2.dat`) may also have charge exchange components. Note that both the inputs and outputs of the :py:func:`~aurora.atomic.read_adf15` function act on log-10 values, i.e. interpolants should be called on log-10 values of :math:`n_e` and :math:`T_e`, and the result of interpolation will only be in units of :math:`photons \cdot cm^3/s` after one takes the power of 10 of it.
 
 Analysis routines to work with fast and halo neutrals are also provided in Aurora. Atomic rates for charge exchange of impurities with NBI neutrals are taken from Janev & Smith NF 1993 and can be obtained from :py:func:`~aurora.janev_smith_rates.js_sigma`, which wraps a number of functions for specific atomic processes. To compute charge exchange rates between NBI neutrals (fast or thermal) and any ions in the plasma, users need to provide a prediction of neutral densities, likely from an external code like `FIDASIM`_.
 
@@ -256,11 +294,9 @@ While running SOLPS-ITER is a complex task, reading and processing its results d
 
 Here's an example of how you could load a SOLPS-ITER run and do some useful plots:
 
-
 .. literalinclude:: ../examples/solps_example.py
 
-
-This example is loading a SOLPS-ITER result for an ITER scenario (described in `this paper <>_` and `this paper<>_`). Note that this data is not distributed with Aurora! You must have the output of a SOLPS-ITER run available to you in order to try out these Aurora capabilities. 
+This example is loading a SOLPS-ITER result for an ITER scenario (described in `this paper <https://doi.org/10.1016/j.nme.2019.100696>_` and `this paper <https://arxiv.org/abs/2106.04528>_`). Note that these data are not distributed with Aurora! You must have the output of a SOLPS-ITER run available to you in order to try out these Aurora capabilities. 
 
 The example above should give the following 2 figures.
 
