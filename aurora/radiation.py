@@ -853,15 +853,22 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, ion_exc_rec_dens,
 
     nlines = len(list(log10pec_dict.keys()))
     wave_A = np.zeros(nlines)
- 
+
     pec = {}
     for typ in ['ioniz', 'excit', 'recom','chexc', 'drsat' ]:
         pec[typ] = np.zeros(nlines)
         for ii,lam in enumerate(log10pec_dict):
             wave_A[ii] = lam
             if typ in log10pec_dict[lam]:
-                pec[typ][ii] = 10**log10pec_dict[lam][typ].ev(np.log10(ne_cm3),np.log10(Te_eV))
-        
+                pec[typ][ii] = 0.0
+                if isinstance(log10pec_dict[lam][typ], dict): # metastable resolved
+                    for metastable in log10pec_dict[lam][typ]: # loop over all metastables
+                        pec[typ][ii] += 10**log10pec_dict[lam][typ][metastable].ev(
+                            np.log10(ne_cm3),np.log10(Te_eV))
+                else:
+                    # no metastables
+                    pec[typ][ii] += 10**log10pec_dict[lam][typ].ev(np.log10(ne_cm3),np.log10(Te_eV))
+                        
     # Doppler broadening
     mass = constants.m_p * ion_A
     dnu_g = np.sqrt(2.*(Ti_eV*constants.e)/mass)*(constants.c/wave_A)/constants.c
