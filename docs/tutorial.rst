@@ -295,6 +295,7 @@ Neutral densities for each fast ion population (full-,half- and third-energy), m
 Finally, :py:func:`~aurora.nbi_neutrals.get_NBI_imp_cxr_q` shows how flux-surface-averaged charge exchnage recombination rates between an impurity ion of charge `q` with NBI neutrals (all populations, fast and thermal) can be computed for use in Aurora forward modeling. For more details, feel free to contact Francesco Sciortino (sciortino-at-psfc.mit.edu).
 
 
+
 Interfacing with SOLPS-ITER
 ---------------------------
 
@@ -321,3 +322,45 @@ The example above should give the following 2 figures.
     :figclass: align-center
 
     Comparison of D/T atomic neutral density on the B2 and EIRENE grids. 
+
+
+Atomic spectra
+--------------
+
+If you have atomic data files containing photon emissivity coefficients (PECs) in ADF15 format, you can use Aurora to combine them and see what the overall spectrum might look like. Let's say you want to look at the :math:`K_\alpha` spectrum of Ca at a specific electron density of :math:`10^{14}` :math:`cm^{-3}` and temperature of 1 keV. Let's begin with a single ADF15 file named::
+
+  filepath_he='~/pec#ca18.dat'
+
+The simplest way to check what the spectrum may look like is to weigh contributions from different charge states according to their fractional abundances at ionization equilibrium. Aurora allows you to get the fractional abundances with just a couple of lines:::
+
+  ion = 'Ca'
+  ne_cm3 = 1e14
+  Te_eV = 1e3
+  atom_data = aurora.get_atom_data(ion,['scd','acd'])
+  logTe, fz = aurora.get_frac_abundances(atom_data, np.array([ne_cm3,]), np.array([Te_eV,]), plot=False)
+
+You can now use the `aurora.get_local_spectrum` function to read all the lines in each ADF15 file and broaden them according to some ion temperature (which could be dictated by broadening mechanisms other than Doppler effects, in principle). For our example, one can do:::
+
+  # He-like state
+  out= aurora.get_local_spectrum(filepath_he, ion, ne_cm3, Te_eV, n0_cm3=0.0,
+                               ion_exc_rec_dens=[fz[0,-4], fz[0,-3], fz[0,-2]], # Li-like, He-like, H-like
+                               dlam_A = 0.0, plot_spec_tot=False, no_leg=True, plot_all_lines=True, ax=None)
+  wave_final_he, spec_ion_he, spec_exc_he, spec_rec_he, spec_dr_he, spec_cx_he, ax = out
+
+By changing the `dlam_A` parameter, you can also add a wavelength shift (e.g. from the Doppler effect). The `ion_exc_rec_dens` parameter allows specification of fractional abundances for the charge stages of interest. To be quite general, in the lines above we have included contributions to the spectrum from ionizing, excited and recombining PEC components. By passing an `ax` argument one can also specify which matplotlib axes are used for plotting.
+
+By repeating the same operations using several ADF15 files, one can overplot contributions to the spectrum from several charge states.
+
+If you just want to plot where atomic lines are expected to be and how intense their PECs are at specific plasma conditions, you can also use the simpler `aurora.adf15_line_identification` function. This can be called as::
+
+  aurora.adf15_line_identification(pec_files, Te_eV=Te_eV, ne_cm3=ne_cm3, mult=mult)
+
+and can be used to plot something like this:
+
+.. figure:: figs/spectrum_adf15_identification.jpg
+    :align: center
+    :alt: example of Ca spectrum overview combining several PEC files
+    :figclass: align-center
+
+    Example of Ca spectrum overview combining several PEC files
+
