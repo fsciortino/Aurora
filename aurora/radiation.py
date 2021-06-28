@@ -734,8 +734,8 @@ def _plot_pec(dens, temp, PEC, PEC_eval, lam,cs,rate_type, ax=None, plot_3d=Fals
     return ax1
 
 
-def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
-                       Ti_eV=None, n0_cm3=0.0, ion_exc_rec_dens=None, dlam_A=0.0,
+def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, ion_exc_rec_dens,
+                       Ti_eV=None, n0_cm3=0.0, dlam_A=0.0,
                        plot_spec_tot=True, plot_all_lines=False, no_leg=False, ax=None):
     r'''Plot spectrum based on the lines contained in an ADAS ADF15 file
     at specific values of electron density and temperature. Charge state densities
@@ -754,15 +754,17 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
     Te_eV : float
         Local value of electron temperature, in units of :math:`eV`. This is used to evaluate 
         local values of photon emissivity coefficients.
+    ion_exc_rec_dens : list of 3 floats
+        Density of ionizing, excited and recombining charge states that may contribute to 
+        emission from the given ADF15 file. In the absence of charge state densities from 
+        particle transport modeling, these scalars may be taken from the output of 
+        :py:fun:`aurora.atomic.get_frac_abundances`.
     Ti_eV : float
         Local value of ion temperature, in units of :math:`eV`. This is used to represent the 
         effect of Doppler broadening. If left to None, it is internally set equal to `Te_eV`.
     n0_cm3 : float, optional
         Local density of atomic neutral hydrogen isotopes. This is only used if the provided
         ADF15 file contains charge exchange contributions.
-    ion_exc_rec_dens : list of 3 floats or None
-        Density of ionizing, excited and recombining charge states that may contribute to 
-        emission from the given ADF15 file. If left to None, ionization equilibrium is assumed.
     dlam_A : float or 1D array
         Doppler shift in A. This can either be a scalar or an array of the same shape as the 
         output wavelength array. For the latter option, it is recommended to call this function
@@ -849,19 +851,6 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV,
     ion_Z = int(out[spec]['Z'])
     ion_A = int(out[spec]['A'])
 
-    if ion_exc_rec_dens is None: 
-        # use ionization equilibrium fractional abundances as densities
-
-        # get charge state distributions from ionization equilibrium
-        files = ['scd','acd','ccd']
-        atom_data = atomic.get_atom_data(ion,files)
-
-        # always include charge exchange, although n0_cm3 may be 0
-        logTe, fz, rates = atomic.get_frac_abundances(
-            atom_data, np.array([ne_cm3,]), np.array([Te_eV,]),
-            n0_by_ne=np.array([n0_cm3/ne_cm3,]), include_cx=True, plot=False)
-        ion_exc_rec_dens = [fz[0][-4], fz[0][-3], fz[0][-2]] # Li-like, He-like, H-like
-    
     nlines = len(list(log10pec_dict.keys()))
     wave_A = np.zeros(nlines)
  
