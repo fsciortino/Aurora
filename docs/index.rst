@@ -41,9 +41,8 @@ Aurora was born as a fast forward model of impurity transport, but it can also b
 
 .. figure:: https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Virmalised_18.03.15_%284%29.jpg/1920px-Virmalised_18.03.15_%284%29.jpg
    :width: 50%
-   :alt: Aurora Borealis, photo by K.Pikner on Wikipedia	   
-   :align: left
-
+   :alt: Aurora Borealis, photo by K.Pikner on Wikipedia
+   :align: center
    Inspirational photo of the Aurora Borealis by K.Pikner
 
    

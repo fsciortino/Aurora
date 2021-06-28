@@ -267,6 +267,7 @@ Note that in order to find the photon emissivity coefficient of specific neutral
 This will plot the Lyman-alpha photon emissivity coefficients (both the components due to excitation and recombination) as a function of temperature in eV, as shown in the figures below.
 
 .. figure:: figs/aurora_h_lya_exc_pec.jpeg
+    :width: 500
     :align: center
     :alt: ADAS photon emissivity coefficients for the excitation contribution to the H :math:`Ly_\alpha` transition.
     :figclass: align-center
@@ -274,6 +275,7 @@ This will plot the Lyman-alpha photon emissivity coefficients (both the componen
     ADAS photon emissivity coefficients for the excitation contribution to the H :math:`Ly_\alpha` transition.
 
 .. figure:: figs/aurora_h_lya_rec_pec.jpeg
+    :width: 500
     :align: center
     :alt: ADAS photon emissivity coefficients for the recombination contribution to the H :math:`Ly_\alpha` transition.
     :figclass: align-center
@@ -331,7 +333,7 @@ If you have atomic data files containing photon emissivity coefficients (PECs) i
 
   filepath_he='~/pec#ca18.dat'
 
-The simplest way to check what the spectrum may look like is to weigh contributions from different charge states according to their fractional abundances at ionization equilibrium. Aurora allows you to get the fractional abundances with just a couple of lines:::
+The simplest way to check what the spectrum may look like is to weigh contributions from different charge states according to their fractional abundances at ionization equilibrium. Aurora allows you to get the fractional abundances with just a couple of lines::
 
   ion = 'Ca'
   ne_cm3 = 1e14
@@ -339,12 +341,13 @@ The simplest way to check what the spectrum may look like is to weigh contributi
   atom_data = aurora.get_atom_data(ion,['scd','acd'])
   logTe, fz = aurora.get_frac_abundances(atom_data, np.array([ne_cm3,]), np.array([Te_eV,]), plot=False)
 
-You can now use the `aurora.get_local_spectrum` function to read all the lines in each ADF15 file and broaden them according to some ion temperature (which could be dictated by broadening mechanisms other than Doppler effects, in principle). For our example, one can do:::
+You can now use the `aurora.get_local_spectrum` function to read all the lines in each ADF15 file and broaden them according to some ion temperature (which could be dictated by broadening mechanisms other than Doppler effects, in principle). For our example, one can do::
 
   # He-like state
   out= aurora.get_local_spectrum(filepath_he, ion, ne_cm3, Te_eV, n0_cm3=0.0,
                                ion_exc_rec_dens=[fz[0,-4], fz[0,-3], fz[0,-2]], # Li-like, He-like, H-like
-                               dlam_A = 0.0, plot_spec_tot=False, no_leg=True, plot_all_lines=True, ax=None)
+                               dlam_A = 0.0, plot_spec_tot=False, no_leg=True,
+			       plot_all_lines=True, ax=None)
   wave_final_he, spec_ion_he, spec_exc_he, spec_rec_he, spec_dr_he, spec_cx_he, ax = out
 
 By changing the `dlam_A` parameter, you can also add a wavelength shift (e.g. from the Doppler effect). The `ion_exc_rec_dens` parameter allows specification of fractional abundances for the charge stages of interest. To be quite general, in the lines above we have included contributions to the spectrum from ionizing, excited and recombining PEC components. By passing an `ax` argument one can also specify which matplotlib axes are used for plotting.
