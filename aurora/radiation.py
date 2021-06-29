@@ -352,12 +352,11 @@ def radiation_model(imp, rhop, ne_cm3, Te_eV, geqdsk,
 
         if n0_cm3 is None:
             # obtain fractional abundances without CX:
-            logTe, out['fz'] = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot)
+            _Te, out['fz'] = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot)
         else:
             # include CX for ionization balance:
-            logTe, out['fz'] = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot,
+            _Te, out['fz'] = atomic.get_frac_abundances(atom_data,ne_cm3,Te_eV,rho=rhop, plot=plot,
                                                    include_cx=True, n0_by_ne=n0_cm3/ne_cm3)
-        out['logTe'] = logTe
         
         # Impurity densities
         nz_cm3 = frac * ne_cm3[None,:,None] * out['fz'][None,:,:]  # (time,nZ,space)
@@ -758,7 +757,7 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, ion_exc_rec_dens,
         Density of ionizing, excited and recombining charge states that may contribute to 
         emission from the given ADF15 file. In the absence of charge state densities from 
         particle transport modeling, these scalars may be taken from the output of 
-        :py:fun:`aurora.atomic.get_frac_abundances`.
+        :py:func:`aurora.atomic.get_frac_abundances`.
     Ti_eV : float
         Local value of ion temperature, in units of :math:`eV`. This is used to represent the 
         effect of Doppler broadening. If left to None, it is internally set equal to `Te_eV`.
@@ -988,12 +987,12 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, ion_resolved=False, supe
     if superstages is None:
         superstages = []
 
-    logTe, fz = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV, plot=False,
+    _Te, fz = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV, plot=False,
                                            n0_by_ne=n0_cm3/ne_cm3)
 
     if superstages:
         fz_full = copy.deepcopy(fz)
-        logTe, fz = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV, plot=False,
+        _Te, fz = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV, plot=False,
                                                n0_by_ne=n0_cm3/ne_cm3, superstages=superstages)
     
 
@@ -1006,10 +1005,10 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, ion_resolved=False, supe
     PRB = atomic.interp_atom_prof(atom_data['prs' if sxr else 'prb'],None, np.log10(Te_eV)) # continuum radiation [W.cm^3]
 
     # zero bremstrahlung of neutral stage
-    PRB = np.hstack(( np.zeros((logTe.size,1)), PRB))
+    PRB = np.hstack(( np.zeros((_Te.size,1)), PRB))
 
     # zero line radiation of fully stripped ion stage
-    PLT = np.hstack((PLT, np.zeros((logTe.size,1))))
+    PLT = np.hstack((PLT, np.zeros((_Te.size,1))))
     
     if len(superstages) and fz_full is not None:
         # superstage radiation data
@@ -1116,7 +1115,7 @@ def adf15_line_identification(pec_files, lines=None, Te_eV = 1e3, ne_cm3=5e13, m
     >>> pec_files = ['mypecs1','mypecs2','mypecs3']
     >>> Te_eV=500; ne_cm3=5e13; ion='Ar'   # examples
     >>> atom_data = aurora.atomic.get_atom_data(ion,['scd','acd'])
-    >>> logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne_cm3, Te_eV, plot=False)
+    >>> _Te, fz = aurora.atomic.get_frac_abundances(atom_data, ne_cm3, Te_eV, plot=False)
     >>> mult = [fz[0,10], fz[0,11], fz[0,12]] # to select charge states 11+, 12+ and 13+, for example
     >>> adf15_line_identification(pec_files, Te_eV=Te_eV, ne_cm3=ne_cm3, mult=mult)
     '''

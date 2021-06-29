@@ -39,7 +39,7 @@ namelist['source_rate'] = 1e31  # particles/s
 atom_data = aurora.atomic.get_atom_data(imp,['scd','acd'])
 
 # get fractional abundances on ne (cm^-3) and Te (eV) grid
-logTe, fz = aurora.atomic.get_frac_abundances(atom_data, ne, Te, rho =rhop, plot=False)
+_Te, fz = aurora.atomic.get_frac_abundances(atom_data, ne, Te, rho =rhop, plot=False)
 
 # initial guess for steady state Ar charge state densities
 nz_init = 1e-25 * ne[:,None] * fz
