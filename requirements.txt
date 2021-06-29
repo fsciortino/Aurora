@@ -5,3 +5,4 @@ xarray
 pexpect
 omfit_classes
 requests
+uncertainties
