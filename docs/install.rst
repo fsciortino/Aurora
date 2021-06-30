@@ -32,18 +32,11 @@ The latest release is now available via PyPI using::
 	     
 Installing via conda is also possible using
 
-    conda install -c sciortino aurorafusion 
+    conda install -c conda-forge aurorafusion
 
-.. image:: https://anaconda.org/sciortino/aurorafusion/badges/version.svg
-    :target: https://anaconda.org/sciortino/aurorafusion
-    
-.. image:: https://anaconda.org/sciortino/aurorafusion/badges/latest_release_relative_date.svg
-    :target: https://anaconda.org/sciortino/aurorafusion
+.. image:: https://anaconda.org/conda-forge/aurorafusion/badges/version.svg   
+    :target: https://anaconda.org/conda-forge/aurorafusion
 
-.. warning::
-
-	The conda version is NOT updated very regularly. If this kind of installation is your preference, feel free to contact us to request an update. 
-	The conda installation does not currently install dependencies on `omfit_classes <https://pypi.org/project/omfit-classes/>`_, which users may need to install via `pip`. 
 
 
 Running with Julia
