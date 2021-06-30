@@ -733,7 +733,7 @@ def _plot_pec(dens, temp, PEC, PEC_eval, lam,cs,rate_type, ax=None, plot_3d=Fals
     return ax1
 
 
-def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, ion_exc_rec_dens,
+def get_local_spectrum(adf15_file, ion, ne_cm3, Te_eV, ion_exc_rec_dens,
                        Ti_eV=None, n0_cm3=0.0, dlam_A=0.0,
                        plot_spec_tot=True, plot_all_lines=False, no_leg=False, ax=None):
     r'''Plot spectrum based on the lines contained in an ADAS ADF15 file
@@ -743,9 +743,10 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, ion_exc_rec_dens,
 
     Parameters
     ----------
-    adf15_filepath : str
-        Path on disk to the ADAS ADF15 file of interest. All wavelengths and radiating
-        components will be read. 
+    adf15_file : str or dict
+        Path on disk to the ADAS ADF15 file of interest or dictionary returned when calling the :py:func:`~aurora.radiation.read_adf15`
+        with this file path as an argument. All wavelengths and radiating components in the file or dictionary
+        will be read/processed.
     ion : str
         Atomic symbol of ion of interest, e.g. 'Ar'
     ne_cm3 : float
@@ -834,13 +835,16 @@ def get_local_spectrum(adf15_filepath, ion, ne_cm3, Te_eV, ion_exc_rec_dens,
     else:
         Ti_eV=float(Ti_eV)
     n0_cm3=float(n0_cm3)
-    
-    # read ADF15 file
-    log10pec_dict = read_adf15(adf15_filepath)
 
-    # get charge state from file name -- assumes standard nomenclature, {classifier}#{ion}{charge}.dat
-    cs = adf15_filepath.split('#')[-1].split('.dat')[0]
-    
+    if isinstance(adf15_file, str):
+        # read ADF15 file
+        log10pec_dict = read_adf15(adf15_file)
+    elif isinstance(adf15_file, dict):
+        # user passed dictionary containing a cached log10pec_dict
+        log10pec_dict = adf15_file
+    else:
+        raise ValueError('Unrecognized adf15_file format!')
+
     # import here to avoid issues when building docs or package
     from omfit_classes.utils_math import atomic_element
     
