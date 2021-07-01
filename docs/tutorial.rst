@@ -145,26 +145,18 @@ This will give you a slider again, showing figures like this:
     Example of line radiation at the end of an Aurora Ar simulation
 
 
-Aurora's radiation modeling capabilities may also be useful when assessing total power radiation for integrated modeling. The :py:func:`~aurora.radiation.radiation_model` function allows one to easily obtain the most important radiation terms at a single time slice, both as power densities (units of :math:`MW/cm^{-3}`) and absolute power (units of :math:`MW`). To obtain the latter form, we need to integrate over flux surface volumes. We can use the `geqdsk` dictionary obtained via::
+Aurora's radiation modeling capabilities may also be useful when assessing total power radiation for integrated modeling. The :py:func:`~aurora.radiation.radiation_model` function allows one to easily obtain the most important radiation terms at a single time slice, both as power densities (units of :math:`MW/cm^{-3}`) and absolute power (units of :math:`MW`). To obtain the latter form, we need to integrate over flux surface volumes. To do so, we make use of the `geqdsk` dictionary obtained via::
 
   geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
 
-(or equivalent methods/files) to then extract flux surface volumes (units of :math:`m^3`) at each value of `rhop`:::
+We then pass that to :py:func:`~aurora.radiation.radiation_model`, together with the impurity atomic symbol (`imp`), the `rhop` grid array, electron density (`ne_cm3`) and temperature (`Te_eV`), and optionally also background neutral densities to include thermal charge exchange:::
 
-  grhop = np.sqrt(geqdsk['fluxSurfaces']['geo']['psin'])
-  gvol = geqdsk['fluxSurfaces']['geo']['vol']
-
-  # interpolate on our grid
-  vol = interp1d(grhop, gvol)(rhop)
-
-We can now pass the `vol` array to :py:func:`~aurora.radiation.radiation_model`, together with the impurity atomic symbol (`imp`), the `rhop` grid array, electron density (`ne_cm3`) and temperature (`Te_eV`) and, optionally, also background neutral densities to include thermal charge exchange:::
-
-  res = aurora.radiation_model(imp,rhop,ne_cm3,Te_eV, vol,
+  res = aurora.radiation_model(imp,rhop,ne_cm3,Te_eV, geqdsk,
                                n0_cm3=None, frac=0.005, plot=True)
 
-Here we specified the impurity densities as a simple fraction of the electron density profile, by specifying the `frac` argument. This is obviously a simplifying assumption, effectively stating that the total impurity density profile should have a maximum amplitude of `frac` (in the case above, set to 0.005) and a profile shape (corresponding t a profile of `V/D`) that is identical to the one of the :math:`n_e` profile. This may be convenient for parameter scans in the design process of future devices, but is by no means a correct assumption. If we'd rather calculate the total radiated power from a specific set of impurity charge state profiles (e.g. from an Aurora simulation), we can do::
+Here we specified the impurity densities as a simple fraction of the electron density profile, by specifying the `frac` argument. This is obviously a simplifying assumption, effectively stating that the total impurity density profile should have a maximum amplitude of `frac` (in the case above, set to 0.005) and a profile shape (corresponding to a profile of `V/D`) that is identical to the one of the :math:`n_e` profile. This may be convenient for parameter scans in the design process of future devices, but is by no means a correct assumption. If we'd rather calculate the total radiated power from a specific set of impurity charge state profiles (e.g. from an Aurora simulation), we can do::
 
-  res = aurora.radiation_model(imp,rhop,ne_cm3,Te_eV, vol,
+  res = aurora.radiation_model(imp,rhop,ne_cm3,Te_eV, geqdsk,
                                n0_cm3=None, nz_cm3=nz_cm3, plot=True)
 
 
@@ -182,7 +174,7 @@ with a number of impurity charge state densities with dimensions of (time,charge
 
   niz_cm3 = np.vstack((n0_cm3[None,:],ni_cm3)).T
 
-such that the `niz_cm3` output is a 2D array of dimensions (charge state, radius). 
+such that the `niz_cm3` output is a 2D array of dimensions (charge states, radii). 
 
 To estimate main ion radiation we can now do::
   
