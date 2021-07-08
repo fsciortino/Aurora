@@ -73,6 +73,14 @@ out = asim.run_aurora(D_z, V_z, plot=plot)
 # extract densities and particle numbers in each simulation reservoir
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
 
+if plot:
+    # plot charge state distributions over radius and time
+    aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,0,2),
+                                  xlabel=r'$r_V$ [cm]', ylabel='time [s]',
+                                  zlabel=r'$n_z$ [$cm^{-3}$]',
+                                  labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                                  plot_sum=True, x_line=asim.rvol_lcfs)
+
 # add radiation
 asim.rad = aurora.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te,
                               prad_flag=True, thermal_cx_rad_flag=False, 
