@@ -234,7 +234,7 @@ def lbo_source_function(t_start, t_rise, t_fall, n_particles=1.0, time_vec=None)
 
 
 
-def get_radial_source(namelist, rvol_grid, pro_grid, S_rates,nt, Ti_eV=None):
+def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
     '''Obtain spatial dependence of source function.
 
     If namelist['source_width_in']==0 and namelist['source_width_out']==0, the source
@@ -266,7 +266,12 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates,nt, Ti_eV=None):
         Radial profile of the impurity neutral source for each time step.
     '''
     r_src = namelist['rvol_lcfs'] + namelist['source_cm_out_lcfs']
-
+    nt = S_rates.shape[1]
+    try:
+        assert S_rates.shape==Ti_eV.shape
+    except AssertionError as msg:
+        raise AssertionError(msg)
+    
     source_rad_prof = np.zeros_like(S_rates)
 
     # find index of radial grid vector that is just greater than r_src
@@ -341,7 +346,6 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates,nt, Ti_eV=None):
     
     # broadcast in right shape if time averaged profiles are used
     source_rad_prof = np.broadcast_to(source_rad_prof, (source_rad_prof.shape[0], nt))
-
 
     return source_rad_prof
 

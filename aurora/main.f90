@@ -1,18 +1,18 @@
-! AURORA - a modern radial impurity transport forward model
-! Copyright (c) 2020- Francesco Sciortino
+! aurora - a modern radial impurity transport forward model
+! Copyright (c) 2020 Francesco Sciortino
 
 subroutine run(  &
         nion, ir, nt, &
         nt_out,  nt_trans, &
         t_trans, D, V, &
-        par_loss_rates, src_rad_prof, &
+        par_loss_rates, src_rad_prof, src_rcl_prof, &
         S_rates, R_rates,  &
         rr, pro, qpr, &
         r_saw, dlen,  &
         time, &
-        saw, flx,  it_out, &
+        saw, it_out, &
         dsaw, &
-        rcl, divbls, taudiv, &
+        rcl, divflx, taudiv, &
         taupump, tauwret, &
         rvol_lcfs, dbound, dlim, prox, &
         rn_t0, &
@@ -52,7 +52,11 @@ subroutine run(  &
   !     par_loss_rates  real*8 (ir,nt)
   !                    Frequency for parallel loss on radial and time grids [1/s]
   !     src_rad_prof real*8 (ir,nt)
-  !                    Radial profile of neutrals over time: n0(ir,t) = flx*src_rad_prof(ir,t).
+  !                    Radial profile of neutrals over time.
+  !     src_rcl_prof real*8 (ir)
+  !                    Radial distribution of impurities re-entering the core reservoir after recycling.
+  !                    NB: this should be a normalized profile! This condition is NOT enforced internally.
+  !                    If not provided, this is set to be equal to a normalized src_prof (the external source distribution)    
   !     S_rates      real*8 (ir,nion,nt)
   !                    Ionisation rates (nz=nion must be filled with zeros).
   !     R_rates      real*8 (ir,nion,nt)
@@ -74,9 +78,6 @@ subroutine run(  &
   !     saw          integer (nt)
   !                    Switch to induce a sawtooth crashes
   !                    If saw(it) eq 1 there is a crash at time(it)
-  !     flx          real*8 (nt)
-  !                    Impurity influx per unit length and time [1/cm/s]
-  !                    (only 1 to nt-1 are used)
   !     it_out       integer (nt)
   !                    Store the impurity distributions if it_out(it).eq.1
   !     dsaw         real*8
@@ -86,9 +87,8 @@ subroutine run(  &
   !                    However, if set to a value <0, then this is interpreted as a flag, indicating
   !                    that particles in the divertor should NEVER return to the main plasma.
   !                    This is effectively what the rclswitch flag does in STRAHL (confusingly).
-  !     divbls       real*8
-  !                    Fraction of the total flux (given by flx) that is directed to the divertor
-  !                    reservoir. This value should be between 0 and 1.
+  !     divflx       real*8
+  !                    Flux of particles going into the divertor, given as a function of time.
   !     taudiv       real*8
   !                    Time scale for transport out of the divertor reservoir [s]
   !     taupump      real*8
@@ -152,11 +152,12 @@ subroutine run(  &
   INTEGER, INTENT(IN)                  :: nt_out   ! required as input
   INTEGER, INTENT(IN)                  :: nt_trans
 
-  REAL*8, INTENT(IN)                    :: t_trans(nt_trans)
-  REAL*8, INTENT(IN)                    :: D(ir,nt_trans,nion)
-  REAL*8, INTENT(IN)                    :: V(ir,nt_trans,nion)
-  REAL*8, INTENT(IN)                    :: par_loss_rates(ir,nt)
-  REAL*8, INTENT(IN)                    :: src_rad_prof(ir,nt)
+  REAL*8, INTENT(IN)                   :: t_trans(nt_trans)
+  REAL*8, INTENT(IN)                   :: D(ir,nt_trans,nion)
+  REAL*8, INTENT(IN)                   :: V(ir,nt_trans,nion)
+  REAL*8, INTENT(IN)                   :: par_loss_rates(ir,nt)
+  REAL*8, INTENT(IN)                   :: src_rad_prof(ir,nt)
+  REAL*8, INTENT(IN)                   :: src_rcl_prof(ir)  
 
   REAL*8, INTENT(IN)                   :: S_rates(ir,nion,nt)
   REAL*8, INTENT(IN)                   :: R_rates(ir,nion,nt)
@@ -172,29 +173,28 @@ subroutine run(  &
 !!!  REAL*8, INTENT(IN)                   :: time_out(nt_out)
 
   INTEGER, INTENT(IN)                  :: saw(nt)
-  REAL*8, INTENT(IN)                   :: flx(nt)
   INTEGER, INTENT(IN)                  :: it_out(nt)   !!!
 
   REAL*8, INTENT(IN)                   :: dsaw
 
   ! recycling inputs
-  REAL*8, INTENT(IN)                       :: rcl
-  REAL*8, INTENT(IN)                       :: divbls
-  REAL*8, INTENT(IN)                       :: taudiv
-  REAL*8, INTENT(IN)                       :: taupump
-  REAL*8, INTENT(IN)                       :: tauwret   ! renamed from rclret
+  REAL*8, INTENT(IN)                   :: rcl
+  REAL*8, INTENT(IN)                   :: divflx(nt)
+  REAL*8, INTENT(IN)                   :: taudiv
+  REAL*8, INTENT(IN)                   :: taupump
+  REAL*8, INTENT(IN)                   :: tauwret
 
   ! edge
-  REAL*8, INTENT(IN)                       :: rvol_lcfs
-  REAL*8, INTENT(IN)                       :: dbound
-  REAL*8, INTENT(IN)                       :: dlim
-  REAL*8, INTENT(IN)                       :: prox
+  REAL*8, INTENT(IN)                   :: rvol_lcfs
+  REAL*8, INTENT(IN)                   :: dbound
+  REAL*8, INTENT(IN)                   :: dlim
+  REAL*8, INTENT(IN)                   :: prox
 
   ! t=0 impurity densities
-  REAL*8, INTENT(IN), OPTIONAL      :: rn_t0(ir,nion)
+  REAL*8, INTENT(IN), OPTIONAL         :: rn_t0(ir,nion)
 
-  INTEGER, INTENT(IN), OPTIONAL     :: alg_opt
-  LOGICAL, INTENT(IN), OPTIONAL     :: evolneut
+  INTEGER, INTENT(IN), OPTIONAL        :: alg_opt
+  LOGICAL, INTENT(IN), OPTIONAL        :: evolneut
   
   ! outputs
   REAL*8, INTENT(OUT)                  :: rn_out(ir,nion,nt_out)
@@ -297,10 +297,11 @@ subroutine run(  &
         call impden0( nion, ir, ra, rn,  &   !OUT: rn
              diff, conv, par_loss_rates(:,it), src_rad_prof(:,it), &
              S_rates(:,:,it), R_rates(:,:,it),  &
-             rr, pro, qpr, flx(it-1), dlen,  &
+             rr, pro, qpr, &
+             dlen,  &
              dt, &   ! full time step
              rcl, tsu, dsul, divold, & ! tsu,dsul,divnew from previous recycling step
-             divbls, taudiv, tauwret, &
+             taudiv, tauwret, &
              a, b, c, d1, bet, gam, &  ! re-use memory allocation
              Nret, &         ! INOUT: Nret
              rcld, rclw )    !OUT: rcld, rclw
@@ -308,12 +309,14 @@ subroutine run(  &
      else   ! currently use Linder algorithm for any option other than 0
         ! Linder algorithm
         call impden1(nion, ir, ra, rn,&
-             diff, conv, par_loss_rates(:,it), src_rad_prof(:,it), &
+             diff, conv, par_loss_rates(:,it), &
+             src_rad_prof(:,it), src_rcl_prof, &
              S_rates(:,:,it), R_rates(:,:,it),  &
-             rr, flx(it-1), dlen, &
+             rr, &
+             dlen, &
              dt,  &    ! renaming dt-->det. In this subroutine, dt is half-step
              rcl, tsu, dsul, divold, &
-             divbls, taudiv,tauwret, &
+             taudiv,tauwret, &
              evolveneut, &  
              Nret, rcld,rclw)
        
@@ -330,7 +333,7 @@ subroutine run(  &
           dbound, dlim, prox, &
           rr, pro,  &
           rcl,taudiv,taupump, &
-          divbls, divold, flx(it-1), &
+          divflx, divold, &
           divnew, &        ! OUT: update to divold
           tve, npump, &     ! INOUT: updated values
           tsu, dsu, dsul)  ! OUT: updated by edge model
@@ -451,7 +454,7 @@ subroutine edge_model(&
     dbound, dlim, prox, &
     rr, pro,  &
     rcl,taudiv,taupump, &
-    divbls, divold, flx, &
+    divflx, divold, &
     divnew, tve, npump, tsu,dsu,dsul )
 
   IMPLICIT NONE
@@ -479,9 +482,8 @@ subroutine edge_model(&
   REAL*8, INTENT(IN)                       :: taudiv  !time scale for divertor
   REAL*8, INTENT(IN)                       :: taupump !time scale for pump
 
-  REAL*8, INTENT(IN)                       :: divbls
+  REAL*8, INTENT(IN)                       :: divflx
   REAL*8, INTENT(IN)                       :: divold !particles initially in divertor (to update)
-  REAL*8, INTENT(IN)                       :: flx
 
   REAL*8, INTENT(OUT)                    :: divnew !particles in divertor (updated)
   REAL*8, INTENT(INOUT)                 :: tve   !particles at wall (updated)
@@ -553,9 +555,9 @@ subroutine edge_model(&
      taustar = 1./(1./taudiv+1./taupump)    ! time scale for divertor depletion
      ff = .5*det/taustar
      !divnew = ( divold*(1.-ff) + det*dsu )/(1.+ff)
-     divnew = ( divold*(1.-ff) + (dsu + flx*divbls)*det )/(1.+ff)     ! FS corrected
+     divnew = ( divold*(1.-ff) + (dsu + divflx)*det )/(1.+ff)     ! FS corrected
   else
-     divnew = divold + (dsu+flx*divbls)*det
+     divnew = divold + (dsu+divflx)*det
   endif
 
   ! particles in pump

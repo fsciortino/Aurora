@@ -169,7 +169,7 @@ class aurora_sim:
         if self.namelist['saw_model']['saw_flag'] and len(self.saw_times)>0:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
 
-
+        
     def setup_kin_profs_depts(self):
         '''Method to set up Aurora inputs related to the kinetic background from namelist inputs.
         '''        
@@ -201,31 +201,32 @@ class aurora_sim:
 
         if np.ndim(self.namelist['explicit_source_vals'])==2:
             # interpolate explicit source values on time and rhop grids of simulation
-            source_rad_prof = RectBivariateSpline(self.namelist['explicit_source_rhop'],
-                                                  self.namelist['explicit_source_time'],
-                                                  self.namelist['explicit_source_vals'].T,
-                                                  kx=1,ky=1)(self.rhop_grid, self.time_grid)
-            
-            # get first ionization stage
-            pnorm = np.pi*np.sum(source_rad_prof*S0*(self.rvol_grid/self.pro_grid)[:,None],0)
-            self.source_time_history = pnorm
-            
-            # neutral density for influx/unit-length = 1/cm
-            self.source_rad_prof = source_rad_prof/pnorm
+            self.source_2d = RectBivariateSpline(self.namelist['explicit_source_rhop'],
+                                                       self.namelist['explicit_source_time'],
+                                                       self.namelist['explicit_source_vals'].T,
+                                                       kx=1,ky=1)(self.rhop_grid, self.time_grid)
 
         else:
             # get time history and radial profiles separately
-            self.source_time_history = source_utils.get_source_time_history(
+            source_time_history = source_utils.get_source_time_history(
                 self.namelist, self.Raxis_cm, self.time_grid)
             
             # get radial profile of source function for each time step
-            self.source_rad_prof = source_utils.get_radial_source(self.namelist,
+            source_rad_prof = source_utils.get_radial_source(self.namelist,
                                                                   self.rvol_grid, self.pro_grid,
                                                                   S0,   # 0th charge state (neutral) and 0th time
-                                                                  len(self.time_grid),self._Ti)
-            
+                                                                  self._Ti)
+
+            source_2d = source_rad_prof[:,None]*source_time_history[None,:]
         
-        self.source_rad_prof = np.asfortranarray(self.source_rad_prof)
+        self.source_2d = np.asfortranarray(self.source_2d)
+        
+        # set recycling profile simply based on the standard source profile at 0th time step
+        self.src_rcl_prof = source_utils.get_radial_source(self.namelist,
+                                                           self.rvol_grid, self.pro_grid,
+                                                           self.S_rates[:,0,[0]],   # 0th charge state (neutral) and 0th time
+                                                           self._Ti[[0],:])
+
 
     def interp_kin_prof(self, prof): 
         ''' Interpolate the given kinetic profile on the radial and temporal grids [units of s].
@@ -590,7 +591,8 @@ class aurora_sim:
                                      times_DV,
                                      D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                      self.par_loss_rate,  # time dependent
-                                     self.source_rad_prof,# source profile in radius
+                                     self.source_2d,# source profile in radius and time
+                                     self.src_rcl_prof, # recycling radial profile
                                      self.S_rates, # ioniz_rate,
                                      self.R_rates, # recomb_rate,
                                      self.rvol_grid, self.pro_grid, self.qpr_grid,
@@ -610,7 +612,8 @@ class aurora_sim:
                                    times_DV,
                                    D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                    self.par_loss_rate,  # time dependent
-                                   self.source_rad_prof,# source profile in radius
+                                   self.source_2d,# source profile in radius and time
+                                   self.src_rcl_prof, # recycling radial profile
                                    self.S_rates, # ioniz_rate,
                                    self.R_rates, # recomb_rate,
                                    self.rvol_grid, self.pro_grid, self.qpr_grid,
@@ -746,7 +749,7 @@ class aurora_sim:
         time_out = self.time_out.copy()
         save_time = self.save_time.copy()
         par_loss_rate = self.par_loss_rate.copy()
-        source_rad_prof = self.source_rad_prof.copy()
+        source_2d = self.source_2d.copy()
         S_rates = self.S_rates.copy()
         R_rates = self.R_rates.copy()
         saw_on = self.saw_on.copy()
@@ -758,7 +761,7 @@ class aurora_sim:
             self.time_grid = self.time_out = time_grid[sim_steps:sim_steps+n_steps]
             self.save_time = save_time[sim_steps:sim_steps+n_steps]
             self.par_loss_rate = par_loss_rate[:,sim_steps:sim_steps+n_steps]
-            self.source_rad_prof = source_rad_prof[:,sim_steps:sim_steps+n_steps]
+            self.source_2d = source_2d[:,sim_steps:sim_steps+n_steps]
             self.S_rates = S_rates[:,:,sim_steps:sim_steps+n_steps]
             self.R_rates = R_rates[:,:,sim_steps:sim_steps+n_steps]
             self.saw_on = saw_on[sim_steps:sim_steps+n_steps]
@@ -873,18 +876,15 @@ class aurora_sim:
         nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         nz = nz.transpose(2,1,0)   # time,nZ,space
 
-        if self.namelist['explicit_source_vals'] is None:
-            source_time_history = self.source_time_history
-        else:
-            # if explicit source was provided, all info about the source is in the source_rad_prof array
-            srp = xarray.Dataset({'source': ([ 'time','rvol_grid'], self.source_rad_prof.T),
-                                 'pro': (['rvol_grid'], self.pro_grid), 
-                                 'rhop_grid': (['rvol_grid'], self.rhop_grid)
-            },
-                                coords={'time': self.time_out, 
-                                        'rvol_grid': self.rvol_grid
-                                })
-            source_time_history = particle_conserv.vol_int(self.Raxis_cm, srp, 'source')
+        srp = xarray.Dataset({'source': ([ 'time','rvol_grid'], self.source_2d.T),
+                              'pro': (['rvol_grid'], self.pro_grid), 
+                              'rhop_grid': (['rvol_grid'], self.rhop_grid)
+        },
+                             coords={'time': self.time_out, 
+                                    'rvol_grid': self.rvol_grid
+                             })
+        
+        source_time_history = particle_conserv.vol_int(self.Raxis_cm, srp, 'source')
 
         source_time_history = self.source_time_history
         # Check particle conservation

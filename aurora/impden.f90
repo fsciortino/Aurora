@@ -4,14 +4,15 @@
 ! impden1 uses the finite-volumes scheme described in Linder NF 2020. 
 !
 
-subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rates, r_rates,  &
-    rr, pro, qpr, flx, dlen, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
-    rcl,tsuold, dsulold, divold, divbls, taudiv,tauwret, &
-    a, b, c, d1, bet, gam, &
-    Nret, rcld,rclw)
+subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
+     src_prof, src_rcl_prof, s_rates, r_rates,  &
+     rr, pro, qpr, dlen, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
+     rcl,tsuold, dsulold, divold, taudiv,tauwret, &
+     a, b, c, d1, bet, gam, &
+     Nret, rcld,rclw)
   !
   !  Impurity transport forward modeling with default STRAHL finite-differences scheme.
-  !  Refer to STRAHL manual 2018.
+  !  Refer to STRAHL manual 2018 for details.
   !
   ! ----------------------------------------------------------------------|
 
@@ -25,12 +26,12 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rate
   REAL*8, INTENT(IN)        :: conv(ir, nion)
   REAL*8, INTENT(IN)        :: par_loss_rate(ir)
   REAL*8, INTENT(IN)        :: src_prof(ir)
+  REAL*8, INTENT(IN)        :: src_rcl_prof(ir)
   REAL*8, INTENT(IN)        :: s_rates(ir,nion)
   REAL*8, INTENT(IN)        :: r_rates(ir,nion)
   REAL*8, INTENT(IN)        :: rr(ir)
   REAL*8, INTENT(IN)        :: pro(ir)
   REAL*8, INTENT(IN)        :: qpr(ir)
-  REAL*8, INTENT(IN)        :: flx
   REAL*8, INTENT(IN)        :: dlen ! decay length at last radial grid point
   REAL*8, INTENT(IN)        :: det   ! full time step, named dt in subroutine `run'
 
@@ -40,7 +41,6 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rate
   REAL*8, INTENT(IN)        :: dsulold  ! dsul from previous recycling step
   REAL*8, INTENT(IN)        :: divold   ! divnew from previous step (even without recycling)
 
-  REAL*8, INTENT(IN)        :: divbls
   REAL*8, INTENT(IN)        :: taudiv
   REAL*8, INTENT(IN)        :: tauwret
 
@@ -51,7 +51,7 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rate
   REAL*8, INTENT(OUT)       :: rcld
   REAL*8, INTENT(OUT)       :: rclw
   
-  REAL*8 :: flxtot, der
+  REAL*8 :: der
   INTEGER :: i, nz
 
   REAL*8 temp1, temp2, temp3, temp4, dt
@@ -64,7 +64,6 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rate
   !     ** LACKNER METHOD IN Z                          **
   !     ** time step is split in two half time steps    **
   !     **************************************************
-  flxtot = flx
 
   ! ------ Recycling ------  ! impden.f  L328-L345
   ! Part of the particles that hit the wall are taken to be fully-stuck. Another part is only temporarily retained at the wall.
@@ -82,18 +81,14 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rate
         rclw = Nret/tauwret    ! component that goes back to be a source
      endif
 
-     flxtot = flx*(1-divbls) + rclw + rcld
   else   ! no divertor return at all
         rcld = 0.d0
         rclw = 0.d0
   endif
 
-  ! NB: apply the src_prof radial source profile also to recycling neutrals... seems a bad idea?
-  ! That's what STRAHL does...
-  do i=1,ir
-     rn(i,1) =flxtot*src_prof(i) ! index of 1 stands for neutral stage
-  end do
-
+  ! sum radial sources from external source time history and recycling
+  ! NB: in STRAHL, recycling is set to have the same radial profile as the external sources!
+  rn(:,1) = src_prof + src_rcl_prof*(rclw + rcld)
 
   dt = det/2.
   !     ********** first half time step direction up ********
@@ -239,16 +234,13 @@ end subroutine impden0
 
 
 
-subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rates, r_rates,  &
-     rr, flx, fall_outsol, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
-     rcl,tsuold, dsulold, divold, divbls, taudiv,tauwret, &
-     evolveneut, &   ! extras!!
-     Nret, rcld,rclw)
-     !ioniz_loss & ! extra
-  
+subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, src_rcl_prof, s_rates, r_rates,  &
+     rr, fall_outsol, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
+     rcl,tsuold, dsulold, divold, taudiv,tauwret, &
+     evolveneut, Nret, rcld,rclw)
   !
   !  Impurity transport forward modeling with Linder's finite-volume scheme.
-  !  Linder et al. NF 2020
+  !  See Linder et al. NF 2020
   !
   ! ----------------------------------------------------------------------|
   implicit none
@@ -261,10 +253,10 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rate
   REAL*8, INTENT(IN)        :: conv(ir, nion)
   REAL*8, INTENT(IN)        :: par_loss_rate(ir)
   REAL*8, INTENT(IN)        :: src_prof(ir)
+  REAL*8, INTENT(IN)        :: src_rcl_prof(ir)
   REAL*8, INTENT(IN)        :: s_rates(ir,nion)    ! ionization
   REAL*8, INTENT(IN)        :: r_rates(ir,nion)   ! recombination
   REAL*8, INTENT(IN)        :: rr(ir)
-  REAL*8, INTENT(IN)        :: flx
   REAL*8, INTENT(IN)        :: fall_outsol  !dlen ! decay length at last radial grid point
   REAL*8, INTENT(IN)        :: det   ! full time step, named dt in subroutine `run'
 
@@ -274,7 +266,6 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rate
   REAL*8, INTENT(IN)        :: dsulold  ! dsul from previous recycling step
   REAL*8, INTENT(IN)        :: divold   ! divnew from previous step (even without recycling)
 
-  REAL*8, INTENT(IN)        :: divbls
   REAL*8, INTENT(IN)        :: taudiv
   REAL*8, INTENT(IN)        :: tauwret
 
@@ -284,28 +275,16 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rate
   REAL*8, INTENT(INOUT)     :: Nret
   REAL*8, INTENT(OUT)       :: rcld
   REAL*8, INTENT(OUT)       :: rclw
-  !REAL*8, INTENT(OUT)       :: ioniz_loss(ir,nion)
 
-  REAL*8 :: flxtot, flx_rcl
+  REAL*8 :: flx_rcl
   INTEGER :: i, nz, ns
 
   REAL*8 :: dt
 
   ! nt is the solution of the TDMA
   real*8 ::  nt(ir), a(ir), b(ir), c(ir), d(ir)
-
-  ! radial profile of recycling edge source
-  REAL*8 :: srcl(ir)
   
-  !REAL*8   :: nd(ir)  ! neutral diffusion
-  !REAL*8   :: nv(ir)  ! neutral convection
-
-  !     **************************************************
-  !     ** Time CENTERED TREATMENT in radial coordinate **
-  !     ** LACKNER METHOD IN Z                          **
-  !     ** time step is split in two half time steps    **
-  !     **************************************************
-  flxtot = flx*(1-divbls) 
+  ! Lackner method: split time step in 2 half time steps
   dt = det/2.    
   
   ! Recycling 
@@ -325,10 +304,6 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rate
      rclw = 0.d0
      flx_rcl = 0.d0
   endif
-
-  ! Radial profile of recycling source should be close to the wall
-  ! Set it to be the same as the input (valve) source -- TODO: revise this!
-  srcl = src_prof
   
   ! select whether neutrals should be evolved
   ns = 2
@@ -343,14 +318,14 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rate
 
      do i=1,ir
         b(i)    = b(i) + dt*s_rates(i,1)
-        d(i)    = d(i) + dt*(flxtot*src_prof(i) + flx_rcl*srcl(i)) 
+        d(i)    = d(i) + dt*(src_prof(i) + flx_rcl*src_rcl_prof(i)) 
      enddo
      call TDMA(a, b, c, d, ir, nt)
   else
      nt = 0.d0
      ! radial profile of neutrals (given as input)
      do i=1,ir
-        rn(i,1) = flxtot*src_prof(i) + flx_rcl* srcl(i)
+        rn(i,1) = src_prof(i) + flx_rcl* src_rcl_prof(i)
      end do
   endif
   
@@ -405,7 +380,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, s_rate
           dt, fall_outsol, par_loss_rate, rr, a, b, c, d)
           
      do i=1,ir
-        d(i)    = d(i) - dt*nt(i)*s_rates(i,1) + dt*(flxtot*src_prof(i) + flx_rcl* srcl(i))
+        d(i)    = d(i) - dt*nt(i)*s_rates(i,1) + dt*(src_prof(i) + flx_rcl* src_rcl_prof(i))
      enddo
      call TDMA(a, b, c, d, ir, rn(:,1))
   endif
