@@ -76,7 +76,7 @@ n_rep = 5
 dt = 1e-4
 
 # Total time to run [s] -- will be approximated by nearest multiplier of n_rep*dt
-sim_time = 5e-3  # 20 ms
+sim_time = 5e-3
 num_sims = int(sim_time/(n_rep*dt))
 ##################################################################################
 
@@ -90,22 +90,34 @@ namelist['timing'] = {'dt_increase': np.array([1., 1.   ]),
 # set impurity species and sources rate
 imp = namelist['imp'] = 'Ar'
 
+'''
 # provide impurity neutral sources on explicit radial and time grids
 namelist['explicit_source_time'] = np.linspace(0.,namelist['timing']['times'][-1]*n_rep,99)
 namelist['explicit_source_rhop'] = np.linspace(0,1.3,101)
 gaussian_rhop = 1e9 * np.exp(- (namelist['explicit_source_rhop']-0.5)**2/(2*0.1**2))
 exp_time = np.exp(- namelist['explicit_source_time']/0.02)  # decay over 20ms time scale
 namelist['explicit_source_vals'] = gaussian_rhop[None,:]*exp_time[:,None]
+'''
 
-fig,ax = plt.subplots(num='Impurity neutral source')
-ax.contourf(namelist['explicit_source_rhop'],
-             namelist['explicit_source_time'],
-             namelist['explicit_source_vals'])
-ax.set_xlabel(r'$\rho_p$')
-ax.set_ylabel('time [s]')
+# provide explicit impurity neutral sources only as a function of time; radial distribution defined by source_width_in/out
+namelist['explicit_source_time'] = np.linspace(0.,namelist['timing']['times'][-1]*n_rep,99)
+namelist['explicit_source_vals'] = 1e10 * np.exp(- namelist['explicit_source_time']/0.02)  # decay over 20ms time scale
+namelist['source_width_in'] = 1.0
+namelist['source_width_out'] = 5.0
+namelist['source_cm_out_lcfs'] = -18.0 # cm inside of LCFS
+
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
+
+
+fig,ax = plt.subplots(num='Impurity neutral source')
+ax.contourf(asim.rhop_grid,
+            asim.time_grid,
+            asim.source_rad_prof.T)
+ax.set_xlabel(r'$\rho_p$')
+ax.set_ylabel('time [s]')
+
 
 # set time-independent transport coefficients (flat D=1 m^2/s, V=-2 cm/s)
 D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
@@ -138,7 +150,7 @@ Te_all = []
 Te_all.append(Te_eV)
 for i in np.arange(num_sims):
     # Update time array
-    namelist['timing']['times'] = np.array([i*n_rep*dt+dt, (i+1)*n_rep*dt])
+    asim.namelist['timing']['times'] = np.array([(i+1)*n_rep*dt+dt, (i+2)*n_rep*dt])
     asim.setup_grids()
     
     # get charge state densities from latest time step

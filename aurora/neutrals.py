@@ -11,9 +11,19 @@ import urllib
 import shutil, os, copy
 from scipy.constants import e,h,c as c_light,Rydberg
 from scipy.interpolate import interp2d
+import requests
 
 from . import plot_tools
 from . import radiation
+
+if 'AURORA_ADAS_DIR' in os.environ:
+    # if user indicated a directory for atomic data, use that
+    atomic_data_dir = os.environ['AURORA_ADAS_DIR']
+else:
+    # location of the "adas_data" directory relative to this script:
+    atomic_data_dir =  os.path.dirname(os.path.realpath(__file__))+os.sep+'adas_data'+os.sep
+
+
 
 def download_ehr5_file():
     '''Download the ehr5.dat file containing atomic data describing the multi-step ionization and 
@@ -22,9 +32,13 @@ def download_ehr5_file():
     See https://w3.pppl.gov/degas2/ for details. 
     '''
     filename='ehr5.dat'
-    url = 'https://w3.pppl.gov/degas2/ehr5.dat' 
-    local_filename,headers = urllib.request.urlretrieve(url, filename)
-    shutil.move(filename, os.path.dirname(os.path.realpath(__file__))+'/ehr5.dat')
+    url = 'https://w3.pppl.gov/degas2/ehr5.dat'    
+    r = requests.get(url)
+    
+    # write file to directory where ADAS data is also located
+    with open(atomic_data_dir+'/ehr5.dat', 'wb') as f:
+        f.write(r.content)
+
     print('Successfully downloaded the DEGAS2 ehr5.dat file.')
     
 
@@ -58,10 +72,10 @@ class ehr5_file:
         '''
 
         if filepath is None:
-            if not os.path.exists(os.path.dirname(os.path.realpath(__file__))+'/ehr5.dat'):
+            if not os.path.exists(atomic_data_dir+'/ehr5.dat'):
                 # if ehr5.dat file is not available, download it
                 download_ehr5_file()
-            self.filepath = os.path.dirname(os.path.realpath(__file__))+'/ehr5.dat'
+            self.filepath = atomic_data_dir+'/ehr5.dat'
         else:
             self.filepath = filepath
 
@@ -181,7 +195,7 @@ def get_exc_state_ratio(m, N1, ni, ne, Te, rad_prof=None, rad_label=r'rmin [cm]'
     Nm : array of shape [len(ni)=len(N1),len(ne),len(Te)]
         Density of electrons in excited state `n`  [:math:`cm^{-3}`]
     """
-    if m < 1:
+    if m <= 1:
         raise ValueError('Excited state principal quantum number must be greater than 1!')
     if m > 9:
         raise ValueError('Selected excited state value not available!')
@@ -347,8 +361,7 @@ def Lya_to_neut_dens(emiss_prof, ne, Te, ni=None, plot=True, rhop=None,
     >>> N2_colrad,axs = Lya_to_neut_dens_basic(emiss_prof, ne, Te, ni, 
     >>>                                  plot=True, rhop=rhop, rates_source='colrad')
     
-    >>> N2_adas,axs = Lya_to_neut_dens_basic(
-    >>>                       emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
+    >>> N2_adas,axs = Lya_to_neut_dens_basic(emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
     >>>                       rates_source='adas',axs=axs)
     
     '''

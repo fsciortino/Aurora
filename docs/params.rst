@@ -22,7 +22,7 @@ The table below describes the main input parameters to Aurora's forward model of
    * - `main_element`
      - D
      - Background ion species, usually hydrogen isotopes.
-   * - `Phi0`
+   * - `source_rate`
      - 1e+21
      - Flux [particles/s] of simulated ions.
    * - `source_type`
@@ -148,6 +148,9 @@ The table below describes the main input parameters to Aurora's forward model of
    * - `kin_profs["n0"]`
      - {'fun': 'interpa', 'times': [1.0]}
      - Specification of background (H-isotope) neutral density [:math:`cm^{-3}`].
+   * - `nbi_cxr`
+     - {'rhop': None, 'vals': None}
+     - Radial profiles of charge exchange rates from NBI neutrals (fast+thermal) for each simulated charge state.
    * - `cxr_flag`
      - False
      - If True, activate charge exchange recombination with background thermal neutrals. Requires `kin_profs["n0"]`.
@@ -163,7 +166,18 @@ The table below describes the main input parameters to Aurora's forward model of
    * - `time`
      - 1250
      - Time [ms] used to read magnetic equilibrium, if this is fetched via MDS+.
+   * - `acd`
+     - None
+     - ADAS ADF11 ACD file (recombination rates). If left to None, uses defaults in :py:func:`~aurora.adas_files.adas_files_dict` for the chosen ion species.
+   * - `scd`
+     - None
+     - ADAS ADF11 SCD file (ionization rates). If left to None, uses defaults in :py:func:`~aurora.adas_files.adas_files_dict` for the chosen ion species.
+   * - `ccd`
+     - None
+     - ADAS ADF11 CCD file (nl-unresolved charge exchange rates). If left to None, uses defaults in :py:func:`~aurora.adas_files.adas_files_dict` for the chosen ion species.
 
+    
+    
 
 
 Spatio-temporal grids

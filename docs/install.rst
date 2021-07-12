@@ -12,7 +12,7 @@ After doing this, you can run::
 
   python setup.py install
 
-and should do the magic.
+which should do the magic.
 
 Some users may want to have greater control over which compiler is being used for the installation; this can be most easily done by modifying the provided Makefile directly. After changing its top configuration lines, users can do::
 
@@ -26,9 +26,17 @@ The latest release is now available via PyPI using::
 
   pip install aurorafusion
 
-[![PyPI version](https://badge.fury.io/py/aurorafusion.svg)](https://badge.fury.io/py/aurorafusion)
+.. image:: https://badge.fury.io/py/aurorafusion.svg
+    :target: https://badge.fury.io/py/aurorafusion
 
-We also working to make this available from Anaconda Cloud, but the process is not yet complete. 
+	     
+Installing via conda is also possible using
+
+    conda install -c conda-forge aurorafusion
+
+.. image:: https://anaconda.org/conda-forge/aurorafusion/badges/version.svg   
+    :target: https://anaconda.org/conda-forge/aurorafusion
+
 
 
 Running with Julia

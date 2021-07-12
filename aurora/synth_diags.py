@@ -61,7 +61,8 @@ def centrifugal_asym(rhop, Rlfs, omega, Zeff, A_imp, Z_imp, Te, Ti,
 
     .. math::
 
-       n(r,\theta) = n_0(r) \times \exp\left{\lambda(\rho) (R(r,\theta)^2- R_0^2)\right}
+       n(r,\theta) = n_0(r) \times \exp\left(\lambda(\rho) (R(r,\theta)^2- R_0^2)\right)
+
 
     See Odstrcil et al. 2018 Plasma Phys. Control. Fusion 60 014003 for details on centrifugal asymmetries. 
     Also see  Appendix A of Angioni et al 2014 Nucl. Fusion 54 083028 for details on these should also be 

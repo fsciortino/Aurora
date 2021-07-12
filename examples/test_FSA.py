@@ -33,7 +33,7 @@ kp['Te']['vals'] = inputgacode['Te'][None,:]*1e3  # keV --> eV
 # set impurity species and sources rate
 imp = namelist['imp'] = 'F' #'Ar'
 namelist['source_type'] = 'const'
-namelist['Phi0'] = 1e24
+namelist['source_rate'] = 1e24
 
 # Setup aurora sim to efficiently setup atomic rates and profiles over radius
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -59,7 +59,7 @@ Te_avg = np.mean(kp['Te']['vals'],axis=0) # assume on the same radial basis as n
 
 # get fractional abundances on ne (cm^-3) and Te (eV) grid
 atom_data = aurora.get_atom_data(imp,['acd','scd'])
-logTe, fz, rates = aurora.atomic.get_frac_abundances(atom_data, ne_avg, Te_avg, rho=rhop)
+_Te, fz = aurora.atomic.get_frac_abundances(atom_data, ne_avg, Te_avg, rho=rhop)
 
 fz_profs = np.zeros_like(S_z)
 for cs in np.arange(S_z.shape[1]):

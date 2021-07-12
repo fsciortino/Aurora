@@ -8,11 +8,12 @@ These script collects functions that should be device-agnostic.
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline, interp1d, interp2d
 import copy, itertools
 
 from .janev_smith_rates import js_sigma
-
+from .plot_tools import get_ls_cycle
+from . import atomic
 
 def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
     """Compute charge exchange recombination for a given impurity with neutral beam components,
@@ -134,7 +135,7 @@ def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
 
         # plot FSA neutral densities
         fig = plt.figure()
-        fig.set_size_inches(12, 9, forward=True)
+        fig.set_size_inches(9, 6, forward=True)
         a1 = plt.subplot2grid((4, 4), (0, 0), rowspan=4, colspan=3)
         a2 = plt.subplot2grid((4, 4), (0, 3), rowspan=4, colspan=1)
         for beam in beams:
@@ -155,27 +156,16 @@ def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
     return neut_fsa
 
 
-def get_ls_cycle():
-    # create useful list of plotting styles
-    color_vals = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
-    style_vals = ['-', '--', '-.', ':']
-    ls_vals = []
-    for s in style_vals:
-        for c in color_vals:
-            ls_vals.append(c + s)
-            ls_cycle = itertools.cycle(ls_vals)
-    return ls_cycle
 
-
-def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_prof, include_fast=True, include_halo=True, debug_plots=False):
+def get_NBI_imp_cxr_q(neut_fsa, q, rhop_kp, times_kp, Ti_eV, ne_cm3, include_fast=True, include_halo=True, debug_plots=False):
     """Compute flux-surface-averaged (FSA) charge exchange recombination for a given impurity with
     neutral beam components, applying appropriate Maxwellian averaging of cross sections and
     obtaining rates in [:math:`s^-1`] units. This method expects all neutral components to be given in a
     dictionary with a structure that is independent of NBI model.
 
-    Note that while Ti may be time-dependent, with a time base given by times_Ti, the FSA
+    Note that while Ti and ne may be time-dependent, with a time base given by times_kp, the FSA
     neutrals are expected to be time-independent. Hence, the resulting CXR rates will only have
-    time dependence that reflects changes in Ti, but not the NBI.
+    time dependence that reflects changes in Ti and ne, but not the NBI.
 
     Parameters
     ----------
@@ -183,12 +173,14 @@ def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_prof, include_fast=True
         Dictionary containing FSA neutral densities in the form that is output by :py:meth:`get_neutrals_fsa`.
     q : int or float
         Charge of impurity species
-    rhop_Ti : array-like
+    rhop_kp : array-like
         Sqrt of poloidal flux radial coordinate for Ti profiles.
-    times_Ti : array-like
-        Time base on which Ti_prof is given [s]. 
-    Ti_prof : array-like
-        Ion temperature profile on the rhop_Ti, times_Ti bases.
+    times_kp : array-like
+        Time base on which Ti_eV is given [s]. 
+    Ti_eV : array-like
+        Ion temperature profile on the rhop_kp, times_kp bases, in units of :math:`eV`.
+    ne_cm3 : array-like
+        Electron density profile on the rhop_kp, times_kp bases, in units of :math:`cm^{-3}`.
     include_fast : bool, optional
         If True, include CXR rates from fast NBI neutrals. Default is True. 
     include_halo : bool, optional
@@ -216,21 +208,23 @@ def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_prof, include_fast=True
     m_bckg = neut_fsa['m_bckg']  # amu
     rhop = neut_fsa['rhop']
 
-    if len(times_Ti) == 1:
-        Ti = np.atleast_2d(interp1d(rhop_Ti, Ti_prof[:, 0] / 1e3, bounds_error=False, fill_value=3e-3)(rhop)).T  # keV
+    if len(times_kp) == 1:
+        Ti_keV_interp = np.atleast_2d(interp1d(rhop_kp, Ti_eV[:, 0] / 1e3, bounds_error=False, fill_value=3e-3)(rhop)).T
+        ne_cm3_interp = np.atleast_2d(interp1d(rhop_kp, ne_cm3[:, 0])(rhop)).T
     else:
-        Ti = RectBivariateSpline(times_Ti, rhop_Ti, Ti_prof / 1e3)(times_Ti, rhop)  # keV
+        Ti_keV_interp = RectBivariateSpline(times_kp, rhop_kp, Ti_eV / 1e3)(times_kp, rhop)
+        ne_cm3_interp = RectBivariateSpline(times_kp, rhop_kp, ne_cm3)(times_kp, rhop)
 
     # collect rates for each energy component and excited state (ONLY fast neutrals here)
     rates = {}
     rates['rhop'] = rhop
-    rates['times'] = times_Ti
-    rates['cxr_total'] = np.zeros((len(rhop), len(times_Ti)))
+    rates['times'] = times_kp
+    rates['cxr_total'] = np.zeros((len(rhop), len(times_kp)))
 
     # setup dictionaries here in case include_fast=False
     for beam in beams:
         rates[beam] = {}
-        rates[beam]['cxr_total'] = np.zeros((len(rhop), len(times_Ti)))
+        rates[beam]['cxr_total'] = np.zeros((len(rhop), len(times_kp)))
         for n_level in [0, 1, 2]:
             rates[beam][f'n={n_level}'] = {}
 
@@ -248,7 +242,7 @@ def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_prof, include_fast=True
                     # create cross section function only as a function of energy/amu for Maxwellian average
                     sigma_fun = lambda E_per_amu: js_sigma(E_per_amu, q, n1=n_level + 1, type='cx')  # cm^2
 
-                    rate = bt_rate_maxwell_average(sigma_fun, Ti, energy, m_bckg, m_beam, n_level + 1.0)  # .T
+                    rate = bt_rate_maxwell_average(sigma_fun, Ti_keV_interp, energy, m_bckg, m_beam, n_level + 1.0)  # .T
                     rates[beam][f'n={n_level}'][comp] = rate * neut_fsa[beam][f'n={n_level}'][f'{comp}dens'][:, np.newaxis]
 
                     # we are eventually interested in the total:
@@ -258,27 +252,16 @@ def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_prof, include_fast=True
             rates['cxr_total'] += rates[beam]['cxr_total']
 
     if include_halo:
+        # fetch CCD file for W from ADAS and only pick appropriate charge (Rydberg assumption)
+        atom_data = atomic.get_atom_data('W',files=['ccd'])
+        alpha_cx_rates = atomic.interp_atom_prof(atom_data['ccd'], np.log10(ne_cm3_interp), np.log10(Ti_keV_interp*1e3), x_multiply=False) # cm^3/s
+        rate = alpha_cx_rates[:,q-1,0]   # no recombination of neutral stage
+        
         # Now add recombination from halo neutrals (all thermal interactions) - n-unresolved for impurities
         for beam in beams:
             m_beam = neut_fsa[beam]['m_beam']  # amu
 
             for n_level in [0, 1, 2]:
-                # use Janev & Smith rates for halos too...
-                sigma_fun = lambda E_per_amu: js_sigma(E_per_amu, q, n1=n_level + 1.0, type='cx')  # cm^2
-
-                # Maxwell average using a "beam" at thermal energy (WRONG)
-                # rate1 = bt_rate_maxwell_average(sigma_fun, Ti, Ti, m_bckg, m_beam, n_level + 1.0)
-
-                # use proper thermal-thermal averaging
-                # the following function at the moment can only take time-independent Ti!
-                rate = tt_rate_maxwell_average(sigma_fun, Ti[:, 0], m_bckg, m_beam, n_level + 1.0)
-
-                # plt.figure()
-                # plt.plot(rhop, rate1, label='bt')
-                # plt.plot(rhop, rate, label='tt')
-                # plt.xlabel(r'$\rho_p$')
-                # plt.legend()
-
                 rates[beam][f'n={n_level}']['halo'] = rate[:, None] * neut_fsa[beam][f'n={n_level}']['dcx+halo'][:, None]
                 rates[beam]['cxr_total'] += rates[beam][f'n={n_level}']['halo']
                 rates['cxr_total'] += rates[beam][f'n={n_level}']['halo']
@@ -287,7 +270,7 @@ def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_prof, include_fast=True
         ls_cycle = get_ls_cycle()
 
         fig = plt.figure()
-        fig.set_size_inches(12, 9, forward=True)
+        fig.set_size_inches(9,6, forward=True)
         a1 = plt.subplot2grid((4, 4), (0, 0), rowspan=4, colspan=3)
         a2 = plt.subplot2grid((4, 4), (0, 3), rowspan=4, colspan=1)
 
@@ -304,11 +287,13 @@ def get_NBI_imp_cxr_q(neut_fsa, q, rhop_Ti, times_Ti, Ti_prof, include_fast=True
                     a1.plot(rhop, np.mean(rates[beam][f'n={n_level}']['halo'], axis=-1), lss)
                     a2.plot([], [], lss, lw=2.0, label=f'{beam} halo, n={n_level+1}')
 
-            a1.plot(rhop, np.mean(rates[beam]['cxr_total'], axis=-1), label=f'beam {beam} CXR total')
-            a2.plot([], [], label=f'beam {beam} CXR total')
+            lss = next(ls_cycle)
+            a1.plot(rhop, np.mean(rates[beam]['cxr_total'], axis=-1), lss)
+            a2.plot([], [], lss, label=f'beam {beam} CXR total')
 
-        a1.plot(rhop, rates['cxr_total'])
-        a2.plot([], [], label=f'CXR total')
+        lss = next(ls_cycle)
+        a1.plot(rhop, rates['cxr_total'], lss)
+        a2.plot([], [], lss, label=f'CXR total')
         a1.set_xlabel(r'$\rho_p$')
         a1.set_ylabel(fr'CXR rate (q={q}) [$s^{{-1}}$]')
         a2.legend(fontsize=14)
@@ -427,7 +412,7 @@ def xyz_uvw(x, y, z, origin, R):
 
 
 
-def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
+def bt_rate_maxwell_average(sigma_fun, Ti_keV, E_beam, m_bckg, m_beam, n_level):
     """Calculates Maxwellian reaction rate for a beam with atomic mass "m_beam", 
     energy "E_beam", firing into a target with atomic mass "m_bckg" and temperature "T".
 
@@ -439,8 +424,8 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
     sigma_fun: :py:meth
         Function to compute a specific cross section [:math:`cm^2`], function of energy/amu ONLY.
         Expected call form: sigma_fun(erel/ared)
-    Ti : float, 1D or 2D array
-        Target temperature [keV]. Results will be computed for each Ti value in a vectorized manner.
+    Ti_keV : float, 1D or 2D array
+        Target temperature [keV]. Results will be computed for each Ti_keV value in a vectorized manner.
     E_beam : float
         Beam energy [keV]
     m_bckg : float
@@ -459,7 +444,7 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
     from scipy import constants as consts
 
     # enforce expected shape
-    Ti = np.atleast_2d(Ti)
+    Ti_keV = np.atleast_2d(Ti_keV)
 
     # radial and parallel velocity grids, in units of thermal velocity
     vr = np.linspace(0.0, 4.0, 30)
@@ -467,7 +452,7 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
 
     # normalized energy and temperature
     E_beam_per_amu = E_beam / m_beam  # E_bar
-    T_per_amu = np.maximum(Ti, 1.0e-6) / m_bckg  # T_bar
+    T_per_amu = np.maximum(Ti_keV, 1.0e-6) / m_bckg  # T_bar
 
     # beam/target reduced mass:
     ared = m_bckg * m_beam / (m_bckg + m_beam)
@@ -481,8 +466,8 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
     if ared <= 0.5:  # for electron interactions
         ared = 1.0
 
-    fr = np.zeros((Ti.shape[0], Ti.shape[1], len(vr)))
-    fz = np.zeros((Ti.shape[0], Ti.shape[1], len(vz)))
+    fr = np.zeros((Ti_keV.shape[0], Ti_keV.shape[1], len(vr)))
+    fz = np.zeros((Ti_keV.shape[0], Ti_keV.shape[1], len(vz)))
 
     for i in np.arange(len(vz)):
         for j in np.arange(len(vr)):
@@ -507,7 +492,7 @@ def bt_rate_maxwell_average(sigma_fun, Ti, E_beam, m_bckg, m_beam, n_level):
 
 
 
-def tt_rate_maxwell_average(sigma_fun, Ti, m_i, m_n, n_level):
+def tt_rate_maxwell_average(sigma_fun, Ti_keV, m_i, m_n, n_level):
     """Calculates Maxwellian reaction rate for an interaction between two thermal populations,
     assumed to be of neutrals (mass m_n) and background ions (mass m_i).
 
@@ -520,7 +505,7 @@ def tt_rate_maxwell_average(sigma_fun, Ti, m_i, m_n, n_level):
     sigma_fun: python function
         Function to compute a specific cross section [:math:`cm^2`], function of energy/amu ONLY.
         Expected call form: sigma_fun(erel/ared)
-    Ti: float or 1D array
+    Ti_keV: float or 1D array
         background ion and halo temperature [keV]
     m_i: float
         mass of background ions [amu]
@@ -540,16 +525,16 @@ def tt_rate_maxwell_average(sigma_fun, Ti, m_i, m_n, n_level):
     This does not currently account for the effect of rotation! Doing so will require making the integration in this
     function 2-dimensional.
     """
-    Ti = np.atleast_1d(Ti)
+    Ti_keV = np.atleast_1d(Ti_keV)
 
     vz = np.linspace(0, 4.0, 60)
-    Erel = Ti[:, np.newaxis] * vz[np.newaxis, :] ** 2
+    Erel = Ti_keV[:, np.newaxis] * vz[np.newaxis, :] ** 2
 
     # normalized energy and temperature
-    T_per_amu = np.maximum(Ti, 1.0e-6) / m_n  # T_bar
+    T_per_amu = np.maximum(Ti_keV, 1.0e-6) / m_n  # T_bar
 
     integrand = (
-        lambda erel: bt_rate_maxwell_average(sigma_fun, Ti, erel, m_i, m_n, n_level) * (2.0 * m_n * erel) ** (-0.5) * np.exp(-erel / Ti)
+        lambda erel: bt_rate_maxwell_average(sigma_fun, Ti_keV, erel, m_i, m_n, n_level) * (2.0 * m_n * erel) ** (-0.5) * np.exp(-erel / Ti_keV)
     )
 
     dE = (13.6e-3) / (n_level ** 2)  # hydrogen ionization potential
@@ -557,7 +542,7 @@ def tt_rate_maxwell_average(sigma_fun, Ti, m_i, m_n, n_level):
 
     for ie in np.arange(len(vz)):  # loop over vz
         mask = Erel[:, ie] >= dE  # no possible interaction below hydrogen ionization potential
-        sigma[mask, ie] = bt_rate_maxwell_average(sigma_fun, Ti[mask], Erel[mask, ie], m_i, m_n, n_level)
+        sigma[mask, ie] = bt_rate_maxwell_average(sigma_fun, Ti_keV[mask], Erel[mask, ie], m_i, m_n, n_level)
 
     prefactor = np.sqrt(2.0 / (np.pi * T_per_amu)) ** (-0.5)
     sigmav = prefactor * scipy.integrate.simps(sigma, Erel, axis=-1)

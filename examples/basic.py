@@ -37,7 +37,7 @@ kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
 # set impurity species and sources rate
 imp = namelist['imp'] = 'Ar'
 namelist['source_type'] = 'const'
-namelist['Phi0'] = 2e20  # particles/s
+namelist['source_rate'] = 2e20  # particles/s
 
 # Change radial resolution from default:
 #namelist['dr_0']=0.2
@@ -49,14 +49,19 @@ namelist['Phi0'] = 2e20  # particles/s
 #namelist['timing']['steps_per_cycle'] = np.array([1,1,1])
 #namelist['timing']['times'] = np.array([0.,0.05,0.2])
 
+# Possibly add some arbitrary recombination from NBI neutrals
+#namelist['nbi_cxr_flag'] = True
+#namelist['nbi_cxr'] = {'rhop': kp['Te']['rhop']}
+#namelist['nbi_cxr']['vals'] = kp['Te']['vals'][:,None]*np.arange(18)[None,:]  # units of s^-1
+
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
-# check radial grid:
-rvol_grid, pro_grid, qpr_grid, prox_param = aurora.create_radial_grid(namelist,plot=True)
+# check radial grid (also internally run by aurora_sim):
+#rvol_grid, pro_grid, qpr_grid, prox_param = aurora.create_radial_grid(namelist,plot=plot)
 
-# check time grid:
-_ = aurora.create_time_grid(namelist['timing'], plot=plot)
+# check time grid (also internally run by aurora_sim):
+#_ = aurora.create_time_grid(namelist['timing'], plot=plot)
 
 # set time-independent transport coefficients (flat D=1 m^2/s, V=-2 cm/s)
 D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
@@ -67,6 +72,14 @@ out = asim.run_aurora(D_z, V_z, plot=plot)
 
 # extract densities and particle numbers in each simulation reservoir
 nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
+
+if plot:
+    # plot charge state distributions over radius and time
+    aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,0,2),
+                                  xlabel=r'$r_V$ [cm]', ylabel='time [s]',
+                                  zlabel=r'$n_z$ [$cm^{-3}$]',
+                                  labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                                  plot_sum=True, x_line=asim.rvol_lcfs)
 
 # add radiation
 asim.rad = aurora.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te,

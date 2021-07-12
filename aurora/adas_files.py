@@ -2,8 +2,8 @@
 these files remotely from the OPEN-ADAS website.
 '''
 
-import urllib
 import shutil,os
+import requests
 
 # location of the "adas_data" directory relative to this script:
 adas_data_dir = os.path.dirname(os.path.realpath(__file__))+os.sep+'adas_data'+os.sep
@@ -40,6 +40,13 @@ def get_adas_file_loc(filename, filetype='adf11'):
         Full path to the requested file. 
     '''
     def fetch_file(filename,filetype, loc):
+        if not os.path.isdir(os.path.dirname(os.path.dirname(loc))):
+            # make sure that aurora/adas_data/adf** directory exists, sp that we can store data files in it
+            os.makedirs(os.path.dirname(os.path.dirname(loc)))
+        if not os.path.isdir(os.path.dirname(loc)):
+            # make sure that aurora/adas_data/adf** directory exists, sp that we can store data files in it
+            os.makedirs(os.path.dirname(loc))
+
         if filetype=='adf11':
             fetch_adf11_file(filename, loc)
         elif filetype=='adf15':
@@ -52,11 +59,8 @@ def get_adas_file_loc(filename, filetype='adf11'):
         return adas_data_dir+filetype+os.sep+filename
 
     elif os.path.exists(filename):
-        # check if user actually gave a complete filepath. If so, copy file to adas_data directory
-        filepath = filename
-        filename = filepath.split('/')[-1]
-        shutil.copyfile(filepath, adas_data_dir+filetype+os.sep+filename)
-        return adas_data_dir+filetype+os.sep+filename
+        # user gave a complete filepath. Don't copy the file from the original location
+        return filename
     
     elif 'AURORA_ADAS_DIR' in os.environ:
         loc = os.environ['AURORA_ADAS_DIR']+os.sep+filetype+os.sep+filename
@@ -91,17 +95,19 @@ def fetch_adf11_file(filename, loc):
     loc : str
         Location to save fetched ADF11 in.
     '''
-    if not os.path.isdir(adas_data_dir+'adf11'):
-        # make sure that aurora/adas_data/adf11 directory exists
-        os.makedirs(adas_data_dir+'adf11')
-
     url = 'https://open.adas.ac.uk/download/adf11/'
     str1 =  filename.split('_')[0]
     
-    local_filename,headers = urllib.request.urlretrieve(
-        url+str1+'/'+filename,
-        filename = loc
-    )
+    r = requests.get(url+str1+'/'+filename)
+
+    if len(r.text)<1000:
+        # OPEN-ADAS reports short URL error text rather than an error code
+        raise ValueError(f'Could not fetch file {filename} from ADAS!')
+
+    with open(loc, 'wb') as f:
+        f.write(r.content)
+
+
 
 
 
@@ -116,10 +122,6 @@ def fetch_adf15_file(filename, loc):
     loc : str
         Location to save fetched ADF15 file in.
     '''
-    if not os.path.isdir(adas_data_dir+'adf15'):
-        # make sure that aurora/adas_data/adf15 directory exists
-        os.makedirs(adas_data_dir+'adf15')
-
     url = 'https://open.adas.ac.uk/download/adf15/'
 
     if filename.startswith('pec'):
@@ -134,11 +136,17 @@ def fetch_adf15_file(filename, loc):
         # patterns may be different, attempt simple guess:
         filename_mod = filename.split('_')[0]+'/'+filename.replace('#','][')
 
-    local_filename,headers = urllib.request.urlretrieve(
-        url+'/'+filename_mod,
-        filename=loc
-    )
+    r = requests.get(url+'/'+filename_mod)
+
+    if len(r.text)<1000:
+        # OPEN-ADAS reports short URL error text rather than an error code
+        raise ValueError(f'Could not fetch file {filename_mod} from ADAS!')
+
+    with open(loc, 'wb') as f:
+        f.write(r.content)
+
     
+
 
 def adas_files_dict():
     '''Selections for ADAS files for Aurora runs and radiation calculations.
@@ -277,27 +285,27 @@ def adas_files_dict():
     files["Na"] = {}   #10
     files["Na"]['acd'] = "acd85_ne.dat"
     files["Na"]['scd'] = "scd85_ne.dat"
-    files["Na"]['prb'] = ""
-    files["Na"]['plt'] = ""
-    files["Na"]['ccd'] = ""
-    files["Na"]['pls'] = ""
-    files["Na"]['prs'] = ""
-    files["Na"]['fis'] = ""
-    files["Na"]['brs'] = ""
-    files["Na"]["pbs"] = ""
-    files["Na"]['prc'] = ""
+    #files["Na"]['prb'] = ""
+    #files["Na"]['plt'] = ""
+    #files["Na"]['ccd'] = ""
+    #files["Na"]['pls'] = ""
+    #files["Na"]['prs'] = ""
+    #files["Na"]['fis'] = ""
+    #files["Na"]['brs'] = ""
+    #files["Na"]["pbs"] = ""
+    #files["Na"]['prc'] = ""
     files["Mg"] = {}   #12
     files["Mg"]['acd'] = "acd85_mg.dat"
     files["Mg"]['scd'] = "scd85_mg.dat"
-    files["Mg"]['prb'] = ""
-    files["Mg"]['plt'] = ""
-    files["Mg"]['ccd'] = ""
-    files["Mg"]['pls'] = ""
-    files["Mg"]['prs'] = ""
-    files["Mg"]['fis'] = ""
-    files["Mg"]['brs'] = ""
-    files["Mg"]["pbs"] = ""
-    files["Mg"]['prc'] = ""   
+    #files["Mg"]['prb'] = ""
+    #files["Mg"]['plt'] = ""
+    #files["Mg"]['ccd'] = ""
+    #files["Mg"]['pls'] = ""
+    #files["Mg"]['prs'] = ""
+    #files["Mg"]['fis'] = ""
+    #files["Mg"]['brs'] = ""
+    #files["Mg"]["pbs"] = ""
+    #files["Mg"]['prc'] = ""   
     files["Al"] = {}    #13
     files["Al"]['acd'] = "acd89_al.dat"
     files["Al"]['scd'] = "scd89_al.dat"
@@ -360,9 +368,9 @@ def adas_files_dict():
     files["Ar"]["pbs"] = "pbsx5_ar.dat"
     files["Ar"]["prc"] = "prc89_ar.dat"
     files["Ca"] = {}     #20
-    files["Ca"]['acd'] = "acd89_ca.type_a_large" #"acd85_ca.dat"
-    files["Ca"]['scd'] = "scd50_ca.dat" #"scd85_ca.dat"
-    files["Ca"]['ccd'] = "ccd89_w.dat"  # file not available, use first 20 ion stages using Foster scaling
+    files["Ca"]['acd'] = "acd85_ca.dat"
+    files["Ca"]['scd'] = "scd85_ca.dat"
+    files["Ca"]['ccd'] = "ccd89_w.dat"  #Ca CCD file not available, use first 20 ion stages using Foster scaling
     files["Ca"]['prb'] = "prb85_ca.dat" # not public on OPEN-ADAS, must request 
     files["Ca"]['plt'] = "plt85_ca.dat" # not public on OPEN-ADAS, must request 
     files["Ca"]['pls'] = "pls_Ca_14.dat"

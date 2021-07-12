@@ -9,7 +9,7 @@ def load_default_namelist():
         'imp': 'Ca',
         'main_element': 'D',  # background
         # --------------------
-        'Phi0': 1e+21,
+        'source_rate': 1e+21,
         'source_type':'const', 
         # explicit source:
         'explicit_source_vals' : None, # provide 2D array on explicit_source_time and explicit_source_rhop grids
@@ -70,6 +70,9 @@ def load_default_namelist():
                        'n0': {'fun':'interpa',
                               'times': [1.]}
                    },
+        # and NBI CXR rates
+        'nbi_cxr' : {'rhop': None,
+                     'vals': None}, # time indpt profiles; (rhop,nZ)
         # ----------------
         # charge exchange flags
         'cxr_flag' : False,
@@ -79,6 +82,11 @@ def load_default_namelist():
         'device': 'CMOD',
         'shot': 99999,
         'time': 1250, # in ms, for equilibrium
+        # atomic data (ADF11)
+        'acd': None, # use default
+        'scd': None, # use default
+        'ccd': None, # use default
+        'superstages': []
     }
     return namelist
 

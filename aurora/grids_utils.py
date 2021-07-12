@@ -486,56 +486,56 @@ def get_rhopol_rvol_mapping(geqdsk, rho_pol=None):
 
 
 
-# def create_radial_grid(namelist,plot=False):
-#     '''This interfaces the package subroutine to create the radial grid exactly as STRAHL does it.
-#     Refer to the STRAHL manual for details.
+def create_radial_grid_fortran(namelist,plot=False):
+    '''This interfaces the package subroutine to create the radial grid exactly as STRAHL does it.
+    Refer to the STRAHL manual for details.
 
-#     '''
-#     # import here to avoid import when building documentation or package
-#     try:
-#         from ._aurora import get_radial_grid
-#     except ModuleNotFoundError:
-#         raise MissingAuroraBuild('Could not load particle transport forward model!'+\
-#                       'Use the makefile or setup.py to build sources.')
+    '''
+    # import here to avoid import when building documentation or package
+    try:
+        from ._aurora import get_radial_grid
+    except ModuleNotFoundError:
+        raise MissingAuroraBuild('Could not load particle transport forward model!'+\
+                      'Use the makefile or setup.py to build sources.')
     
-#     # NB: there is currently a hard-coded maximum number of grid points (1000)
-#     _r, _pro, prox, _qpr = get_radial_grid(
-#         namelist['ng'],namelist['bound_sep'],namelist['K'],namelist['dr_0'],namelist['dr_1'], namelist['rvol_lcfs'])
+    # NB: there is currently a hard-coded maximum number of grid points (1000)
+    _r, _pro, prox, _qpr = get_radial_grid(
+        namelist['ng'],namelist['bound_sep'],namelist['K'],namelist['dr_0'],namelist['dr_1'], namelist['rvol_lcfs'])
 
-#     # eliminate trailing zeros:
-#     idxs = _r > 0
-#     idxs[0] = True
-#     radius_grid, pro, qpr = _r[idxs], _pro[idxs], _qpr[idxs]
+    # eliminate trailing zeros:
+    idxs = _r > 0
+    idxs[0] = True
+    radius_grid, pro, qpr = _r[idxs], _pro[idxs], _qpr[idxs]
 
-#     if plot:
+    if plot:
 
-#         r_lim  = namelist['rvol_lcfs'] + namelist['lim_sep']
-#         r_wall = namelist['rvol_lcfs'] + namelist['bound_sep']
-#         dr = np.gradient(radius_grid)
+        r_lim  = namelist['rvol_lcfs'] + namelist['lim_sep']
+        r_wall = namelist['rvol_lcfs'] + namelist['bound_sep']
+        dr = np.gradient(radius_grid)
 
-#         if plt.fignum_exists('aurora radial step'):
-#             plt.figure(num='aurora radial step').clf()
-#         f,ax = plt.subplots(num='aurora radial step')
+        if plt.fignum_exists('aurora radial step'):
+            plt.figure(num='aurora radial step').clf()
+        f,ax = plt.subplots(num='aurora radial step')
         
-#         ax.plot(radius_grid/namelist['rvol_lcfs'], dr,'-')
-#         ax.axvline(1,ls='--',c='k')
-#         ax.text(1+0.01,namelist['dr_0']*0.9 ,'LCFS',rotation='vertical')
+        ax.plot(radius_grid/namelist['rvol_lcfs'], dr,'-')
+        ax.axvline(1,ls='--',c='k')
+        ax.text(1+0.01,namelist['dr_0']*0.9 ,'LCFS',rotation='vertical')
 
-#         ax.axvline(r_lim/namelist['rvol_lcfs'],ls='--',c='k')
-#         ax.text(r_lim/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.9 ,'limiter',rotation='vertical')
+        ax.axvline(r_lim/namelist['rvol_lcfs'],ls='--',c='k')
+        ax.text(r_lim/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.9 ,'limiter',rotation='vertical')
 
-#         if 'saw_model' in namelist and namelist['saw_model']['saw_flag']:
-#             ax.axvline( namelist['saw_model']['rmix']/namelist['rvol_lcfs'],ls='--',c='k')
-#             ax.text(namelist['saw_model']['rmix']/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.5 ,
-#                     'Sawtooth mixing radius',rotation='vertical')
+        if 'saw_model' in namelist and namelist['saw_model']['saw_flag']:
+            ax.axvline( namelist['saw_model']['rmix']/namelist['rvol_lcfs'],ls='--',c='k')
+            ax.text(namelist['saw_model']['rmix']/namelist['rvol_lcfs']+0.01,namelist['dr_0']*0.5 ,
+                    'Sawtooth mixing radius',rotation='vertical')
 
-#         ax.set_xlabel(r'$r/r_{lcfs}$');
-#         ax.set_ylabel(r'$\Delta$ r [cm]');
-#         ax.set_ylim(0,None)
-#         ax.set_xlim(0,r_wall/namelist['rvol_lcfs'])
-#         ax.set_title('# radial grid points: %d'%len(radius_grid))
+        ax.set_xlabel(r'$r/r_{lcfs}$');
+        ax.set_ylabel(r'$\Delta$ r [cm]');
+        ax.set_ylim(0,None)
+        ax.set_xlim(0,r_wall/namelist['rvol_lcfs'])
+        ax.set_title('# radial grid points: %d'%len(radius_grid))
 
-#     return radius_grid, pro, prox, qpr
+    return radius_grid, pro, prox, qpr
 
 
 

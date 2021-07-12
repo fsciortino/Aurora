@@ -50,7 +50,7 @@ Next, we specify the ion species that we want to simulate. We can simply do::
 and Aurora will internally find ADAS data for that ion (assuming that this is one of the common ones for fusion modeling). The namelist also contains information on what kind of source of impurities we need to simulate; here we are going to select a constant source (starting at t=0) of :math:`10^{24}` particles/second.::
 
   namelist['source_type'] = 'const'
-  namelist['Phi0'] = 1e24
+  namelist['source_rate'] = 1e24
 
 Time dependent time histories of the impurity source may however be given by selecting `namelist['source_type']="step"` (for a series of step functions), `"synth_LBO"` (for an analytic function resembling a laser-blow-off (LBO) time history) or `"file"` (to load a detailed function from a file). Refer to the :py:meth:`~aurora.source_utils.get_source_time_history` method for more details. 
 
@@ -77,7 +77,7 @@ You can easily check the quality of particle conservation in the various reservo
 
 which will show the results in full detail. The `reservoirs` output list contains information about how many particles are in the plasma, in the wall reservoir, in the pump, etc.. Refer to the :py:meth:`aurora.core.run_aurora` docstring for details. 
 
-A plot is worth a thousand words, so let's make one for the charge state densities (on a nice slider!):::
+A plot is worth a thousand words, so let's make one for the charge state densities:::
 
   nz = out[0]  # charge state densities are stored first in the output of the run_aurora method
   aurora.slider_plot(asim.rvol_grid, asim.time_out, nz.t.transpose(1,0,2),
@@ -85,6 +85,16 @@ A plot is worth a thousand words, so let's make one for the charge state densiti
                      labels=[str(i) for i in np.arange(0,nz.shape[1])],
 		     plot_sum=True, x_line=asim.rvol_lcfs )
 
+You should get a slider showing a result like the following:
+
+.. figure:: figs/aurora_nz_example.jpeg
+    :align: center
+    :alt: Example of charge state density profiles at the end of an Aurora Ar simulation
+    :figclass: align-center
+
+    Example of charge state density profiles at the end of an Aurora Ar simulation
+
+    
 Use the slider to go over time, as you look at the distributions over radius of all the charge states. It would be really great if you could just save this type of time- and spatially-dependent visualization to a video-format, right? That couldn't be easier, using the :py:func:`~aurora.animate.animate_aurora` function:::
 
   aurora.animate_aurora(asim.rhop_grid, asim.time_out, nz.transpose(1,0,2),
@@ -124,26 +134,29 @@ Results from :py:func:`~aurora.radiation.compute_rad` are collected in a diction
                      labels=[str(i) for i in np.arange(0,nz.shape[1])],
                      plot_sum=True, x_line=asim.rvol_lcfs)
 
-Aurora's radiation modeling capabilities may also be useful when assessing total power radiation for integrated modeling. The :py:func:`~aurora.radiation.radiation_model` function allows one to easily obtain the most important radiation terms at a single time slice, both as power densities (units of :math:`MW/cm^{-3}`) and absolute power (units of :math:`MW`). To obtain the latter form, we need to integrate over flux surface volumes. We can use the `geqdsk` dictionary obtained via::
+		    
+This will give you a slider again, showing figures like this:
+
+.. figure:: figs/aurora_line_rad_example.jpeg
+    :align: center
+    :alt: Example of line radiation at the end of an Aurora Ar simulation
+    :figclass: align-center
+
+    Example of line radiation at the end of an Aurora Ar simulation
+
+
+Aurora's radiation modeling capabilities may also be useful when assessing total power radiation for integrated modeling. The :py:func:`~aurora.radiation.radiation_model` function allows one to easily obtain the most important radiation terms at a single time slice, both as power densities (units of :math:`MW/cm^{-3}`) and absolute power (units of :math:`MW`). To obtain the latter form, we need to integrate over flux surface volumes. To do so, we make use of the `geqdsk` dictionary obtained via::
 
   geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
 
-(or equivalent methods/files) to then extract flux surface volumes (units of :math:`m^3`) at each value of `rhop`:::
+We then pass that to :py:func:`~aurora.radiation.radiation_model`, together with the impurity atomic symbol (`imp`), the `rhop` grid array, electron density (`ne_cm3`) and temperature (`Te_eV`), and optionally also background neutral densities to include thermal charge exchange:::
 
-  grhop = np.sqrt(geqdsk['fluxSurfaces']['geo']['psin'])
-  gvol = geqdsk['fluxSurfaces']['geo']['vol']
-
-  # interpolate on our grid
-  vol = interp1d(grhop, gvol)(rhop)
-
-We can now pass the `vol` array to :py:func:`~aurora.radiation.radiation_model`, together with the impurity atomic symbol (`imp`), the `rhop` grid array, electron density (`ne_cm3`) and temperature (`Te_eV`) and, optionally, also background neutral densities to include thermal charge exchange:::
-
-  res = aurora.radiation_model(imp,rhop,ne_cm3,Te_eV, vol,
+  res = aurora.radiation_model(imp,rhop,ne_cm3,Te_eV, geqdsk,
                                n0_cm3=None, frac=0.005, plot=True)
 
-Here we specified the impurity densities as a simple fraction of the electron density profile, by specifying the `frac` argument. This is obviously a simplifying assumption, effectively stating that the total impurity density profile should have a maximum amplitude of `frac` (in the case above, set to 0.005) and a profile shape (corresponding t a profile of `V/D`) that is identical to the one of the :math:`n_e` profile. This may be convenient for parameter scans in the design process of future devices, but is by no means a correct assumption. If we'd rather calculate the total radiated power from a specific set of impurity charge state profiles (e.g. from an Aurora simulation), we can do::
+Here we specified the impurity densities as a simple fraction of the electron density profile, by specifying the `frac` argument. This is obviously a simplifying assumption, effectively stating that the total impurity density profile should have a maximum amplitude of `frac` (in the case above, set to 0.005) and a profile shape (corresponding to a profile of `V/D`) that is identical to the one of the :math:`n_e` profile. This may be convenient for parameter scans in the design process of future devices, but is by no means a correct assumption. If we'd rather calculate the total radiated power from a specific set of impurity charge state profiles (e.g. from an Aurora simulation), we can do::
 
-  res = aurora.radiation_model(imp,rhop,ne_cm3,Te_eV, vol,
+  res = aurora.radiation_model(imp,rhop,ne_cm3,Te_eV, geqdsk,
                                n0_cm3=None, nz_cm3=nz_cm3, plot=True)
 
 
@@ -161,7 +174,7 @@ with a number of impurity charge state densities with dimensions of (time,charge
 
   niz_cm3 = np.vstack((n0_cm3[None,:],ni_cm3)).T
 
-such that the `niz_cm3` output is a 2D array of dimensions (charge state, radius). 
+such that the `niz_cm3` output is a 2D array of dimensions (charge states, radii). 
 
 To estimate main ion radiation we can now do::
   
@@ -186,6 +199,14 @@ This makes use of the electron density profiles (as a function of space and time
                      labels=[str(i) for i in np.arange(0,nz.shape[1])],
                      plot_sum=True,x_line=asim.rvol_lcfs)
 
+You should get something that looks like this:
+
+.. figure:: figs/aurora_Zeff_example.jpeg
+    :align: center
+    :alt: Example of Z-effective contributions at the end of an Aurora Ar simulation
+    :figclass: align-center
+
+    Example of Z-effective contributions at the end of an Aurora Ar simulation
 
 
 Ionization equilibrium
@@ -208,9 +229,9 @@ Here we also defined a `rhop` grid from the poloidal flux values in the `inputga
 
 In ionization equilibrium, all ionization and recombination processes will be perfectly balanced. This condition corresponds to specific fractions of each charge state at some locations that we define using arrays of electron density and temperature. We can compute fractional abundances and plot results using::
 
-  logTe, fz, rates = aurora.get_frac_abundances(atom_data, ne_vals, Te_vals, rho=rhop, plot=True)
+  Te, fz = aurora.get_frac_abundances(atom_data, ne_vals, Te_vals, rho=rhop, plot=True)
 
-The :py:func:`~aurora.atomic.get_frac_abundances` function returns the log-10 of the electron temperature on the same grid as the fractional abundances, given by the `fz` parameter (dimensions: space, charge state). This same function can be used to both compute radiation profiles of fractional abundances or to compute fractional abundances as a function of scanned parameters `ne` and/or `Te`. The inverse of the `rates` output correspond to the atomic relaxation time. An additional argument of `ne_tau` (units of :math:`m^{-3}\cdot s`) can be used to approximately model the effect of transport on ionization balance.
+The :py:func:`~aurora.atomic.get_frac_abundances` function returns the log-10 of the electron temperature on the same grid as the fractional abundances, given by the `fz` parameter (dimensions: space, charge state). This same function can be used to both compute radiation profiles of fractional abundances or to compute fractional abundances as a function of scanned parameters `ne` and/or `Te`. An additional argument of `ne_tau` (units of :math:`m^{-3}\cdot s`) can be used to approximately model the effect of transport on ionization balance.
 
 
 Working with neutrals
@@ -235,7 +256,26 @@ Note that in order to find the photon emissivity coefficient of specific neutral
   log10pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
   
 
-This will plot the Lyman-alpha photon emissivity coefficients (both the components due to excitation and recombination) as a function of temperature in eV. Some files (e.g. try `pec96#c_pju#c2.dat`) may also have charge exchange components. Note that both the inputs and outputs of the :py:func:`~aurora.atomic.read_adf15` function act on log-10 values, i.e. interpolants should be called on log-10 values of :math:`$n_e$` and :math:`$T_e$`, and the result of interpolation will only be in units of :math:`photons \cdot cm^3/s` after one takes the power of 10 of it.
+This will plot the Lyman-alpha photon emissivity coefficients (both the components due to excitation and recombination) as a function of temperature in eV, as shown in the figures below.
+
+.. figure:: figs/aurora_h_lya_exc_pec.jpeg
+    :width: 500
+    :align: center
+    :alt: ADAS photon emissivity coefficients for the excitation contribution to the H :math:`Ly_\alpha` transition.
+    :figclass: align-center
+
+    ADAS photon emissivity coefficients for the excitation contribution to the H :math:`Ly_\alpha` transition.
+
+.. figure:: figs/aurora_h_lya_rec_pec.jpeg
+    :width: 500
+    :align: center
+    :alt: ADAS photon emissivity coefficients for the recombination contribution to the H :math:`Ly_\alpha` transition.
+    :figclass: align-center
+
+    ADAS photon emissivity coefficients for the recombination contribution to the H :math:`Ly_\alpha` transition.
+
+
+Some files (e.g. try `pec96#c_pju#c2.dat`) may also have charge exchange components. Note that both the inputs and outputs of the :py:func:`~aurora.atomic.read_adf15` function act on log-10 values, i.e. interpolants should be called on log-10 values of :math:`n_e` and :math:`T_e`, and the result of interpolation will only be in units of :math:`photons \cdot cm^3/s` after one takes the power of 10 of it.
 
 Analysis routines to work with fast and halo neutrals are also provided in Aurora. Atomic rates for charge exchange of impurities with NBI neutrals are taken from Janev & Smith NF 1993 and can be obtained from :py:func:`~aurora.janev_smith_rates.js_sigma`, which wraps a number of functions for specific atomic processes. To compute charge exchange rates between NBI neutrals (fast or thermal) and any ions in the plasma, users need to provide a prediction of neutral densities, likely from an external code like `FIDASIM`_.
 
@@ -247,3 +287,75 @@ Neutral densities for each fast ion population (full-,half- and third-energy), m
 :py:func:`~aurora.nbi_neutrals.bt_rate_maxwell_average` shows how beam-thermal Maxwell-averaged rates can be obtained; :py:func:`~aurora.nbi_neutrals.tt_rate_maxwell_average` shows the equivalent for thermal-thermal Maxwell-averaged rates.
 
 Finally, :py:func:`~aurora.nbi_neutrals.get_NBI_imp_cxr_q` shows how flux-surface-averaged charge exchnage recombination rates between an impurity ion of charge `q` with NBI neutrals (all populations, fast and thermal) can be computed for use in Aurora forward modeling. For more details, feel free to contact Francesco Sciortino (sciortino-at-psfc.mit.edu).
+
+
+
+Interfacing with SOLPS-ITER
+---------------------------
+
+While running SOLPS-ITER is a complex task, reading and processing its results does't need to be. Aurora offers a convenient Python interface to rapidly load results, set them to convenient data arrays, plot on 1D or 2D grids, etc.
+
+Here's an example of how you could load a SOLPS-ITER run and do some useful plots:
+
+.. literalinclude:: ../examples/solps_example.py
+
+This example is loading a SOLPS-ITER result for an ITER scenario (described in `this paper <https://doi.org/10.1016/j.nme.2019.100696>_` and `this paper <https://arxiv.org/abs/2106.04528>_`). Note that these data are not distributed with Aurora! You must have the output of a SOLPS-ITER run available to you in order to try out these Aurora capabilities. 
+
+The example above should give the following 2 figures.
+
+.. figure:: figs/aurora_solps_iter.jpg
+    :align: center
+    :alt: example of SOLPS-ITER output
+    :figclass: align-center
+
+    Example of electron density and temperature + atomic D/T neutral density and temperature from a SOLPS-ITER simulation of ITER
+
+.. figure:: figs/aurora_solps_iter_b2_eirene_grids.jpg
+    :align: center
+    :alt: example of SOLPS-ITER output on different grids
+    :figclass: align-center
+
+    Comparison of D/T atomic neutral density on the B2 and EIRENE grids. 
+
+
+Atomic spectra
+--------------
+
+If you have atomic data files containing photon emissivity coefficients (PECs) in ADF15 format, you can use Aurora to combine them and see what the overall spectrum might look like. Let's say you want to look at the :math:`K_\alpha` spectrum of Ca at a specific electron density of :math:`10^{14}` :math:`cm^{-3}` and temperature of 1 keV. Let's begin with a single ADF15 file named::
+
+  filepath_he='~/pec#ca18.dat'
+
+The simplest way to check what the spectrum may look like is to weigh contributions from different charge states according to their fractional abundances at ionization equilibrium. Aurora allows you to get the fractional abundances with just a couple of lines::
+
+  ion = 'Ca'
+  ne_cm3 = 1e14
+  Te_eV = 1e3
+  atom_data = aurora.get_atom_data(ion,['scd','acd'])
+  Te, fz = aurora.get_frac_abundances(atom_data, np.array([ne_cm3,]), np.array([Te_eV,]), plot=False)
+
+You can now use the `aurora.get_local_spectrum` function to read all the lines in each ADF15 file and broaden them according to some ion temperature (which could be dictated by broadening mechanisms other than Doppler effects, in principle). For our example, one can do::
+
+  # He-like state
+  out= aurora.get_local_spectrum(filepath_he, ion, ne_cm3, Te_eV, n0_cm3=0.0,
+                               ion_exc_rec_dens=[fz[0,-4], fz[0,-3], fz[0,-2]], # Li-like, He-like, H-like
+                               dlam_A = 0.0, plot_spec_tot=False, no_leg=True,
+			       plot_all_lines=True, ax=None)
+  wave_final_he, spec_ion_he, spec_exc_he, spec_rec_he, spec_dr_he, spec_cx_he, ax = out
+
+By changing the `dlam_A` parameter, you can also add a wavelength shift (e.g. from the Doppler effect). The `ion_exc_rec_dens` parameter allows specification of fractional abundances for the charge stages of interest. To be quite general, in the lines above we have included contributions to the spectrum from ionizing, excited and recombining PEC components. By passing an `ax` argument one can also specify which matplotlib axes are used for plotting.
+
+By repeating the same operations using several ADF15 files, one can overplot contributions to the spectrum from several charge states.
+
+If you just want to plot where atomic lines are expected to be and how intense their PECs are at specific plasma conditions, you can also use the simpler `aurora.adf15_line_identification` function. This can be called as::
+
+  aurora.adf15_line_identification(pec_files, Te_eV=Te_eV, ne_cm3=ne_cm3, mult=mult)
+
+and can be used to plot something like this:
+
+.. figure:: figs/spectrum_adf15_identification.jpg
+    :align: center
+    :alt: example of Ca spectrum overview combining several PEC files
+    :figclass: align-center
+
+    Example of Ca spectrum overview combining several PEC files
+

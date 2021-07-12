@@ -16,29 +16,23 @@ import warnings
 from scipy import constants
 from . import plot_tools
 from . import coords
-plt.ion()
+
 
 class solps_case:
     '''Read SOLPS output and prepare for Aurora impurity-neutral analysis. 
-
+    
     Parameters
     ----------
     path : str
-        Path to output files. If form='full', this path indicates where to find the directory named "baserun"
-        and the 'solps_run' one. If these are "extracted" files from SOLPS (form='extracted'),
-        then this is the path to the disk location where each of the required files
-        can be found. 
+        Path to SOLPS output files. If form='full' (default), this path indicates where to find the directory 
+        named "baserun" and the 'solps_run' one. If these are "extracted" files from SOLPS (form='extracted'),
+        then this is the path to the disk location where each of the required files can be found. 
     geqdsk : str or `omfit_classes.omfit_geqdsk.OMFITgeqdsk` class instance
         Path to the geqdsk to load from disk, or instance of the `omfit_classes.omfit_geqdsk.omfit_geqdsk` 
         class that contains the processed gEQDSK file already. 
     solps_run : str
         If form='full', this string specifies the directory (relative to the given path)
         where case-specific files for a SOLPS run can be found (e.g. 'b2fstate').
-    topology : str
-        String abreviation to identify topology of plasma.
-        'LSN' = Lower single null (Default)
-        'USN' = Upper single null
-        'DN' = Double null
     case_num : int
         Index/integer identifying the SOLPS case of interest. 
     form : str
@@ -53,36 +47,18 @@ class solps_case:
         [RadLoc, VertLoc, Ne, Te, NeuDen, NeuTemp, MolDen, MolTemp, Ti]
         each of which will be expected to have "case_num" appended to the name of the file.
     '''
-    def __init__(self, path, geqdsk, solps_run='', topology='LSN',
-                 case_num=0, form='extracted', extracted_labels=None):
+    def __init__(self, path, geqdsk, solps_run='', case_num=0, form='full', extracted_labels=None):
         self.path = path
         self.solps_run = solps_run
-        self.topology = topology
         self.case_num = case_num
         self.form = form
-        '''
-        if 'Windows' in os.environ['OS']:
-            os.environ['HOME']=r
-        '''
+
         if isinstance(geqdsk, str): # user passed a path to a gfile on disk
             from omfit_classes import omfit_eqdsk # import omfit_eqdsk here to avoid issues with docs and packaging
             self.geqdsk = omfit_eqdsk.OMFITgeqdsk(geqdsk)
         else:
             self.geqdsk = geqdsk
         
-        _topologies = ['LSN','USN','DN'] #Allowable topology identifiers, can be augmented
-        
-        assert self.topology in _topologies, 'Topology invalid!'    
-        
-        if self.topology == 'LSN':    
-            i = 0
-        elif self.topology == 'USN':
-            i = -1
-        elif self.topology == 'DN': 
-            i = slice(0,len(self.geqdsk['RBBBS']),len(self.geqdsk['RBBBS'])-1)
-            
-        self.xpoint = sorted(zip(self.geqdsk['RBBBS'],self.geqdsk['ZBBBS']), key=lambda x: x[1])[i] #Calculating X-Point coordinate
-
         self.labels = {'ne':r'$n_e$ [$m^{-3}$]' , 'Te':r'$T_e$ [eV]',
                       'nn':r'$n_n$ [$m^{-3}$]' , 'Tn':r'$T_n$ [eV]',
                       'nm':r'$n_m$ [$m^{-3}$]' , 'Tm':r'$T_m$ [eV]',
@@ -105,10 +81,7 @@ class solps_case:
             self.unit_r = self.ny//2
 
             # Currently only set up for single null shapes
-            if self.topology == 'DN':
-                self.double_null = True
-            else:
-                self.double_null = False
+            self.double_null = False
 
             # Obtain indices for chosen radial regions
             _R_idxs = np.array([],dtype=int)
@@ -121,7 +94,7 @@ class solps_case:
             _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
             self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
 
-            
+
         elif form=='full':
             from omfit_classes import omfit_solps # import omfit_solps here to avoid issues with docs and packaging
             self.b2fstate = omfit_solps.OMFITsolps(self.path+os.sep+self.solps_run+os.sep+'b2fstate')
@@ -257,15 +230,16 @@ class solps_case:
             nn44[nn44==0.0] = nsmallest(2,np.unique(nn44.flatten()))[1]
             quants['nn'] = nn44[R_idxs,:][:,P_idxs] # m^-3   # only neutral component
             quants['Tn'] = self.fort44['tab2'][:,:,0].T[R_idxs,:][:,P_idxs]/constants.e # eV
-           
+
             quants['nm'] = self.fort44['dmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular density
             quants['Tm'] = self.fort44['tmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular temperature
             
-        # EIRENE nodes and triangulation
-        self.xnodes, self.ynodes, self.triangles = self.load_eirene_mesh()
+            # EIRENE nodes and triangulation
+            self.xnodes, self.ynodes, self.triangles = self.load_eirene_mesh()
 
-        # identify species (both B2 and EIRENE):
-        self.species_id()
+            # identify species (both B2 and EIRENE):
+            self.species_id()
+
             
             
     def species_id(self):
@@ -299,8 +273,8 @@ class solps_case:
         for ss,mol in enumerate(_mol): eirene_species['mol'][ss] = mol
         _ion = [spec for spec in self.fort44['species'] if '+'  in spec]
         for ss,ion in enumerate(_ion): eirene_species['ion'][ss] = ion
-        
-    
+
+
     def load_mesh_extra(self):
         '''Load the mesh.extra file.
         '''
@@ -388,7 +362,7 @@ class solps_case:
                 out[key] = np.array(out[key]).reshape(*fort44_info[key][1],order='F')
             except:
                 print(f'Variable {key} in fort.44 could not be parsed, likely to be new in SOLPS-ITER.')
-            
+
         return out
 
 
@@ -489,6 +463,7 @@ class solps_case:
         self.WC=Wall_Collection
                  
         
+
     def plot2d_b2(self, vals, ax=None, scale='log', label='', lb=None, ub=None, **kwargs):
         '''Method to plot 2D fields on B2 grids. 
         Colorbars are set to be manually adjustable, allowing variable image saturation.
@@ -564,9 +539,8 @@ class solps_case:
         ax.set_title(label)
         ax.set_xlabel('R [m]')
         ax.set_ylabel('Z [m]')
-        plt.grid(True)
+        #plt.grid(True)
         ax.axis('scaled')
-
         
     
     def plot2d_eirene(self, vals,  ax = None, scale='log', label='', lb=None, ub=None, replace_zero=True, **kwargs):
@@ -622,7 +596,7 @@ class solps_case:
         ax.axis('scaled')
         ax.set_xlabel('R [m]')
         ax.set_ylabel('Z [m]')
-        cbar = plt.colorbar(cntr, format='%.3g', ax=ax)
+        cbar = plt.colorbar(cntr, ax=ax) # format='%.3g'
         #cbar.set_label(label)
         ax.set_title(label)
         cbar = plot_tools.DraggableColorbar(cbar,cntr)
@@ -677,7 +651,7 @@ class solps_case:
         if np.prod(vals.shape)==self.crx.shape[1]*self.crx.shape[2]:
             # Exclude boundary cells
             vals = vals[1:-1,1:-1]
-        
+
         rhop_2D = coords.get_rhop_RZ(self.R,self.Z, self.geqdsk)
         
         # evaluate FSA radial profile inside the LCFS
@@ -690,7 +664,7 @@ class solps_case:
 
         prof_FSA = self.geqdsk['fluxSurfaces'].surfAvg(function=avg_function)
         rhop_FSA = np.sqrt(self.geqdsk['fluxSurfaces']['geo']['psin'])
-        
+
         # get R axes on the midplane on the LFS and HFS
         _dz = (np.max(self.Z) - np.min(self.Z))/((self.nx+self.ny)/10.) # rule-of-thumb to identify vertical resolution
         mask = (self.Z.flatten()>-_dz)&(self.Z.flatten()<_dz)
@@ -726,6 +700,10 @@ class solps_case:
             prof_LFS = np.nanmean(_prof_LFS.reshape(-1,10),axis=1) # average across 10 near points
             prof_HFS = np.nanmean(_prof_HFS.reshape(-1,10),axis=1)  # average across 10 near points
 
+            # take std as a measure of variation/noise around chosen location
+            prof_LFS_std = np.nanstd(_prof_LFS.reshape(-1,10),axis=1) # std across 10 near points
+            prof_HFS_std = np.nanstd(_prof_HFS.reshape(-1,10),axis=1)  # std across 10 near points
+            
         # now obtain also the simple poloidal grid slice near the midplane (LFS and HFS)
         # These are commonly used for SOLPS analysis, using the JXA and JXI indices (which we re-compute here)
         Z_core = self.Z[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
@@ -750,18 +728,21 @@ class solps_case:
             # compare FSA radial profiles with midplane (LFS and HFS) ones
             fig,ax = plt.subplots()
             ax.plot(rhop_FSA, prof_FSA, label='FSA')
-            ax.plot(rhop_LFS, prof_LFS, label='LFS midplane')
-            ax.plot(rhop_HFS, prof_HFS, label='HFS midplane')
-            #ax.plot(rhop_chord_LFS, self.quants[quant][:,JXA], label='LFS grid midplane')
-            #ax.plot(rhop_chord_HFS, self.quants[quant][:,JXI], label='HFS grid midplane')
+            l = ax.plot(rhop_LFS, prof_LFS, label='LFS midplane')
+            ax.errorbar(rhop_LFS, prof_LFS, prof_LFS_std, c=l[0].get_color(), alpha=0.8)
+            l = ax.plot(rhop_HFS, prof_HFS, label='HFS midplane')
+            ax.errorbar(rhop_HFS, prof_HFS, prof_HFS_std, c=l[0].get_color(), alpha=0.8)
+            #ax.plot(rhop_chord_LFS, vals[:,JXA], label='LFS grid midplane')
+            #ax.plot(rhop_chord_HFS, vals[:,JXI], label='HFS grid midplane')
             ax.set_xlabel(r'$\rho_p$')
             ax.set_ylabel(label) #self.labels[quant]) #lab)
             ax.legend(loc='best').set_draggable(True)
             plt.tight_layout()
 
         return rhop_FSA, prof_FSA, rhop_LFS, prof_LFS, rhop_HFS, prof_HFS
-    
-    def get_poloidal_prof(self, vals, dr_rhop=0.001, plot=False, label='', rhop=1.0, div_reg=False):
+
+
+    def get_poloidal_prof(self, vals, plot=False, label='', rhop=1.0, topology='LSN'):
         '''Extract poloidal profile of a quantity "quant" from the SOLPS run. 
         This function returns a profile of the specified quantity at the designated radial coordinate
         (rhop = 1 = LCFS by default) as a function of the poloidal angle theta
@@ -770,18 +751,16 @@ class solps_case:
         ----------
         vals : array (self.ny, self.nx)
             Data array for a variable of interest.
-        dr_rhop : float
-            Radial half width over which quantity should be averaged around the poloidal surface. 
-            Default is 0.001.
         plot : bool
             If True, plot poloidal profile.
         label : string
             Label for plot
         rhop : float
             Radial coordinate, in rho_p, at which to take poloidal surface. Default is 1 (LCFS)
-        div_reg : bool
-            If True and rhop>=1, plot entire poloidal profile extending beyond X-point (may be badly behaved) 
-        
+        topology : str
+            Magnetic topology, one of ['USN','LSN']
+            Note that double nulls ('DN') are not yet handled. 
+
         Returns
         -------
         theta_rhop : 1D array
@@ -798,70 +777,75 @@ class solps_case:
             # Exclude boundary cells
             vals = vals[1:-1,1:-1]         
 
+        try:
+            assert isinstance(topology, str) and topology!='DN'
+        except AssertionError:
+            raise AssertionError('Unrecognized topology!')
+
+        # find x-point coordinates
+        idx = 0 if topology=='LSN' else -1
+        self.xpoint = sorted(zip(self.geqdsk['RBBBS'],self.geqdsk['ZBBBS']), key=lambda x: x[1])[idx]
+        
         _x_point = self.xpoint
 
-        _R_points=np.linspace(np.min(self.R),np.max(self.R),200)
+        _R_points=np.linspace(np.min(self.R),np.max(self.R), 202)
         
-        if not div_reg: # Calculate z-bounds of plasma by min/max height of x-point(s)
-            if self.topology=='LSN':
-                _Z_points=np.linspace(_x_point[1],np.max(self.Z),200)
-            elif self.topology=='USN':
-                _Z_points=np.linspace(np.min(self.Z),_x_point[1],200)
-            elif self.topology=='DN':
-                _Z_points=np.linspace(_x_point[0][1],_x_point[1][1],200)
-                _x_point=_x_point[0]
-        else: 
-            _Z_points=np.linspace(np.min(self.Z),np.max(self.Z),200)
+        if topology=='LSN':
+            _Z_points=np.linspace(_x_point[1],np.max(self.Z), 200)
+        elif topology=='USN':
+            _Z_points=np.linspace(np.min(self.Z),_x_point[1], 200)
+        elif topology=='DN':
+            # not yet functional
+            _Z_points=np.linspace(_x_point[0][1],_x_point[1][1],1200)
+            _x_point=_x_point[0]
+        else:
+            raise ValueError('Unrecognized topology!')
 
         _R_grid,_Z_grid=np.meshgrid(_R_points,_Z_points,copy=False)
 
         rhop_2D = coords.get_rhop_RZ(_R_grid,_Z_grid, self.geqdsk)
         
-        #_dr = (np.max(self.R) - np.min(self.R))/((self.nx+self.ny)/dr) # rule-of-thumb to identify radial resolution
-        #print('Radial resolution ~ {}'.format(_dr))
+        dr_rhop = (np.max(self.R) - np.min(self.R))/(self.ny*10) # rule-of-thumb to identify radial resolution
         
         _mask=(rhop_2D<rhop+dr_rhop)&(rhop_2D>rhop-dr_rhop)
         
         _R_rhop=_R_grid[_mask]
         _Z_rhop=_Z_grid[_mask]
-        
-        #Need a way to get more resolution of the R and Z coordinates for given rhop
-        
+
+        # Need a way to get more resolution of the R and Z coordinates for given rhop
         prof_rhop = griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(),
                              (_R_rhop,_Z_rhop), method='cubic')
         
-        #prof_rhop[prof_rhop<0]=np.nan
+        Rmaxis = self.geqdsk['RMAXIS']
+        Zmaxis = self.geqdsk['ZMAXIS']
         
-        _Rmaxis = self.geqdsk['RMAXIS']
-        _Zmaxis = self.geqdsk['ZMAXIS']
+        _LFS_midplane_vect = np.array([np.max(self.R)-Rmaxis, 0])
+        _XP_vect = np.array([_x_point[0]-Rmaxis, _x_point[1]-Zmaxis])
+        _theta_vect = np.array([_R_rhop-Rmaxis, _Z_rhop-Zmaxis]).T
         
-        _LFS_midplane_vect = np.array([np.max(self.R)-_Rmaxis, 0])
-        _XP_vect = np.array([_x_point[0]-_Rmaxis, _x_point[1]-_Zmaxis])
-        _theta_vect = np.array([_R_rhop-_Rmaxis, _Z_rhop-_Zmaxis]).T
-        
-        _theta_XP = np.degrees(np.arctan2(np.linalg.det([_LFS_midplane_vect,_XP_vect]), np.dot(_LFS_midplane_vect,_XP_vect)))
+        _theta_XP = np.degrees(np.arctan2(np.linalg.det([_LFS_midplane_vect,_XP_vect]),
+                                          np.dot(_LFS_midplane_vect,_XP_vect)))
 
-        theta_rhop = [np.degrees(np.arctan2(np.linalg.det([_LFS_midplane_vect,_vect]), np.dot(_LFS_midplane_vect,_vect))) for _vect in _theta_vect]   
-        
+        theta_rhop = [np.degrees(np.arctan2(np.linalg.det([_LFS_midplane_vect,_vect]),
+                                            np.dot(_LFS_midplane_vect,_vect))) for _vect in _theta_vect]   
+
         if _theta_XP < 0:
             theta_rhop = [x+360 if x < _theta_XP else x for x in theta_rhop]
         else:
-            theta_rhop = [x+360 if x < -90 else x for x in theta_rhop]
+            theta_rhop = [x+360 if x < -90. else x for x in theta_rhop]
         
         poloidal_prof = np.array(sorted(zip(theta_rhop,prof_rhop))).T
         
-        '''
-        with warnings.catch_warnings():
-            warnings.filterwarnings('ignore') # we might take the mean of slices with only nan's, but that's OK
-            prof_LFS = np.nanmean(_prof_LFS.reshape(-1,10),axis=1) # average across 10 near points
-        '''    
+        num = 100 # arbitrary number, gives a fair level of resolution
+        num2 = np.floor_divide(len(poloidal_prof[0]), num)
+
+        theta_prof = np.nanmedian(poloidal_prof[0][:num*num2].reshape(-1,num2),axis=1)
+        pol_prof = np.nanmedian(poloidal_prof[1][:num*num2].reshape(-1,num2),axis=1)
+        
         if plot:
             
             fig,ax = plt.subplots()
-            ax.semilogy(poloidal_prof[0], poloidal_prof[1], label='rhop={}'.format(rhop))
-            ax.axvline(0,color='orange',linestyle='dashed',label='LFS Midplane')
-            ax.axvline(180,color='red',linestyle='dashed',label='HFS Midplane')
-            ax.axvline(_theta_XP,color='black',linestyle='dashed',label='X-Point')
+            ax.semilogy(theta_prof, pol_prof, '.', label='rhop={}'.format(rhop))
             ax.set_xlabel(r'$\theta$')
             ax.set_ylabel(label)
             ax.legend(loc='best').set_draggable(True)
@@ -958,13 +942,13 @@ def get_fort44_info(NDX,NDY,NATM,NMOL,NION,NSTRA,NCL,NPLS,NSTS,NLIM):
         'emissmol': [r'$H_\alpha$ emissivity due to molecules and molecular ions ($photons m^{-2} s^{-1}$)', (NDX,NDY)],
         'srcml': [r'Molecule particle source (A)', (NDX,NDY,NMOL)],
         'edissml': [r'Energy spent for dissociating hydrogenic molecules (W)', (NDX,NDY,NMOL)],
-        'wldnek': [r'Heat transferred by neutrals (W), total over strata', (NLIM+NSTS)],
-        'wldnep': [r'Potential energy released by neutrals (W), total over strata', (NLIM+NSTS)],
+        'wldnek': [r'Heat transferred by neutrals (W), total over strata', (NLIM+NSTS,)],
+        'wldnep': [r'Potential energy released by neutrals (W), total over strata', (NLIM+NSTS,)],
         'wldna': [r'Flux of atoms impinging on surface (A), total over strata', (NLIM+NSTS,NATM)],
         'ewlda': [r'Average energy of impinging atoms on surface (eV), total over strata', (NLIM+NSTS,NATM)],
         'wldnm': [r'Flux of molecules impinging on surface (A), total over strata', (NLIM+NSTS,NMOL)],
         'ewldm': [r'Average energy of impinging molecules on surface (eV), total over strata', (NLIM+NSTS,NMOL)],
-        'p1,p2': [r'Endpoints of surface (X and Y coordinates, in m), total over strata', (NLIM)],
+        'p1,p2': [r'Endpoints of surface (X and Y coordinates, in m), total over strata', (NLIM,)],
         'wldra': [r'Flux of reflected atoms from surface (A), total over strata', (NLIM+NSTS,NATM)],
         'wldrm': [r'Flux of reflected molecules from surface (A), total over strata', (NLIM+NSTS,NMOL)],
     }
@@ -1035,9 +1019,10 @@ def get_fort44_info(NDX,NDY,NATM,NMOL,NION,NSTRA,NCL,NPLS,NSTS,NLIM):
             'wldspta_res': [r'Flux of sputtered wall material per atom (A)', (NCL, NATM)],
             'wldsptm_res': [r'Flux of sputtered wall material per molecule (A)', (NCL, NMOL)],
             'wlpump_res(A)': [r'Pumped flux per atom (A)', (NCL, NATM)],
-            'wlpump_res(M)': [r' Pumped flux per molecule (A)', (NCL, NMOL)],
-            'wlpump_res(I)': [r' Pumped flux per test ion (A)', (NCL, NION)],
-            'wlpump_res(P)': [r' Pumped flux per plasma ion (A)', (NCL, NPLS)],
+            'wlpump_res(M)': [r'Pumped flux per molecule (A)', (NCL, NMOL)],
+            'wlpump_res(I)': [r'Pumped flux per test ion (A)', (NCL, NION)],
+            'wlpump_res(P)': [r'Pumped flux per plasma ion (A)', (NCL, NPLS)],
+            'ewldt_res': [r'Total wall power loading from Eirene particles', (NCL,)],
             'pdena_int': [r'Integral number of atoms over the entire Eirene computational grid', (NATM, NSTRA+1)],
             'pdenm_int': [r'Integral number of molecules over the entire Eirene computational grid', (NMOL, NSTRA+1)],
             'pdeni_int': [r'Integral number of test ions over the entire Eirene computational grid', (NION, NSTRA+1)],
@@ -1054,9 +1039,8 @@ def get_fort44_info(NDX,NDY,NATM,NMOL,NION,NSTRA,NCL,NPLS,NSTS,NLIM):
         }
     )
 
-    # extra, undocumente?
-    #fort44_info.update({'wall_geometry' : [r'Wall geometry points', ((NSTRA+1)*(5*NSTS+1),)]})  # check dimensions
-    fort44_info.update({'wall_geometry' : [r'Wall geometry points', (4*NLIM,)]})  # check dimensions
+    # extra, undocumented
+    fort44_info.update({'wall_geometry' : [r'Wall geometry points', (4*NLIM,)]})
     return fort44_info
 
 def get_fort46_info(NTRII,NATM,NMOL,NION):
@@ -1088,6 +1072,3 @@ def get_fort46_info(NTRII,NATM,NMOL,NION):
     }
     
     return fort46_info
-
-        
-        

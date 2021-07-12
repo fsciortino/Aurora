@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import xarray
 import numpy as np
 import copy
 from scipy.integrate import cumtrapz
@@ -27,6 +26,8 @@ def vol_int(Raxis_cm, ds, var, rhop_max=None):
     var_volint : array (nt,)
         Time history of volume integrated variable
     """
+    import xarray # import only if necessary
+    
     C = 2 * np.pi * Raxis_cm
     zvol = C * np.pi * ds['rvol_grid'].data / ds['pro'].data 
 
@@ -82,6 +83,8 @@ def check_particle_conserv(Raxis_cm, ds=None, filepath=None, linestyle='-', plot
         array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
         See optional input argument.
     '''
+    import xarray # import only if necessary
+    
     if filepath is not None:
         ds = xarray.open_dataset(filepath)  
         # use STRAHL notation for source function
