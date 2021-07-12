@@ -7,7 +7,6 @@ F.Sciortino & R.Reksoatmodjo, 2021
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-plt.ion()
 from scipy.interpolate import griddata, interp1d
 import matplotlib as mpl
 import matplotlib.tri as tri
@@ -17,52 +16,72 @@ import warnings
 from scipy import constants
 from . import plot_tools
 from . import coords
-
+plt.ion()
 
 class solps_case:
-    def __init__(self, path, geqdsk, solps_run='',
+    '''Read SOLPS output and prepare for Aurora impurity-neutral analysis. 
+
+    Parameters
+    ----------
+    path : str
+        Path to output files. If form='full', this path indicates where to find the directory named "baserun"
+        and the 'solps_run' one. If these are "extracted" files from SOLPS (form='extracted'),
+        then this is the path to the disk location where each of the required files
+        can be found. 
+    geqdsk : str or `omfit_classes.omfit_geqdsk.OMFITgeqdsk` class instance
+        Path to the geqdsk to load from disk, or instance of the `omfit_classes.omfit_geqdsk.omfit_geqdsk` 
+        class that contains the processed gEQDSK file already. 
+    solps_run : str
+        If form='full', this string specifies the directory (relative to the given path)
+        where case-specific files for a SOLPS run can be found (e.g. 'b2fstate').
+    topology : str
+        String abreviation to identify topology of plasma.
+        'LSN' = Lower single null (Default)
+        'USN' = Upper single null
+        'DN' = Double null
+    case_num : int
+        Index/integer identifying the SOLPS case of interest. 
+    form : str
+        Form of SOLPS output to be loaded, one of {'full','extracted'}. 
+        The 'full' output consists of 'b2fstate', 'b2fgmtry', 'fort.44', etc.
+        The 'extracted' output consists of individual files containing one quantity each.
+        If form='extracted', the 'extracted_labels' argument allows to specify files 
+        nomanclature. 
+    extracted_labels : dict
+        Only used if form='extracted', this dictionary allows specification of the names of
+        files/variables to be extracted. Default is to use
+        [RadLoc, VertLoc, Ne, Te, NeuDen, NeuTemp, MolDen, MolTemp, Ti]
+        each of which will be expected to have "case_num" appended to the name of the file.
+    '''
+    def __init__(self, path, geqdsk, solps_run='', topology='LSN',
                  case_num=0, form='extracted', extracted_labels=None):
-        '''Read SOLPS output and prepare for Aurora impurity-neutral analysis. 
-
-        Parameters
-        ----------
-        path : str
-            Path to output files. If these are "extracted" files from SOLPS (form='extracted'),
-            then this is the path to the disk location where each of the required files
-            can be found. 
-            If form='full', this path indicates where to find the directory named "baserun"
-            and the 'solps_run' one.
-        geqdsk : str or `omfit_classes.omfit_geqdsk.OMFITgeqdsk` class instance
-            Path to the geqdsk to load from disk, or instance of the `omfit_classes.omfit_geqdsk.omfit_geqdsk` 
-            class that contains the processed gEQDSK file already. 
-        solps_run : str
-            If form='full', this string specifies the directory (relative to the given path)
-            where case-specific files for a SOLPS run can be found (e.g. 'b2fstate').
-        case_num : int
-            Index/integer identifying the SOLPS case of interest. 
-        form : str
-            Form of SOLPS output to be loaded, one of {'full','extracted'}. 
-            The 'full' output consists of 'b2fstate', 'b2fgmtry', 'fort.44', etc.
-            The 'extracted' output consists of individual files containing one quantity each.
-            If form='extracted', the 'extracted_labels' argument allows to specify files 
-            nomanclature. 
-        extracted_labels : dict
-            Only used if form='extracted', this dictionary allows specification of the names of
-            files/variables to be extracted. Default is to use
-            [RadLoc, VertLoc, Ne, Te, NeuDen, NeuTemp, MolDen, MolTemp, Ti]
-            each of which will be expected to have "case_num" appended to the name of the file.
-        '''
-
         self.path = path
         self.solps_run = solps_run
+        self.topology = topology
         self.case_num = case_num
         self.form = form
-        
+        '''
+        if 'Windows' in os.environ['OS']:
+            os.environ['HOME']=r
+        '''
         if isinstance(geqdsk, str): # user passed a path to a gfile on disk
             from omfit_classes import omfit_eqdsk # import omfit_eqdsk here to avoid issues with docs and packaging
             self.geqdsk = omfit_eqdsk.OMFITgeqdsk(geqdsk)
         else:
             self.geqdsk = geqdsk
+        
+        _topologies = ['LSN','USN','DN'] #Allowable topology identifiers, can be augmented
+        
+        assert self.topology in _topologies, 'Topology invalid!'    
+        
+        if self.topology == 'LSN':    
+            i = 0
+        elif self.topology == 'USN':
+            i = -1
+        elif self.topology == 'DN': 
+            i = slice(0,len(self.geqdsk['RBBBS']),len(self.geqdsk['RBBBS'])-1)
+            
+        self.xpoint = sorted(zip(self.geqdsk['RBBBS'],self.geqdsk['ZBBBS']), key=lambda x: x[1])[i] #Calculating X-Point coordinate
 
         self.labels = {'ne':r'$n_e$ [$m^{-3}$]' , 'Te':r'$T_e$ [eV]',
                       'nn':r'$n_n$ [$m^{-3}$]' , 'Tn':r'$T_n$ [eV]',
@@ -86,7 +105,10 @@ class solps_case:
             self.unit_r = self.ny//2
 
             # Currently only set up for single null shapes
-            self.double_null = False
+            if self.topology == 'DN':
+                self.double_null = True
+            else:
+                self.double_null = False
 
             # Obtain indices for chosen radial regions
             _R_idxs = np.array([],dtype=int)
@@ -151,7 +173,6 @@ class solps_case:
         
         # set zero densities equal to min to avoid log issues
         #self.quants['nn'][self.quants['nn']==0.0] = nsmallest(2,np.unique(self.quants['nn'].flatten()))[1]
-
         
     def load_data(self, fields=None, P_idxs=None, R_idxs=None,
                   Rmin=None, Rmax=None, Pmin=None, Pmax=None):
@@ -225,22 +246,61 @@ class solps_case:
             self.fort46 = self.load_fort46()
             
             quants['ne'] = self.b2fstate['ne'][1:-1,1:-1][R_idxs,:][:,P_idxs] # m^-3
+            quants['Te'] = self.b2fstate['te'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
+            quants['Ti'] = self.b2fstate['ti'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
+            
+            # density of atomic species if B2 fluid neutral model is used:
             #quants['nn'] = self.b2fstate['na'][0,R_idxs,:][:,P_idxs] # m^-3   # only neutral component
+
+            # assume that EIRENE neutral model is used:
             nn44 = self.fort44['dab2'][:,:,0].T
             nn44[nn44==0.0] = nsmallest(2,np.unique(nn44.flatten()))[1]
             quants['nn'] = nn44[R_idxs,:][:,P_idxs] # m^-3   # only neutral component
             quants['Tn'] = self.fort44['tab2'][:,:,0].T[R_idxs,:][:,P_idxs]/constants.e # eV
-            quants['Te'] = self.b2fstate['te'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
-            quants['Ti'] = self.b2fstate['ti'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
+           
             quants['nm'] = self.fort44['dmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular density
             quants['Tm'] = self.fort44['tmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular temperature
             
-            # EIRENE nodes and triangulation
-            self.xnodes, self.ynodes, self.triangles = self.load_eirene_mesh()
+        # EIRENE nodes and triangulation
+        self.xnodes, self.ynodes, self.triangles = self.load_eirene_mesh()
 
-
+        # identify species (both B2 and EIRENE):
+        self.species_id()
             
             
+    def species_id(self):
+        '''Identify species included in SOLPS run, both for B2 and EIRENE quantities.
+        This is only designed to work in the "full" data format.
+        '''
+        assert self.form=='full'
+        
+        #b2_Zns = self.b2fstate['zn']  # nuclear charge (not ionization state)
+        b2_Ans = self.b2fstate['am'] # nuclear masses (2 for H/D/T, 4 for He, etc.)
+
+        # TODO: separate use of zamin and zamax for bundling
+        b2_Zas = self.b2fstate['zamin'] # atom charge (min over bundle)
+        #b2_Za_max = self.b2fstate['zamax'] # atom charge (max over bundle)
+        
+        # import here to avoid issues when building docs or package
+        from omfit_classes.utils_math import atomic_element
+
+        self.b2_species = b2_species = {}
+        for ii,(Zi,An) in enumerate(zip(b2_Zas,b2_Ans)):
+            # get name of atomic species from charge and atomic mass number
+            out = atomic_element(Z_ion=Zi, A=An)
+            _spec = list(out.keys())[0]
+            cs_str = f'{int(Zi)}+' if int(Zi)!=0 else '0'
+            b2_species[ii] = {'symbol': out[_spec]['symbol']+cs_str, 'Z':int(Zi),'A':int(An)}
+
+        self.eirene_species = eirene_species = {'atm':{}, 'mol':{}, 'ion':{}}
+        _atm = [spec for spec in self.fort44['species'] if ((not any(map(str.isdigit, spec)))&('+' not in spec)) ]
+        for ss,atm in enumerate(_atm): eirene_species['atm'][ss] = atm
+        _mol = [spec for spec in self.fort44['species'] if ((any(map(str.isdigit, spec)))&('+' not in spec))]
+        for ss,mol in enumerate(_mol): eirene_species['mol'][ss] = mol
+        _ion = [spec for spec in self.fort44['species'] if '+'  in spec]
+        for ss,ion in enumerate(_ion): eirene_species['ion'][ss] = ion
+        
+    
     def load_mesh_extra(self):
         '''Load the mesh.extra file.
         '''
@@ -324,7 +384,10 @@ class solps_case:
             if key in ['species','NDX','NDY','NATM','NMOL','NION','NSTRA','NCL','NPLS','NSTS','NLIM']:
                 continue
             # find appropriate shape from fort44_info dictionary
-            out[key] = np.array(out[key]).reshape(*fort44_info[key][1],order='F')
+            try:
+                out[key] = np.array(out[key]).reshape(*fort44_info[key][1],order='F')
+            except:
+                print(f'Variable {key} in fort.44 could not be parsed, likely to be new in SOLPS-ITER.')
             
         return out
 
@@ -421,7 +484,11 @@ class solps_case:
         wallax.set_xlabel('Radial Coordinate (m)')
         wallax.set_ylabel('Vertical Coordinate (m)')
         wallax.set_aspect('equal')
-                     
+        
+        self.WS=Wall_Seg
+        self.WC=Wall_Collection
+                 
+        
     def plot2d_b2(self, vals, ax=None, scale='log', label='', lb=None, ub=None, **kwargs):
         '''Method to plot 2D fields on B2 grids. 
         Colorbars are set to be manually adjustable, allowing variable image saturation.
@@ -501,14 +568,13 @@ class solps_case:
         ax.axis('scaled')
 
         
-
-
-    def plot2d_eirene(self, vals,  ax = None, scale='log', label='', lb=None, ub=None,**kwargs):
+    
+    def plot2d_eirene(self, vals,  ax = None, scale='log', label='', lb=None, ub=None, replace_zero=True, **kwargs):
         '''Method to plot 2D fields from EIRENE.
 
         Parameters
         ----------
-        vals : array (self.ny, self.nx)
+        vals : array (self.triangles)
             Data array for an EIRENE variable of interest.
         ax : matplotlib Axes instance
             Axes on which to plot. If left to None, a new figure is created.
@@ -520,12 +586,17 @@ class solps_case:
             Lower bound for colorbar. If left to None, the minimum value in `vals` is used.
         ub : float
             Upper bound for colorbar. If left to None, the maximum value in `vals` is used.
+        replace_zero : boolean
+            If True (default), replace all zeros in 'vals' with minimum value in 'vals'
         kwargs
             Additional keyword arguments passed to the `tripcolor` function.
 
         '''
         # Avoid zeros that may derive from low Monte Carlo statistics
-        if np.any(vals==0): vals[vals==0.0] = nsmallest(2,np.unique(vals.flatten()))[1]
+        #np.nan_to_num(vals,copy=False)
+        
+        if replace_zero:
+            if np.any(vals==0): vals[vals==0.0] = nsmallest(2,np.unique(vals.flatten()))[1]
 
         if ax is None:
             fig,ax = plt.subplots(figsize=(8,11))
@@ -534,9 +605,9 @@ class solps_case:
         ax.plot(self.geqdsk['RBBBS'],self.geqdsk['ZBBBS'],c='k')
         
         if lb is None:
-            lb = np.min(vals)
+            lb = np.nanmin(vals)
         if ub is None:
-            ub = np.max(vals)
+            ub = np.nanmax(vals)
         
         # given quantity is on EIRENE triangulation
         if scale=='linear': norm = None
@@ -559,21 +630,25 @@ class solps_case:
 
 
 
-    def get_radial_prof(self, quant='nn', dz_mm=5, plot=False):
+    def get_radial_prof(self, vals, dz_mm=5, theta=0, label='', plot=False):
         '''Extract radial profiles of a quantity "quant" from the SOLPS run. 
         This function returns profiles on the low- (LFS) and high-field-side (HFS) midplane, 
         as well as flux surface averaged (FSA) ones. 
 
         Parameters
         ----------
-        quant : str
-            Quantity of interest. Default is 'nn' (neutral atomic density). See self.labels.keys()
-            for other options.
+        vals : array (self.ny, self.nx)
+            Data array for a variable of interest.
         dz_mm : float
             Vertical range [mm] over which quantity should be averaged near the midplane. 
             Mean and standard deviation of profiles on the LFS and HFS will be returned based on
             variations of atomic neutral density within this vertical span.
             Note that this does not apply to the FSA calculation. Default is 5 mm.
+        theta : float (0-360)
+            Poloidal angle [degrees] at which to take radial profile, measured from 0 degrees at Outer Midplane.
+            Default is 0 degrees
+        label : string
+            Optional string label for plot and legend. Default is empty ('')
         plot : bool
             If True, plot radial profiles. 
 
@@ -598,7 +673,11 @@ class solps_case:
             Standard deviation of HFS midplane profile on rhop_HFS grid, based on variations 
             within +/-`dz_mm`/2 millimeters from the midplane.
         '''
-
+        
+        if np.prod(vals.shape)==self.crx.shape[1]*self.crx.shape[2]:
+            # Exclude boundary cells
+            vals = vals[1:-1,1:-1]
+        
         rhop_2D = coords.get_rhop_RZ(self.R,self.Z, self.geqdsk)
         
         # evaluate FSA radial profile inside the LCFS
@@ -606,7 +685,7 @@ class solps_case:
             if any(coords.get_rhop_RZ(r,z, self.geqdsk)<np.min(rhop_2D)):
                 return np.nan
             else:
-                return griddata((self.R.flatten(),self.Z.flatten()), self.quants[quant].flatten(),
+                return griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(),
                                 (r,z), method='linear')
 
         prof_FSA = self.geqdsk['fluxSurfaces'].surfAvg(function=avg_function)
@@ -625,7 +704,7 @@ class solps_case:
 
         # get midplane radial profile...
         # ...on the LFS:
-        _prof_LFS = griddata((self.R.flatten(),self.Z.flatten()), self.quants[quant].flatten(),
+        _prof_LFS = griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(),
                              (_R_LFS,0.5*dz_mm*1e-3*np.random.random(len(_R_LFS))),
                              #(_R_LFS,np.zeros_like(_R_LFS)),
                              method='linear')
@@ -634,7 +713,7 @@ class solps_case:
         rhop_LFS = coords.get_rhop_RZ(R_LFS,np.zeros_like(R_LFS), self.geqdsk)
 
         # ... and on the HFS:
-        _prof_HFS = griddata((self.R.flatten(),self.Z.flatten()), self.quants[quant].flatten(),
+        _prof_HFS = griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(), #self.quants[quant].flatten(),
                              #(_R_HFS, np.zeros_like(_R_HFS)),
                              (_R_HFS,0.5*dz_mm*1e-3*np.random.random(len(_R_HFS))),
                              method='linear')
@@ -652,7 +731,7 @@ class solps_case:
         Z_core = self.Z[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
         R_core = self.R[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
 
-        # find indeces of poloidal grid nearest to Z=0 in the innermost radial shell
+        # find indices of poloidal grid nearest to Z=0 in the innermost radial shell
         midplane_LFS_idx = np.argmin(np.abs(Z_core[0,R_core[0,:]>self.geqdsk['RMAXIS']]))
         midplane_HFS_idx = np.argmin(np.abs(Z_core[0,R_core[0,:]<self.geqdsk['RMAXIS']]))
 
@@ -673,14 +752,122 @@ class solps_case:
             ax.plot(rhop_FSA, prof_FSA, label='FSA')
             ax.plot(rhop_LFS, prof_LFS, label='LFS midplane')
             ax.plot(rhop_HFS, prof_HFS, label='HFS midplane')
-            ax.plot(rhop_chord_LFS, self.quants[quant][:,JXA], label='LFS grid midplane')
-            ax.plot(rhop_chord_HFS, self.quants[quant][:,JXI], label='HFS grid midplane')
+            #ax.plot(rhop_chord_LFS, self.quants[quant][:,JXA], label='LFS grid midplane')
+            #ax.plot(rhop_chord_HFS, self.quants[quant][:,JXI], label='HFS grid midplane')
             ax.set_xlabel(r'$\rho_p$')
-            ax.set_ylabel(self.labels[quant]) #lab)
+            ax.set_ylabel(label) #self.labels[quant]) #lab)
             ax.legend(loc='best').set_draggable(True)
             plt.tight_layout()
 
         return rhop_FSA, prof_FSA, rhop_LFS, prof_LFS, rhop_HFS, prof_HFS
+    
+    def get_poloidal_prof(self, vals, dr_rhop=0.001, plot=False, label='', rhop=1.0, div_reg=False):
+        '''Extract poloidal profile of a quantity "quant" from the SOLPS run. 
+        This function returns a profile of the specified quantity at the designated radial coordinate
+        (rhop = 1 = LCFS by default) as a function of the poloidal angle theta
+
+        Parameters
+        ----------
+        vals : array (self.ny, self.nx)
+            Data array for a variable of interest.
+        dr_rhop : float
+            Radial half width over which quantity should be averaged around the poloidal surface. 
+            Default is 0.001.
+        plot : bool
+            If True, plot poloidal profile.
+        label : string
+            Label for plot
+        rhop : float
+            Radial coordinate, in rho_p, at which to take poloidal surface. Default is 1 (LCFS)
+        div_reg : bool
+            If True and rhop>=1, plot entire poloidal profile extending beyond X-point (may be badly behaved) 
+        
+        Returns
+        -------
+        theta_rhop : 1D array
+            Poloidal grid measured in degrees from LFS midplane on which prof_rhop is given
+        prof_rhop : 1D array
+            Mean poloidal profile at rhop on theta_rhop grid.
+            
+        prof_rhop_std : 1D array
+            Standard deviation of poloidal profile at rhop on the theta_rhop grid, based on variations 
+            within +/-`dr_mm`/2 millimeters from the surface at rhop. 
+        '''
+
+        if np.prod(vals.shape)==self.crx.shape[1]*self.crx.shape[2]:
+            # Exclude boundary cells
+            vals = vals[1:-1,1:-1]         
+
+        _x_point = self.xpoint
+
+        _R_points=np.linspace(np.min(self.R),np.max(self.R),200)
+        
+        if not div_reg: # Calculate z-bounds of plasma by min/max height of x-point(s)
+            if self.topology=='LSN':
+                _Z_points=np.linspace(_x_point[1],np.max(self.Z),200)
+            elif self.topology=='USN':
+                _Z_points=np.linspace(np.min(self.Z),_x_point[1],200)
+            elif self.topology=='DN':
+                _Z_points=np.linspace(_x_point[0][1],_x_point[1][1],200)
+                _x_point=_x_point[0]
+        else: 
+            _Z_points=np.linspace(np.min(self.Z),np.max(self.Z),200)
+
+        _R_grid,_Z_grid=np.meshgrid(_R_points,_Z_points,copy=False)
+
+        rhop_2D = coords.get_rhop_RZ(_R_grid,_Z_grid, self.geqdsk)
+        
+        #_dr = (np.max(self.R) - np.min(self.R))/((self.nx+self.ny)/dr) # rule-of-thumb to identify radial resolution
+        #print('Radial resolution ~ {}'.format(_dr))
+        
+        _mask=(rhop_2D<rhop+dr_rhop)&(rhop_2D>rhop-dr_rhop)
+        
+        _R_rhop=_R_grid[_mask]
+        _Z_rhop=_Z_grid[_mask]
+        
+        #Need a way to get more resolution of the R and Z coordinates for given rhop
+        
+        prof_rhop = griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(),
+                             (_R_rhop,_Z_rhop), method='cubic')
+        
+        #prof_rhop[prof_rhop<0]=np.nan
+        
+        _Rmaxis = self.geqdsk['RMAXIS']
+        _Zmaxis = self.geqdsk['ZMAXIS']
+        
+        _LFS_midplane_vect = np.array([np.max(self.R)-_Rmaxis, 0])
+        _XP_vect = np.array([_x_point[0]-_Rmaxis, _x_point[1]-_Zmaxis])
+        _theta_vect = np.array([_R_rhop-_Rmaxis, _Z_rhop-_Zmaxis]).T
+        
+        _theta_XP = np.degrees(np.arctan2(np.linalg.det([_LFS_midplane_vect,_XP_vect]), np.dot(_LFS_midplane_vect,_XP_vect)))
+
+        theta_rhop = [np.degrees(np.arctan2(np.linalg.det([_LFS_midplane_vect,_vect]), np.dot(_LFS_midplane_vect,_vect))) for _vect in _theta_vect]   
+        
+        if _theta_XP < 0:
+            theta_rhop = [x+360 if x < _theta_XP else x for x in theta_rhop]
+        else:
+            theta_rhop = [x+360 if x < -90 else x for x in theta_rhop]
+        
+        poloidal_prof = np.array(sorted(zip(theta_rhop,prof_rhop))).T
+        
+        '''
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore') # we might take the mean of slices with only nan's, but that's OK
+            prof_LFS = np.nanmean(_prof_LFS.reshape(-1,10),axis=1) # average across 10 near points
+        '''    
+        if plot:
+            
+            fig,ax = plt.subplots()
+            ax.semilogy(poloidal_prof[0], poloidal_prof[1], label='rhop={}'.format(rhop))
+            ax.axvline(0,color='orange',linestyle='dashed',label='LFS Midplane')
+            ax.axvline(180,color='red',linestyle='dashed',label='HFS Midplane')
+            ax.axvline(_theta_XP,color='black',linestyle='dashed',label='X-Point')
+            ax.set_xlabel(r'$\theta$')
+            ax.set_ylabel(label)
+            ax.legend(loc='best').set_draggable(True)
+            plt.tight_layout()
+
+        return poloidal_prof
 
 
 def apply_mask(triang, geqdsk, max_mask_len=0.4, mask_up=False, mask_down=False):
@@ -893,7 +1080,7 @@ def get_fort46_info(NTRII,NATM,NMOL,NION):
         'VZDENA': [r'Z-directed momentum density carried by atoms ($g*cm^{-2}*s^{-1}$)', (NTRII,NATM)],
         'VZDENM': [r'Z-directed momentum density carried by molecules ($g*cm^{-2}*s^{-1}$)', (NTRII,NMOL)],
         'VZDENI': [r'Z-directed momentum density carried by test ions ($g*cm^{-2}*s^{-1}$)', (NTRII,NION)],
-        'VOLUMES': [r'Triangle volumes ($cm^{-3}$)', (NTRII)],
+        'VOLUMES': [r'Triangle volumes ($cm^{3}$)', (NTRII)],
         'PUX': [r'X-component of the poloidal unit vector at the triangle center', (NTRII)],
         'PUY': [r'Y-component of the poloidal unit vector at the triangle center', (NTRII)],
         'PVX': [r'X-component of the radial unit vector at the triangle center', (NTRII)],
@@ -901,3 +1088,6 @@ def get_fort46_info(NTRII,NATM,NMOL,NION):
     }
     
     return fort46_info
+
+        
+        
