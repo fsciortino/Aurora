@@ -742,7 +742,7 @@ class solps_case:
         return rhop_FSA, prof_FSA, rhop_LFS, prof_LFS, rhop_HFS, prof_HFS
 
 
-    def get_poloidal_prof(self, vals, plot=False, label='', rhop=1.0, topology='LSN'):
+    def get_poloidal_prof(self, vals, plot=False, label='', rhop=1.0, topology='LSN', ax=None):
         '''Extract poloidal profile of a quantity "quant" from the SOLPS run. 
         This function returns a profile of the specified quantity at the designated radial coordinate
         (rhop = 1 = LCFS by default) as a function of the poloidal angle theta
@@ -760,6 +760,9 @@ class solps_case:
         topology : str
             Magnetic topology, one of ['USN','LSN']
             Note that double nulls ('DN') are not yet handled. 
+        ax : matplotlib axes instance
+            Axes on which poloidal profile should be plotted. If not given, a new set of axes is created.
+            This is useful to possibly overplot profiles at different radii.
 
         Returns
         -------
@@ -836,17 +839,29 @@ class solps_case:
         
         poloidal_prof = np.array(sorted(zip(theta_rhop,prof_rhop))).T
         
-        num = 100 # arbitrary number, gives a fair level of resolution
-        num2 = np.floor_divide(len(poloidal_prof[0]), num)
+        #num = 100 # arbitrary number, gives a fair level of resolution
+        #num2 = np.floor_divide(len(poloidal_prof[0]), num)
+        #
+        #if num2>1:
+        #    theta_prof = np.nanmedian(poloidal_prof[0][:num*num2].reshape(-1,num2),axis=1)
+        #    pol_prof = np.nanmedian(poloidal_prof[1][:num*num2].reshape(-1,num2),axis=1)
+        #else:
+        #    # catch cases where there aren't enough points -- to be improved
+        theta_prof = poloidal_prof[0]
+        pol_prof = poloidal_prof[1]
 
-        theta_prof = np.nanmedian(poloidal_prof[0][:num*num2].reshape(-1,num2),axis=1)
-        pol_prof = np.nanmedian(poloidal_prof[1][:num*num2].reshape(-1,num2),axis=1)
-        
         if plot:
-            
-            fig,ax = plt.subplots()
-            ax.semilogy(theta_prof, pol_prof, '.', label='rhop={}'.format(rhop))
-            ax.set_xlabel(r'$\theta$')
+
+            if ax is None:
+                fig,ax = plt.subplots(figsize=(9,5))
+                # plot black vertical line at poloidal loc of x-point (left-most in plot)
+                ax.axvline(_theta_XP, c='k', label='X point')
+                for ang in [-90,0,90,180]:
+                    # plot black dashed lines at key angles that help in visualization
+                    ax.axvline(x=ang, c='k',ls='--')
+                
+            ax.semilogy(theta_prof, pol_prof, '.', label=fr'$\rho_p={rhop}$')
+            ax.set_xlabel(r'$\theta$ [${}^\circ$]')
             ax.set_ylabel(label)
             ax.legend(loc='best').set_draggable(True)
             plt.tight_layout()
