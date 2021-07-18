@@ -15,6 +15,7 @@ import requests
 
 from . import plot_tools
 from . import radiation
+from . import adas_files
 
 if 'AURORA_ADAS_DIR' in os.environ:
     # if user indicated a directory for atomic data, use that
@@ -396,9 +397,12 @@ def Lya_to_neut_dens(emiss_prof, ne, Te, ni=None, plot=True, rhop=None,
 
 
     elif rates_source=='adas':
-        path = '/home/sciortino/atomAI/atomdat_master/adf15/h/pju#h0.dat'
-        log10pec_dict = radiation.read_adf15(path)[1215.2]
+        filename = 'pec96#h_pju#h0.dat' # for D Ly-alpha
 
+        # fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
+        path = adas_files.get_adas_file_loc(filename, filetype='adf15')
+        log10pec_dict = radiation.read_adf15(path, plot_lines=[1215.2])
+        
         # evaluate these interpolations on our profiles
         pec_recomb = 10**log10pec_dict['recom'].ev(np.log10(ne), np.log10(Te))
         pec_exc = 10**log10pec_dict['excit'].ev(np.log10(ne), np.log10(Te))
