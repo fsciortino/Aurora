@@ -176,7 +176,7 @@ def check_particle_conserv(Raxis_cm, ds=None, filepath=None, linestyle='-', plot
                 if key != 'particles_in_pump':
                     y = y* circ #normalize it to #/s or # units
 
-                axf[iplot].plot(time,y,'-o',label=label,markersize=2, ls=linestyle)
+                axf[iplot].plot(time,y,'o',label=label,markersize=2, ls=linestyle)
                 iplot += 1
 
         for i,key,rhop,lab in zip(list(range(len(vol_int_keys))),vol_int_keys,vol_int_rhop,vol_int_labels):
@@ -185,7 +185,7 @@ def check_particle_conserv(Raxis_cm, ds=None, filepath=None, linestyle='-', plot
 
                 if key == 'impurity_radiation':
                     vol_int_data = vol_int_data[:,-1]   #total radiation
-                axf[iplot].plot(time,vol_int_data,'o-',label=lab,markersize=2.0, ls=linestyle)
+                axf[iplot].plot(time,vol_int_data,'o',label=lab,markersize=2.0, ls=linestyle)
                 iplot += 1
 
         for axxx in axf[-ncol:]:
