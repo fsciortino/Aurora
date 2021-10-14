@@ -100,7 +100,6 @@ class aurora_sim:
         self.mixing_radius = self.namelist['saw_model']['rmix']
         self.decay_length_boundary = self.namelist['SOL_decay']
         self.wall_recycling = self.namelist['wall_recycling']
-        self.source_div_fraction = self.namelist['divbls']   # change of nomenclature
         self.tau_div_SOL_ms = self.namelist['tau_div_SOL_ms']
         self.tau_pump_ms = self.namelist['tau_pump_ms']
         self.tau_rcl_ret_ms = self.namelist['tau_rcl_ret_ms']
@@ -201,7 +200,7 @@ class aurora_sim:
 
         if np.ndim(self.namelist['explicit_source_vals'])==2:
             # interpolate explicit source values on time and rhop grids of simulation
-            self.source_2d = RectBivariateSpline(self.namelist['explicit_source_rhop'],
+            self.source_core = RectBivariateSpline(self.namelist['explicit_source_rhop'],
                                                        self.namelist['explicit_source_time'],
                                                        self.namelist['explicit_source_vals'].T,
                                                        kx=1,ky=1)(self.rhop_grid, self.time_grid)
@@ -212,21 +211,58 @@ class aurora_sim:
                 self.namelist, self.Raxis_cm, self.time_grid)
             
             # get radial profile of source function for each time step
-            source_rad_prof = source_utils.get_radial_source(self.namelist,
-                                                                  self.rvol_grid, self.pro_grid,
-                                                                  S0,   # 0th charge state (neutral) and 0th time
-                                                                  self._Ti)
+            source_rad_prof = source_utils.get_radial_source(
+                self.namelist,
+                self.rvol_grid, self.pro_grid,
+                S0,   # 0th charge state (neutral) and 0th time
+                self._Ti)
 
-            source_2d = source_rad_prof[:,None]*source_time_history[None,:]
+            # construct source from separable time and radial dependences
+            self.source_core = source_rad_prof[:,None]*source_time_history[None,:]
         
-        self.source_2d = np.asfortranarray(self.source_2d)
-        
-        # set recycling profile simply based on the standard source profile at 0th time step
-        self.src_rcl_prof = source_utils.get_radial_source(self.namelist,
-                                                           self.rvol_grid, self.pro_grid,
-                                                           self.S_rates[:,0,[0]],   # 0th charge state (neutral) and 0th time
-                                                           self._Ti[[0],:])
+        self.source_core = np.asfortranarray(self.source_core)
 
+        if self.wall_recycling>=0: # return flows from the divertor are enabled
+
+            if 'source_div_time' in self.namelist and 'source_div_vals' in self.namelist:
+                # interpolate divertor source time history
+                print('Provided source going into the divertor reservoir')
+                source_div = interp1d(
+                    self.namelist['source_div_time'], self.namelist['source_div_vals'])(self.time_grid)
+
+        if self.wall_recycling>0: # recycling activated
+            
+            # if recycling radial profile is given, interpolate it on radial grid
+            if 'rcl_prof_vals' in self.namelist and 'rcl_prof_rhop' in self.namelist:
+
+                # Check that at least part of the recycling prof is within Aurora radial grid
+                if np.min(self.namelist['rcl_prof_rhop'])<np.max(self.rhop_grid):
+                    raise ValueError('Input recycling radial grid is too far out!')
+
+                self.rcl_rad_prof = interp1d(
+                    self.namelist['rcl_prof_rhop'], self.namelist['rcl_prof_vals'],
+                    fill_value='extrapolate')(
+                        self.rhop_grid
+                    )
+
+            else:
+                # set recycling prof to exp decay from wall
+                # use 0th time step, specified neutral stage energy
+                nml_rcl_prof = {key: self.namelist[key] for key in
+                                ['imp_source_energy_eV', 'rvol_lcfs', 'source_cm_out_lcfs', 'imp',
+                                 'prompt_redep_flag', 'Baxis', 'main_ion_A']}
+                nml_rcl_prof['source_width_in'] = 0
+                nml_rcl_prof['source_width_out'] = 0
+                        
+                self.rcl_rad_prof = source_utils.get_radial_source(
+                    nml_rcl_prof, # namelist specifically to obtain exp decay from wall
+                    self.rvol_grid, self.pro_grid,
+                    self.S_rates[:,0,[0]],   # 0th cs (neutral) and 0th time
+                    self._Ti[[0],:])
+
+            # normalize recycling source radial profile
+            self.rcl_rad_prof /= np.sum(self.rcl_rad_prof)
+            
 
     def interp_kin_prof(self, prof): 
         ''' Interpolate the given kinetic profile on the radial and temporal grids [units of s].
@@ -591,8 +627,8 @@ class aurora_sim:
                                      times_DV,
                                      D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                      self.par_loss_rate,  # time dependent
-                                     self.source_2d,# source profile in radius and time
-                                     self.src_rcl_prof, # recycling radial profile
+                                     self.source_core,# source profile in radius and time
+                                     self.rcl_rad_prof, # recycling radial profile
                                      self.S_rates, # ioniz_rate,
                                      self.R_rates, # recomb_rate,
                                      self.rvol_grid, self.pro_grid, self.qpr_grid,
@@ -601,10 +637,9 @@ class aurora_sim:
                                      self.source_time_history, # source profile in time
                                      self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
                                      self.wall_recycling,
-                                     self.source_div_fraction, # divbls [fraction of source into divertor]
                                      self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3,#[s] 
                                      self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
-                                     nz_init, alg_opt, evolneut)
+                                     nz_init, alg_opt, evolneut, self.source_div)
         else:
             # import here to avoid import when building documentation or package (negligible slow down)
             from ._aurora import run as fortran_run
@@ -612,22 +647,23 @@ class aurora_sim:
                                    times_DV,
                                    D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                    self.par_loss_rate,  # time dependent
-                                   self.source_2d,# source profile in radius and time
-                                   self.src_rcl_prof, # recycling radial profile
+                                   self.source_core, # source profile in radius and time
+                                   self.rcl_rad_prof, # recycling radial profile
                                    self.S_rates, # ioniz_rate,
                                    self.R_rates, # recomb_rate,
                                    self.rvol_grid, self.pro_grid, self.qpr_grid,
                                    self.mixing_radius, self.decay_length_boundary,
                                    self.time_grid, self.saw_on,
                                    self.source_time_history, # source profile in time
-                                   self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
+                                   self.save_time,
+                                   self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
                                    self.wall_recycling,
-                                   self.source_div_fraction, # divbls [fraction of source into divertor]
                                    self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3, # [s]  
                                    self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                    rn_t0 = nz_init,  # if omitted, internally set to 0's
-                                   alg_opt=alg_opt,
-                                   evolneut=evolneut)
+                                   alg_opt = alg_opt,
+                                   evolneut = evolneut,
+                                   source_div = self.source_div)
             
         if plot:
 
@@ -749,7 +785,7 @@ class aurora_sim:
         time_out = self.time_out.copy()
         save_time = self.save_time.copy()
         par_loss_rate = self.par_loss_rate.copy()
-        source_2d = self.source_2d.copy()
+        source_core = self.source_core.copy()
         S_rates = self.S_rates.copy()
         R_rates = self.R_rates.copy()
         saw_on = self.saw_on.copy()
@@ -761,7 +797,7 @@ class aurora_sim:
             self.time_grid = self.time_out = time_grid[sim_steps:sim_steps+n_steps]
             self.save_time = save_time[sim_steps:sim_steps+n_steps]
             self.par_loss_rate = par_loss_rate[:,sim_steps:sim_steps+n_steps]
-            self.source_2d = source_2d[:,sim_steps:sim_steps+n_steps]
+            self.source_core = source_core[:,sim_steps:sim_steps+n_steps]
             self.S_rates = S_rates[:,:,sim_steps:sim_steps+n_steps]
             self.R_rates = R_rates[:,:,sim_steps:sim_steps+n_steps]
             self.saw_on = saw_on[sim_steps:sim_steps+n_steps]
@@ -876,7 +912,7 @@ class aurora_sim:
         nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         nz = nz.transpose(2,1,0)   # time,nZ,space
 
-        srp = xarray.Dataset({'source': ([ 'time','rvol_grid'], self.source_2d.T),
+        srp = xarray.Dataset({'source': ([ 'time','rvol_grid'], self.source_core.T),
                               'pro': (['rvol_grid'], self.pro_grid), 
                               'rhop_grid': (['rvol_grid'], self.rhop_grid)
         },

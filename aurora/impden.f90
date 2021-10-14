@@ -5,7 +5,7 @@
 !
 
 subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
-     src_prof, src_rcl_prof, s_rates, r_rates,  &
+     src_prof, rcl_rad_prof, s_rates, r_rates,  &
      rr, pro, qpr, dlen, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
      rcl,tsuold, dsulold, divold, taudiv,tauwret, &
      a, b, c, d1, bet, gam, &
@@ -26,7 +26,7 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
   REAL*8, INTENT(IN)        :: conv(ir, nion)
   REAL*8, INTENT(IN)        :: par_loss_rate(ir)
   REAL*8, INTENT(IN)        :: src_prof(ir)
-  REAL*8, INTENT(IN)        :: src_rcl_prof(ir)
+  REAL*8, INTENT(IN)        :: rcl_rad_prof(ir)
   REAL*8, INTENT(IN)        :: s_rates(ir,nion)
   REAL*8, INTENT(IN)        :: r_rates(ir,nion)
   REAL*8, INTENT(IN)        :: rr(ir)
@@ -88,7 +88,7 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
 
   ! sum radial sources from external source time history and recycling
   ! NB: in STRAHL, recycling is set to have the same radial profile as the external sources!
-  rn(:,1) = src_prof + src_rcl_prof*(rclw + rcld)
+  rn(:,1) = src_prof + rcl_rad_prof*(rclw + rcld)
 
   dt = det/2.
   !     ********** first half time step direction up ********
@@ -234,7 +234,7 @@ end subroutine impden0
 
 
 
-subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, src_rcl_prof, s_rates, r_rates,  &
+subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_rad_prof, s_rates, r_rates,  &
      rr, fall_outsol, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
      rcl,tsuold, dsulold, divold, taudiv,tauwret, &
      evolveneut, Nret, rcld,rclw)
@@ -253,7 +253,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, src_rc
   REAL*8, INTENT(IN)        :: conv(ir, nion)
   REAL*8, INTENT(IN)        :: par_loss_rate(ir)
   REAL*8, INTENT(IN)        :: src_prof(ir)
-  REAL*8, INTENT(IN)        :: src_rcl_prof(ir)
+  REAL*8, INTENT(IN)        :: rcl_rad_prof(ir)
   REAL*8, INTENT(IN)        :: s_rates(ir,nion)    ! ionization
   REAL*8, INTENT(IN)        :: r_rates(ir,nion)   ! recombination
   REAL*8, INTENT(IN)        :: rr(ir)
@@ -318,14 +318,14 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, src_rc
 
      do i=1,ir
         b(i)    = b(i) + dt*s_rates(i,1)
-        d(i)    = d(i) + dt*(src_prof(i) + flx_rcl*src_rcl_prof(i)) 
+        d(i)    = d(i) + dt*(src_prof(i) + flx_rcl*rcl_rad_prof(i)) 
      enddo
      call TDMA(a, b, c, d, ir, nt)
   else
      nt = 0.d0
      ! radial profile of neutrals (given as input)
      do i=1,ir
-        rn(i,1) = src_prof(i) + flx_rcl* src_rcl_prof(i)
+        rn(i,1) = src_prof(i) + flx_rcl* rcl_rad_prof(i)
      end do
   endif
   
@@ -380,7 +380,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, src_rc
           dt, fall_outsol, par_loss_rate, rr, a, b, c, d)
           
      do i=1,ir
-        d(i)    = d(i) - dt*nt(i)*s_rates(i,1) + dt*(src_prof(i) + flx_rcl* src_rcl_prof(i))
+        d(i)    = d(i) - dt*nt(i)*s_rates(i,1) + dt*(src_prof(i) + flx_rcl* rcl_rad_prof(i))
      enddo
      call TDMA(a, b, c, d, ir, rn(:,1))
   endif
