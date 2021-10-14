@@ -255,7 +255,7 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
         Normalized first derivatives of the radial grid in volume-normalized coordinates. 
     S_rates : array (nr,nt)
         Ionization rate of neutral impurity over space and time.
-    Ti_eV : array, optional (nr,nt)
+    Ti_eV : array, optional (nt,nr)
         Background ion temperature, only used if source_width_in=source_width_out=0.0 and 
         imp_source_energy_eV<=0, in which case the source impurity neutrals are taken to 
         have energy equal to the local Ti [eV]. 
@@ -268,7 +268,8 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
     r_src = namelist['rvol_lcfs'] + namelist['source_cm_out_lcfs']
     nt = S_rates.shape[1]
     try:
-        assert S_rates.shape==Ti_eV.shape
+        # TODO: invert order of dimensions of Ti_eV...
+        assert S_rates.shape==Ti_eV.T.shape
     except AssertionError as msg:
         raise AssertionError(msg)
     

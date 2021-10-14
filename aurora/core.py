@@ -15,6 +15,7 @@ from . import plot_tools
 from . import synth_diags
 from . import adas_files
 from copy import deepcopy
+from IPython import embed
 
 class aurora_sim:
     '''Setup the input dictionary for an Aurora ion transport simulation from the given namelist.
@@ -222,13 +223,20 @@ class aurora_sim:
         
         self.source_core = np.asfortranarray(self.source_core)
 
-        if self.wall_recycling>=0: # return flows from the divertor are enabled
+        if self.wall_recycling>=0 and\
+           'source_div_time' in self.namelist and 'source_div_vals' in self.namelist:
 
-            if 'source_div_time' in self.namelist and 'source_div_vals' in self.namelist:
-                # interpolate divertor source time history
-                print('Provided source going into the divertor reservoir')
-                source_div = interp1d(
-                    self.namelist['source_div_time'], self.namelist['source_div_vals'])(self.time_grid)
+            # return flows from the divertor are enabled
+            # allow sources into the divertor reservoir:
+                
+            print('Provided source going into the divertor reservoir')
+            # interpolate divertor source time history
+            self.source_div = interp1d(
+                self.namelist['source_div_time'], self.namelist['source_div_vals'])(self.time_grid)
+        else:
+            # no source into the divertor
+            self.source_div = np.zeros_like(self.time_grid)
+            
 
         if self.wall_recycling>0: # recycling activated
             
@@ -247,7 +255,7 @@ class aurora_sim:
 
             else:
                 # set recycling prof to exp decay from wall
-                # use 0th time step, specified neutral stage energy
+                # use all time steps, specified neutral stage energy
                 nml_rcl_prof = {key: self.namelist[key] for key in
                                 ['imp_source_energy_eV', 'rvol_lcfs', 'source_cm_out_lcfs', 'imp',
                                  'prompt_redep_flag', 'Baxis', 'main_ion_A']}
@@ -257,12 +265,16 @@ class aurora_sim:
                 self.rcl_rad_prof = source_utils.get_radial_source(
                     nml_rcl_prof, # namelist specifically to obtain exp decay from wall
                     self.rvol_grid, self.pro_grid,
-                    self.S_rates[:,0,[0]],   # 0th cs (neutral) and 0th time
+                    self.S_rates[:,0,:],   # 0th charge state (neutral)
                     self._Ti[[0],:])
 
             # normalize recycling source radial profile
             self.rcl_rad_prof /= np.sum(self.rcl_rad_prof)
-            
+
+        else:
+            # dummy profile -- recycling is turned off
+            self.rcl_rad_prof = np.ones_like(self.rhop_grid)
+
 
     def interp_kin_prof(self, prof): 
         ''' Interpolate the given kinetic profile on the radial and temporal grids [units of s].
@@ -634,14 +646,14 @@ class aurora_sim:
                                      self.rvol_grid, self.pro_grid, self.qpr_grid,
                                      self.mixing_radius, self.decay_length_boundary,
                                      self.time_grid, self.saw_on,
-                                     self.source_time_history, # source profile in time
-                                     self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
+                                     self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm]
                                      self.wall_recycling,
                                      self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3,#[s] 
                                      self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                      nz_init, alg_opt, evolneut, self.source_div)
         else:
             # import here to avoid import when building documentation or package (negligible slow down)
+            embed()
             from ._aurora import run as fortran_run
             self.res = fortran_run(nt,  # number of times at which simulation outputs results
                                    times_DV,
@@ -649,14 +661,12 @@ class aurora_sim:
                                    self.par_loss_rate,  # time dependent
                                    self.source_core, # source profile in radius and time
                                    self.rcl_rad_prof, # recycling radial profile
-                                   self.S_rates, # ioniz_rate,
-                                   self.R_rates, # recomb_rate,
+                                   self.S_rates, # ioniz_rate
+                                   self.R_rates, # recomb_rate
                                    self.rvol_grid, self.pro_grid, self.qpr_grid,
                                    self.mixing_radius, self.decay_length_boundary,
                                    self.time_grid, self.saw_on,
-                                   self.source_time_history, # source profile in time
-                                   self.save_time,
-                                   self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
+                                   self.save_time, self.sawtooth_erfc_width, # dsaw width [cm]
                                    self.wall_recycling,
                                    self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3, # [s]  
                                    self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,

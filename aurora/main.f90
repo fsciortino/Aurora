@@ -6,18 +6,17 @@ subroutine run(  &
         nt_out,  nt_trans, &
         t_trans, D, V, &
         par_loss_rates, &
-        source_2d, src_rcl_prof, &
+        source_2d, rcl_rad_prof, &
         S_rates, R_rates,  &
         rr, pro, qpr, &
         r_saw, dlen,  &
-        time, &
-        saw, it_out, &
-        dsaw, &
-        rcl, taudiv, &
-        taupump, tauwret, &
+        time, saw, &
+        it_out, dsaw, &
+        rcl, taudiv, taupump, tauwret, &
         rvol_lcfs, dbound, dlim, prox, &
-        rn_t0, &
-        alg_opt, evolneut, source_div, &
+        ! OPTIONAL INPUTS:
+        rn_t0, alg_opt, evolneut, source_div, &
+        ! OUTPUTS:
         rn_out, &  ! OUT
         N_wall, N_div, N_pump, N_ret, &  ! OUT
         N_tsu, N_dsu, N_dsul,&   !OUT
@@ -54,7 +53,7 @@ subroutine run(  &
   !                    Frequency for parallel loss on radial and time grids [1/s]
   !     source_2d real*8 (ir,nt)
   !                    Radial profile of neutrals over time.
-  !     src_rcl_prof real*8 (ir)
+  !     rcl_rad_prof real*8 (ir)
   !                    Radial distribution of impurities re-entering the core reservoir after recycling.
   !                    NB: this should be a normalized profile! This condition is NOT enforced internally.
   !                    If not provided, this is set to be equal to a normalized src_prof (the external source distribution)    
@@ -165,7 +164,7 @@ subroutine run(  &
   REAL*8, INTENT(IN)                   :: V(ir,nt_trans,nion)
   REAL*8, INTENT(IN)                   :: par_loss_rates(ir,nt)
   REAL*8, INTENT(IN)                   :: source_2d(ir,nt)
-  REAL*8, INTENT(IN)                   :: src_rcl_prof(ir)  
+  REAL*8, INTENT(IN)                   :: rcl_rad_prof(ir)  
 
   REAL*8, INTENT(IN)                   :: S_rates(ir,nion,nt)
   REAL*8, INTENT(IN)                   :: R_rates(ir,nion,nt)
@@ -225,6 +224,7 @@ subroutine run(  &
   REAL*8      :: tsu, dsu, dsul
   REAL*8      :: rcld, rclw
   REAL*8      :: rn_t0_in(ir,nion) ! used to support optional argument rn_t0
+  REAL*8      :: source_div_in(nt) ! used to support optional argument source_div
   INTEGER     :: sel_alg_opt
   
   ! Only used in impden (define here to avoid re-allocating memory at each impden call)
@@ -249,6 +249,12 @@ subroutine run(  &
      evolveneut=evolneut
   else
      evolveneut=.false.
+  endif
+
+  if (present(source_div))then
+     source_div_in = source_div
+  else
+     source_div_in = 0.0d0 ! all elements set to 0
   endif
   
   ! initialize edge quantities
@@ -317,7 +323,7 @@ subroutine run(  &
         ! Linder algorithm
         call impden1(nion, ir, ra, rn,&
              diff, conv, par_loss_rates(:,it), &
-             source_2d(:,it), src_rcl_prof, &
+             source_2d(:,it), rcl_rad_prof, &
              S_rates(:,:,it), R_rates(:,:,it),  &
              rr, &
              dlen, &
@@ -340,7 +346,7 @@ subroutine run(  &
           dbound, dlim, prox, &
           rr, pro,  &
           rcl, taudiv, taupump, &
-          source_div(it), divold, &
+          source_div_in(it), divold, &
           divnew, &        ! OUT: update to divold
           tve, npump, &     ! INOUT: updated values
           tsu, dsu, dsul)  ! OUT: updated by edge model
@@ -454,9 +460,9 @@ end subroutine saw_mix
 
 
 
-subroutine edge_model(&
-    nion, ir, ra, rn,  &
-    diff, conv,  &
+subroutine edge_model( &
+    nion, ir, ra, rn, &
+    diff, conv, &
     par_loss_rate, det, rvol_lcfs, &
     dbound, dlim, prox, &
     rr, pro,  &
@@ -466,38 +472,37 @@ subroutine edge_model(&
 
   IMPLICIT NONE
 
-  INTEGER, INTENT(IN)                      :: nion
-  INTEGER, INTENT(IN)                      :: ir
+  INTEGER, INTENT(IN)                   :: nion
+  INTEGER, INTENT(IN)                   :: ir
   REAL*8, INTENT(INOUT)                 :: ra(ir,nion)
   REAL*8, INTENT(INOUT)                 :: rn(ir,nion)
 
-  REAL*8, INTENT(IN)                        :: diff(ir, nion)
-  REAL*8, INTENT(IN)                        :: conv(ir, nion)
+  REAL*8, INTENT(IN)                    :: diff(ir, nion)
+  REAL*8, INTENT(IN)                    :: conv(ir, nion)
 
+  REAL*8, INTENT(IN)                    :: par_loss_rate(ir)
+  REAL*8, INTENT(IN)                    :: det   ! full time step
+  REAL*8, INTENT(IN)                    :: rvol_lcfs 
+  REAL*8, INTENT(IN)                    :: dbound
+  REAL*8, INTENT(IN)                    :: dlim
+  REAL*8, INTENT(IN)                    :: prox  ! for edge loss calculation
 
-  REAL*8, INTENT(IN)                       :: par_loss_rate(ir)
-  REAL*8, INTENT(IN)                       :: det   ! full time step
-  REAL*8, INTENT(IN)                       :: rvol_lcfs 
-  REAL*8, INTENT(IN)                       :: dbound
-  REAL*8, INTENT(IN)                       :: dlim
-  REAL*8, INTENT(IN)                       :: prox  ! for edge loss calculation
+  REAL*8, INTENT(IN)                    :: rr(ir)
+  REAL*8, INTENT(IN)                    :: pro(ir)
 
-  REAL*8, INTENT(IN)                       :: rr(ir)
-  REAL*8, INTENT(IN)                       :: pro(ir)
+  REAL*8, INTENT(IN)                    :: rcl
+  REAL*8, INTENT(IN)                    :: taudiv  !time scale for divertor
+  REAL*8, INTENT(IN)                    :: taupump !time scale for pump
 
-  REAL*8, INTENT(IN)                       :: rcl
-  REAL*8, INTENT(IN)                       :: taudiv  !time scale for divertor
-  REAL*8, INTENT(IN)                       :: taupump !time scale for pump
+  REAL*8, INTENT(IN)                    :: source_div_t ! injected flux into the divertor 
+  REAL*8, INTENT(IN)                    :: divold !particles initially in divertor (to update)
 
-  REAL*8, INTENT(IN)                       :: source_div_t ! injected flux into the divertor 
-  REAL*8, INTENT(IN)                       :: divold !particles initially in divertor (to update)
-
-  REAL*8, INTENT(OUT)                    :: divnew !particles in divertor (updated)
+  REAL*8, INTENT(OUT)                   :: divnew !particles in divertor (updated)
   REAL*8, INTENT(INOUT)                 :: tve   !particles at wall (updated)
   REAL*8, INTENT(INOUT)                 :: npump !particles in pump (updated)
-  REAL*8, INTENT(OUT)                    :: tsu   !edge loss
-  REAL*8, INTENT(OUT)                    :: dsu   !parallel loss
-  REAL*8, INTENT(OUT)                    :: dsul   !parallel loss to limiter
+  REAL*8, INTENT(OUT)                   :: tsu   !edge loss
+  REAL*8, INTENT(OUT)                   :: dsu   !parallel loss
+  REAL*8, INTENT(OUT)                   :: dsul   !parallel loss to limiter
 
   INTEGER :: i, nz, ids, idl, ids1, idl1
   REAL*8 :: rx, pi, taustar, ff
