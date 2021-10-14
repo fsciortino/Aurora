@@ -401,11 +401,11 @@ def Lya_to_neut_dens(emiss_prof, ne, Te, ni=None, plot=True, rhop=None,
 
         # fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
         path = adas_files.get_adas_file_loc(filename, filetype='adf15')
-        log10pec_dict = radiation.read_adf15(path, plot_lines=[1215.2])
+        log10pec_dict = radiation.read_adf15(path) #, plot_lines=[1215.2])
         
         # evaluate these interpolations on our profiles
-        pec_recomb = 10**log10pec_dict['recom'].ev(np.log10(ne), np.log10(Te))
-        pec_exc = 10**log10pec_dict['excit'].ev(np.log10(ne), np.log10(Te))
+        pec_recomb = 10**log10pec_dict[1215.2]['recom'].ev(np.log10(ne), np.log10(Te))
+        pec_exc = 10**log10pec_dict[1215.2]['excit'].ev(np.log10(ne), np.log10(Te))
 
         N1 = emiss_prof/E_21/(ne*pec_exc+ni*pec_recomb)
 
