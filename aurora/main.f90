@@ -14,9 +14,7 @@ subroutine run(  &
         it_out, dsaw, &
         rcl, taudiv, taupump, tauwret, &
         rvol_lcfs, dbound, dlim, prox, &
-        ! OPTIONAL INPUTS:
-        rn_t0, alg_opt, evolneut, source_div, &
-        ! OUTPUTS:
+        rn_t0, alg_opt, evolneut, source_div, &   ! OPTIONAL INPUTS:
         rn_out, &  ! OUT
         N_wall, N_div, N_pump, N_ret, &  ! OUT
         N_tsu, N_dsu, N_dsul,&   !OUT

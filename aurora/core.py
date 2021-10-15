@@ -218,8 +218,8 @@ class aurora_sim:
                 S0,   # 0th charge state (neutral) and 0th time
                 self._Ti)
 
-            # construct source from separable time and radial dependences
-            self.source_core = source_rad_prof[:,None]*source_time_history[None,:]
+            # construct source from separable radial and time dependences
+            self.source_core = source_rad_prof*source_time_history[None,:]
         
         self.source_core = np.asfortranarray(self.source_core)
 
@@ -653,7 +653,6 @@ class aurora_sim:
                                      nz_init, alg_opt, evolneut, self.source_div)
         else:
             # import here to avoid import when building documentation or package (negligible slow down)
-            embed()
             from ._aurora import run as fortran_run
             self.res = fortran_run(nt,  # number of times at which simulation outputs results
                                    times_DV,
@@ -679,9 +678,9 @@ class aurora_sim:
 
             # plot charge state density distributions over radius and time
             plot_tools.slider_plot(self.rvol_grid, self.time_out, self.res[0].transpose(1,0,2),
-                                          xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
-                                          labels=[str(i) for i in np.arange(0,self.res[0].shape[1])],
-                                          plot_sum=True, x_line=self.rvol_lcfs)
+                                   xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
+                                   labels=[str(i) for i in np.arange(0,self.res[0].shape[1])],
+                                   plot_sum=True, x_line=self.rvol_lcfs)
             
             # check particle conservation by summing over simulation reservoirs
             _ = self.check_conservation(plot=True)
@@ -930,12 +929,11 @@ class aurora_sim:
                                     'rvol_grid': self.rvol_grid
                              })
         
-        source_time_history = particle_conserv.vol_int(self.Raxis_cm, srp, 'source')
+        self.source_time_history = particle_conserv.vol_int(self.Raxis_cm, srp, 'source')
 
-        source_time_history = self.source_time_history
         # Check particle conservation
         ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','rvol_grid'], nz),
-                         'source_time_history': (['time'], source_time_history ),
+                         'source_time_history': (['time'], self.source_time_history ),
                          'particles_in_divertor': (['time'], N_div), 
                          'particles_in_pump': (['time'], N_pump), 
                          'parallel_loss': (['time'], N_dsu), 
