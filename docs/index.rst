@@ -1,7 +1,7 @@
 Aurora: a modern toolbox for particle transport and radiation modeling
 ================================================================================
 
-Github repo: https://github.com/fsciortino/Aurora
+Github repo: https://github.com/fsciortino/Aurora                                                                            
 
 Paper/presentation in `Plasma Physics & Fusion Energy <https://iopscience.iop.org/article/10.1088/1361-6587/ac2890>`_ and on the `arXiv <https://arxiv.org/abs/2106.04528>`_.
 
