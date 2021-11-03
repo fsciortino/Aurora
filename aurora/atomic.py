@@ -3,7 +3,7 @@ Refer also to the adas_files.py script.
 '''
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import RectBivariateSpline, interp1d
+from scipy.interpolate import RectBivariateSpline, interp1d, RegularGridInterpolator
 from matplotlib import cm
 import os, sys, copy
 import scipy.ndimage
@@ -867,25 +867,41 @@ def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
     '''
     x,y, table = atom_table
 
+    if x_multiply and xprof is None:
+        raise ValueError('Cannot multiply output by 10^{xprof} because xprof is None!')
+
+    if x_multiply: # multiplying of logarithms is just adding
+        table += xprof*np.log(10)
+
+
     if (abs(table-table[...,[0]]) < 0.05).all() or xprof is None:
         # 1D interpolation if independent of the last dimension - like SXR radiation data
+        
+        if np.all(np.diff(y) == (y[1] - y[0])):
+            # ADAS y grid is equally spaced (almost always the case)
+            reg_interp = CartesianGrid((y, ),table[:,:,0]*np.log(10))
+        else:
+            # ADAS y-grid is not equally spaced -- cannot use fast CartesianGrid
+            reg_interp = interp1d(y, table[:,:,0]*np.log(10), axis=1, copy=False, assume_sorted=True)
 
-        reg_interp = CartesianGrid((y, ),table[:,:,0]*np.log(10))
-        interp_vals = reg_interp(yprof) 
-
-        # multipling of logarithms is just adding
-        if x_multiply and xprof is not None:
-            interp_vals += xprof*np.log(10)
-
+        interp_vals = reg_interp(yprof)
+        
     else: # 2D interpolation
-        if x_multiply: #multipling of logarithms is just adding
-            table += x
-        # broadcast both variables in the sae shape
+
+        # broadcast both variables in the same shape
         xprof, yprof = np.broadcast_arrays(xprof, yprof)
-        # perform fast linear interpolation
-        reg_interp = CartesianGrid((x, y),table.swapaxes(1,2)*np.log(10))
-        interp_vals = reg_interp(xprof,yprof) 
-    
+        
+        if np.all(np.diff(x) == (x[1] - x[0])) and np.all(np.diff(y) == (y[1] - y[0])):
+            # ADAS grids are equally spaced (almost always the case)
+            # perform fast linear interpolation
+            reg_interp = CartesianGrid((x, y),table.swapaxes(1,2)*np.log(10))
+            
+        else:
+            # ADAS grids are not equally spaced - cannot use fast CartesianGrid
+            reg_interp = RegularGridInterpolator((x, y), table.swapaxes(1,2)*np.log(10))
+            
+        interp_vals = reg_interp(xprof, yprof)
+
     # reshape to shape(nt,nion,nr)
     interp_vals = interp_vals.swapaxes(0,1)
 
