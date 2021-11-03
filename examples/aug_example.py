@@ -21,18 +21,26 @@ time = 3.0
 # read in default Aurora namelist
 namelist = aurora.default_nml.load_default_namelist()
 
-# Use gfile and statefile in local directory:
-examples_dir = os.path.dirname(os.path.abspath(__file__))
-inputgacode = omfit_gapy.OMFITgacode(examples_dir+'/example.input.gacode')
+
+import aug_sfutils as sf
+
 
 # get equilibrium for AUG through aug_sfutils
 geqdsk = aurora.build_aug_geqdsk(shot, time)
 
-# save kinetic profiles on a rhop (sqrt of norm. pol. flux) grid
+# get ne, Te from AUG IDA at specified time
 kp = namelist['kin_profs']
-kp['Te']['rhop'] = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
-kp['ne']['vals'] = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
-kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
+
+ida = sf.SFREAD(shot, 'ida')
+time_ida = ida.gettimebase('Te')
+it_ida = np.argmin(np.abs(time_ida - time))
+rhop_ida = ida.getareabase('Te')
+Te_eV = ida.getobject('Te')
+ne_m3 = ida.getobject('ne')
+
+kp['Te']['rhop'] = kp['ne']['rhop'] = rhop_ida[:,it_ida]
+kp['ne']['vals'] = ne_m3[:,it_ida] * 1e-6 # m^-3 --> cm^-3
+kp['Te']['vals'] = Te_eV[:,it_ida] # eV
 
 # set impurity species and sources rate
 imp = namelist['imp'] = 'Ar'
@@ -60,13 +68,13 @@ aurora.plot_tools.slider_plot(asim.rvol_grid, asim.time_out, nz.transpose(1,0,2)
                               plot_sum=True, x_line=asim.rvol_lcfs)
 
 # add radiation
-#asim.rad = aurora.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te,
-#                              prad_flag=True, thermal_cx_rad_flag=False, 
-#                              spectral_brem_flag=False, sxr_flag=False)
+asim.rad = aurora.compute_rad(imp, nz.transpose(2,1,0), asim.ne, asim.Te,
+                              prad_flag=True, thermal_cx_rad_flag=False, 
+                              spectral_brem_flag=False, sxr_flag=False)
 
 # plot radiation profiles over radius and time
-#aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
-#                   xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'Line radiation [$MW/m^3$]',
-#                   labels=[str(i) for i in np.arange(0,nz.shape[1])],
-#                   plot_sum=True, x_line=asim.rvol_lcfs)
+aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
+                   xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'Line radiation [$MW/m^3$]',
+                   labels=[str(i) for i in np.arange(0,nz.shape[1])],
+                   plot_sum=True, x_line=asim.rvol_lcfs)
 

@@ -718,11 +718,15 @@ def build_aug_geqdsk(shot, time):
     geqdsk['SIBRY'] = equ.psix[it]
     
     # hard-coded, checked  against sf's description off AUG surfaces
-    geqdsk['RLIM'] = np.array([103.5, 105, 109, 114, 123.5, 134, 143, 150.5, 163, 177, 197, 211, 217, 220.5, 221,217.5,
-                               213, 201, 189.0, 170.5, 164.5, 158, 145.8, 132.5, 123.5, 128.6, 128, 124.5, 112.5, 106, 103.5
+    geqdsk['RLIM'] = np.array([103.5, 105, 109, 114, 123.5, 134, 143,
+                               150.5, 163, 177, 197, 211, 217, 220.5, 221,217.5,
+                               213, 201, 189.0, 170.5, 164.5, 158, 145.8, 132.5,
+                               123.5, 128.6, 128, 124.5, 112.5, 106, 103.5
     ]) / 100.
-    geqdsk['ZLIM'] = np.array([0, 25, 50, 70, 96.5, 110, 115, 119, 115, 108.5, 78, 54, 39, 21, 0, -15, -28, -50, 
-                               -68, -86, -96.6, -120.8, -106, -106, -112.6, -97.6, -89.2, -82, -63.4, -30, 0
+    geqdsk['ZLIM'] = np.array([0, 25, 50, 70, 96.5, 110, 115, 119, 115,
+                               108.5, 78, 54, 39, 21, 0, -15, -28, -50,
+                               -68, -86, -96.6, -120.8, -106, -106, -112.6,
+                               -97.6, -89.2, -82, -63.4, -30, 0
     ]) / 100.
     
     geqdsk['BCENTR'] = sf.rz2brzt(equ, r_in=equ.Rmag[it], z_in=equ.Zmag[it], t_in=time)[2][0, 0]
@@ -743,17 +747,16 @@ def build_aug_geqdsk(shot, time):
     geqdsk['fluxSurfaces']['Z0'] = Z0
     geo = geqdsk['fluxSurfaces']['geo'] = {}
     
-    pf = equ.get_profile('PFL')[it]
+    pf = equ.pfl[it,:]
     
     geo['psin'] = (pf - equ.psi0[it]) / (equ.psix[it] - equ.psi0[it])
     ind = geo['psin'] <= 1
     geo['psin'] = geo['psin'][ind]
-    geo['surfArea'] = equ.get_mixed('Area')[0][it, ind]
-    geo['vol'] = equ.get_mixed('Vol')[0][it, ind]
-    geo['rhon'] = sf.rho2rho(equ, t_in=time, rho_in=pf[ind],
-                             coord_in='Psi', coord_out='rho_tor')[0]
+    geo['surfArea'] = equ.area[it, ind]
+    geo['vol'] = equ.vol[it, ind]
+    geo['rhon'] = equ.rho_tor_n[it,ind]
     
-    qpsi = abs(equ.get_profile('Qpsi'))[it]
+    qpsi = abs(equ.q)[it]
     qpsi[-1] = 2 * qpsi[-2] - qpsi[-3]
     geqdsk['QPSI'] = qpsi[ind]
     
