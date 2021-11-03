@@ -697,7 +697,8 @@ class CartesianGrid:
         List of 1D arrays with equally spaced grid values for each dimension
     values: N+1 dimensional array of values used for interpolation
         Values to interpolate. The first dimension typically refers to different ion stages, for which 
-        data is provided on the input grids. Other dimensions refer to values on the density and temperature grids.
+        data is provided on the input grids. 
+        Other dimensions refer to values on the density and temperature grids.
     """
     def __init__(self, grids, values):
 
@@ -823,7 +824,7 @@ class CartesianGrid_Ndim:
         for coord, n in zip(coords, self.N):
             np.clip(coord,0,n-1,coord)
 
-        #prepare output array
+        # prepare output array
         inter_out = np.empty((self.values.shape[0],)+out_shape, dtype=self.values.dtype)
 
         # fast interpolation on a N-dimensional regular grid
@@ -835,7 +836,7 @@ class CartesianGrid_Ndim:
 
 def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
     r''' Fast interpolate atomic data in atom_table onto the xprof and yprof profiles.
-    This function assume that xprof, yprof, x,y, table are all base-10 logarithms,
+    This function assume that xprof, yprof, x, y, table are all base-10 logarithms,
     and xprof, yprof are equally spaced.
 
     Parameters
@@ -857,7 +858,12 @@ def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
     -------
     interp_vals : array (nt,nion,nr)
         Interpolated atomic data on time,charge state and spatial grid that correspond to the 
-        ion of interest and the spatiotemporal grids of xprof and yprof. 
+        ion of interest and the spatiotemporal grids of xprof and yprof.
+
+    Notes
+    -------
+    This function uses `np.log10` and exponential operations to optimize speed, since it has
+    been observed that base-e operations are faster than base-10 operations in numpy. 
     '''
     x,y, table = atom_table
 
@@ -876,7 +882,7 @@ def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
             table += x
         # broadcast both variables in the sae shape
         xprof, yprof = np.broadcast_arrays(xprof, yprof)
-        #perform fast linear interpolation
+        # perform fast linear interpolation
         reg_interp = CartesianGrid((x, y),table.swapaxes(1,2)*np.log(10))
         interp_vals = reg_interp(xprof,yprof) 
     
