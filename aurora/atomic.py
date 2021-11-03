@@ -861,7 +861,7 @@ def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
     '''
     x,y, table = atom_table
 
-    if (abs(table-table[...,[0]]).all()  < 0.05) or xprof is None:
+    if (abs(table-table[...,[0]]) < 0.05).all() or xprof is None:
         # 1D interpolation if independent of the last dimension - like SXR radiation data
 
         reg_interp = CartesianGrid((y, ),table[:,:,0]*np.log(10))
