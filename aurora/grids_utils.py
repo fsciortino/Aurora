@@ -671,3 +671,98 @@ def estimate_boundary_distance(shot, device, time_ms):
     lim_sep = round(bound_sep*2./3.,3)
 
     return bound_sep, lim_sep
+
+
+
+def build_aug_geqdsk(shot, time):
+    '''Method to build a dictionary that imitates the structure of the EFIT geqdsk
+    output, so as to enable Aurora forward modeling of particle transport.
+    This function requires installation of `aug_sfutils`, which can be installed via
+    
+        python3 -m pip install aug_sfutils
+
+
+    Inputs
+    ------
+    shot : int
+        AUG shot number, e.g. 39649
+    time : float or int
+        Time (s) at which magnetic equilibrium reconstruction should be fetched.
+
+    Returns
+    -------
+    geqdsk
+
+    '''
+    
+    try:
+        import aug_sfutils as sf
+    except ImportError:
+        raise ImportError('aug_sfutils does not seem to be installed')
+
+    # Reading equilibrium into a class
+    equ = sf.EQU(shot)          # reads AUG equilibrium into a class
+    
+    # select time
+    it = np.argmin(abs(equ.time - time))
+
+    # build up critical geqdsk components
+    geqdsk = {}
+    geqdsk['NW'] = len(equ.Rmesh)
+    geqdsk['NH'] = len(equ.Zmesh)
+    R0 = equ.Rmag[it]
+    Z0 = equ.Zmag[it]
+    geqdsk['RMAXIS'] = R0
+    geqdsk['ZMAXIS'] = Z0
+    geqdsk['SIMAG'] = equ.psi0[it]
+    geqdsk['SIBRY'] = equ.psix[it]
+    
+    # hard-coded, checked  against sf's description off AUG surfaces
+    geqdsk['RLIM'] = np.array([103.5, 105, 109, 114, 123.5, 134, 143, 150.5, 163, 177, 197, 211, 217, 220.5, 221,217.5,
+                               213, 201, 189.0, 170.5, 164.5, 158, 145.8, 132.5, 123.5, 128.6, 128, 124.5, 112.5, 106, 103.5
+    ]) / 100.
+    geqdsk['ZLIM'] = np.array([0, 25, 50, 70, 96.5, 110, 115, 119, 115, 108.5, 78, 54, 39, 21, 0, -15, -28, -50, 
+                               -68, -86, -96.6, -120.8, -106, -106, -112.6, -97.6, -89.2, -82, -63.4, -30, 0
+    ]) / 100.
+    
+    geqdsk['BCENTR'] = sf.rz2brzt(equ, r_in=equ.Rmag[it], z_in=equ.Zmag[it], t_in=time)[2][0, 0]
+    geqdsk['CURRENT'] = equ.ipipsi[0,it]
+    geqdsk['CASE'] = np.array(['  CLISTE ', '    ', '   ', ' #' + str(shot), '  %.2fs' % time, '  ' + 'EQI'], dtype='<U8')
+    
+    aux = geqdsk['AuxQuantities'] = {}
+    aux['R'] = equ.Rmesh
+    aux['Z'] = equ.Zmesh
+    aux['R0'] = R0
+    aux['Z0'] = Z0
+    aux['RHOpRZ'] = equ.pfm[:, :, it].T - equ.psi0[it]
+    aux['RHOpRZ'] *= np.sign(np.mean(aux['RHOpRZ']))
+
+    # Now build fluxSurfaces proxy
+    geqdsk['fluxSurfaces'] = {}
+    geqdsk['fluxSurfaces']['R0'] = R0
+    geqdsk['fluxSurfaces']['Z0'] = Z0
+    geo = geqdsk['fluxSurfaces']['geo'] = {}
+    
+    pf = equ.get_profile('PFL')[it]
+    
+    geo['psin'] = (pf - equ.psi0[it]) / (equ.psix[it] - equ.psi0[it])
+    ind = geo['psin'] <= 1
+    geo['psin'] = geo['psin'][ind]
+    geo['surfArea'] = equ.get_mixed('Area')[0][it, ind]
+    geo['vol'] = equ.get_mixed('Vol')[0][it, ind]
+    geo['rhon'] = sf.rho2rho(equ, t_in=time, rho_in=pf[ind],
+                             coord_in='Psi', coord_out='rho_tor')[0]
+    
+    qpsi = abs(equ.get_profile('Qpsi'))[it]
+    qpsi[-1] = 2 * qpsi[-2] - qpsi[-3]
+    geqdsk['QPSI'] = qpsi[ind]
+    
+    mdpl = geqdsk['fluxSurfaces']['midplane'] = {}
+    mdpl['R'] = sf.rhoTheta2rz(equ, pf[ind], 0, t_in=time, coord_in='Psi')[0][0, 0]
+    
+    # separatrix
+    r, z = sf.rho2rz(equ, t_in=time, rho_in=0.999, all_lines=False)
+    
+    geqdsk['RBBBS'], geqdsk['ZBBBS'] = r[0][0], z[0][0]
+
+    return geqdsk
