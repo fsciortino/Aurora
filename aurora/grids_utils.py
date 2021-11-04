@@ -710,7 +710,8 @@ def build_aug_geqdsk(shot, time):
 
     # build up critical geqdsk components
     from omfit_classes import omfit_eqdsk
-    geqdsk = omfit_eqdsk.OMFITeqdsk('g123456.12345') # initialized new gEQDSK
+
+    geqdsk = omfit_eqdsk.OMFITeqdsk(f'g{shot:06d}.{int(time*1e3):05d}') # initialized new gEQDSK
     
     geqdsk['NW'] = len(eqm.Rmesh)
     geqdsk['NH'] = len(eqm.Zmesh)
@@ -733,18 +734,26 @@ def build_aug_geqdsk(shot, time):
                                -97.6, -89.2, -82, -63.4, -30, 0
     ]) / 100.
     
-    geqdsk['BCENTR'] = sf.rz2brzt(eqm, r_in=eqm.Rmag[it], z_in=eqm.Zmag[it], t_in=time)[2][0, 0]
     geqdsk['CURRENT'] = eqm.ipipsi[0,it]
     geqdsk['CASE'] = np.array(['  CLISTE ', '    ', '   ', ' #' + str(shot), '  %.2fs' % time, '  ' + 'EQI'], dtype='<U8')
     
     aux = geqdsk['AuxQuantities'] = {}
-    aux['R'] = eqm.Rmesh
-    aux['Z'] = eqm.Zmesh
+    aux['R'] = np.array(eqm.Rmesh.tolist())
+    aux['Z'] = np.array(eqm.Zmesh.tolist())
     aux['R0'] = R0
     aux['Z0'] = Z0
     aux['RHOpRZ'] = eqm.pfm[:, :, it].T - eqm.psi0[it]
     aux['RHOpRZ'] *= np.sign(np.mean(aux['RHOpRZ']))
 
+    geqdsk['RDIM'] = np.max(aux['R']) - np.min(aux['R'])  # horiz dimension of computational box
+    geqdsk['ZDIM'] = np.max(aux['Z']) - np.min(aux['Z'])  # vert dimension of computational box
+    geqdsk['RLEFT'] = np.min(aux['R'])   # min R of computational box
+    geqdsk['ZMID'] = (np.max(aux['Z']) + np.min(aux['Z']))/2.  # Z of center of computational box
+    
+    # toroidal field at RCENTR (does this need to be the vacuum value??)
+    geqdsk['RCENTR'] = eqm.Rmag[it]
+    geqdsk['BCENTR'] = sf.rz2brzt(eqm, r_in=eqm.Rmag[it], z_in=eqm.Zmag[it], t_in=time)[2][0, 0]
+        
     # Now build fluxSurfaces proxy
     geqdsk['fluxSurfaces'] = {}
     geqdsk['fluxSurfaces']['R0'] = R0
@@ -766,6 +775,9 @@ def build_aug_geqdsk(shot, time):
     
     mdpl = geqdsk['fluxSurfaces']['midplane'] = {}
     mdpl['R'] = sf.rhoTheta2rz(eqm, pf[ind], 0, t_in=time, coord_in='Psi')[0][0, 0]
+
+    # toroidal magnetic field across the midplane
+    Bt_mdpl = sf.rz2brzt(eqm, r_in=mdpl['R'], z_in=[eqm.Zmag[it],]*len(mdpl['R']), t_in=time)[2][0,:]
     
     # separatrix
     r, z = sf.rho2rz(eqm, t_in=time, rho_in=0.999, all_lines=False)
@@ -778,8 +790,13 @@ def build_aug_geqdsk(shot, time):
     geqdsk['PRES'] = eqm.pres[it,ind]
     geqdsk['PPRIME'] = eqm.dpres[it,ind]  # tentative
     geqdsk['FFPRIM'] = eqm.ffp[it,ind]
-    #embed()
-
+    geqdsk['FPOL'] = mdpl['R'] * Bt_mdpl      # F = R BT, poloidal flux (in Weber/rad?)
+    geqdsk['PSIRZ'] = eqm.pfm[:, :, it].T
+    
+    # ensure correct cocos and then calculate extra quantities
+    geqdsk._cocos=eqm.cocos
+    geqdsk.cocosify(1, calcAuxQuantities=True, calcFluxSurfaces=True)
+    
     Rmesh2D,Zmesh2D = np.meshgrid(eqm.Rmesh, eqm.Zmesh)
     
     # cannot use 2D inputs in rz2rho. Temporary solution:
@@ -788,5 +805,6 @@ def build_aug_geqdsk(shot, time):
         aux['RHORZ'][:,ii] = sf.rz2rho(eqm,Rmesh2D[:,ii],Zmesh2D[:,ii],
                                           t_in=time, coord_out='rho_tor')
     
+
     
     return geqdsk
