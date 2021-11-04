@@ -307,6 +307,7 @@ subroutine run(  &
         ! Use old algorithm, just for benchmarking
         call impden0( nion, ir, ra, rn,  &   !OUT: rn
              diff, conv, par_loss_rates(:,it), source_2d(:,it), &
+             rcl_rad_prof, &
              S_rates(:,:,it), R_rates(:,:,it),  &
              rr, pro, qpr, &
              dlen,  &

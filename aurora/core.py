@@ -257,16 +257,20 @@ class aurora_sim:
                 # set recycling prof to exp decay from wall
                 # use all time steps, specified neutral stage energy
                 nml_rcl_prof = {key: self.namelist[key] for key in
-                                ['imp_source_energy_eV', 'rvol_lcfs', 'source_cm_out_lcfs', 'imp',
+                                ['imp_source_energy_eV', 'rvol_lcfs',
+                                 'source_cm_out_lcfs', 'imp',
                                  'prompt_redep_flag', 'Baxis', 'main_ion_A']}
                 nml_rcl_prof['source_width_in'] = 0
                 nml_rcl_prof['source_width_out'] = 0
-                        
+
                 self.rcl_rad_prof = source_utils.get_radial_source(
                     nml_rcl_prof, # namelist specifically to obtain exp decay from wall
                     self.rvol_grid, self.pro_grid,
-                    self.S_rates[:,0,:],   # 0th charge state (neutral)
+                    self.S_rates[:,0,[0]],   # 0th charge state (neutral), 0th time
                     self._Ti[[0],:])
+
+            # np.broadcast_to gives unwriteable arrays -- make writeable
+            self.rcl_rad_prof.flags.writeable=True
 
             # normalize recycling source radial profile
             self.rcl_rad_prof /= np.sum(self.rcl_rad_prof)
@@ -274,7 +278,7 @@ class aurora_sim:
         else:
             # dummy profile -- recycling is turned off
             self.rcl_rad_prof = np.ones_like(self.rhop_grid)
-
+        
 
     def interp_kin_prof(self, prof): 
         ''' Interpolate the given kinetic profile on the radial and temporal grids [units of s].
@@ -412,8 +416,8 @@ class aurora_sim:
         self.main_element = self.namelist['main_element']
         out = atomic_element(symbol=self.namelist['main_element'])
         spec = list(out.keys())[0]
-        self.main_ion_A = int(out[spec]['A'])
-        self.main_ion_Z = int(out[spec]['Z'])
+        self.main_ion_A = self.namelist['main_ion_A'] = int(out[spec]['A'])
+        self.main_ion_Z = self.namelist['main_ion_Z'] = int(out[spec]['Z'])
 
         # factor for v = machnumber * sqrt((3T_i+T_e)k/m)
         vpf = self.namelist['SOL_mach']*np.sqrt(q_electron/m_p/self.main_ion_A)  
