@@ -21,7 +21,6 @@ time = 3.0
 # read in default Aurora namelist
 namelist = aurora.default_nml.load_default_namelist()
 
-
 import aug_sfutils as sf
 
 

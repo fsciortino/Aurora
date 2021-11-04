@@ -691,7 +691,9 @@ def build_aug_geqdsk(shot, time):
 
     Returns
     -------
-    geqdsk
+    geqdsk : dict
+        Dictionary with structure analogous to standard EFIT gEQDSK data,
+        but containing CLISTE results for AUG.
 
     '''
     
@@ -701,21 +703,23 @@ def build_aug_geqdsk(shot, time):
         raise ImportError('aug_sfutils does not seem to be installed')
 
     # Reading equilibrium into a class
-    equ = sf.EQU(shot)          # reads AUG equilibrium into a class
+    eqm = sf.EQU(shot)          # reads AUG equilibrium into a class
     
     # select time
-    it = np.argmin(abs(equ.time - time))
+    it = np.argmin(abs(eqm.time - time))
 
     # build up critical geqdsk components
-    geqdsk = {}
-    geqdsk['NW'] = len(equ.Rmesh)
-    geqdsk['NH'] = len(equ.Zmesh)
-    R0 = equ.Rmag[it]
-    Z0 = equ.Zmag[it]
+    from omfit_classes import omfit_eqdsk
+    geqdsk = omfit_eqdsk.OMFITeqdsk('g123456.12345') # initialized new gEQDSK
+    
+    geqdsk['NW'] = len(eqm.Rmesh)
+    geqdsk['NH'] = len(eqm.Zmesh)
+    R0 = eqm.Rmag[it]
+    Z0 = eqm.Zmag[it]
     geqdsk['RMAXIS'] = R0
     geqdsk['ZMAXIS'] = Z0
-    geqdsk['SIMAG'] = equ.psi0[it]
-    geqdsk['SIBRY'] = equ.psix[it]
+    geqdsk['SIMAG'] = eqm.psi0[it]
+    geqdsk['SIBRY'] = eqm.psix[it]
     
     # hard-coded, checked  against sf's description off AUG surfaces
     geqdsk['RLIM'] = np.array([103.5, 105, 109, 114, 123.5, 134, 143,
@@ -729,16 +733,16 @@ def build_aug_geqdsk(shot, time):
                                -97.6, -89.2, -82, -63.4, -30, 0
     ]) / 100.
     
-    geqdsk['BCENTR'] = sf.rz2brzt(equ, r_in=equ.Rmag[it], z_in=equ.Zmag[it], t_in=time)[2][0, 0]
-    geqdsk['CURRENT'] = equ.ipipsi[0,it]
+    geqdsk['BCENTR'] = sf.rz2brzt(eqm, r_in=eqm.Rmag[it], z_in=eqm.Zmag[it], t_in=time)[2][0, 0]
+    geqdsk['CURRENT'] = eqm.ipipsi[0,it]
     geqdsk['CASE'] = np.array(['  CLISTE ', '    ', '   ', ' #' + str(shot), '  %.2fs' % time, '  ' + 'EQI'], dtype='<U8')
     
     aux = geqdsk['AuxQuantities'] = {}
-    aux['R'] = equ.Rmesh
-    aux['Z'] = equ.Zmesh
+    aux['R'] = eqm.Rmesh
+    aux['Z'] = eqm.Zmesh
     aux['R0'] = R0
     aux['Z0'] = Z0
-    aux['RHOpRZ'] = equ.pfm[:, :, it].T - equ.psi0[it]
+    aux['RHOpRZ'] = eqm.pfm[:, :, it].T - eqm.psi0[it]
     aux['RHOpRZ'] *= np.sign(np.mean(aux['RHOpRZ']))
 
     # Now build fluxSurfaces proxy
@@ -747,25 +751,42 @@ def build_aug_geqdsk(shot, time):
     geqdsk['fluxSurfaces']['Z0'] = Z0
     geo = geqdsk['fluxSurfaces']['geo'] = {}
     
-    pf = equ.pfl[it,:]
+    pf = eqm.pfl[it,:]
     
-    geo['psin'] = (pf - equ.psi0[it]) / (equ.psix[it] - equ.psi0[it])
+    geo['psin'] = (pf - eqm.psi0[it]) / (eqm.psix[it] - eqm.psi0[it])
     ind = geo['psin'] <= 1
     geo['psin'] = geo['psin'][ind]
-    geo['surfArea'] = equ.area[it, ind]
-    geo['vol'] = equ.vol[it, ind]
-    geo['rhon'] = equ.rho_tor_n[it,ind]
+    geo['surfArea'] = eqm.area[it, ind]
+    geo['vol'] = eqm.vol[it, ind]
+    geo['rhon'] = eqm.rho_tor_n[it,ind]
     
-    qpsi = abs(equ.q)[it]
+    qpsi = abs(eqm.q)[it]
     qpsi[-1] = 2 * qpsi[-2] - qpsi[-3]
     geqdsk['QPSI'] = qpsi[ind]
     
     mdpl = geqdsk['fluxSurfaces']['midplane'] = {}
-    mdpl['R'] = sf.rhoTheta2rz(equ, pf[ind], 0, t_in=time, coord_in='Psi')[0][0, 0]
+    mdpl['R'] = sf.rhoTheta2rz(eqm, pf[ind], 0, t_in=time, coord_in='Psi')[0][0, 0]
     
     # separatrix
-    r, z = sf.rho2rz(equ, t_in=time, rho_in=0.999, all_lines=False)
+    r, z = sf.rho2rz(eqm, t_in=time, rho_in=0.999, all_lines=False)
     
     geqdsk['RBBBS'], geqdsk['ZBBBS'] = r[0][0], z[0][0]
+    
+    # a few extra things to enable greater use of omfit_eqdsk
+    geqdsk.add_rhovn()
 
+    geqdsk['PRES'] = eqm.pres[it,ind]
+    geqdsk['PPRIME'] = eqm.dpres[it,ind]  # tentative
+    geqdsk['FFPRIM'] = eqm.ffp[it,ind]
+    #embed()
+
+    Rmesh2D,Zmesh2D = np.meshgrid(eqm.Rmesh, eqm.Zmesh)
+    
+    # cannot use 2D inputs in rz2rho. Temporary solution:
+    aux['RHORZ'] = np.zeros_like(Rmesh2D)
+    for ii in np.arange(Rmesh2D.shape[1]):
+        aux['RHORZ'][:,ii] = sf.rz2rho(eqm,Rmesh2D[:,ii],Zmesh2D[:,ii],
+                                          t_in=time, coord_out='rho_tor')
+    
+    
     return geqdsk
