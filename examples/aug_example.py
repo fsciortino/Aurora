@@ -7,7 +7,6 @@ It is recommended to run this in IPython.
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-from omfit_classes import omfit_gapy
 import sys, os
 from scipy.interpolate import interp1d
 
