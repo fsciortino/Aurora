@@ -871,7 +871,7 @@ def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
         raise ValueError('Cannot multiply output by 10^{xprof} because xprof is None!')
 
     if x_multiply: # multiplying of logarithms is just adding
-        table += xprof*np.log(10)
+        table = table + xprof*np.log(10)  # don't modify original table, create copy
 
 
     if (abs(table-table[...,[0]]) < 0.05).all() or xprof is None:
