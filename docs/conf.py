@@ -75,7 +75,8 @@ if not on_rtd: # only import and set the theme if we're buiding docs locally
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = [] #['_static']
 
-
+#
+html_logo = 'figs/aurora_logo.png'
 
 
 # -- Options for LaTeX output --------------------------------------------------
