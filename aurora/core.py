@@ -237,6 +237,9 @@ class aurora_sim:
             # no source into the divertor
             self.source_div = np.zeros_like(self.time_grid)
             
+        #total number of injected ions, used for a check of particle conservation
+        self.total_source = np.pi*np.sum(self.source_core*S0*(self.rvol_grid/self.pro_grid)[:,None],0)  # sum over radius
+        self.total_source += self.source_div
 
         if self.wall_recycling>0: # recycling activated
             
