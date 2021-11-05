@@ -221,22 +221,25 @@ class aurora_sim:
 
         if np.ndim(self.namelist['explicit_source_vals'])==2:
             # interpolate explicit source values on time and rhop grids of simulation
+            # NB: explicit_source_vals should be in units of particles/s/cm^3 <-- ionization rate
             self.source_core = RectBivariateSpline(self.namelist['explicit_source_rhop'],
                                                        self.namelist['explicit_source_time'],
                                                        self.namelist['explicit_source_vals'].T,
                                                        kx=1,ky=1)(self.rhop_grid, self.time_grid)
-
+            
+            # Change units to particles/cm^3
+            self.source_core /= S0
         else:
             # get time history and radial profiles separately
             source_time_history = source_utils.get_source_time_history(
-                self.namelist, self.Raxis_cm, self.time_grid)
+                self.namelist, self.Raxis_cm, self.time_grid)  # units of particles/s/cm
             
             # get radial profile of source function for each time step
             source_rad_prof = source_utils.get_radial_source(
                 self.namelist,
                 self.rvol_grid, self.pro_grid,
                 S0,   # 0th charge state (neutral) and 0th time
-                self._Ti)
+                self._Ti)   # dimensionless, normalized such that pnorm=1, i.e. source_time_history*source_rad_prof = tot # particles/cm^3
 
             # construct source from separable radial and time dependences
             self.source_core = source_rad_prof*source_time_history[None,:]
@@ -259,7 +262,7 @@ class aurora_sim:
             
         #total number of injected ions, used for a check of particle conservation
         self.total_source = np.pi*np.sum(self.source_core*S0*(self.rvol_grid/self.pro_grid)[:,None],0)  # sum over radius
-        self.total_source += self.source_div
+        self.total_source += self.source_div   # units of particles/s/cm
 
         if self.wall_recycling>0: # recycling activated
             
@@ -286,17 +289,12 @@ class aurora_sim:
                 nml_rcl_prof['source_width_in'] = 0
                 nml_rcl_prof['source_width_out'] = 0
 
+                # NB: we assume here that the 0th time is a good representation of how recycling is radially distributed
                 self.rcl_rad_prof = source_utils.get_radial_source(
                     nml_rcl_prof, # namelist specifically to obtain exp decay from wall
                     self.rvol_grid, self.pro_grid,
                     self.S_rates[:,0,[0]],   # 0th charge state (neutral), 0th time
                     self._Ti[[0],:])
-
-            # np.broadcast_to gives unwriteable arrays -- make writeable
-            self.rcl_rad_prof.flags.writeable=True
-
-            # normalize recycling source radial profile
-            self.rcl_rad_prof /= np.sum(self.rcl_rad_prof)
 
         else:
             # dummy profile -- recycling is turned off
