@@ -871,7 +871,7 @@ def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
         raise ValueError('Cannot multiply output by 10^{xprof} because xprof is None!')
 
     if x_multiply: # multiplying of logarithms is just adding
-        table = table + xprof*np.log(10)  # don't modify original table, create copy
+        table = table + x*np.log(10)  # don't modify original table, create copy
 
 
     if (abs(table-table[...,[0]]) < 0.05).all() or xprof is None:
@@ -885,20 +885,14 @@ def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
             reg_interp = interp1d(y, table[:,:,0]*np.log(10), axis=1, copy=False, assume_sorted=True)
 
         interp_vals = reg_interp(yprof)
-        
-    else: # 2D interpolation
 
-        # broadcast both variables in the same shape
+    else: # 2D interpolation, assume ADAS grids are equally spaced (only small inaccuracies in data files)
+
+        # broadcast both variables to the same shape
         xprof, yprof = np.broadcast_arrays(xprof, yprof)
-        
-        if np.all(np.diff(x) == (x[1] - x[0])) and np.all(np.diff(y) == (y[1] - y[0])):
-            # ADAS grids are equally spaced (almost always the case)
-            # perform fast linear interpolation
-            reg_interp = CartesianGrid((x, y),table.swapaxes(1,2)*np.log(10))
-            
-        else:
-            # ADAS grids are not equally spaced - cannot use fast CartesianGrid
-            reg_interp = RegularGridInterpolator((x, y), table.swapaxes(1,2)*np.log(10))
+
+        # perform fast linear interpolation
+        reg_interp = CartesianGrid((x, y),table.swapaxes(1,2)*np.log(10))
             
         interp_vals = reg_interp(xprof, yprof)
 
