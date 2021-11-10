@@ -54,6 +54,9 @@ namelist['source_rate'] = 2e20  # particles/s
 #namelist['nbi_cxr'] = {'rhop': kp['Te']['rhop']}
 #namelist['nbi_cxr']['vals'] = kp['Te']['vals'][:,None]*np.arange(18)[None,:]  # units of s^-1
 
+namelist['recycling_flag']=False #True
+namelist['wall_recycling']=0.1
+
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 

@@ -114,7 +114,8 @@ def get_source_time_history(namelist, Raxis_cm, time):
 
     # For ease of comparison with STRAHL, shift source by one time step
     source_time_history = np.r_[source[1:],0]/circ
-
+    #source_time_history =  source/circ
+    
     return np.asfortranarray(source_time_history)
 
 

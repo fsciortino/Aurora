@@ -26,7 +26,7 @@ subroutine run(  &
         nt_out,  nt_trans, &
         t_trans, D, V, &
         par_loss_rates, &
-        source_2d, rcl_rad_prof, &
+        src_core, rcl_rad_prof, &
         S_rates, R_rates,  &
         rr, pro, qpr, &
         r_saw, dlen,  &
@@ -34,7 +34,7 @@ subroutine run(  &
         it_out, dsaw, &
         rcl, taudiv, taupump, tauwret, &
         rvol_lcfs, dbound, dlim, prox, &
-        rn_t0, alg_opt, evolneut, source_div, &   ! OPTIONAL INPUTS:
+        rn_t0, alg_opt, evolneut, src_div, &   ! OPTIONAL INPUTS:
         rn_out, &  ! OUT
         N_wall, N_div, N_pump, N_ret, &  ! OUT
         N_tsu, N_dsu, N_dsul,&   !OUT
@@ -69,7 +69,7 @@ subroutine run(  &
   !                    This must be given for each charge state and time.
   !     par_loss_rates  real*8 (ir,nt)
   !                    Frequency for parallel loss on radial and time grids [1/s]
-  !     source_2d real*8 (ir,nt)
+  !     src_core real*8 (ir,nt)
   !                    Radial profile of neutrals over time.
   !     rcl_rad_prof real*8 (ir)
   !                    Radial distribution of impurities re-entering the core reservoir after recycling.
@@ -139,10 +139,10 @@ subroutine run(  &
   !     evolneut     logical, optional  
   !                    Boolean to activate evolution of neutrals (like any ionization stage).
   !                    The D and v given for the 0th charge state apply to these neutrals.
-  !     source_div   real*8 (nt), optional
+  !     src_div   real*8 (nt), optional
   !                  Flux of particles going into the divertor, given as a function of time.
   !                  These particles will only affect the simulation if rcl>=0.
-  !                  If not provided, source_div is automatically set to an array of zeros.
+  !                  If not provided, src_div is automatically set to an array of zeros.
   !  
   ! Returns:
   !
@@ -181,7 +181,7 @@ subroutine run(  &
   REAL*8, INTENT(IN)                   :: D(ir,nt_trans,nion)
   REAL*8, INTENT(IN)                   :: V(ir,nt_trans,nion)
   REAL*8, INTENT(IN)                   :: par_loss_rates(ir,nt)
-  REAL*8, INTENT(IN)                   :: source_2d(ir,nt)
+  REAL*8, INTENT(IN)                   :: src_core(ir,nt)
   REAL*8, INTENT(IN)                   :: rcl_rad_prof(ir)  
 
   REAL*8, INTENT(IN)                   :: S_rates(ir,nion,nt)
@@ -218,7 +218,7 @@ subroutine run(  &
   REAL*8, INTENT(IN), OPTIONAL         :: rn_t0(ir,nion)
   INTEGER, INTENT(IN), OPTIONAL        :: alg_opt
   LOGICAL, INTENT(IN), OPTIONAL        :: evolneut
-  REAL*8, INTENT(IN), OPTIONAL         :: source_div(nt)
+  REAL*8, INTENT(IN), OPTIONAL         :: src_div(nt)
   
   ! outputs
   REAL*8, INTENT(OUT)                  :: rn_out(ir,nion,nt_out)
@@ -242,7 +242,7 @@ subroutine run(  &
   REAL*8      :: tsu, dsu, dsul
   REAL*8      :: rcld, rclw
   REAL*8      :: rn_t0_in(ir,nion) ! used to support optional argument rn_t0
-  REAL*8      :: source_div_in(nt) ! used to support optional argument source_div
+  REAL*8      :: src_div_in(nt) ! used to support optional argument src_div
   INTEGER     :: sel_alg_opt
   
   ! Only used in impden (define here to avoid re-allocating memory at each impden call)
@@ -269,10 +269,10 @@ subroutine run(  &
      evolveneut=.false.
   endif
 
-  if (present(source_div))then
-     source_div_in = source_div
+  if (present(src_div))then
+     src_div_in = src_div
   else
-     source_div_in = 0.0d0 ! all elements set to 0
+     src_div_in = 0.0d0 ! all elements set to 0
   endif
   
   ! initialize edge quantities
@@ -326,7 +326,7 @@ subroutine run(  &
      if (sel_alg_opt.eq.0) then
         ! Use old algorithm, just for benchmarking
         call impden0( nion, ir, ra, rn,  &   !OUT: rn
-             diff, conv, par_loss_rates(:,it), source_2d(:,it), &
+             diff, conv, par_loss_rates(:,it), src_core(:,it), &
              rcl_rad_prof, &
              S_rates(:,:,it), R_rates(:,:,it),  &
              rr, pro, qpr, &
@@ -342,7 +342,7 @@ subroutine run(  &
         ! Linder algorithm
         call impden1(nion, ir, ra, rn,&
              diff, conv, par_loss_rates(:,it), &
-             source_2d(:,it), rcl_rad_prof, &
+             src_core(:,it), rcl_rad_prof, &
              S_rates(:,:,it), R_rates(:,:,it),  &
              rr, &
              dlen, &
@@ -365,7 +365,7 @@ subroutine run(  &
           dbound, dlim, prox, &
           rr, pro,  &
           rcl, taudiv, taupump, &
-          source_div_in(it), divold, &
+          src_div_in(it), divold, &
           divnew, &        ! OUT: update to divold
           tve, npump, &     ! INOUT: updated values
           tsu, dsu, dsul)  ! OUT: updated by edge model
@@ -486,7 +486,7 @@ subroutine edge_model( &
     dbound, dlim, prox, &
     rr, pro,  &
     rcl,taudiv,taupump, &
-    source_div_t, divold, &
+    src_div_t, divold, &
     divnew, tve, npump, tsu,dsu,dsul )
 
   IMPLICIT NONE
@@ -513,7 +513,7 @@ subroutine edge_model( &
   REAL*8, INTENT(IN)                    :: taudiv  !time scale for divertor
   REAL*8, INTENT(IN)                    :: taupump !time scale for pump
 
-  REAL*8, INTENT(IN)                    :: source_div_t ! injected flux into the divertor 
+  REAL*8, INTENT(IN)                    :: src_div_t ! injected flux into the divertor 
   REAL*8, INTENT(IN)                    :: divold !particles initially in divertor (to update)
 
   REAL*8, INTENT(OUT)                   :: divnew !particles in divertor (updated)
@@ -584,9 +584,9 @@ subroutine edge_model( &
      taustar = 1./(1./taudiv+1./taupump)    ! time scale for divertor depletion
      ff = .5*det/taustar
      
-     divnew = ( divold*(1.-ff) + (dsu + source_div_t)*det )/(1.+ff)
+     divnew = ( divold*(1.-ff) + (dsu + src_div_t)*det )/(1.+ff)
   else
-     divnew = divold + (dsu+source_div_t)*det
+     divnew = divold + (dsu+src_div_t)*det
   endif
 
   ! particles in pump

@@ -224,44 +224,46 @@ class aurora_sim:
         if np.ndim(self.namelist['explicit_source_vals'])==2:
             # interpolate explicit source values on time and rhop grids of simulation
             # NB: explicit_source_vals should be in units of particles/s/cm^3 <-- ionization rate
-            self.source_core = RectBivariateSpline(self.namelist['explicit_source_rhop'],
+            self.src_core = RectBivariateSpline(self.namelist['explicit_source_rhop'],
                                                        self.namelist['explicit_source_time'],
                                                        self.namelist['explicit_source_vals'].T,
                                                        kx=1,ky=1)(self.rhop_grid, self.time_grid)
             
             # Change units to particles/cm^3
-            self.source_core /= S0
+            self.src_core /= S0
         else:
             # get time history and radial profiles separately
             source_time_history = source_utils.get_source_time_history(
                 self.namelist, self.Raxis_cm, self.time_grid)  # units of particles/s/cm
             
             # get radial profile of source function for each time step
+            # dimensionless, normalized such that pnorm=1
+            # i.e. source_time_history*source_rad_prof = # particles/cm^3
             source_rad_prof = source_utils.get_radial_source(
                 self.namelist,
                 self.rvol_grid, self.pro_grid,
                 S0,   # 0th charge state (neutral) and 0th time
-                self._Ti)   # dimensionless, normalized such that pnorm=1, i.e. source_time_history*source_rad_prof = tot # particles/cm^3
+                self._Ti)   
 
             # construct source from separable radial and time dependences
-            self.source_core = source_rad_prof*source_time_history[None,:]
+            self.src_core = source_rad_prof*source_time_history[None,:]
         
-        self.source_core = np.asfortranarray(self.source_core)
+        self.src_core = np.asfortranarray(self.src_core)
 
         # if wall_recycling>=0, return flows from the divertor are enabled   
         if self.wall_recycling>=0 and\
            'source_div_time' in self.namelist and 'source_div_vals' in self.namelist:
     
             # interpolate divertor source time history
-            self.source_div = interp1d(
+            self.src_div = interp1d(
                 self.namelist['source_div_time'], self.namelist['source_div_vals'])(self.time_grid)
         else:
             # no source into the divertor
-            self.source_div = np.zeros_like(self.time_grid)
+            self.src_div = np.zeros_like(self.time_grid)
         
         # total number of injected ions, used for a check of particle conservation
-        self.total_source = np.pi*np.sum(self.source_core*S0*(self.rvol_grid/self.pro_grid)[:,None],0)  # sum over radius
-        self.total_source += self.source_div   # units of particles/s/cm
+        self.total_source = np.pi*np.sum(self.src_core*S0*(self.rvol_grid/self.pro_grid)[:,None],0)  # sum over radius
+        self.total_source += self.src_div   # units of particles/s/cm
 
         if self.wall_recycling>0: # recycling activated
             
@@ -663,7 +665,7 @@ class aurora_sim:
                                      times_DV,
                                      D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                      self.par_loss_rate,  # time dependent
-                                     self.source_core,# source profile in radius and time
+                                     self.src_core,# source profile in radius and time
                                      self.rcl_rad_prof, # recycling radial profile
                                      self.S_rates, # ioniz_rate,
                                      self.R_rates, # recomb_rate,
@@ -674,7 +676,7 @@ class aurora_sim:
                                      self.wall_recycling,
                                      self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3,#[s] 
                                      self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
-                                     nz_init, alg_opt, evolneut, self.source_div)
+                                     nz_init, alg_opt, evolneut, self.src_div)
         else:
             # import here to avoid import when building documentation or package (negligible slow down)
             from ._aurora import run as fortran_run
@@ -682,7 +684,7 @@ class aurora_sim:
                                    times_DV,
                                    D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                    self.par_loss_rate,  # time dependent
-                                   self.source_core, # source profile in radius and time
+                                   self.src_core, # source profile in radius and time
                                    self.rcl_rad_prof, # recycling radial profile
                                    self.S_rates, # ioniz_rate
                                    self.R_rates, # recomb_rate
@@ -696,7 +698,7 @@ class aurora_sim:
                                    rn_t0 = nz_init,  # if omitted, internally set to 0's
                                    alg_opt = alg_opt,
                                    evolneut = evolneut,
-                                   source_div = self.source_div)
+                                   src_div = self.src_div)
             
         if plot:
 
@@ -818,7 +820,7 @@ class aurora_sim:
         time_out = self.time_out.copy()
         save_time = self.save_time.copy()
         par_loss_rate = self.par_loss_rate.copy()
-        source_core = self.source_core.copy()
+        src_core = self.src_core.copy()
         S_rates = self.S_rates.copy()
         R_rates = self.R_rates.copy()
         saw_on = self.saw_on.copy()
@@ -829,7 +831,7 @@ class aurora_sim:
             self.time_grid = self.time_out = time_grid[sim_steps:sim_steps+n_steps]
             self.save_time = save_time[sim_steps:sim_steps+n_steps]
             self.par_loss_rate = par_loss_rate[:,sim_steps:sim_steps+n_steps]
-            self.source_core = source_core[:,sim_steps:sim_steps+n_steps]
+            self.src_core = src_core[:,sim_steps:sim_steps+n_steps]
             self.S_rates = S_rates[:,:,sim_steps:sim_steps+n_steps]
             self.R_rates = R_rates[:,:,sim_steps:sim_steps+n_steps]
             self.saw_on = saw_on[sim_steps:sim_steps+n_steps]
@@ -880,7 +882,7 @@ class aurora_sim:
 
         # compute effective particle confinement time
         source_time_history = grids_utils.vol_int(
-            self.source_core.T, self.rvol_grid, self.pro_grid, self.Raxis_cm)
+            self.src_core.T, self.rvol_grid, self.pro_grid, self.Raxis_cm)
         self.tau_imp = var_volint / source_time_history[-2] # avoid last time point because source may be 0 there
         
         return nz_new[:,:,-1]
@@ -953,7 +955,7 @@ class aurora_sim:
         
         # particles that entered as "source":
         out['source'] = grids_utils.vol_int(
-            self.source_core.T, self.rvol_grid, self.pro_grid, self.Raxis_cm) * circ
+            self.src_core.T, self.rvol_grid, self.pro_grid, self.Raxis_cm) * circ
 
         # integrated source over timee
         out['integ_source'] =  cumtrapz(out['source'], self.time_out, initial=0)
