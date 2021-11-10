@@ -13,7 +13,6 @@ from .grids_utils import *
 from .coords import *
 from .radiation import *
 
-from .particle_conserv import *
 from .plot_tools import *
 from .animate import *
 
