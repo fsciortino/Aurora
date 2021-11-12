@@ -221,16 +221,19 @@ class aurora_sim:
         if len(save_time) == 1:  # if time averaged profiles were used
             S0 = S0[:, [0]]  # 0th charge state (neutral)
 
-        if np.ndim(self.namelist['explicit_source_vals'])==2:
+        if self.namelist['source_type'] == 'arbitrary_2d_source':
             # interpolate explicit source values on time and rhop grids of simulation
             # NB: explicit_source_vals should be in units of particles/s/cm^3 <-- ionization rate
-            self.src_core = RectBivariateSpline(self.namelist['explicit_source_rhop'],
-                                                       self.namelist['explicit_source_time'],
-                                                       self.namelist['explicit_source_vals'].T,
-                                                       kx=1,ky=1)(self.rhop_grid, self.time_grid)
+            srho = self.namelist['explicit_source_rhop']
+            stime = self.namelist['explicit_source_time']
+            source = np.array(self.namelist['explicit_source_vals']).T
             
+            spl = RectBivariateSpline(srho,stime,source,kx=1,ky=1)
+            #extrapolate by the nearest values
+            self.source_rad_prof = spl(np.clip(self.rhop_grid, min(srho),  max(srho)), 
+                                np.clip(self.time_grid, min(stime), max(stime)))
             # Change units to particles/cm^3
-            self.src_core /= S0
+            self.src_core = self.source_rad_prof/S0
         else:
             # get time history and radial profiles separately
             source_time_history = source_utils.get_source_time_history(
@@ -239,14 +242,14 @@ class aurora_sim:
             # get radial profile of source function for each time step
             # dimensionless, normalized such that pnorm=1
             # i.e. source_time_history*source_rad_prof = # particles/cm^3
-            source_rad_prof = source_utils.get_radial_source(
+            self.source_rad_prof = source_utils.get_radial_source(
                 self.namelist,
                 self.rvol_grid, self.pro_grid,
                 S0,   # 0th charge state (neutral) and 0th time
                 self._Ti)   
-
+            
             # construct source from separable radial and time dependences
-            self.src_core = source_rad_prof*source_time_history[None,:]
+            self.src_core = self.source_rad_prof*source_time_history[None,:]
         
         self.src_core = np.asfortranarray(self.src_core)
 
@@ -265,7 +268,7 @@ class aurora_sim:
         self.total_source = np.pi*np.sum(self.src_core*S0*(self.rvol_grid/self.pro_grid)[:,None],0)  # sum over radius
         self.total_source += self.src_div   # units of particles/s/cm
 
-        if self.wall_recycling>0: # recycling activated
+        if self.wall_recycling >= 0: # recycling activated
             
             # if recycling radial profile is given, interpolate it on radial grid
             if 'rcl_prof_vals' in self.namelist and 'rcl_prof_rhop' in self.namelist:
@@ -294,7 +297,7 @@ class aurora_sim:
                 self.rcl_rad_prof = source_utils.get_radial_source(
                     nml_rcl_prof, # namelist specifically to obtain exp decay from wall
                     self.rvol_grid, self.pro_grid,
-                    self.S_rates[:,0,[0]],   # 0th charge state (neutral), 0th time
+                    self.S_rates[:,0,[0]],   # 0th charge state (neutral), 0th time BUG
                     self._Ti[[0],:])
 
         else:
@@ -729,7 +732,8 @@ class aurora_sim:
                     nz_unstaged[:,superstages[i]] = self.res[0][:,i]
 
             self.res = nz_unstaged, *self.res[1:]
-         
+        
+        
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         return self.res
 
