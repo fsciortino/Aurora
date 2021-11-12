@@ -684,10 +684,8 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.
         
     return Te, fz, rate_coeffs
 
-
-
 class CartesianGrid:
-    """Fast linear interpolation for 1D and 2D vecctor data on equally spaced grids.
+    """Fast linear interpolation for 1D and 2D vector data on equally spaced grids.
     This offers optimal speed in Python for interpolation of atomic data tables such
     as the ADAS ones.
 
@@ -710,10 +708,16 @@ class CartesianGrid:
         for g, s in zip(grids, self.N):
             if len(g) != s:
                 raise OMFITexception('wrong size of values array')
-
-        self.offsets = [g[0] for g in grids]
-        self.scales = [(g[-1] - g[0]) / (n - 1) for g, n in zip(grids, self.N)]
-
+        
+        
+        self.eq_spaced_grid =  np.all([np.std(np.diff(g)) < 0.01 for g in grids])
+        if self.eq_spaced_grid:
+            self.offsets = [g[0] for g in grids]
+            self.scales = [(g[-1] - g[0]) / (n - 1) for g, n in zip(grids, self.N)]
+        else:
+            self.grids = grids
+            
+            
         A = []
         if len(self.N) == 1:
             A.append(values[:-1])
@@ -739,15 +743,21 @@ class CartesianGrid:
             List of 1D arrays for the N coordines (N=1 or N=2). These arrays must be of the same shape.
  
         """
-        coords = np.array(coords).T
-        coords -= self.offsets
-        coords /= self.scales
-        coords = coords.T
+     
+        if self.eq_spaced_grid:
+            
+            coords = np.array(coords).T
+            coords -= self.offsets
+            coords /= self.scales
+            coords = coords.T
 
-        # clip dimension - it will extrapolation by a nearest value
-        for coord, n in zip(coords, self.N):
-            np.clip(coord, 0, n - 1.00001, coord)
-
+            # clip dimension - it will extrapolation by a nearest value
+            for coord, n in zip(coords, self.N):
+                np.clip(coord, 0, n - 1.00001, coord)
+        else:
+            #for non-equally spaced grids must be used linear interpolation to map inputs to equally spaced indexes
+            coords = [np.interp(c,g,np.arange(len(g))) for c,g in zip(coords, grids)]
+       
         #  en.wikipedia.org/wiki/Bilinear_interpolation#Unit_square
 
         # get indicies x and weights dx
@@ -777,60 +787,6 @@ class CartesianGrid:
         return np.moveaxis(inter_out, -1, 0)
 
 
-class CartesianGrid_Ndim:
-    """
-    Linear multivariate Cartesian grid interpolation in arbitrary dimensions
-    This is a regular grid with equal spacing.
-
-    Use :py:class:`~aurora.atomic.CartesianGrid` for a version that is optimally fast
-    in 2 dimensions only.
-
-    Parameters
-    ----------
-    grids: list of arrays, N=len(grids), arbitrary N
-        List of 1D arrays with equally spaced grid values for each dimension
-    values: N+1 dimensional array of values used for interpolation
-        Values to interpolate. The first dimension typically refers to different ion stages, for which 
-        data is provided on the input grids. Other dimensions refer to values on the N-dimensional grids.
-
-    """
-    def __init__(self, grids, values):
-
-        self.values = np.ascontiguousarray(values)
-        for g,s in  zip(grids,values.shape[1:]):
-            if len(g) != s: raise Exception('wrong size of values array')
-
-        self.offsets = [g[0] for g in grids]
-        self.scales  = [(g[-1]-g[0])/(n-1) for g,n in zip(grids, values.shape[1:])]
-        self.N = values.shape[1:]
-
-    def __call__(self, *coords):
-        '''Transform coords into pixel values and provide interpolated result.
-
-        Parameters
-        ----------
-        coords:  list of arrays
-            List of 1D arrays for the N coordines (N=1 or N=2). These arrays must be of the same shape.
-        '''
-        out_shape = coords[0].shape
-
-        coords = np.array(coords).T
-        coords -= self.offsets
-        coords /= self.scales
-        coords = coords.T
-
-        # clip dimension - gives extrapolation by nearest value
-        for coord, n in zip(coords, self.N):
-            np.clip(coord,0,n-1,coord)
-
-        #prepare output array
-        inter_out = np.empty((self.values.shape[0],)+out_shape, dtype=self.values.dtype)
-
-        # fast interpolation on a N-dimensional regular grid
-        for out,val in zip(inter_out,self.values):
-            scipy.ndimage.map_coordinates(val, coords, order=1, output=out)
-
-        return inter_out
 
 
 def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
