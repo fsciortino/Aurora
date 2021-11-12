@@ -674,12 +674,17 @@ def estimate_boundary_distance(shot, device, time_ms):
 
 
 
-def build_aug_geqdsk(shot, time):
-    '''Method to build a dictionary that imitates the structure of the EFIT geqdsk
+def build_aug_geqdsk(shot, time, eq_shotfile='EQI'):
+    '''Temporary method to build a dictionary that imitates the structure of the EFIT geqdsk
     output, so as to enable Aurora forward modeling of particle transport.
     This function requires installation of `aug_sfutils`, which can be installed via
     
         python3 -m pip install aug_sfutils
+
+    In the near term, this function will be included in omfit_eqdsk and will be substitute by a  
+    simple call like
+    
+        geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_aug_sfutils(shot,timee,eq_shotfile='EQI'))    
 
 
     Inputs
@@ -688,6 +693,8 @@ def build_aug_geqdsk(shot, time):
         AUG shot number, e.g. 39649
     time : float or int
         Time (s) at which magnetic equilibrium reconstruction should be fetched.
+    eq_shotfile : str
+        Shotfile identifier, e.g. EQI, EQH, etc.
 
     Returns
     -------
@@ -703,108 +710,24 @@ def build_aug_geqdsk(shot, time):
         raise ImportError('aug_sfutils does not seem to be installed')
 
     # Reading equilibrium into a class
-    eqm = sf.EQU(shot)          # reads AUG equilibrium into a class
+    eqm = sf.EQU(shot, diag=eq_shotfile)          # reads AUG equilibrium into a class
     
-    # select time
-    it = np.argmin(abs(eqm.time - time))
-
     # build up critical geqdsk components
     from omfit_classes import omfit_eqdsk
 
     geqdsk = omfit_eqdsk.OMFITeqdsk(f'g{shot:06d}.{int(time*1e3):05d}') # initialized new gEQDSK
-    
-    geqdsk['NW'] = len(eqm.Rmesh)
-    geqdsk['NH'] = len(eqm.Zmesh)
-    R0 = eqm.Rmag[it]
-    Z0 = eqm.Zmag[it]
-    geqdsk['RMAXIS'] = R0
-    geqdsk['ZMAXIS'] = Z0
-    geqdsk['SIMAG'] = eqm.psi0[it]
-    geqdsk['SIBRY'] = eqm.psix[it]
-    
-    # hard-coded, checked  against sf's description off AUG surfaces
-    geqdsk['RLIM'] = np.array([103.5, 105, 109, 114, 123.5, 134, 143,
-                               150.5, 163, 177, 197, 211, 217, 220.5, 221,217.5,
-                               213, 201, 189.0, 170.5, 164.5, 158, 145.8, 132.5,
-                               123.5, 128.6, 128, 124.5, 112.5, 106, 103.5
-    ]) / 100.
-    geqdsk['ZLIM'] = np.array([0, 25, 50, 70, 96.5, 110, 115, 119, 115,
-                               108.5, 78, 54, 39, 21, 0, -15, -28, -50,
-                               -68, -86, -96.6, -120.8, -106, -106, -112.6,
-                               -97.6, -89.2, -82, -63.4, -30, 0
-    ]) / 100.
-    
-    geqdsk['CURRENT'] = eqm.ipipsi[0,it]
-    geqdsk['CASE'] = np.array(['  CLISTE ', '    ', '   ', ' #' + str(shot), '  %.2fs' % time, '  ' + 'EQI'], dtype='<U8')
-    
-    aux = geqdsk['AuxQuantities'] = {}
-    aux['R'] = np.array(eqm.Rmesh.tolist())
-    aux['Z'] = np.array(eqm.Zmesh.tolist())
-    aux['R0'] = R0
-    aux['Z0'] = Z0
-    aux['RHOpRZ'] = eqm.pfm[:, :, it].T - eqm.psi0[it]
-    aux['RHOpRZ'] *= np.sign(np.mean(aux['RHOpRZ']))
 
-    geqdsk['RDIM'] = np.max(aux['R']) - np.min(aux['R'])  # horiz dimension of computational box
-    geqdsk['ZDIM'] = np.max(aux['Z']) - np.min(aux['Z'])  # vert dimension of computational box
-    geqdsk['RLEFT'] = np.min(aux['R'])   # min R of computational box
-    geqdsk['ZMID'] = (np.max(aux['Z']) + np.min(aux['Z']))/2.  # Z of center of computational box
-    
-    # toroidal field at RCENTR (does this need to be the vacuum value??)
-    geqdsk['RCENTR'] = eqm.Rmag[it]
-    geqdsk['BCENTR'] = sf.rz2brzt(eqm, r_in=eqm.Rmag[it], z_in=eqm.Zmag[it], t_in=time)[2][0, 0]
-        
-    # Now build fluxSurfaces proxy
-    geqdsk['fluxSurfaces'] = {}
-    geqdsk['fluxSurfaces']['R0'] = R0
-    geqdsk['fluxSurfaces']['Z0'] = Z0
-    geo = geqdsk['fluxSurfaces']['geo'] = {}
-    
-    pf = eqm.pfl[it,:]
-    
-    geo['psin'] = (pf - eqm.psi0[it]) / (eqm.psix[it] - eqm.psi0[it])
-    ind = geo['psin'] <= 1
-    geo['psin'] = geo['psin'][ind]
-    geo['surfArea'] = eqm.area[it, ind]
-    geo['vol'] = eqm.vol[it, ind]
-    geo['rhon'] = eqm.rho_tor_n[it,ind]
-    
-    qpsi = abs(eqm.q)[it]
-    qpsi[-1] = 2 * qpsi[-2] - qpsi[-3]
-    geqdsk['QPSI'] = qpsi[ind]
-    
-    mdpl = geqdsk['fluxSurfaces']['midplane'] = {}
-    mdpl['R'] = sf.rhoTheta2rz(eqm, pf[ind], 0, t_in=time, coord_in='Psi')[0][0, 0]
+    # get start point for geqdsk dictionary from aug_sfutils
+    geq = sf.to_geqdsk(eqm, t_in=time)
 
-    # toroidal magnetic field across the midplane
-    Bt_mdpl = sf.rz2brzt(eqm, r_in=mdpl['R'], z_in=[eqm.Zmag[it],]*len(mdpl['R']), t_in=time)[2][0,:]
-    
-    # separatrix
-    r, z = sf.rho2rz(eqm, t_in=time, rho_in=0.999, all_lines=False)
-    
-    geqdsk['RBBBS'], geqdsk['ZBBBS'] = r[0][0], z[0][0]
+    # now fill up OMFITgeqdsk object    
+    geqdsk.update(geq)
     
     # a few extra things to enable greater use of omfit_eqdsk
     geqdsk.add_rhovn()
 
-    geqdsk['PRES'] = eqm.pres[it,ind]
-    geqdsk['PPRIME'] = eqm.dpres[it,ind]  # tentative
-    geqdsk['FFPRIM'] = eqm.ffp[it,ind]
-    geqdsk['FPOL'] = mdpl['R'] * Bt_mdpl      # F = R BT, poloidal flux (in Weber/rad?)
-    geqdsk['PSIRZ'] = eqm.pfm[:, :, it].T
-    
     # ensure correct cocos and then calculate extra quantities
-    geqdsk._cocos=eqm.cocos
-    geqdsk.cocosify(1, calcAuxQuantities=True, calcFluxSurfaces=True)
-    
-    Rmesh2D,Zmesh2D = np.meshgrid(eqm.Rmesh, eqm.Zmesh)
-    
-    # cannot use 2D inputs in rz2rho. Temporary solution:
-    aux['RHORZ'] = np.zeros_like(Rmesh2D)
-    for ii in np.arange(Rmesh2D.shape[1]):
-        aux['RHORZ'][:,ii] = sf.rz2rho(eqm,Rmesh2D[:,ii],Zmesh2D[:,ii],
-                                          t_in=time, coord_out='rho_tor')
-    
-
+    geqdsk._cocos = eqm.cocos
+    geqdsk.cocosify(1, calcAuxQuantities=True, calcFluxSurfaces=True)  # set to cocos=1
     
     return geqdsk

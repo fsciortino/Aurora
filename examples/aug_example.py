@@ -24,7 +24,7 @@ import aug_sfutils as sf
 
 
 # get equilibrium for AUG through aug_sfutils
-geqdsk = aurora.build_aug_geqdsk(shot, time)
+geqdsk = aurora.build_aug_geqdsk(shot, time, eq_shotfile='EQI')
 
 # get ne, Te from AUG IDA at specified time
 kp = namelist['kin_profs']
