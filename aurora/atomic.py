@@ -756,7 +756,7 @@ class CartesianGrid:
                 np.clip(coord, 0, n - 1.00001, coord)
         else:
             #for non-equally spaced grids must be used linear interpolation to map inputs to equally spaced indexes
-            coords = [np.interp(c,g,np.arange(len(g))) for c,g in zip(coords, grids)]
+            coords = [np.interp(c,g,np.arange(len(g))) for c,g in zip(coords, self.grids)]
        
         #  en.wikipedia.org/wiki/Bilinear_interpolation#Unit_square
 
