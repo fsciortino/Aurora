@@ -25,7 +25,7 @@ Refer also to the adas_files.py script.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import RectBivariateSpline, interp1d
+from scipy.interpolate import RectBivariateSpline, interp1d, RegularGridInterpolator
 from matplotlib import cm
 import os, sys, copy
 import scipy.ndimage
@@ -715,7 +715,8 @@ class CartesianGrid:
         List of 1D arrays with equally spaced grid values for each dimension
     values: N+1 dimensional array of values used for interpolation
         Values to interpolate. The first dimension typically refers to different ion stages, for which 
-        data is provided on the input grids. Other dimensions refer to values on the density and temperature grids.
+        data is provided on the input grids. 
+        Other dimensions refer to values on the density and temperature grids.
     """
     def __init__(self, grids, values):
 
@@ -811,7 +812,7 @@ class CartesianGrid:
 
 def interp_atom_prof(atom_table, xprof, yprof, log_val=False, x_multiply=True):
     r''' Fast interpolate atomic data in atom_table onto the xprof and yprof profiles.
-    This function assume that xprof, yprof, x,y, table are all base-10 logarithms,
+    This function assume that xprof, yprof, x, y, table are all base-10 logarithms,
     and xprof, yprof are equally spaced.
 
     Parameters
@@ -833,31 +834,37 @@ def interp_atom_prof(atom_table, xprof, yprof, log_val=False, x_multiply=True):
     -------
     interp_vals : array (nt,nion,nr)
         Interpolated atomic data on time,charge state and spatial grid that correspond to the 
-        ion of interest and the spatiotemporal grids of xprof and yprof. 
+        ion of interest and the spatiotemporal grids of xprof and yprof.
+
+    Notes
+    -------
+    This function uses `np.log10` and exponential operations to optimize speed, since it has
+    been observed that base-e operations are faster than base-10 operations in numpy. 
     '''
     x, y, table = atom_table
 
+    if x_multiply and xprof is None:
+        raise ValueError('Cannot multiply output by 10^{xprof} because xprof is None!')
+
+    if x_multiply: # multiplying of logarithms is just adding
+        table = table + x  # don't modify original table, create copy
+
     if (abs(table-table[...,[0]]) < 0.05).all() or xprof is None:
         # 1D interpolation if independent of the last dimension - like SXR radiation data
-
+        
         reg_interp = CartesianGrid((y, ), table[:,:,0]*np.log(10))
         interp_vals = reg_interp(yprof)
 
-        # multipling of logarithms is just adding
-        if x_multiply and xprof is not None:
-            interp_vals += xprof*np.log(10)
+    else: # 2D interpolation, assume ADAS grids are equally spaced (only small inaccuracies in data files)
 
-    else: # 2D interpolation
-        if x_multiply: # multipling of logarithms is just adding
-            table = table + x  # don't modify original table, create copy
-            
         # broadcast both variables to the same shape
         xprof, yprof = np.broadcast_arrays(xprof, yprof)
-        
+
         # perform fast linear interpolation
-        reg_interp = CartesianGrid((x, y), table.swapaxes(1,2)*np.log(10))
-        interp_vals = reg_interp(xprof,yprof) 
-    
+        reg_interp = CartesianGrid((x, y),table.swapaxes(1,2)*np.log(10))
+            
+        interp_vals = reg_interp(xprof, yprof)
+
     # reshape to shape(nt,nion,nr)
     interp_vals = interp_vals.swapaxes(0,1)
 

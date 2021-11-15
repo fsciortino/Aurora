@@ -233,7 +233,7 @@ In ionization equilibrium, all ionization and recombination processes will be pe
 
 The :py:func:`~aurora.atomic.get_frac_abundances` function returns the log-10 of the electron temperature on the same grid as the fractional abundances, given by the `fz` parameter (dimensions: space, charge state). This same function can be used to both compute radiation profiles of fractional abundances or to compute fractional abundances as a function of scanned parameters `ne` and/or `Te`. An additional argument of `ne_tau` (units of :math:`m^{-3}\cdot s`) can be used to approximately model the effect of transport on ionization balance.
 
-.. figure:: figs/W_Ca_frac_abundances_superstaging_new.jpeg
+.. figure:: figs/W_Ca_frac_abundances_superstaging_new.jpg
     :width: 500
     :align: center
     :alt: Ionization equilibria of W and Ca (dashed lines), also showing some choices of charge state bundling (superstaging) for both species.
