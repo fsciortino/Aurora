@@ -731,7 +731,7 @@ class CartesianGrid:
                 raise OMFITexception('wrong size of values array')
         
         
-        self.eq_spaced_grid =  np.all([np.std(np.diff(g)) < 0.01 for g in grids])
+        self.eq_spaced_grid = np.all([np.std(np.diff(g))/np.std(g) < 0.01 for g in grids])
         if self.eq_spaced_grid:
             self.offsets = [g[0] for g in grids]
             self.scales = [(g[-1] - g[0]) / (n - 1) for g, n in zip(grids, self.N)]
@@ -766,19 +766,19 @@ class CartesianGrid:
         """
      
         if self.eq_spaced_grid:
-            
             coords = np.array(coords).T
             coords -= self.offsets
             coords /= self.scales
             coords = coords.T
-
-            # clip dimension - it will extrapolation by a nearest value
-            for coord, n in zip(coords, self.N):
-                np.clip(coord, 0, n - 1.00001, coord)
         else:
             #for non-equally spaced grids must be used linear interpolation to map inputs to equally spaced indexes
             coords = [np.interp(c,g,np.arange(len(g))) for c,g in zip(coords, self.grids)]
-       
+        
+        # clip dimension - it will extrapolation by a nearest value
+        for coord, n in zip(coords, self.N):
+            np.clip(coord, 0, n - 1.00001, coord)
+            
+            
         #  en.wikipedia.org/wiki/Bilinear_interpolation#Unit_square
 
         # get indicies x and weights dx
