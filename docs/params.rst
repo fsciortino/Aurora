@@ -250,7 +250,8 @@ The plot title will show how many time steps are part of the time grid (given by
 Particle sources
 ----------------
 
-Core sources of particles can be specified in a number of ways. A time- and radially-dependent source can be explictly specified via the parameters
+Core sources of particles can be specified in a number of ways. A time- and radially-dependent source can be set by setting `namelist['source_type'] = 'arbitrary_2d_source'` and then providing the parameters
+
 #. `explicit_source_rhop` : radial grid (in square root of normalized poloidal flux)
 
 #. `explicit_source_time` : time grid (in seconds)

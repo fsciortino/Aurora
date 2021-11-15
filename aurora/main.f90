@@ -485,9 +485,9 @@ subroutine edge_model( &
     par_loss_rate, det, rvol_lcfs, &
     dbound, dlim, prox, &
     rr, pro,  &
-    rcl,taudiv,taupump, &
+    rcl, taudiv, taupump, &
     src_div_t, divold, &
-    divnew, tve, npump, tsu,dsu,dsul )
+    divnew, tve, npump, tsu, dsu, dsul)
 
   IMPLICIT NONE
 
@@ -527,9 +527,9 @@ subroutine edge_model( &
   REAL*8 :: rx, pi, taustar, ff
 
   ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !      Compute edge fluxes given multi-reservoir parameters
-  !      Core-densities do not directly depend on this -- but recycling can only be activated
-  !      if this 1D edge model is included.
+  ! Compute edge fluxes given multi-reservoir parameters
+  ! Core-densities do not directly depend on this -- but recycling
+  ! can only be activated if this 1D edge model is included.
   ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   pi = 4. * atan(1.)

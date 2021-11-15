@@ -677,7 +677,9 @@ class aurora_sim:
                                      self.time_grid, self.saw_on,
                                      self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm]
                                      self.wall_recycling,
-                                     self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3,#[s] 
+                                     self.tau_div_SOL_ms * 1e-3,  # [s]
+                                     self.tau_pump_ms * 1e-3,     # [s]
+                                     self.tau_rcl_ret_ms * 1e-3,  # [s] 
                                      self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                      nz_init, alg_opt, evolneut, self.src_div)
         else:
@@ -696,7 +698,9 @@ class aurora_sim:
                                    self.time_grid, self.saw_on,
                                    self.save_time, self.sawtooth_erfc_width, # dsaw width [cm]
                                    self.wall_recycling,
-                                   self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3, # [s]  
+                                   self.tau_div_SOL_ms * 1e-3,  # [s]
+                                   self.tau_pump_ms * 1e-3,     # [s]
+                                   self.tau_rcl_ret_ms * 1e-3,  # [s]  
                                    self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                    rn_t0 = nz_init,  # if omitted, internally set to 0's
                                    alg_opt = alg_opt,
@@ -985,7 +989,7 @@ class aurora_sim:
         if hasattr(self, 'rad'): # radiation has already been compputed
             out['impurity_radiation'] = grids_utils.vol_int(
                 self.rad['tot'], self.rvol_grid, self.pro_grid, self.Raxis_cm)
-            
+
         if plot:
             # -------------------------------------------------
             # plot time histories for each particle reservoirs:

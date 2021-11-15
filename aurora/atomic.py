@@ -1,6 +1,28 @@
 '''Collection of classes and functions for loading, interpolation and processing of atomic data. 
 Refer also to the adas_files.py script. 
 '''
+# MIT License
+#
+# Copyright (c) 2021 Francesco Sciortino
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import RectBivariateSpline, interp1d
@@ -554,7 +576,6 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include
         recombination (+ charge exchange, if requested). All terms will be in units of :math:`s^{-1}`. 
     '''
     
-
     if Te_eV is None:
         # find smallest Te grid from all files
         _, logTe1,_ = atom_data['scd']
@@ -570,7 +591,6 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include
 
         Te_eV = np.logspace(minTe,maxTe,200)
  
-
     logne = np.log10(ne_cm3)
     logTe = np.log10(Te_eV)
 
@@ -789,7 +809,7 @@ class CartesianGrid:
 
 
 
-def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
+def interp_atom_prof(atom_table, xprof, yprof, log_val=False, x_multiply=True):
     r''' Fast interpolate atomic data in atom_table onto the xprof and yprof profiles.
     This function assume that xprof, yprof, x,y, table are all base-10 logarithms,
     and xprof, yprof are equally spaced.
@@ -815,25 +835,27 @@ def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
         Interpolated atomic data on time,charge state and spatial grid that correspond to the 
         ion of interest and the spatiotemporal grids of xprof and yprof. 
     '''
-    x,y, table = atom_table
+    x, y, table = atom_table
 
-    if (abs(table-table[...,[0]]).all()  < 0.05) or xprof is None:
+    if (abs(table-table[...,[0]]) < 0.05).all() or xprof is None:
         # 1D interpolation if independent of the last dimension - like SXR radiation data
 
-        reg_interp = CartesianGrid((y, ),table[:,:,0]*np.log(10))
-        interp_vals = reg_interp(yprof) 
+        reg_interp = CartesianGrid((y, ), table[:,:,0]*np.log(10))
+        interp_vals = reg_interp(yprof)
 
         # multipling of logarithms is just adding
         if x_multiply and xprof is not None:
             interp_vals += xprof*np.log(10)
 
     else: # 2D interpolation
-        if x_multiply: #multipling of logarithms is just adding
-            table += x
-        # broadcast both variables in the sae shape
+        if x_multiply: # multipling of logarithms is just adding
+            table = table + x  # don't modify original table, create copy
+            
+        # broadcast both variables to the same shape
         xprof, yprof = np.broadcast_arrays(xprof, yprof)
-        #perform fast linear interpolation
-        reg_interp = CartesianGrid((x, y),table.swapaxes(1,2)*np.log(10))
+        
+        # perform fast linear interpolation
+        reg_interp = CartesianGrid((x, y), table.swapaxes(1,2)*np.log(10))
         interp_vals = reg_interp(xprof,yprof) 
     
     # reshape to shape(nt,nion,nr)
