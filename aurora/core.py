@@ -245,7 +245,7 @@ class aurora_sim:
             self.source_rad_prof = source_utils.get_radial_source(
                 self.namelist,
                 self.rvol_grid, self.pro_grid,
-                S0,   # 0th charge state (neutral) and 0th time
+                S0,   # 0th charge state (neutral)
                 self._Ti)   
             
             # construct source from separable radial and time dependences
@@ -277,11 +277,12 @@ class aurora_sim:
                 if np.min(self.namelist['rcl_prof_rhop'])<np.max(self.rhop_grid):
                     raise ValueError('Input recycling radial grid is too far out!')
 
-                self.rcl_rad_prof = interp1d(
+                rcl_rad_prof = interp1d(
                     self.namelist['rcl_prof_rhop'], self.namelist['rcl_prof_vals'],
                     fill_value='extrapolate')(
                         self.rhop_grid
                     )
+                self.rcl_rad_prof = np.broadcast_to(rcl_rad_prof, (rcl_rad_prof.shape[0], len(self.time_grid)))
 
             else:
                 # set recycling prof to exp decay from wall
@@ -297,12 +298,12 @@ class aurora_sim:
                 self.rcl_rad_prof = source_utils.get_radial_source(
                     nml_rcl_prof, # namelist specifically to obtain exp decay from wall
                     self.rvol_grid, self.pro_grid,
-                    self.S_rates[:,0,[0]],   # 0th charge state (neutral), 0th time BUG
-                    self._Ti[[0],:])
+                    S0,
+                    self._Ti)
 
         else:
             # dummy profile -- recycling is turned off
-            self.rcl_rad_prof = np.zeros_like(self.rhop_grid)
+            self.rcl_rad_prof = np.zeros((len(self.rhop_grid), len(self.time_grid)))
         
 
     def interp_kin_prof(self, prof): 
@@ -685,6 +686,7 @@ class aurora_sim:
         else:
             # import here to avoid import when building documentation or package (negligible slow down)
             from ._aurora import run as fortran_run
+
             self.res = fortran_run(nt,  # number of times at which simulation outputs results
                                    times_DV,
                                    D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)

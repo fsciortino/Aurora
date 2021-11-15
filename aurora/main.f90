@@ -71,10 +71,10 @@ subroutine run(  &
   !                    Frequency for parallel loss on radial and time grids [1/s]
   !     src_core real*8 (ir,nt)
   !                    Radial profile of neutrals over time.
-  !     rcl_rad_prof real*8 (ir)
-  !                    Radial distribution of impurities re-entering the core reservoir after recycling.
-  !                    NB: this should be a normalized profile! This condition is NOT enforced internally.
-  !                    If not provided, this is set to be equal to a normalized src_prof (the external source distribution)    
+  !     rcl_rad_prof real*8 (ir, nt)
+  !                    Radial distribution of impurities re-entering the core reservoir after recycling,
+  !                    given as a function of time.
+  !                    NB: this should be a normalized profile!
   !     S_rates      real*8 (ir,nion,nt)
   !                    Ionisation rates (nz=nion must be filled with zeros).
   !     R_rates      real*8 (ir,nion,nt)
@@ -182,7 +182,7 @@ subroutine run(  &
   REAL*8, INTENT(IN)                   :: V(ir,nt_trans,nion)
   REAL*8, INTENT(IN)                   :: par_loss_rates(ir,nt)
   REAL*8, INTENT(IN)                   :: src_core(ir,nt)
-  REAL*8, INTENT(IN)                   :: rcl_rad_prof(ir)  
+  REAL*8, INTENT(IN)                   :: rcl_rad_prof(ir,nt)  
 
   REAL*8, INTENT(IN)                   :: S_rates(ir,nion,nt)
   REAL*8, INTENT(IN)                   :: R_rates(ir,nion,nt)
@@ -327,7 +327,7 @@ subroutine run(  &
         ! Use old algorithm, just for benchmarking
         call impden0( nion, ir, ra, rn,  &   !OUT: rn
              diff, conv, par_loss_rates(:,it), src_core(:,it), &
-             rcl_rad_prof, &
+             rcl_rad_prof(:,it), &
              S_rates(:,:,it), R_rates(:,:,it),  &
              rr, pro, qpr, &
              dlen,  &
@@ -342,7 +342,7 @@ subroutine run(  &
         ! Linder algorithm
         call impden1(nion, ir, ra, rn,&
              diff, conv, par_loss_rates(:,it), &
-             src_core(:,it), rcl_rad_prof, &
+             src_core(:,it), rcl_rad_prof(:,it), &
              S_rates(:,:,it), R_rates(:,:,it),  &
              rr, &
              dlen, &
