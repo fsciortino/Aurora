@@ -8,7 +8,6 @@ from scipy import integrate
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import aurora
-from omfit_classes import utils_fusion
 
 class POPCON():
     def __init__(self, R=3.7, a=1.14, kappa=1.75, B0=12.3, Ip=17.4, H=1.15, M_i=2.5,
@@ -504,6 +503,9 @@ class POPCON():
     def _P_alpha(self, rho, n20, Ti, impfrac):
         ''' Fusion power from alpha particles, using Hale-Bosch reactivity fits.
         '''
+        # import omfit_classes here to avoid import during regression tests
+        from omfit_classes import utils_fusion
+        
         sigmav = utils_fusion.reactivity(1e4, model='D-T')    # m^3/s
         return rho * 0.016 * 3.5e3 * 1e20 * sigmav * (self._nfun(rho,n20) * self.dil)**2 / 4.
     
