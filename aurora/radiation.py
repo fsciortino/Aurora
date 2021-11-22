@@ -207,8 +207,9 @@ def compute_rad(imp, nz, ne, Te,
     return res
 
 
-def sync_rad(B_T, ne_cm3, Te_eV, r_min_cm, R_maj_cm):
+def sync_rad(B_T, ne_cm3, Te_eV, r_min, R_maj):
     '''Calculate synchrotron radiation following Trubnikov's formula [1]_.
+    We make use of a simplified formulation as given by Zohm [2]_.
 
     Parameters
     -----------------
@@ -218,10 +219,10 @@ def sync_rad(B_T, ne_cm3, Te_eV, r_min_cm, R_maj_cm):
         Electron density [:math:`cm^{-3}`]
     Te_eV : float or 1D array
         Electron temperature [:math:`eV`]
-    r_min_cm : float
-        Minor radius [cm].
-    R_maj_cm : float
-         Major radius [cm].
+    r_min : float
+        Minor radius [m].
+    R_maj : float
+         Major radius [m].
 
     Returns
     array
@@ -231,33 +232,11 @@ def sync_rad(B_T, ne_cm3, Te_eV, r_min_cm, R_maj_cm):
     -----------------
     
     .. [1] Trubnikov, JETP Lett. 16 25 (1972)
+    .. [2] Zohm et al., Journal of Fusion Energy (2019) 38:3-10
     
     '''
-    # reflection coefficient of plasma boundary
-    refl_coeff=0.8
-
-    # plasma frequency
-    w_pe = np.sqrt(4.*np.pi*ne_cm3*constants.e**2/constants.m_e)
-    
-    # electron cyclotron frequency
-    w_ce = constants.e*abs(B_T)/(constants.m_e*constants.c)
-
-    # Trubnikov reduced temperature
-    t   = constants.k*Te_eV/(constants.m_e*constants.c**2)
-
-    # dimensionless opacity parameter
-    pa = r_min_cm*w_pe**2/(constants.c*w_ce)
-
-    # parameter of inhomogeneity of magnetic field in torus 
-    chi_T = 1./(R_maj_cm/r_min_cm)/np.sqrt(t)
-
-    # universal formula (1)
-    phi = 60.*t**1.5*np.sqrt((1. - refl_coeff)*(1.+chi_T)/pa)
-
-    # total rate (eq. 3, but no volume multiplication)
-    sync_rate = 1e7*constants.m_e/(3.*np.pi*constants.c)*t*(w_pe*w_ce)**2.*phi  # erg-->J
-
-    return sync_rate
+    return 1.32e-7 * (B_T * Te_eV/1e3)**2.5 * np.sqrt(ne_cm3*1e-14/r_min)*\
+        (1. + 18.*r_min/(R_maj * np.sqrt(Te_eV/1e3)))
 
 
 
