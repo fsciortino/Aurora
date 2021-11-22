@@ -9,11 +9,12 @@ import matplotlib.pyplot as plt
 plt.ion()
 import sys, os
 from scipy.interpolate import interp1d
+import aug_sfutils as sf
+from omfit_classes.omfit_eqdsk import OMFITgeqdsk
 
 # Make sure that package home is added to sys.path
 sys.path.append('../')
 import aurora
-import aug_sfutils as sf
 
 shot = 39649
 time = 3.0
@@ -22,7 +23,8 @@ time = 3.0
 namelist = aurora.default_nml.load_default_namelist()
 
 # get equilibrium for AUG through aug_sfutils and OMFITgeqdsk
-geqdsk = OMFITgeqdsk('').from_aug_sfutils(shot=shot, time=time, eq_shotfile='EQI')
+geqdsk = OMFITgeqdsk('').from_aug_sfutils(
+    shot=shot, time=time, eq_shotfile='EQI')
 
 # get ne, Te from AUG IDA at specified time
 kp = namelist['kin_profs']
