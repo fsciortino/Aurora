@@ -58,7 +58,7 @@ lim_sep_cm = 1.0
 p_H2_mTorr=1.0 # mTorr
 innermost_rmid_cm=2.0
 
-kn1d_res = aurora.run_kn1d(kp['ne']['rhop'], kp['ne']['vals'][0,:], kp['Te']['vals'][0,:], kp['Te']['vals'][0,:],
+kn1d_res = aurora.run_kn1d(kp['ne']['rhop'], kp['ne']['vals'], kp['Te']['vals'], kp['Te']['vals'],
                            geqdsk, p_H2_mTorr, clen_divertor_m*1e2, clen_limiter_m*1e2,
                            bound_sep_cm, lim_sep_cm, innermost_rmid_cm, plot_kin_profs=True)
 
@@ -151,8 +151,8 @@ for cs in np.arange(nz.shape[1]):
     nz_cxr_interp[:,cs] = interp1d(asim.rhop_grid, nz_cxr[:,cs,-1])(rhop)
 
 # get total radiated power components
-rad_model = aurora.radiation_model(imp,rhop, ne, Te, vol, nz_cm3=nz_interp, plot=True)
-rad_model_cxr = aurora.radiation_model(imp, rhop, ne, Te, vol, nz_cm3=nz_cxr_interp,
+rad_model = aurora.radiation_model(imp, rhop, ne, Te, geqdsk, nz_cm3=nz_interp, plot=True)
+rad_model_cxr = aurora.radiation_model(imp, rhop, ne, Te, geqdsk, nz_cm3=nz_cxr_interp,
                                        n0_cm3=n0, Ti_eV=Ti)
 
 # print to screen 0-D prediction of ion total radiated power
