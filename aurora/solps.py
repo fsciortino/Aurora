@@ -17,89 +17,96 @@ from . import coords
 
 
 class solps_case:
-    '''Read SOLPS output and prepare for Aurora impurity-neutral analysis. 
+    '''Read SOLPS output, either from 
+    
+    #. output files on disk 
+
+    #. an MDS+ tree
+
+    If arguments are provided with no keys, it is assumed that paths to b2fstate andd b2fgmtry
+    are being provided (option #1). If keyword arguments are provided instead, we first check
+    whether `b2fstate_path` and `b2fgmtry_path` are being given (option #1) or `solps_id` is 
+    given to load results from MDS+ (option #2). Other keyword arguments can be provided to
+    specify the MDS+ server and tree to use (defaults are for AUG), and to provide a gEQDSK file.
     
     Parameters
     ----------
-    form : str
-        Form of SOLPS output to be loaded, one of {'files','mdsplus'}. 
-        If `form="files"`, SOLPS results are in files named 'b2fstate', 'b2fgmtry', etc.
-        If `form="mdsplus"`, the SOLPS output is fetched from a MDS+ server.
-    solps_id : str or int
-        Identifier of SOLPS run to load. If `form="files"`, this is expected to be a str
-        indicaticating the directory name where results are stored. 
-        If `form="mdsplus"`, this should be an integer identifying the SOLPS run on 
-        the provided MDS+ server.
-
-    Several keyword arguments are needed, depending on the `form` input.
-
-    Keyword arguments
-    -----------------
-    path : str (needed if `form=="files"`)
-        Path to SOLPS output files. This path indicates where to find the directory 
-        named "baserun" and the `solps_id` directory provided as input.
-    geqdsk : str (needed if `form=="files"`)
+    b2fstate_path : str (option #1)
+        Path to SOLPS b2fstate output file. 
+    b2fgmtry_path : str (option #1)
+        Path to SOLPS b2fgmtry output file.
+    solps_id : str or int (option #2)
+        Integer identifying the SOLPS run/shot to load from MDS+. 
+    server : str, optional (option #2)
+        MDS+ server to load SOLPS results. Default is 'solps-mdsplus.aug.ipp.mpg.de:8001'.
+    tree : str (option #2)
+        Name of MDS+ tree to load data from. Default is 'solps'.
+    geqdsk : str, optional (option #1 and #2)
         Path to the geqdsk to load from disk.
         Users may also directly provide an instance of the 
-        `omfit_classes.omfit_geqdsk.OMFITgeqdsk` 
-        class that already contains the processed gEQDSK file. 
-    server : str (needed if `form=="mdsplus"`)
-        MDS+ server to load SOLPS results. Default is 'solps-mdsplus.aug.ipp.mpg.de:8001'.
-    tree : str (needed if `form=="mdsplus"`)
-        Name of MDS+ tree to load data from.    
+        `omfit_classes.omfit_geqdsk.OMFITgeqdsk` class that contains the processed gEQDSK file. 
 
+    Notes
+    -----
+    The b2fstate and b2fgmtry parser expects the filenames to be simply named "b2fstate" and "b2fgmtry",
+    or else it may not recognize fields appropriately.
+
+    Minimal Working Example
+    -----------------------
+    import aurora
+    so = aurora.solps_case(b2fstate_path = '/afs/ipp/home/s/sciof/SOLPS/141349/b2fstate',
+                           b2fgmtry_path = '/afs/ipp/home/s/sciof/SOLPS/141349/b2fgmtry')
+    so.plot2d_b2(so.quants['ne'])
     '''
-    def __init__(self, form, solps_id, **kwargs):
-        self.form = str(form)
-        self.solps_id = solps_id
-        
-        # ensure one of 3 forms of input
-        if self.form not in ['files', 'mdsplus']:
-            raise ValueError('Unrecognized form of SOLPS output')
+    def __init__(self, *args, **kwargs):
+        if len(args):
+            # if arguments are provided with no keys, assume they are paths to b2fstate andd b2fgmtry
+            self.form = 'files'
+            self.b2fstate_path = str(args[0])
+            self.b2fgmtry_path = str(args[1])
+            if len(args)>2:
+                self.geqdsk_path = args[2] # can be path, or geqdsk dict-like
+        else:
+            if 'b2fstate_path' in kwargs or 'b2fgmtry_path' in kwargs:
+                self.form = 'files'
+                self.b2fstate_path = str(kwargs['b2fstate_path'])
+                self.b2fgmtry_path = str(kwargs['b2fgmtry_path'])
+            elif 'solps_id' in kwargs:
+                # load from MDS+
+                self.form = 'mdsplus'
+                self.solps_id = kwargs['solps_id']                                       
+                self.server = 'solps-mdsplus.aug.ipp.mpg.de:8001' if 'server' not in kwargs else kwargs['server']
+                self.tree = 'solps'  if 'tree' not in kwargs else kwargs['tree']
+            else:
+                raise ValueError('Insufficient information passed as (keyword) arguments to read SOLPS results')
 
-        if self.form == 'files' and (not isinstance(self.solps_id, str)):
-            raise ValueError('A directory name is required as a string for form="files"')
-        if self.form == 'mdsplus' and (not isinstance(self.solps_id, int)):
-            raise ValueError('An integer number is needed as "solps_id" when `form="mdsplus"`')
-        
-        if self.form=='files':
-            if not 'path' in kwargs:
-                raise ValueError('A path to the SOLPS output files is required \n'+\
-                                 'for input `form="files"`')
-            self.path = kwargs['path']
-
-            # load omfit_classes here to avoid needing it upon aurora import
-            from omfit_classes import omfit_eqdsk
-            
             if 'geqdsk' in kwargs:
+                from omfit_classes import omfit_eqdsk
                 if isinstance(kwargs['geqdsk'], str):
                     # load geqdsk file
-                    self.geqdsk = omfit_eqdsk.OMFITgeqdsk(geqdsk)
+                    self.geqdsk = omfit_eqdsk.OMFITgeqdsk(kwargs['geqdsk'])
                 else:
                     # assume geqdsk was already loaded via OMFITgeqdsk
                     self.geqdsk = kwargs['geqdsk']
             else:
                 # try to find gEQDSK and load it
-                _gfile_name = self.find_gfile()
-                _gfile_path = self.path+os.sep+'baserun'+os.sep+_gfile_name
-                if _gfile_name is None:
-                    raise ValueError(f'A geqdsk is required for SOLPS outform form "{self.form}"')
-                self.geqdsk = omfit_eqdsk.OMFITgeqdsk(_gfile_path)
-                
+                _gfile_path = None if self.form=='mdsplus' else self.find_gfile()
+                if _gfile_path is not None:
+                    from omfit_classes import omfit_eqdsk
+                    self.geqdsk = omfit_eqdsk.OMFITgeqdsk(_gfile_path)
 
         if self.form=='files':
-            
             from omfit_classes import omfit_solps
-            self.b2fstate = omfit_solps.OMFITsolps(self.path+os.sep+self.solps_id+os.sep+'b2fstate')
-            self.geom = omfit_solps.OMFITsolps(self.path+os.sep+'baserun'+os.sep+'b2fgmtry')
+            self.b2fstate = omfit_solps.OMFITsolps(self.b2fstate_path)
+            self.b2fgmtry = omfit_solps.OMFITsolps(self.b2fgmtry_path)
 
-            self.nx,self.ny = self.geom['nx,ny']
+            self.nx,self.ny = self.b2fgmtry['nx,ny']
             
             # (0,:,:): lower left corner, (1,:,:): lower right corner
             # (2,:,:): upper left corner, (3,:,:): upper right corner.
             
-            self.crx = self.geom['crx'].reshape(4,self.ny+2,self.nx+2)  # horizontal 
-            self.cry = self.geom['cry'].reshape(4,self.ny+2,self.nx+2)  # vertical
+            self.crx = self.b2fgmtry['crx'].reshape(4,self.ny+2,self.nx+2)  # horizontal 
+            self.cry = self.b2fgmtry['cry'].reshape(4,self.ny+2,self.nx+2)  # vertical
 
             # figure out if single or double null
             self.double_null = self.cry.shape[2]%4==0
@@ -137,48 +144,35 @@ class solps_case:
             # now, load data arrays
             self.load_data() #P_idxs=self.P_idxs, R_idxs=self.R_idxs)  # TODO: enable subselection of regions
         
-        elif form=='mdsplus':
-            if (not 'server' in kwargs) or (not 'tree' in kwargs):
-                raise ValueError('Both MDS+ server and tree are required')
-            self.server = kwargs['server']
-            self.tree = kwargs['tree']
-            
+        elif self.form=='mdsplus':
+
             # load variable name map to MDS+ tree
-            self._mdsmap()
+            self.mdsmap = get_mdsmap()
 
-            self.quants = {'ne': self._getvar('ne'),
-                           'Te': self._getvar('te'),
-                           'nn': self._getvar('ti'),
-                           'Tn': self._getvar('dab2'),
-                           'nm': self._getvar('tab2'),
-                           'Tm': self._getvar('dmb2'),
-                           'Ti': self._getvar('tmb2'),
-            }
-
-
-            # loading of entire tree:
-            #mds_data = omfit_mds.OMFITmds(self.server, self.tree, self.solps_id)
-            
-            #grid = snapshot['GRID']
-            #self.crx = grid['CR_X']
-            #self.cry = grid['CR_Y']
-
+            self.crx = self.data('R')
+            self.cry = self.data('Z')
             
         # set zero densities equal to min to avoid log issues
         #self.quants['nn'][self.quants['nn']==0.0] = nsmallest(2,np.unique(self.quants['nn'].flatten()))[1]
 
-    def _getvar(self, varname):
-        '''Fetch data either from files or MDS+ tree.'''
-        if self.form=='mdsplus':
+    def data(self, varname):
+        '''Fetch data either from files or MDS+ tree.
+
+        Parameters
+        ----------
+        varname : str
+            Name of SOLPS variable, e.g. ne,te,ti,dab2,etc. 
+        '''
+        if hasattr(self, varname):
+            return getattr(self, varname)
+        elif self.form=='mdsplus':
+            # try fetching from MDS+
             from omfit_classes import omfit_mds
-            # load from MDS+, mapping variable name to tree path
+
             return omfit_mds.OMFITmdsValue(self.server, self.tree, self.solps_id,
-                                      TDI = self.mdsmap[varname]).data()
+                                           TDI = self.mdsmap[varname]).data()
         else:
-            if hasattr(self, varname):
-                return getattr(self, varname)
-            else:
-                raise ValueError(f'Could not fetch variable {varname} from {self.form} files')
+            raise ValueError(f'Could not fetch variable {varname}')
 
     def load_data(self, fields=None, P_idxs=None, R_idxs=None,
                   Rmin=None, Rmax=None, Pmin=None, Pmax=None):
@@ -221,41 +215,44 @@ class solps_case:
         else:
             pass # user provided list of radial grid indices
 
-        if fields is None:
-            fields = ['ne','Te','nn','Tn','nm','Tm','Ti']
-            
-        self.quants = quants = {}
-
         # eliminate end (buffer) points of grid
         self.R = np.mean(self.crx,axis=0)[1:-1,1:-1][R_idxs,:][:,P_idxs]
         self.Z = np.mean(self.cry,axis=0)[1:-1,1:-1][R_idxs,:][:,P_idxs]
 
-        self.fort44 = self.load_fort44()
-        self.fort46 = self.load_fort46()
-
-        quants['ne'] = self.b2fstate['ne'][1:-1,1:-1][R_idxs,:][:,P_idxs] # m^-3
-        quants['Te'] = self.b2fstate['te'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
-        quants['Ti'] = self.b2fstate['ti'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
+        self.ne = self.b2fstate['ne'][1:-1,1:-1][R_idxs,:][:,P_idxs] # m^-3
+        self.te = self.b2fstate['te'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
+        self.ti = self.b2fstate['ti'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
 
         # density of atomic species if B2 fluid neutral model is used:
-        #quants['nn'] = self.b2fstate['na'][0,R_idxs,:][:,P_idxs] # m^-3   # only neutral component
+        #self.nn = self.b2fstate['na'][0,R_idxs,:][:,P_idxs] # m^-3   # only neutral component
 
-        # assume that EIRENE neutral model is used:
-        nn44 = self.fort44['dab2'][:,:,0].T
-        nn44[nn44==0.0] = nsmallest(2,np.unique(nn44.flatten()))[1]
-        quants['nn'] = nn44[R_idxs,:][:,P_idxs] # m^-3   # only neutral component
-        quants['Tn'] = self.fort44['tab2'][:,:,0].T[R_idxs,:][:,P_idxs]/constants.e # eV
+        try:
+            self.fort44 = self.load_fort44()
 
-        quants['nm'] = self.fort44['dmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular density
-        quants['Tm'] = self.fort44['tmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular temperature
+            # assume that EIRENE neutral model is used:
+            nn44 = self.fort44['dab2'][:,:,0].T
+            nn44[nn44==0.0] = nsmallest(2,np.unique(nn44.flatten()))[1]
+            self.nn = nn44[R_idxs,:][:,P_idxs] # m^-3   # only neutral component
+            self.tn = self.fort44['tab2'][:,:,0].T[R_idxs,:][:,P_idxs]/constants.e # eV
+            
+            self.nm = self.fort44['dmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular density
+            self.tm = self.fort44['tmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular temperature
+        except Exception:
+            warnings.warn('Could not load fort.44 file')
 
-        # EIRENE nodes and triangulation
-        self.xnodes, self.ynodes, self.triangles = self.load_eirene_mesh()
+        try:
+            self.fort46 = self.load_fort46()
+        except Exception:
+            warnings.warn('Could not load fort.46 file')
 
+        try:
+            # EIRENE nodes and triangulation
+            self.xnodes, self.ynodes, self.triangles = self.load_eirene_mesh()
+        except Exception:
+            warnings.warn('Could not load fort.33 and/or fort.34 files')
+        
         # identify species (both B2 and EIRENE):
         self.species_id()
-
-            
             
     def species_id(self):
         '''Identify species included in SOLPS run, both for B2 and EIRENE quantities.
@@ -274,24 +271,24 @@ class solps_case:
         self.b2_species = b2_species = {}
         for ii,(Zi,An) in enumerate(zip(b2_Zas,b2_Ans)):
             # get name of atomic species from charge and atomic mass number
-            out = atomic_element(Z_ion=Zi, A=An)
+            out = atomic_element(Z_ion=int(Zi), A=int(An))  # requires integer values
             _spec = list(out.keys())[0]
             cs_str = f'{int(Zi)}+' if int(Zi)!=0 else '0'
             b2_species[ii] = {'symbol': out[_spec]['symbol']+cs_str, 'Z':int(Zi),'A':int(An)}
 
-        self.eirene_species = eirene_species = {'atm':{}, 'mol':{}, 'ion':{}}
-        _atm = [spec for spec in self.fort44['species'] if ((not any(map(str.isdigit, spec)))&('+' not in spec)) ]
-        for ss,atm in enumerate(_atm): eirene_species['atm'][ss] = atm
-        _mol = [spec for spec in self.fort44['species'] if ((any(map(str.isdigit, spec)))&('+' not in spec))]
-        for ss,mol in enumerate(_mol): eirene_species['mol'][ss] = mol
-        _ion = [spec for spec in self.fort44['species'] if '+'  in spec]
-        for ss,ion in enumerate(_ion): eirene_species['ion'][ss] = ion
-
+        if hasattr(self, 'fort44'): # loaded EIRENE data
+            self.eirene_species = eirene_species = {'atm':{}, 'mol':{}, 'ion':{}}
+            _atm = [spec for spec in self.fort44['species'] if ((not any(map(str.isdigit, spec)))&('+' not in spec)) ]
+            for ss,atm in enumerate(_atm): eirene_species['atm'][ss] = atm
+            _mol = [spec for spec in self.fort44['species'] if ((any(map(str.isdigit, spec)))&('+' not in spec))]
+            for ss,mol in enumerate(_mol): eirene_species['mol'][ss] = mol
+            _ion = [spec for spec in self.fort44['species'] if '+'  in spec]
+            for ss,ion in enumerate(_ion): eirene_species['ion'][ss] = ion
 
     def load_mesh_extra(self):
         '''Load the mesh.extra file.
         '''
-        with open(self.path+os.sep+'baserun'+os.sep+'mesh.extra', 'r') as f:
+        with open(os.path.dirname(self.b2fgmtry_path)+os.sep+'mesh.extra', 'r') as f:
             contents = f.readlines()
 
         mesh_extra = np.zeros((len(contents),4))
@@ -314,7 +311,7 @@ class solps_case:
             
         out = {}
         # load each of these files into dictionary structures
-        with open(self.path +os.sep+self.solps_id+os.sep+'fort.44', 'r') as f:
+        with open(os.path.dirname(self.b2fstate_path)+os.sep+'fort.44', 'r') as f:
             contents = f.readlines()
 
         NDX = out['NDX'] = int(contents[0].split()[0])
@@ -376,8 +373,6 @@ class solps_case:
 
         return out
 
-
-
     def load_fort46(self):
         '''Load result from fort.46 file with EIRENE output on EIRENE grid.
 
@@ -390,7 +385,7 @@ class solps_case:
             
         out = {}
         # load each of these files into dictionary structures
-        with open(self.path +os.sep+self.solps_id+os.sep+'fort.46', 'r') as f:
+        with open(os.path.dirname(self.b2fstate_path)+os.sep+'fort.46', 'r') as f:
             contents = f.readlines()
 
         out['NTRII']=contents[0].split()[0]
@@ -428,17 +423,16 @@ class solps_case:
 
         return out
     
-    
     def load_eirene_mesh(self):
         '''Load EIRENE nodes from the fort.33 file and triangulation from the fort.34 file
         '''
-        nodes=np.fromfile(self.path+os.sep+'baserun'+os.sep+'fort.33',sep=' ')
+        nodes=np.fromfile(os.path.dirname(self.b2fgmtry_path)+os.sep+'fort.33',sep=' ')
         n=int(nodes[0])
         xnodes=nodes[1:n+1]/100  # cm -->m
         ynodes=nodes[n+1:]/100
         
         # EIRENE triangulation
-        triangles = np.loadtxt(self.path+os.sep+'baserun'+os.sep+'fort.34',
+        triangles = np.loadtxt(os.path.dirname(self.b2fgmtry_path)+os.sep+'fort.34',
                                skiprows=1, usecols=(1,2,3))
 
         return xnodes, ynodes, triangles-1  # -1 for python indexing
@@ -446,27 +440,27 @@ class solps_case:
     def plot_wall_geometry(self):
         '''Method to plot vessel wall segment geometry from wall_geometry field in fort.44 file'''
         
-        out=self.load_fort44()
-        wall_geometry=out['wall_geometry']
+        out = self.load_fort44()
+        wall_geometry = out['wall_geometry']
         
-        Wall_Seg=[]
-        RR=wall_geometry[0::2]
-        ZZ=wall_geometry[1::2]
-        NLIM=out['NLIM']
+        Wall_Seg = []
+        RR = wall_geometry[0::2]
+        ZZ = wall_geometry[1::2]
+        NLIM = out['NLIM']
         
         for i in range(0,NLIM):
-            line=[(RR[2*i],ZZ[2*i]),(RR[2*i+1],ZZ[2*i+1])]
+            line = [(RR[2*i],ZZ[2*i]),(RR[2*i+1],ZZ[2*i+1])]
             Wall_Seg.append(line)
             
-        Wall_Collection=mc.LineCollection(Wall_Seg,colors='b',linewidth=2)
+        Wall_Collection = mc.LineCollection(Wall_Seg,colors='b',linewidth=2)
         
         wallfig, wallax = plt.subplots()
         
         wallax.add_collection(Wall_Collection)
         wallax.set_xlim(RR.min()-0.05,RR.max()+0.05)
         wallax.set_ylim(ZZ.min()-0.05,ZZ.max()+0.05)
-        wallax.set_xlabel('Radial Coordinate (m)')
-        wallax.set_ylabel('Vertical Coordinate (m)')
+        wallax.set_xlabel('R [m]')
+        wallax.set_ylabel('Z [m]')
         wallax.set_aspect('equal')
         
         self.WS=Wall_Seg
@@ -478,7 +472,7 @@ class solps_case:
 
         Parameters
         ----------
-        vals : array (self._getvar('ny'), self._getvar('nx'))
+        vals : array (self.data('ny'), self.data('nx'))
             Data array for a variable of interest.
         ax : matplotlib Axes instance
             Axes on which to plot. If left to None, a new figure is created.
@@ -497,18 +491,20 @@ class solps_case:
         if ax is None:
             fig,ax = plt.subplots(1,figsize=(9, 11))
 
-        if np.prod(vals.shape)==self._getvar('crx').shape[1]*self._getvar('crx').shape[2]:
-            # Excluding boundary cells in plot2d_b2
-            vals = vals[1:-1,1:-1]
+        xx = self.data('crx').transpose(2,1,0)
+        yy = self.data('cry').transpose(2,1,0)
+        NY = int(self.data('ny'))
+        NX = int(self.data('nx'))
 
-        vals = vals.flatten()
-        xx = self._getvar('crx').transpose(2,1,0)[1:-1,1:-1,:]
-        yy = self._getvar('cry').transpose(2,1,0)[1:-1,1:-1,:]
-        NY = self._getvar('ny'); NX = self._getvar('nx')
+        if self.form=='files':
+            if np.prod(vals.shape)==self.crx.shape[1]*self.crx.shape[2]:
+                vals = vals[1:-1,1:-1]
 
-        # Avoid zeros that may derive from low Monte Carlo statistics
-        if np.any(vals==0): vals[vals==0.0] = nsmallest(2,np.unique(vals))[1]
-        
+            # eliminate boundary cells
+            xx = xx[1:-1,1:-1,:]
+            yy = yy[1:-1,1:-1,:]
+            #NX -= 2; NY -= 2
+            
         patches = []
         for iy in np.arange(0,NY):
             for ix in np.arange(0,NX):
@@ -516,15 +512,21 @@ class solps_case:
                 zz = np.atleast_2d(yy[ix,iy,[0,1,3,2]]).T
                 patches.append(mpl.patches.Polygon(np.hstack((rr,zz)), True,linewidth=3))
 
-        # collect al patches
+        # collect all patches
         p = mpl.collections.PatchCollection(patches,False, edgecolor='k',linewidth=0.1, **kwargs)
 
-        p.set_array(np.array(vals))
+        # fill patches with values
+        _vals = vals.flatten()
+
+        # Avoid zeros that may derive from low Monte Carlo statistics
+        if np.any(_vals==0): _vals[_vals==0.0] = nsmallest(2,np.unique(_vals))[1]
+        
+        p.set_array(np.array(_vals))
 
         if lb is None:
-            lb = np.min(vals)
+            lb = np.min(_vals)
         if ub is None:
-            ub = np.max(vals)
+            ub = np.max(_vals)
 
         if scale=='linear':
             p.set_clim([lb, ub])
@@ -538,12 +540,11 @@ class solps_case:
         
         ax.add_collection(p)
         tickLocs = [ub,ub/10,lb/10,lb]
-        cbar = plt.colorbar(p,ax=ax, pad=0.01, ticks = tickLocs if scale=='symlog' else None)
-        
+
+        cbar = plt.colorbar(p, ax=ax, pad=0.01, ticks = tickLocs if scale=='symlog' else None)
         cbar = plot_tools.DraggableColorbar(cbar,p)
-        cbar.connect()
-        
-        #cbar.set_label(label)
+        cid = cbar.connect()
+
         ax.set_title(label)
         ax.set_xlabel('R [m]')
         ax.set_ylabel('Z [m]')
@@ -606,10 +607,9 @@ class solps_case:
         ax.set_xlabel('R [m]')
         ax.set_ylabel('Z [m]')
         cbar = plt.colorbar(cntr, ax=ax) # format='%.3g'
-        #cbar.set_label(label)
         ax.set_title(label)
         cbar = plot_tools.DraggableColorbar(cbar,cntr)
-        cbar.connect()
+        cid = cbar.connect()
 
 
 
@@ -620,7 +620,7 @@ class solps_case:
 
         Parameters
         ----------
-        vals : array (self._getvar('ny'), self._getvar('nx'))
+        vals : array (self.data('ny'), self.data('nx'))
             Data array for a variable of interest.
         dz_mm : float
             Vertical range [mm] over which quantity should be averaged near the midplane. 
@@ -657,18 +657,18 @@ class solps_case:
             within +/-`dz_mm`/2 millimeters from the midplane.
         '''
         
-        if np.prod(vals.shape) == self._getvar('crx').shape[1]*self._getvar('crx').shape[2]:
+        if np.prod(vals.shape) == self.data('crx').shape[1]*self.data('crx').shape[2]:
             # Exclude boundary cells
             vals = vals[1:-1, 1:-1]
 
-        rhop_2D = coords.get_rhop_RZ(self._getvar('R'), self._getvar('Z'), self.geqdsk)
+        rhop_2D = coords.get_rhop_RZ(self.data('R'), self.data('Z'), self.geqdsk)
         
         # evaluate FSA radial profile inside the LCFS
         def avg_function(r, z):
             if any(coords.get_rhop_RZ(r, z, self.geqdsk)<np.min(rhop_2D)):
                 return np.nan
             else:
-                return griddata((self._getvar('R').flatten(), self._getvar('Z').flatten()), vals.flatten(),
+                return griddata((self.data('R').flatten(), self.data('Z').flatten()), vals.flatten(),
                                 (r,z), method='linear')
 
         prof_FSA = self.geqdsk['fluxSurfaces'].surfAvg(function=avg_function)
@@ -676,10 +676,10 @@ class solps_case:
 
         # get R axes on the midplane on the LFS and HFS
         # rule-of-thumb to identify vertical resolution:
-        _dz = (np.max(self._getvar('Z')) - np.min(self._getvar('Z')))/\
-              ((self._getvar('nx')+self._getvar('ny'))/10.) 
-        mask = (self._getvar('Z').flatten()>-_dz)&(self._getvar('Z').flatten()<_dz)
-        R_midplane = self._getvar('R').flatten()[mask]
+        _dz = (np.max(self.data('Z')) - np.min(self.data('Z')))/\
+              ((self.data('nx')+self.data('ny'))/10.) 
+        mask = (self.data('Z').flatten()>-_dz)&(self.data('Z').flatten()<_dz)
+        R_midplane = self.data('R').flatten()[mask]
         
         R_midplane_lfs = R_midplane[R_midplane>self.geqdsk['RMAXIS']]
         _R_LFS = np.linspace(np.min(R_midplane_lfs), np.max(R_midplane_lfs),1000)
@@ -689,7 +689,7 @@ class solps_case:
 
         # get midplane radial profile...
         # ...on the LFS:
-        _prof_LFS = griddata((self._getvar('R').flatten(),self._getvar('Z').flatten()), vals.flatten(),
+        _prof_LFS = griddata((self.data('R').flatten(),self.data('Z').flatten()), vals.flatten(),
                              (_R_LFS,0.5*dz_mm*1e-3*np.random.random(len(_R_LFS))),
                              #(_R_LFS,np.zeros_like(_R_LFS)),
                              method='linear')
@@ -698,7 +698,7 @@ class solps_case:
         rhop_LFS = coords.get_rhop_RZ(R_LFS,np.zeros_like(R_LFS), self.geqdsk)
 
         # ... and on the HFS:
-        _prof_HFS = griddata((self._getvar('R').flatten(),self._getvar('Z').flatten()), vals.flatten(), #self.quants[quant].flatten(),
+        _prof_HFS = griddata((self.data('R').flatten(),self.data('Z').flatten()), vals.flatten(), #self.quants[quant].flatten(),
                              #(_R_HFS, np.zeros_like(_R_HFS)),
                              (_R_HFS,0.5*dz_mm*1e-3*np.random.random(len(_R_HFS))),
                              method='linear')
@@ -717,20 +717,20 @@ class solps_case:
             
         # now obtain also the simple poloidal grid slice near the midplane (LFS and HFS)
         # These are commonly used for SOLPS analysis, using the JXA and JXI indices (which we re-compute here)
-        Z_core = self._getvar('Z')[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
-        R_core = self._getvar('R')[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
+        Z_core = self.data('Z')[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
+        R_core = self.data('R')[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
 
         # find indices of poloidal grid nearest to Z=0 in the innermost radial shell
         midplane_LFS_idx = np.argmin(np.abs(Z_core[0,R_core[0,:]>self.geqdsk['RMAXIS']]))
         midplane_HFS_idx = np.argmin(np.abs(Z_core[0,R_core[0,:]<self.geqdsk['RMAXIS']]))
 
-        # convert to indices on self._getvar('Z') and self._getvar('R')
+        # convert to indices on self.data('Z') and self.data('R')
         JXI = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]<self.geqdsk['RMAXIS']][midplane_HFS_idx]  # HFS_mid_pol_idx
         JXA = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]>self.geqdsk['RMAXIS']][midplane_LFS_idx] # LFS_mid_pol_idx
 
         # find rhop along midplane grid chords
-        rhop_chord_HFS = coords.get_rhop_RZ(self._getvar('R')[:,JXI],self._getvar('Z')[:,JXI], self.geqdsk)
-        rhop_chord_LFS = coords.get_rhop_RZ(self._getvar('R')[:,JXA],self._getvar('Z')[:,JXA], self.geqdsk)
+        rhop_chord_HFS = coords.get_rhop_RZ(self.data('R')[:,JXI],self.data('Z')[:,JXI], self.geqdsk)
+        rhop_chord_LFS = coords.get_rhop_RZ(self.data('R')[:,JXA],self.data('Z')[:,JXA], self.geqdsk)
 
         if plot:
             # compare FSA radial profiles with midplane (LFS and HFS) ones
@@ -757,7 +757,7 @@ class solps_case:
 
         Parameters
         ----------
-        vals : array (self._getvar('ny'), self._getvar('nx'))
+        vals : array (self.data('ny'), self.data('nx'))
             Data array for a variable of interest.
         plot : bool
             If True, plot poloidal profile.
@@ -784,7 +784,7 @@ class solps_case:
             within +/-`dr_mm`/2 millimeters from the surface at rhop. 
         '''
 
-        if np.prod(vals.shape)==self._getvar('crx').shape[1]*self._getvar('crx').shape[2]:
+        if np.prod(vals.shape)==self.data('crx').shape[1]*self.data('crx').shape[2]:
             # Exclude boundary cells
             vals = vals[1:-1,1:-1]         
 
@@ -800,12 +800,12 @@ class solps_case:
         
         _x_point = self.xpoint
 
-        _R_points=np.linspace(np.min(self._getvar('R')),np.max(self._getvar('R')), 202)
+        _R_points=np.linspace(np.min(self.data('R')),np.max(self.data('R')), 202)
         
         if topology=='LSN':
-            _Z_points=np.linspace(_x_point[1],np.max(self._getvar('Z')), 200)
+            _Z_points=np.linspace(_x_point[1],np.max(self.data('Z')), 200)
         elif topology=='USN':
-            _Z_points=np.linspace(np.min(self._getvar('Z')),_x_point[1], 200)
+            _Z_points=np.linspace(np.min(self.data('Z')),_x_point[1], 200)
         elif topology=='DN':
             # not yet functional
             _Z_points=np.linspace(_x_point[0][1],_x_point[1][1],1200)
@@ -818,7 +818,7 @@ class solps_case:
         rhop_2D = coords.get_rhop_RZ(_R_grid,_Z_grid, self.geqdsk)
 
         # rule-of-thumb to identify radial resolution:
-        dr_rhop = (np.max(self._getvar('R')) - np.min(self._getvar('R')))/(self._getvar('ny')*10) 
+        dr_rhop = (np.max(self.data('R')) - np.min(self.data('R')))/(self.data('ny')*10) 
         
         _mask=(rhop_2D<rhop+dr_rhop)&(rhop_2D>rhop-dr_rhop)
         
@@ -826,13 +826,13 @@ class solps_case:
         _Z_rhop=_Z_grid[_mask]
 
         # Need a way to get more resolution of the R and Z coordinates for given rhop
-        prof_rhop = griddata((self._getvar('R').flatten(),self._getvar('Z').flatten()),
+        prof_rhop = griddata((self.data('R').flatten(),self.data('Z').flatten()),
                              vals.flatten(), (_R_rhop,_Z_rhop), method='cubic')
         
         Rmaxis = self.geqdsk['RMAXIS']
         Zmaxis = self.geqdsk['ZMAXIS']
         
-        _LFS_midplane_vect = np.array([np.max(self._getvar('R'))-Rmaxis, 0])
+        _LFS_midplane_vect = np.array([np.max(self.data('R'))-Rmaxis, 0])
         _XP_vect = np.array([_x_point[0]-Rmaxis, _x_point[1]-Zmaxis])
         _theta_vect = np.array([_R_rhop-Rmaxis, _Z_rhop-Zmaxis]).T
         
@@ -878,245 +878,70 @@ class solps_case:
 
         return poloidal_prof
 
-    def _mdsmap(self):
-        """Load dictionary allowing a mapping of chosen variables with 
-        SOLPS variable names on MDS+.
-        """
-        ident = '\IDENT::TOP:'
-        identimp = '\IDENT::TOP.IMPSEP'
-        identomp = '\IDENT::TOP.OMPSEP'
-
-        snapshot_root = '\SOLPS::TOP.SNAPSHOT:'
-        snaptopdims = '\SNAPSHOT::TOP.DIMENSIONS:'
-        snaptopgrid = '\SNAPSHOT::TOP.GRID:'
-        snaptop = '\SNAPSHOT::TOP:'
-
-        timedept1 = '\TIMEDEP::TOP.TARGET1:'
-        timedept2 = '\TIMEDEP::TOP.TARGET2:'
-        timedept3 = '\TIMEDEP::TOP.TARGET3:'
-        timedept4 = '\TIMEDEP::TOP.TARGET4:'
-
-        timedepomp = '\TIMEDEP::TOP.OMP:'
-        timedepimp = '\TIMEDEP::TOP.IMP:'
-
-        self.mdsmap = {
-            # general
-            'user': ident+'USER',
-            'version': ident+'VERSION',
-            'solpsversion': ident+'SOLPSVERSION',
-            'directory': ident+'directory',
-            'exp': ident+'EXP',
-            
-            # Dimensions
-            'nx': snaptopdims+'NX',
-            'ny': snaptopdims+'NY',
-            'ns': snaptopdims+'NS',
-            'natm': snaptopdims+'NATM',
-            'nion': snaptopdims+'NION',
-            'nmol': snaptopdims+'NMOL',
-            
-            # Indices
-            'imp': snaptopdims+'IMP',
-            'omp': snaptopdims+'OMP',
-            'sep': snaptopdims+'SEP',
-            'targ1': snaptopdims+'TARG1',
-            'targ2': snaptopdims+'TARG2',
-            'targ3': snaptopdims+'TARG3',
-            'targ4': snaptopdims+'TARG4',
-            'regflx': snaptopgrid+'REGFLX',
-            'regfly': snaptopgrid+'REGFLY',
-            'regvol': snaptopgrid+'REGVOL',
-
-            # Neighbours
-            'bottomix': snaptopgrid+'BOTTOMIX',
-            'bottomiy': snaptopgrid+'BOTTOMIY',
-            'leftix': snaptopgrid+'LEFTIX',
-            'leftiy': snaptopgrid+'LEFTIY',
-            'rightix': snaptopgrid+'RIGHTIX',
-            'rightiy': snaptopgrid+'RIGHTIY',
-            'topix': snaptopgrid+'TOPIX',
-            'topiy': snaptopgrid+'TOPIY',
-            
-            # Grid and vessel geometry
-            'R': snaptopgrid+'R',
-            'Z': snaptopgrid+'Z',
-            'cr': snaptopgrid+'CR',
-            'crx': snaptopgrid+'CR_X', # R-coordinate of the cell x-face
-            'cry': snaptopgrid+'CR_Y', # R-coordinate of the cell y-face
-            'cz': snaptopgrid+'CZ',
-            'czx': snaptopgrid+'CZ_X', # Z-coordinate of the cell x-face
-            'czy': snaptopgrid+'CZ_Y',  # Z-coordinate of the cell y-face
-            'hx': snaptop+'HX',
-            'hy': snaptop+'HY',
-            'hy1': snaptop+'HY1',
-            'dspar': snaptopgrid+'DSPAR',
-            'dspol': snaptopgrid+'DSPOL',
-            'dsrad': snaptopgrid+'DSRAD',
-            'sx': snaptop+'SX',
-            'sxperp': snaptop+'SXPERP',
-            'sy': snaptop+'SY',
-            'vessel': snaptopgrid+'VESSEL',
-            
-            # Plasma characterization
-            'am': snaptopgrid+'AM',
-            'za': snaptopgrid+'ZA',
-            'zn': snaptopgrid+'ZN',
-            'bb': snaptop+'B',
-            'po': snaptop+'PO',
-            'pot': snaptopgrid+'POT',
-            'poti': snaptopgrid+'POTI',
-            'qz': snaptop+'QZ',
-            'visc': snaptop+'VISC',
-            'vol': snaptop+'VOL',
-            
-            # Densities
-            'ne': snaptop+'NE',
-            'na': snaptop+'NA',
-            'dab2': snaptop+'DAB2',
-            'dmb2': snaptop+'DMB2',
-            'dib2': snaptop+'DIB2',
-            
-            # Temperatures
-            'te': snaptop+'TE',
-            'ti': snaptop+'TI',
-            'tab2': snaptop+'TAB2',
-            'tmb2': snaptop+'TMB2',
-            'tib2': snaptop+'TIB2',
-            
-            # Velocities
-            'ua': snaptop+'UA',
-            'vlax': snaptop+'VLAX',
-            'vlay': snaptop+'VLAY',
-            
-            # Fluxes
-            'fchx': snaptop+'FCHX',
-            'fchy': snaptop+'FCHY',
-            'fhex': snaptop+'FHEX',
-            'fhey': snaptop+'FHEY',
-            'fhix': snaptop+'FHIX',
-            'fhiy': snaptop+'FHIY',
-            'fhjx': snaptop+'FHJX', # (not listed in the manual)
-            'fhjy': snaptop+'FHJY', # (not listed in the manual)
-            'fhmx': snaptop+'FHMX',
-            'fhmy': snaptop+'FHMY',
-            'fhpx': snaptop+'FHPX',
-            'fhpy': snaptop+'FHPY',
-            'fhtx': snaptop+'FHTX',
-            'fhty': snaptop+'FHTY',
-            'fmox': snaptop+'FMOX',
-            'fmoy': snaptop+'FMOY',
-            'fnax': snaptop+'FNAX',
-            'fnax_32': snaptop+'FNAX_32',
-            'fnax_52': snaptop+'FNAX_52',
-            'fnay': snaptop+'FNAY',
-            'fnay_32': snaptop+'FNAY_32',
-            'fnay_52': snaptop+'FNAY_52',
-            'pefa': snaptop+'PEFA',
-            'pefm': snaptop+'PEFM',
-            'pfla': snaptop+'PFLA',
-            'pflm': snaptop+'PFLM',
-            'refa': snaptop+'REFA',
-            'refm': snaptop+'REFM',
-            'rfla': snaptop+'RFLA',
-            'rflm': snaptop+'RFLM',
-            
-            # Coefficients
-            'alf': snaptop+'ALF',
-            'dna0': snaptop+'D',
-            'dp': snaptop+'DP',
-            'kye': snaptop+'KYE',
-            'kyi': snaptop+'KYI',
-            'kyi0': snaptop+'KYI0',
-            'sig': snaptop+'SIG',
-            'rpt': snaptop+'RPT', # (not listed in the manual)
-            
-            # Rates, losses and sources
-            'rcxhi': snaptop+'RCXHI',
-            'rcxmo': snaptop+'RCXMO',
-            'rcxna': snaptop+'RCXNA',
-            'rqahe': snaptop+'RQAHE',
-            'rqbrm': snaptop+'RQBRM',
-            'rqrad': snaptop+'RQRAD',
-            'rrahi': snaptop+'RRAHI',
-            'rramo': snaptop+'RRAMO',
-            'rrana': snaptop+'RRANA',
-            'rsahi': snaptop+'RSAHI',
-            'rsamo': snaptop+'RSAMO',
-            'rsana': snaptop+'RSANA',
-            
-            'smo': snaptop+'SMO',
-            'smq': snaptop+'SMQ',
-            'b2npmo_smav': snaptop+'SMAV',
-            'resmo': snaptop+'RESMO',
-            
-            # Texts
-            'textan': snaptop+'TEXTAN',
-            'textcomp': snaptop+'TEXTCOMP',
-            'textin': snaptop+'TEXTIN',
-            'textmn': snaptop+'TEXTMN',
-            'textpl': snaptop+'TEXTPL',
-
-            # Targets
-            'TARGET1_ds': timedept1+'DS',
-            'TARGET1_ft': timedept1+'FT',
-            'TARGET1_fe': timedept1+'FE',
-            'TARGET1_fi': timedept1+'FI',
-            'TARGET1_fc': timedept1+'FC',
-            'TARGET1_te': timedept1+'TE',
-            'TARGET1_ti': timedept1+'TI',
-            'TARGET1_ne': timedept1+'NE',
-            'TARGET1_po': timedept1+'PO',
-            
-            'TARGET2_ds': timedept2+'DS',
-            'TARGET2_ft': timedept2+'FT',
-            'TARGET2_fe': timedept2+'FE',
-            'TARGET2_fi': timedept2+'FI',
-            'TARGET2_fc': timedept2+'FC',
-            'TARGET2_te': timedept2+'TE',
-            'TARGET2_ti': timedept2+'TI',
-            'TARGET2_ne': timedept2+'NE',
-            'TARGET2_po': timedept2+'PO',
-            
-            'TARGET3_ds': timedept3+'DS',
-            'TARGET3_ft': timedept3+'FT',
-            'TARGET3_fe': timedept3+'FE',
-            'TARGET3_fi': timedept3+'FI',
-            'TARGET3_fc': timedept3+'FC',
-            'TARGET3_te': timedept3+'TE',
-            'TARGET3_ti': timedept3+'TI',
-            'TARGET3_ne': timedept3+'NE',
-            'TARGET3_po': timedept3+'PO',
-            
-            'TARGET4_ds': timedept4+'DS',
-            'TARGET4_ft': timedept4+'FT',
-            'TARGET4_fe': timedept4+'FE',
-            'TARGET4_fi': timedept4+'FI',
-            'TARGET4_fc': timedept4+'FC',
-            'TARGET4_te': timedept4+'TE',
-            'TARGET4_ti': timedept4+'TI',
-            'TARGET4_ne': timedept4+'NE',
-            'TARGET4_po': timedept4+'PO',
-            
-            # Midplanes
-            'OMP_ds': timedepomp+'DS',
-            'OMP_te': timedepomp+'TE',
-            'OMP_ti': timedepomp+'TI',
-            'OMP_ne': timedepomp+'NE',
-            
-            'IMP_ds': timedepimp+'DS',
-            'IMP_te': timedepimp+'TE',
-            'IMP_ti': timedepimp+'TI',
-            'IMP_ne': timedepimp+'NE',
-        }
-
     def find_gfile(self):
-        '''Identify the name of the gEQDSK file within the SOLPS output directory.
+        '''Identify the name of the gEQDSK file from the directory where 
+        b2fgmtry is also located. 
         '''
-        for filename in os.listdir(self.path+os.sep+'baserun'):
+        for filename in os.path.dirname(self.b2fgmtry_path):
             if filename.startswith('g'): # assume only 1 file starts with 'g'
                 return filename
 
 
+    def plot_radial_summary(self, ls='o-b'):
+        '''Plot a summary of radial profiles (ne, Te, Ti, nn, nm), 
+        at the inner and outer targets, as well as the outer midplane.
+
+        Parameters
+        ----------
+        ls : str
+            
+        '''
+        out = {}
+        for v in ['nx','ny','ns','imp','omp','sep','dsrad','ne','te','ti']:
+            out[v] = self.data(v)
+
+        fig, axs= plt.subplots(3,3, figsize=(10,8))
+        axs[0,0].set_title('Inner target')
+        axs[0,0].plot(out['dsrad'][:,0], out['ne'][:,0], ls)
+        axs[0,1].plot(out['dsrad'][:,out['omp'][0]], out['ne'][:,out['omp'][0]], ls)
+        axs[0,2].plot(out['dsrad'][:,out['nx'][0]-1], out['ne'][:,out['nx'][0]-1], ls)
+
+        axs[0,1].set_title('Outer midplane')
+        axs[1,0].plot(out['dsrad'][:,0], out['te'][:,0], ls)
+        axs[1,1].plot(out['dsrad'][:,out['omp'][0]], out['te'][:,0], ls)
+        axs[1,2].plot(out['dsrad'][:,out['nx'][0]-1], out['te'][:,0], ls)
+
+        axs[0,2].set_title('Outer target')
+        axs[2,0].plot(out['dsrad'][:,0], out['ti'][:,0], ls)
+        axs[2,1].plot(out['dsrad'][:,out['omp'][0]], out['ti'][:,0], ls)
+        axs[2,2].plot(out['dsrad'][:,out['nx'][0]-1], out['ti'][:,0], ls)
+        
+        axs[0,0].set_ylabel(r'ne [cm$^{-3}$]')
+        axs[1,0].set_ylabel('Ti [eV]')
+        axs[2,0].set_ylabel('Te [eV]')
+        for ii in [0,1,2]:
+            axs[-1,ii].set_xlabel('ds')
+            for jj in [0,1,2]:
+                axs[ii,jj].grid(True, ls='--')
+
+        plt.subplots_adjust(wspace=0.15, hspace=0.3)
+        plt.tight_layout()
+
+    def xpoint(self):
+        ''' Find location of the x-point in (R,Z) coordinates by using the fact
+        that the x-point is the only vertex shared by 8 cells. 
+        '''
+        allvertices = {}
+        for nx in range(self.nx):
+            for ny in range(self.ny):
+                for v in range(self.crx.shape[2]):
+                    vertex = str(self.crx[nx,ny,v]) + ' ' + str(self.cry[nx,ny,v])
+                    allvertices[vertex] = allvertices.get(vertex,0) + 1
+
+        xpoint = allvertices.keys()[allvertices.values().index(8)]
+        xpoint = np.array([float(xpoint.split()[0]),
+                           float(xpoint.split()[1])])
+        self._xpoint = xpoint
 
         
 def apply_mask(triang, geqdsk, max_mask_len=0.4, mask_up=False, mask_down=False):
@@ -1338,4 +1163,240 @@ def get_fort46_info(NTRII,NATM,NMOL,NION):
     
     return fort46_info
 
+
+
+def get_mdsmap():
+    """Load dictionary allowing a mapping of chosen variables with 
+    SOLPS variable names on MDS+.
+    """
+    ident = '\IDENT::TOP:'
+    identimp = '\IDENT::TOP.IMPSEP'
+    identomp = '\IDENT::TOP.OMPSEP'
+
+    snapshot_root = '\SOLPS::TOP.SNAPSHOT:'
+    snaptopdims = '\SNAPSHOT::TOP.DIMENSIONS:'
+    snaptopgrid = '\SNAPSHOT::TOP.GRID:'
+    snaptop = '\SNAPSHOT::TOP:'
+
+    timedept1 = '\TIMEDEP::TOP.TARGET1:'
+    timedept2 = '\TIMEDEP::TOP.TARGET2:'
+    timedept3 = '\TIMEDEP::TOP.TARGET3:'
+    timedept4 = '\TIMEDEP::TOP.TARGET4:'
+
+    timedepomp = '\TIMEDEP::TOP.OMP:'
+    timedepimp = '\TIMEDEP::TOP.IMP:'
+
+    return {
+        # general
+        'user': ident+'USER',
+        'version': ident+'VERSION',
+        'solpsversion': ident+'SOLPSVERSION',
+        'directory': ident+'directory',
+        'exp': ident+'EXP',
+
+        # Dimensions
+        'nx': snaptopdims+'NX', # grid size in pol direction
+        'ny': snaptopdims+'NY', # grid size in rad direction
+        'ns': snaptopdims+'NS', # number of species
+        'natm': snaptopdims+'NATM',  # number of atomic species
+        'nion': snaptopdims+'NION',  # number of ion species
+        'nmol': snaptopdims+'NMOL',  # number of molecular species
+
+        # Indices
+        'imp': snaptopdims+'IMP',  # index of inner midplane
+        'omp': snaptopdims+'OMP',  # index of outer midplane
+        'sep': snaptopdims+'SEP', # position of the separatrix
+        'targ1': snaptopdims+'TARG1',  # position of target 1 (usually inner)
+        'targ2': snaptopdims+'TARG2', # position of target 2
+        'targ3': snaptopdims+'TARG3', # position of target 3
+        'targ4': snaptopdims+'TARG4', # position of target 4 (usually outer)
+        'regflx': snaptopgrid+'REGFLX', # x-directed flux region indices
+        'regfly': snaptopgrid+'REGFLY', # y-directeed flux region indices
+        'regvol': snaptopgrid+'REGVOL',  # volume region indices
+
+        # Neighbours
+        'bottomix': snaptopgrid+'BOTTOMIX',  # bottom ix neighbourhood array
+        'bottomiy': snaptopgrid+'BOTTOMIY',  # bottom iy neighbourhood array
+        'leftix': snaptopgrid+'LEFTIX',   # left ix neighbourhood array
+        'leftiy': snaptopgrid+'LEFTIY',  # left iy neighbourhood array
+        'rightix': snaptopgrid+'RIGHTIX',  # right ix neighbourhood array
+        'rightiy': snaptopgrid+'RIGHTIY' , # right iy neighbourhood array
+        'topix': snaptopgrid+'TOPIX',  # top ix neighbourhood array
+        'topiy': snaptopgrid+'TOPIY',  # top iy neighbourhood array
+
+        # Grid and vessel geometry
+        'R': snaptopgrid+'R',  # R coordinates of cell vertices
+        'Z': snaptopgrid+'Z',  # Z coordinates of cell vertices
+        'cr': snaptopgrid+'CR',    # R coordinate of the cell center
+        'cr_x': snaptopgrid+'CR_X', # R-coordinate of the cell x-face
+        'cr_y': snaptopgrid+'CR_Y', # R-coordinate of the cell y-face
+        'cz': snaptopgrid+'CZ',  # Z coordinate of the cell center
+        'cz_x': snaptopgrid+'CZ_X', # Z-coordinate of the cell x-face
+        'cz_y': snaptopgrid+'CZ_Y',  # Z-coordinate of the cell y-face
+        'hx': snaptop+'HX',   # length of cell
+        'hy': snaptop+'HY',   # width of cell
+        'hy1': snaptop+'HY1',  # corrected width of cell
+        'dspar': snaptopgrid+'DSPAR',  # parallel distance
+        'dspol': snaptopgrid+'DSPOL',  # poloidal distance
+        'dsrad': snaptopgrid+'DSRAD', # radial distance
+        'sx': snaptop+'SX',   # poloidal contact area
+        'sxperp': snaptop+'SXPERP',  # poloidal area perpendicular to flux tube
+        'sy': snaptop+'SY',   # ?
+        'vessel': snaptopgrid+'VESSEL',   # vessel structure
+
+        # Plasma characterization
+        'am': snaptopgrid+'AM',  # atom/ion mass
+        'za': snaptopgrid+'ZA',  # atom charge
+        'zn': snaptopgrid+'ZN',  # nuclear charge
+        'bb': snaptop+'B',  # B field
+        'po': snaptop+'PO', # electric ppotential
+        'pot': snaptopgrid+'POT',  # potential energy
+        'poti': snaptopgrid+'POTI', # ionization potential
+        'qz': snaptop+'QZ',  #?
+        'visc': snaptop+'VISC',  # viscosity
+        'vol': snaptop+'VOL',  # volume
+
+        # Densities
+        'ne': snaptop+'NE',
+        'na': snaptop+'NA', # ion/neutral density
+        'dab2': snaptop+'DAB2',  # atom density
+        'dmb2': snaptop+'DMB2',  # molecular density
+        'dib2': snaptop+'DIB2', # ion density
+
+        # Temperatures
+        'te': snaptop+'TE',
+        'ti': snaptop+'TI',
+        'tab2': snaptop+'TAB2', # neutral atom temperature
+        'tmb2': snaptop+'TMB2', # neutral molecular temperature
+        'tib2': snaptop+'TIB2',  # test ion temperature
+
+        # Velocities
+        'ua': snaptop+'UA',     # ion/neutral parallel velocity
+        'vlax': snaptop+'VLAX', # poloidal pinch velocity
+        'vlay': snaptop+'VLAY', # radial pinch velocity
+
+        # Fluxes
+        'fchx': snaptop+'FCHX',  # poloidal current
+        'fchx_32': snaptop+'FCHX_32',  # convective poloidal current
+        'fchx_52': snaptop+'FCHX_52',  # conductive poloidal current        
+        'fchy': snaptop+'FCHY',  # radial current
+        'fchy_32': snaptop+'FCHY_32',  # convective radial current
+        'fchy_52': snaptop+'FCHY_52',  # conductive radial current        
+        'fhex': snaptop+'FHEX', # poloidal  electron energy flux
+        'fhey': snaptop+'FHEY', # radial  electron energy flux
+        'fhix': snaptop+'FHIX', # poloidal ion energy flux
+        'fhiy': snaptop+'FHIY', # radial ion energy flux
+        'fhjx': snaptop+'FHJX', # poloidal electrostatic energy flux
+        'fhjy': snaptop+'FHJY', # radial electrostatic energy flux
+        'fhmx': snaptop+'FHMX', # poloidal kinetic energy flux
+        'fhmy': snaptop+'FHMY', # radial kinetic energy flux
+        'fhpx': snaptop+'FHPX', # poloidal potential energy flux
+        'fhpy': snaptop+'FHPY', # radial potential energy flux
+        'fhtx': snaptop+'FHTX', # poloidal total energy flux
+        'fhty': snaptop+'FHTY', # radial total energy flux
+        'fmox': snaptop+'FMOX', # poloidal momentum flux
+        'fmoy': snaptop+'FMOY', # radial momentum flux
+        'fnax': snaptop+'FNAX', # poloidal particle flux
+        'fnax_32': snaptop+'FNAX_32', # 3/2 piece
+        'fnax_52': snaptop+'FNAX_52', # 5/2 piece
+        'fnay': snaptop+'FNAY', # radial particle flux
+        'fnay_32': snaptop+'FNAY_32', # 3/2 piece
+        'fnay_52': snaptop+'FNAY_52', # 5/2 piece
+        'pefa': snaptop+'PEFA',   # poloidal atomic energy flux
+        'pefm': snaptop+'PEFM',   # poloidal molecular energy flux
+        'pfla': snaptop+'PFLA',  # poloidal atomic flux
+        'pflm': snaptop+'PFLM',  # poloidal molecular flux
+        'refa': snaptop+'REFA',  # radial atomic energy flux
+        'refm': snaptop+'REFM',  # radial molecular energy flux
+        'rfla': snaptop+'RFLA', # radial atomic flux (?)
+        'rflm': snaptop+'RFLM', # radial molecular flux (?)
+
+        # Coefficients
+        'alf': snaptop+'ALF',  # thermoelectric coefficient
+        'dna0': snaptop+'D',  # D
+        'dp': snaptop+'DP',   # Dpa
+        'kye': snaptop+'KYE', # kye
+        'kyi': snaptop+'KYI', # kyi
+        'kyi0': snaptop+'KYI0', # kyi0
+        'sig': snaptop+'SIG', # anomalous conductivity
+        'rpt': snaptop+'RPT', # Cumulative Ionisation Potential (function of ix,iy,is)
+
+        # Rates, losses and sources
+        'rcxhi': snaptop+'RCXHI',  # CX ion energy neutral losses
+        'rcxmo': snaptop+'RCXMO',  # CX momentum neutral losses
+        'rcxna': snaptop+'RCXNA',  # CX particle neutral losses
+        'rqahe': snaptop+'RQAHE',  # Electron cooling rate
+        'rqbrm': snaptop+'RQBRM',  # Bremsstrahlung radiation rate
+        'rqrad': snaptop+'RQRAD',  # Line radiation rate
+        'rrahi': snaptop+'RRAHI',  # Recombination ion energy losses
+        'rramo': snaptop+'RRAMO',  # Recombination momentum losses
+        'rrana': snaptop+'RRANA',  # Recombination particle losses
+        'rsahi': snaptop+'RSAHI',  # Ionization ion energy losses
+        'rsamo': snaptop+'RSAMO',  # Ionization momentum losses
+        'rsana': snaptop+'RSANA',  # Ionization particle losses
+
+        'smo': snaptop+'SMO',           # Parallel momentum source
+        'smq': snaptop+'SMQ',           # momentum sources from atomic physics
+        'b2npmo_smav': snaptop+'SMAV',  # additional viscosity term
+        'resmo': snaptop+'RESMO',       # Momentum equation residual
+
+        # Texts
+        'textan': snaptop+'TEXTAN',      # atom species
+        'textcomp': snaptop+'TEXTCOMP',  # components
+        'textin': snaptop+'TEXTIN',      # test ion species
+        'textmn': snaptop+'TEXTMN',      # molecular species
+        'textpl': snaptop+'TEXTPL',      # plasma species
+
+        # Targets
+        'TARGET1_ds': timedept1+'DS',  # S-S_sep, target1
+        'TARGET1_ft': timedept1+'FT',  # poloidal total energy flux
+        'TARGET1_fe': timedept1+'FE',  # poloidal electron energy flux
+        'TARGET1_fi': timedept1+'FI',  # poloidal ion energy flux
+        'TARGET1_fc': timedept1+'FC',  # poloidal current
+        'TARGET1_te': timedept1+'TE',  # Te
+        'TARGET1_ti': timedept1+'TI',  # Ti
+        'TARGET1_ne': timedept1+'NE',  # ne
+        'TARGET1_po': timedept1+'PO',  # potential
+
+        'TARGET2_ds': timedept2+'DS',
+        'TARGET2_ft': timedept2+'FT',
+        'TARGET2_fe': timedept2+'FE',
+        'TARGET2_fi': timedept2+'FI',
+        'TARGET2_fc': timedept2+'FC',
+        'TARGET2_te': timedept2+'TE',
+        'TARGET2_ti': timedept2+'TI',
+        'TARGET2_ne': timedept2+'NE',
+        'TARGET2_po': timedept2+'PO',
+
+        'TARGET3_ds': timedept3+'DS',
+        'TARGET3_ft': timedept3+'FT',
+        'TARGET3_fe': timedept3+'FE',
+        'TARGET3_fi': timedept3+'FI',
+        'TARGET3_fc': timedept3+'FC',
+        'TARGET3_te': timedept3+'TE',
+        'TARGET3_ti': timedept3+'TI',
+        'TARGET3_ne': timedept3+'NE',
+        'TARGET3_po': timedept3+'PO',
+
+        'TARGET4_ds': timedept4+'DS',
+        'TARGET4_ft': timedept4+'FT',
+        'TARGET4_fe': timedept4+'FE',
+        'TARGET4_fi': timedept4+'FI',
+        'TARGET4_fc': timedept4+'FC',
+        'TARGET4_te': timedept4+'TE',
+        'TARGET4_ti': timedept4+'TI',
+        'TARGET4_ne': timedept4+'NE',
+        'TARGET4_po': timedept4+'PO',
+
+        # Midplanes
+        'OMP_ds': timedepomp+'DS',    
+        'OMP_te': timedepomp+'TE',
+        'OMP_ti': timedepomp+'TI',
+        'OMP_ne': timedepomp+'NE',
+
+        'IMP_ds': timedepimp+'DS',
+        'IMP_te': timedepimp+'TE',
+        'IMP_ti': timedepimp+'TI',
+        'IMP_ne': timedepimp+'NE',
+    }
 
