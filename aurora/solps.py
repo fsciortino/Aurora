@@ -96,50 +96,46 @@ class solps_case:
             self.crx = self.b2fgmtry['crx'].reshape(4,self.ny+2,self.nx+2)  # horizontal 
             self.cry = self.b2fgmtry['cry'].reshape(4,self.ny+2,self.nx+2)  # vertical
 
-            # figure out if single or double null
-            self.double_null = self.cry.shape[2]%4==0
-            
-            # uncertain units for splitting of radial and poloidal regions...
-            self.unit_p = (self.crx.shape[2]-4 if self.double_null else self.crx.shape[2])//4
-            self.unit_r = (self.crx.shape[1]-2)//2
-
-            if self.double_null:
-                # TODO: double null generalization still incomplete!
-
-                # Obtain indices for chosen radial regions
-                _R_idxs = np.array([],dtype=int)
-                _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r)))  # PFR and core
-                self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r,2*self.unit_r))) # open-SOL
-
-                # obtain indices for chosen poloidal regions
-                _P_idxs = np.array([],dtype=int)
-                _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
-                _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
-                self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
-
-            else:  # upper or lower single null
-                # Obtain indices for chosen radial regions
-                _R_idxs = np.array([],dtype=int)
-                _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1)))  # PFR and core
-                self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1,2*self.unit_r+2))) # open-SOL
-
-                # obtain indices for chosen poloidal regions
-                _P_idxs = np.array([],dtype=int)
-                _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
-                _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
-                self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
-
             # now, load data arrays
-            self.load_data() #P_idxs=self.P_idxs, R_idxs=self.R_idxs)  # TODO: enable subselection of regions
+            self.load_data() #(P_idxs=self.P_idxs, R_idxs=self.R_idxs)  # TODO: enable subselection of regions
         
         elif self.form=='mdsplus':
-
             # load variable name map to MDS+ tree
             self.mdsmap = get_mdsmap()
 
-            self.crx = self.data('R')
-            self.cry = self.data('Z')
-            
+        # figure out if single or double null
+        self.double_null = self.data('cry').shape[2]%4==0
+
+        # is the definition of these units robust?
+        self.unit_p = (self.data('crx').shape[2]-4 if self.double_null else self.data('crx').shape[2])//4
+        self.unit_r = (self.data('crx').shape[1]-2)//2
+
+        if self.double_null:
+            # TODO: double null generalization still incomplete!
+
+            # Obtain indices for chosen radial regions
+            _R_idxs = np.array([],dtype=int)
+            _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r)))  # PFR and core
+            self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r,2*self.unit_r))) # open-SOL
+
+            # obtain indices for chosen poloidal regions
+            _P_idxs = np.array([],dtype=int)
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
+            self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
+
+        else:  # upper or lower single null
+            # Obtain indices for chosen radial regions
+            _R_idxs = np.array([],dtype=int)
+            _R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1)))  # PFR and core
+            self.R_idxs = np.concatenate((_R_idxs, np.arange(self.unit_r+1,2*self.unit_r+2))) # open-SOL
+
+            # obtain indices for chosen poloidal regions
+            _P_idxs = np.array([],dtype=int)
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1)))  # Inner PFR
+            _P_idxs = np.concatenate((_P_idxs, np.arange(self.unit_p+1,3*self.unit_p+1)))  # core/open SOL
+            self.P_idxs = np.concatenate((_P_idxs, np.arange(3*self.unit_p+1,4*self.unit_p+2)))  # outer PFR
+
         # set zero densities equal to min to avoid log issues
         #self.quants['nn'][self.quants['nn']==0.0] = nsmallest(2,np.unique(self.quants['nn'].flatten()))[1]
 
@@ -193,8 +189,9 @@ class solps_case:
             # try fetching from MDS+
             from omfit_classes import omfit_mds
 
-            return omfit_mds.OMFITmdsValue(self.server, self.tree, self.solps_id,
-                                           TDI = self.mdsmap[varname]).data()
+            setattr(self, varname, omfit_mds.OMFITmdsValue(self.server, self.tree, self.solps_id,
+                                                           TDI = self.mdsmap[varname]).data())
+            return getattr(self, varname)
         else:
             raise ValueError(f'Could not fetch variable {varname}')
 
@@ -219,29 +216,21 @@ class solps_case:
             Minimum poloidal index to load, if P_idxs is not given
         Pmax : int or None
             Maximum poloidal index to load, if P_idxs is not given
-        
-        Returns
-        ------------
-        quants : dict
-            Dictionary containing 'R','Z' coordinates for 2D maps of each field requested by user.
+
         '''
         if P_idxs is None:
             if Pmax is None: Pmax = self.nx
             if Pmin is None: Pmin = 0
             P_idxs = np.arange(Pmin,Pmax)
-        else:
-            pass # user provided list of poloidal grid indices
 
         if R_idxs is None:
             if Rmax is None: Rmax = self.ny
             if Rmin is None: Rmin = 0
             R_idxs = np.arange(Rmin,Rmax)
-        else:
-            pass # user provided list of radial grid indices
 
         # eliminate end (buffer) points of grid
-        self.R = np.mean(self.crx,axis=0)[1:-1,1:-1][R_idxs,:][:,P_idxs]
-        self.Z = np.mean(self.cry,axis=0)[1:-1,1:-1][R_idxs,:][:,P_idxs]
+        self.cr = np.mean(self.data('crx'), axis=0)[1:-1,1:-1][R_idxs,:][:,P_idxs]
+        self.cz = np.mean(self.data('cry'), axis=0)[1:-1,1:-1][R_idxs,:][:,P_idxs]
 
         self.ne = self.b2fstate['ne'][1:-1,1:-1][R_idxs,:][:,P_idxs] # m^-3
         self.te = self.b2fstate['te'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
@@ -492,6 +481,29 @@ class solps_case:
         self.WS=Wall_Seg
         self.WC=Wall_Collection
 
+    def get_b2_patches(self):
+        '''Get polygons describing B2 grid as a mp.collections.PatchCollection object.
+        '''
+        xx = self.data('crx').transpose(2,1,0)
+        yy = self.data('cry').transpose(2,1,0)
+        NY = int(self.data('ny'))
+        NX = int(self.data('nx'))
+
+        if self.form=='files':
+            # eliminate boundary cells
+            xx = xx[1:-1,1:-1,:]
+            yy = yy[1:-1,1:-1,:]
+
+        patches = []
+        for iy in np.arange(0,NY):
+            for ix in np.arange(0,NX):
+                rr = np.atleast_2d(xx[ix,iy,[0,1,3,2]]).T
+                zz = np.atleast_2d(yy[ix,iy,[0,1,3,2]]).T
+                patches.append( mpl.patches.Polygon(np.hstack((rr,zz)), True, linewidth=3) )
+
+        # collect all patches
+        return mpl.collections.PatchCollection(patches, False, fc='w', edgecolor='k', linewidth=0.1)
+
     def plot2d_b2(self, vals, ax=None, scale='log', label='', lb=None, ub=None, **kwargs):
         '''Method to plot 2D fields on B2 grids. 
         Colorbars are set to be manually adjustable, allowing variable image saturation.
@@ -517,29 +529,11 @@ class solps_case:
         if ax is None:
             fig,ax = plt.subplots(1,figsize=(9, 11))
 
-        xx = self.data('crx').transpose(2,1,0)
-        yy = self.data('cry').transpose(2,1,0)
-        NY = int(self.data('ny'))
-        NX = int(self.data('nx'))
-
-        if self.form=='files':
-            if np.prod(vals.shape)==self.crx.shape[1]*self.crx.shape[2]:
-                vals = vals[1:-1,1:-1]
-
-            # eliminate boundary cells
-            xx = xx[1:-1,1:-1,:]
-            yy = yy[1:-1,1:-1,:]
-            #NX -= 2; NY -= 2
-            
-        patches = []
-        for iy in np.arange(0,NY):
-            for ix in np.arange(0,NX):
-                rr = np.atleast_2d(xx[ix,iy,[0,1,3,2]]).T
-                zz = np.atleast_2d(yy[ix,iy,[0,1,3,2]]).T
-                patches.append(mpl.patches.Polygon(np.hstack((rr,zz)), True,linewidth=3))
-
-        # collect all patches
-        p = mpl.collections.PatchCollection(patches,False, edgecolor='k',linewidth=0.1, **kwargs)
+        # get polygons describing B2 grid
+        p = self.get_b2_patches()
+        
+        if self.form=='files' and np.prod(vals.shape)==self.data('crx').shape[1]*self.data('crx').shape[2]:
+            vals = vals[1:-1,1:-1]
 
         # fill patches with values
         _vals = vals.flatten()
@@ -638,7 +632,6 @@ class solps_case:
         cid = cbar.connect()
 
 
-
     def get_radial_prof(self, vals, dz_mm=5, theta=0, label='', plot=False):
         '''Extract radial profiles of a quantity "quant" from the SOLPS run. 
         This function returns profiles on the low- (LFS) and high-field-side (HFS) midplane, 
@@ -683,18 +676,18 @@ class solps_case:
             within +/-`dz_mm`/2 millimeters from the midplane.
         '''
         
-        if np.prod(vals.shape) == self.data('crx').shape[1]*self.data('crx').shape[2]:
+        if self.form=='files' and np.prod(vals.shape) == self.data('crx').shape[1]*self.data('crx').shape[2]:
             # Exclude boundary cells
             vals = vals[1:-1, 1:-1]
 
-        rhop_2D = coords.get_rhop_RZ(self.data('R'), self.data('Z'), self.geqdsk)
+        rhop_2D = coords.get_rhop_RZ(self.data('cr'), self.data('cz'), self.geqdsk)
         
         # evaluate FSA radial profile inside the LCFS
         def avg_function(r, z):
             if any(coords.get_rhop_RZ(r, z, self.geqdsk)<np.min(rhop_2D)):
                 return np.nan
             else:
-                return griddata((self.data('R').flatten(), self.data('Z').flatten()), vals.flatten(),
+                return griddata((self.data('cr').flatten(), self.data('cz').flatten()), vals.flatten(),
                                 (r,z), method='linear')
 
         prof_FSA = self.geqdsk['fluxSurfaces'].surfAvg(function=avg_function)
@@ -702,10 +695,10 @@ class solps_case:
 
         # get R axes on the midplane on the LFS and HFS
         # rule-of-thumb to identify vertical resolution:
-        _dz = (np.max(self.data('Z')) - np.min(self.data('Z')))/\
+        _dz = (np.max(self.data('cz')) - np.min(self.data('cz')))/\
               ((self.data('nx')+self.data('ny'))/10.) 
-        mask = (self.data('Z').flatten()>-_dz)&(self.data('Z').flatten()<_dz)
-        R_midplane = self.data('R').flatten()[mask]
+        mask = (self.data('cz').flatten()>-_dz)&(self.data('cz').flatten()<_dz)
+        R_midplane = self.data('cr').flatten()[mask]
         
         R_midplane_lfs = R_midplane[R_midplane>self.geqdsk['RMAXIS']]
         _R_LFS = np.linspace(np.min(R_midplane_lfs), np.max(R_midplane_lfs),1000)
@@ -715,7 +708,7 @@ class solps_case:
 
         # get midplane radial profile...
         # ...on the LFS:
-        _prof_LFS = griddata((self.data('R').flatten(),self.data('Z').flatten()), vals.flatten(),
+        _prof_LFS = griddata((self.data('cr').flatten(),self.data('cz').flatten()), vals.flatten(),
                              (_R_LFS,0.5*dz_mm*1e-3*np.random.random(len(_R_LFS))),
                              #(_R_LFS,np.zeros_like(_R_LFS)),
                              method='linear')
@@ -724,7 +717,7 @@ class solps_case:
         rhop_LFS = coords.get_rhop_RZ(R_LFS,np.zeros_like(R_LFS), self.geqdsk)
 
         # ... and on the HFS:
-        _prof_HFS = griddata((self.data('R').flatten(),self.data('Z').flatten()), vals.flatten(), #self.quants[quant].flatten(),
+        _prof_HFS = griddata((self.data('cr').flatten(),self.data('cz').flatten()), vals.flatten(), #self.quants[quant].flatten(),
                              #(_R_HFS, np.zeros_like(_R_HFS)),
                              (_R_HFS,0.5*dz_mm*1e-3*np.random.random(len(_R_HFS))),
                              method='linear')
@@ -743,20 +736,20 @@ class solps_case:
             
         # now obtain also the simple poloidal grid slice near the midplane (LFS and HFS)
         # These are commonly used for SOLPS analysis, using the JXA and JXI indices (which we re-compute here)
-        Z_core = self.data('Z')[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
-        R_core = self.data('R')[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
+        Z_core = self.data('cz')[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
+        R_core = self.data('cr')[self.unit_r:2*self.unit_r,self.unit_p:3*self.unit_p]
 
         # find indices of poloidal grid nearest to Z=0 in the innermost radial shell
         midplane_LFS_idx = np.argmin(np.abs(Z_core[0,R_core[0,:]>self.geqdsk['RMAXIS']]))
         midplane_HFS_idx = np.argmin(np.abs(Z_core[0,R_core[0,:]<self.geqdsk['RMAXIS']]))
 
-        # convert to indices on self.data('Z') and self.data('R')
+        # convert to indices on self.data('cz') and self.data('cr')
         JXI = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]<self.geqdsk['RMAXIS']][midplane_HFS_idx]  # HFS_mid_pol_idx
         JXA = self.unit_p + np.arange(Z_core.shape[1])[R_core[0,:]>self.geqdsk['RMAXIS']][midplane_LFS_idx] # LFS_mid_pol_idx
 
         # find rhop along midplane grid chords
-        rhop_chord_HFS = coords.get_rhop_RZ(self.data('R')[:,JXI],self.data('Z')[:,JXI], self.geqdsk)
-        rhop_chord_LFS = coords.get_rhop_RZ(self.data('R')[:,JXA],self.data('Z')[:,JXA], self.geqdsk)
+        rhop_chord_HFS = coords.get_rhop_RZ(self.data('cr')[:,JXI],self.data('cz')[:,JXI], self.geqdsk)
+        rhop_chord_LFS = coords.get_rhop_RZ(self.data('cr')[:,JXA],self.data('cz')[:,JXA], self.geqdsk)
 
         if plot:
             # compare FSA radial profiles with midplane (LFS and HFS) ones
@@ -810,7 +803,7 @@ class solps_case:
             within +/-`dr_mm`/2 millimeters from the surface at rhop. 
         '''
 
-        if np.prod(vals.shape)==self.data('crx').shape[1]*self.data('crx').shape[2]:
+        if self.form=='files' and np.prod(vals.shape)==self.data('crx').shape[1]*self.data('crx').shape[2]:
             # Exclude boundary cells
             vals = vals[1:-1,1:-1]         
 
@@ -820,46 +813,37 @@ class solps_case:
             raise AssertionError('Unrecognized topology!')
 
         # find x-point coordinates
-        idx = 0 if topology=='LSN' else -1
-        self.xpoint = sorted(zip(self.geqdsk['RBBBS'],self.geqdsk['ZBBBS']),
-                             key=lambda x: x[1])[idx]
-        
-        _x_point = self.xpoint
+        self.find_xpoint()
 
-        _R_points=np.linspace(np.min(self.data('R')),np.max(self.data('R')), 202)
-        
+        _R_points=np.linspace(np.min(self.data('cr')),np.max(self.data('cr')), 202)        
         if topology=='LSN':
-            _Z_points=np.linspace(_x_point[1],np.max(self.data('Z')), 200)
+            _Z_points = np.linspace(self.xpoint[1], np.max(self.data('cz')), 200)
         elif topology=='USN':
-            _Z_points=np.linspace(np.min(self.data('Z')),_x_point[1], 200)
-        elif topology=='DN':
+            _Z_points = np.linspace(np.min(self.data('cz')), self.xpoint[1], 200)
+        else: 
             # not yet functional
-            _Z_points=np.linspace(_x_point[0][1],_x_point[1][1],1200)
-            _x_point=_x_point[0]
-        else:
             raise ValueError('Unrecognized topology!')
 
         _R_grid,_Z_grid=np.meshgrid(_R_points,_Z_points,copy=False)
-
         rhop_2D = coords.get_rhop_RZ(_R_grid,_Z_grid, self.geqdsk)
 
         # rule-of-thumb to identify radial resolution:
-        dr_rhop = (np.max(self.data('R')) - np.min(self.data('R')))/(self.data('ny')*10) 
+        dr_rhop = (np.max(self.data('cr')) - np.min(self.data('cr')))/(self.data('ny')*10) 
         
-        _mask=(rhop_2D<rhop+dr_rhop)&(rhop_2D>rhop-dr_rhop)
+        _mask = (rhop_2D<rhop+dr_rhop)&(rhop_2D>rhop-dr_rhop)
         
-        _R_rhop=_R_grid[_mask]
-        _Z_rhop=_Z_grid[_mask]
+        _R_rhop = _R_grid[_mask]
+        _Z_rhop = _Z_grid[_mask]
 
         # Need a way to get more resolution of the R and Z coordinates for given rhop
-        prof_rhop = griddata((self.data('R').flatten(),self.data('Z').flatten()),
-                             vals.flatten(), (_R_rhop,_Z_rhop), method='cubic')
+        prof_rhop = griddata((self.data('cr').flatten(), self.data('cz').flatten()),
+                             vals.flatten(), (_R_rhop, _Z_rhop), method='cubic')
         
         Rmaxis = self.geqdsk['RMAXIS']
         Zmaxis = self.geqdsk['ZMAXIS']
         
-        _LFS_midplane_vect = np.array([np.max(self.data('R'))-Rmaxis, 0])
-        _XP_vect = np.array([_x_point[0]-Rmaxis, _x_point[1]-Zmaxis])
+        _LFS_midplane_vect = np.array([np.max(self.data('cr'))-Rmaxis, 0])
+        _XP_vect = np.array([self.xpoint[0]-Rmaxis, self.xpoint[1]-Zmaxis])
         _theta_vect = np.array([_R_rhop-Rmaxis, _Z_rhop-Zmaxis]).T
         
         _theta_XP = np.degrees(np.arctan2(np.linalg.det([_LFS_midplane_vect,_XP_vect]),
@@ -874,15 +858,6 @@ class solps_case:
             theta_rhop = [x+360 if x < -90. else x for x in theta_rhop]
         
         poloidal_prof = np.array(sorted(zip(theta_rhop,prof_rhop))).T
-        
-        #num = 100 # arbitrary number, gives a fair level of resolution
-        #num2 = np.floor_divide(len(poloidal_prof[0]), num)
-        #
-        #if num2>1:
-        #    theta_prof = np.nanmedian(poloidal_prof[0][:num*num2].reshape(-1,num2),axis=1)
-        #    pol_prof = np.nanmedian(poloidal_prof[1][:num*num2].reshape(-1,num2),axis=1)
-        #else:
-        #    # catch cases where there aren't enough points -- to be improved
         theta_prof = poloidal_prof[0]
         pol_prof = poloidal_prof[1]
 
@@ -1004,29 +979,10 @@ class solps_case:
         if plot:
             if ax is None:
                 fig,ax = plt.subplots(1,figsize=(9, 11))
-
-                xx = self.data('crx').transpose(2,1,0)
-                yy = self.data('cry').transpose(2,1,0)
-                NY = int(self.data('ny'))
-                NX = int(self.data('nx'))
-
-                if self.form=='files':
-                    if np.prod(vals.shape)==self.crx.shape[1]*self.crx.shape[2]:
-                        vals = vals[1:-1,1:-1]
-
-                    # eliminate boundary cells
-                    xx = xx[1:-1,1:-1,:]
-                    yy = yy[1:-1,1:-1,:]
-
-                patches = []
-                for iy in np.arange(0,NY):
-                    for ix in np.arange(0,NX):
-                        rr = np.atleast_2d(xx[ix,iy,[0,1,3,2]]).T
-                        zz = np.atleast_2d(yy[ix,iy,[0,1,3,2]]).T
-                        patches.append( mpl.patches.Polygon(np.hstack((rr,zz)), True, linewidth=3) )
-
-                # collect all patches
-                p = mpl.collections.PatchCollection(patches, False, fc='w', edgecolor='k', linewidth=0.1)
+                
+                # get polygons describing B2 grid
+                p = self.get_b2_patches()
+                
                 ax.add_collection(p)
                 ax.set_xlabel('R [m]')
                 ax.set_ylabel('Z [m]')
@@ -1375,8 +1331,8 @@ def get_mdsmap():
         'topiy': snaptopgrid+'TOPIY',  # top iy neighbourhood array
 
         # Grid and vessel geometry
-        'R': snaptopgrid+'R',  # R coordinates of cell vertices
-        'Z': snaptopgrid+'Z',  # Z coordinates of cell vertices
+        'crx': snaptopgrid+'R',  # R coordinates of cell vertices
+        'cry': snaptopgrid+'Z',  # Z coordinates of cell vertices
         'cr': snaptopgrid+'CR',    # R coordinate of the cell center
         'cr_x': snaptopgrid+'CR_X', # R-coordinate of the cell x-face
         'cr_y': snaptopgrid+'CR_Y', # R-coordinate of the cell y-face
