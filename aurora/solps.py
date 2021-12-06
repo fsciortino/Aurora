@@ -44,7 +44,10 @@ class solps_case:
     geqdsk : str, optional (option #1 and #2)
         Path to the geqdsk to load from disk.
         Users may also directly provide an instance of the 
-        `omfit_classes.omfit_geqdsk.OMFITgeqdsk` class that contains the processed gEQDSK file. 
+        `omfit_classes.omfit_geqdsk.OMFITgeqdsk` class that contains the processed gEQDSK file.
+        If not provided, the code tries to reconstruct a geqdsk based on the experiment name and 
+        time of analysis stored in the SOLPS output. If set to None, no geqdsk is loaded and 
+        functionality related to the geqdsk is not used.
 
     Notes
     -----
@@ -54,9 +57,9 @@ class solps_case:
     Minimal Working Example
     -----------------------
     import aurora
-    so = aurora.solps_case(b2fstate_path = '/afs/ipp/home/s/sciof/SOLPS/141349/b2fstate',
-                           b2fgmtry_path = '/afs/ipp/home/s/sciof/SOLPS/141349/b2fgmtry')
-    so.plot2d_b2(so.quants['ne'])
+    so = aurora.solps_case(141349) # load case 141349 from AUG MDS+; must have access to the server!
+    so.plot2d_b2(so.data('ne'))
+
     '''
     def __init__(self, *args, **kwargs):
         if len(args):
@@ -79,21 +82,6 @@ class solps_case:
                 self.tree = 'solps'  if 'tree' not in kwargs else kwargs['tree']
             else:
                 raise ValueError('Insufficient information passed as (keyword) arguments to read SOLPS results')
-
-            if 'geqdsk' in kwargs:
-                from omfit_classes import omfit_eqdsk
-                if isinstance(kwargs['geqdsk'], str):
-                    # load geqdsk file
-                    self.geqdsk = omfit_eqdsk.OMFITgeqdsk(kwargs['geqdsk'])
-                else:
-                    # assume geqdsk was already loaded via OMFITgeqdsk
-                    self.geqdsk = kwargs['geqdsk']
-            else:
-                # try to find gEQDSK and load it
-                _gfile_path = None if self.form=='mdsplus' else self.find_gfile()
-                if _gfile_path is not None:
-                    from omfit_classes import omfit_eqdsk
-                    self.geqdsk = omfit_eqdsk.OMFITgeqdsk(_gfile_path)
 
         if self.form=='files':
             from omfit_classes import omfit_solps
@@ -154,6 +142,42 @@ class solps_case:
             
         # set zero densities equal to min to avoid log issues
         #self.quants['nn'][self.quants['nn']==0.0] = nsmallest(2,np.unique(self.quants['nn'].flatten()))[1]
+
+        # identify species (both B2 and EIRENE):
+        self.species_id()
+
+        # geqdsk offers a description of the magnetic equilibrium; only used here for visualization + postprocessing
+        if 'geqdsk' in kwargs:
+            if kwargs['geqdsk'] is None:
+                # user explicitly requested not to use geqdsk functionality
+                self.geqdsk = None
+            else:
+                from omfit_classes import omfit_eqdsk
+                if isinstance(kwargs['geqdsk'], str):
+                    # load geqdsk file
+                    self.geqdsk = omfit_eqdsk.OMFITgeqdsk(kwargs['geqdsk'])
+                else:
+                    # assume geqdsk was already loaded via OMFITgeqdsk
+                    self.geqdsk = kwargs['geqdsk']
+        else:
+            from omfit_classes import omfit_eqdsk
+            # try to find gEQDSK and load it
+            _gfile_path = None if self.form=='mdsplus' else self.find_gfile()
+            if _gfile_path is not None:
+                self.geqdsk = omfit_eqdsk.OMFITgeqdsk(_gfile_path)
+            else:
+                # attempt to reconstruct geqdsk from device MDS+ server
+                try:
+                    if 'AUG' in self.data('exp')[0]:
+                        self.geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_aug_sfutils(
+                            int(self.data('shot')), float(self.data('time')), 'EQI')
+                    else:
+                        self.geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(
+                            device=self.data('exp'), shot=int(self.data('shot')),
+                            time=float(self.data('time'))*1e3) # time in ms
+                except Exception as e:
+                    # geqdsk could not be fetched
+                    pass
 
     def data(self, varname):
         '''Fetch data either from files or MDS+ tree.
@@ -224,7 +248,7 @@ class solps_case:
         self.ti = self.b2fstate['ti'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
 
         # density of atomic species if B2 fluid neutral model is used:
-        #self.nn = self.b2fstate['na'][0,R_idxs,:][:,P_idxs] # m^-3   # only neutral component
+        #self.na0 = self.b2fstate['na'][0,R_idxs,:][:,P_idxs] # m^-3   # only neutral component
 
         try:
             self.fort44 = self.load_fort44()
@@ -232,11 +256,11 @@ class solps_case:
             # assume that EIRENE neutral model is used:
             nn44 = self.fort44['dab2'][:,:,0].T
             nn44[nn44==0.0] = nsmallest(2,np.unique(nn44.flatten()))[1]
-            self.nn = nn44[R_idxs,:][:,P_idxs] # m^-3   # only neutral component
-            self.tn = self.fort44['tab2'][:,:,0].T[R_idxs,:][:,P_idxs]/constants.e # eV
+            self.dab2 = nn44[R_idxs,:][:,P_idxs] # m^-3   # only neutral component
+            self.tab2 = self.fort44['tab2'][:,:,0].T[R_idxs,:][:,P_idxs]/constants.e # eV
             
-            self.nm = self.fort44['dmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular density
-            self.tm = self.fort44['tmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular temperature
+            self.dmb2 = self.fort44['dmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular density
+            self.tmb2 = self.fort44['tmb2'][:,:,0].T[R_idxs,:][:,P_idxs] # D molecular temperature
         except Exception:
             warnings.warn('Could not load fort.44 file')
 
@@ -250,40 +274,42 @@ class solps_case:
             self.xnodes, self.ynodes, self.triangles = self.load_eirene_mesh()
         except Exception:
             warnings.warn('Could not load fort.33 and/or fort.34 files')
-        
-        # identify species (both B2 and EIRENE):
-        self.species_id()
             
     def species_id(self):
         '''Identify species included in SOLPS run, both for B2 and EIRENE quantities.
         This is only designed to work in the "full" data format.
         '''
-        #b2_Zns = self.b2fstate['zn']  # nuclear charge (not ionization state)
-        b2_Ans = self.b2fstate['am'] # nuclear masses (2 for H/D/T, 4 for He, etc.)
+        # nuclear charge (not ionization state)
+        #b2_zn = self.b2fstate['zn'] if self.form=='files' else self.data('zn')
 
-        # TODO: separate use of zamin and zamax for bundling
-        b2_Zas = self.b2fstate['zamin'] # atom charge (min over bundle)
-        #b2_Za_max = self.b2fstate['zamax'] # atom charge (max over bundle)
-        
+        # nuclear masses (2 for H/D/T, 4 for He, etc.)
+        b2_am = self.b2fstate['am'] if self.form=='files' else self.data('am') 
+            
+        # atom charge
+        if self.form=='files' and (not np.array_equal(self.b2fstate['zamin'], self.b2fstate['zamax'])):
+            # using charge state bundling
+            raise ValueError('Detected charge state bundling; analysis not yet implemented')
+        b2_za = self.b2fstate['zamin'] if self.form=='files' else self.data('za')
+
         # import here to avoid issues when building docs or package
-        from omfit_classes.utils_math import atomic_element
-
-        self.b2_species = b2_species = {}
-        for ii,(Zi,An) in enumerate(zip(b2_Zas,b2_Ans)):
+        from omfit_classes.utils_math import atomic_element, toRoman
+        
+        self.b2_species = {}
+        for ii,(Zi,An) in enumerate(zip(b2_za,b2_am)):
             # get name of atomic species from charge and atomic mass number
             out = atomic_element(Z_ion=int(Zi), A=int(An))  # requires integer values
             _spec = list(out.keys())[0]
-            cs_str = f'{int(Zi)}+' if int(Zi)!=0 else '0'
-            b2_species[ii] = {'symbol': out[_spec]['symbol']+cs_str, 'Z':int(Zi),'A':int(An)}
+            cs_str = f' {toRoman(int(Zi)+1)}'
+            self.b2_species[ii] = {'symbol': out[_spec]['symbol']+cs_str, 'Z':Zi, 'A':An}
 
         if hasattr(self, 'fort44'): # loaded EIRENE data
-            self.eirene_species = eirene_species = {'atm':{}, 'mol':{}, 'ion':{}}
+            self.eirene_species = {'atm':{}, 'mol':{}, 'ion':{}}
             _atm = [spec for spec in self.fort44['species'] if ((not any(map(str.isdigit, spec)))&('+' not in spec)) ]
-            for ss,atm in enumerate(_atm): eirene_species['atm'][ss] = atm
+            for ss,atm in enumerate(_atm): self.eirene_species['atm'][ss] = atm
             _mol = [spec for spec in self.fort44['species'] if ((any(map(str.isdigit, spec)))&('+' not in spec))]
-            for ss,mol in enumerate(_mol): eirene_species['mol'][ss] = mol
+            for ss,mol in enumerate(_mol): self.eirene_species['mol'][ss] = mol
             _ion = [spec for spec in self.fort44['species'] if '+'  in spec]
-            for ss,ion in enumerate(_ion): eirene_species['ion'][ss] = ion
+            for ss,ion in enumerate(_ion): self.eirene_species['ion'][ss] = ion
 
     def load_mesh_extra(self):
         '''Load the mesh.extra file.
@@ -927,23 +953,145 @@ class solps_case:
         plt.subplots_adjust(wspace=0.15, hspace=0.3)
         plt.tight_layout()
 
-    def xpoint(self):
-        ''' Find location of the x-point in (R,Z) coordinates by using the fact
-        that the x-point is the only vertex shared by 8 cells. 
+    def find_xpoint(self):
+        '''Find location of the x-point in (R,Z) coordinates by using the fact
+        that it is the only vertex shared by 8 cells. 
         '''
-        allvertices = {}
-        for nx in range(self.nx):
-            for ny in range(self.ny):
-                for v in range(self.crx.shape[2]):
-                    vertex = str(self.crx[nx,ny,v]) + ' ' + str(self.cry[nx,ny,v])
-                    allvertices[vertex] = allvertices.get(vertex,0) + 1
+        vertices = {}
+        for ny in range(int(self.data('ny'))):
+            for nx in range(int(self.data('nx'))):
+                for v in range(self.data('crx').shape[0]):
+                    vertex = str(self.data('crx')[v,ny,nx]) + ' ' + str(self.data('cry')[v,ny,nx])
+                    vertices[vertex] = vertices.get(vertex,0) + 1
 
-        xpoint = allvertices.keys()[allvertices.values().index(8)]
-        xpoint = np.array([float(xpoint.split()[0]),
-                           float(xpoint.split()[1])])
-        self._xpoint = xpoint
+        xpoint = list(vertices.keys())[list(vertices.values()).index(8)]
+        self.xpoint = np.array([float(val) for val in xpoint.split()])
 
+    def get_3d_path(self, pnt1, pnt2, npt=501, plot=False, ax=None):
+        '''Given 2 points in 3D Cartesian coordinates, returns discretized 
+        R,Z coordinates along the segment that connects them. 
         
+        Parameters
+        ----------
+        pnt1 : array (3,)
+            Cartesian coordinates x,y,z of first path extremum (expected in [m]).
+        pnt2 : array (3,)
+            Cartesian coordinates x,y,z of second path extremum (expected in [m]).
+        npt : int, optional
+            Number of points to use for the path discretization.
+        plot : bool, optional
+            If True, display  displaying result. Default is False. 
+        ax : matplotlib axes instance, optional
+            If provided, draw 3d path on these axes. Default is to create
+            a new figure and also draw the B2.5 grid polygons.
+
+        Returns
+        -------
+        pathR : array (npt,)
+            R [m] points along the path.
+        pathZ : array (npt,)
+            Z [m] points along the path.
+        pathL : array (npt,)
+            Length [m] discretization along the path.
+        '''
+        xyz = np.outer(pnt2 - pnt1, np.linspace(0, 1, int(npt))) + pnt1[:, None]
+
+        # mapping x, y, z to poloidal plane
+        pathR, pathZ = np.hypot(xyz[0], xyz[1]), xyz[2]
+
+        pathL = np.linalg.norm(xyz - pnt1[:, None], axis=0)
+
+        if plot:
+            if ax is None:
+                fig,ax = plt.subplots(1,figsize=(9, 11))
+
+                xx = self.data('crx').transpose(2,1,0)
+                yy = self.data('cry').transpose(2,1,0)
+                NY = int(self.data('ny'))
+                NX = int(self.data('nx'))
+
+                if self.form=='files':
+                    if np.prod(vals.shape)==self.crx.shape[1]*self.crx.shape[2]:
+                        vals = vals[1:-1,1:-1]
+
+                    # eliminate boundary cells
+                    xx = xx[1:-1,1:-1,:]
+                    yy = yy[1:-1,1:-1,:]
+
+                patches = []
+                for iy in np.arange(0,NY):
+                    for ix in np.arange(0,NX):
+                        rr = np.atleast_2d(xx[ix,iy,[0,1,3,2]]).T
+                        zz = np.atleast_2d(yy[ix,iy,[0,1,3,2]]).T
+                        patches.append( mpl.patches.Polygon(np.hstack((rr,zz)), True, linewidth=3) )
+
+                # collect all patches
+                p = mpl.collections.PatchCollection(patches, False, fc='w', edgecolor='k', linewidth=0.1)
+                ax.add_collection(p)
+                ax.set_xlabel('R [m]')
+                ax.set_ylabel('Z [m]')
+                ax.axis('scaled')
+            
+            # now overplot 
+            ax.plot(pathR, pathZ, c='b')
+
+        return pathR, pathZ, pathL
+        
+    def eval_LOS(self, pnt1, pnt2, field,
+                 npt=501, method='linear', plot=False, ax=None, label=None):
+        '''Evaluate the SOLPS output `field` along the line-of-sight (LOS)
+        given by the segment going from point `pnt1` to point `pnt2` in 3D
+        geometry.
+
+        Parameters
+        ----------
+        pnt1 : array (3,)
+            Cartesian coordinates x,y,z of first extremum of LOS.
+        pnt2 : array (3,)
+            Cartesian coordinates x,y,z of second extremum of LOS.
+        field : str
+            Name of SOLPS output field to interpolate along LOS, 
+            e.g. 'ne', 'te', 'ti', etc.
+        npt : int, optional
+            Number of points to use for the path discretization.
+        method : {'linear','nearest','cubic'}, optional
+            Method of interpolation.
+        plot : bool, optional
+            If True, display variation of the `field` quantity as a function of the LOS 
+            path length from point `pnt1`.
+        ax : matplotlib axes, optional
+            Instance of figure axes to use for plotting. If None, a new figure is created.
+        label : str, optional
+            Text identifying the LOS under examination.
+
+        Returns
+        -------
+        array : (npt,)
+            Values of requested SOLPS output along the LOS
+        '''
+        # get R,Z and length discretization along LOS
+        pathR, pathZ, pathL = self.get_3d_path(pnt1, pnt2, plot=False)
+
+        # interpolate from SOLPS case (cell centers) onto LOS
+        vals_LOS = griddata((self.data('cr').flatten(), self.data('cz').flatten()),
+                            self.data(field).flatten(),
+                            (pathR, pathZ), method=str(method))
+
+        if plot:
+            # plot values interpolated along LOS
+            if ax is None:
+                fig, ax1 = plt.subplots()
+                ax1.set_xlabel('l [m]')
+                ax1.set_ylabel(field)
+            else:                
+                ax1 = ax
+            ax1.plot(pathL, vals_LOS, label=label)
+            ax1.legend(loc='best').set_draggable(True)
+            plt.tight_layout()
+            
+        return vals_LOS
+
+
 def apply_mask(triang, geqdsk, max_mask_len=0.4, mask_up=False, mask_down=False):
     '''Function to apply basic masking to a matplolib triangulation. This type of masking
     is useful to avoid having triangulation edges going outside of the true simulation
@@ -1193,7 +1341,9 @@ def get_mdsmap():
         'solpsversion': ident+'SOLPSVERSION',
         'directory': ident+'directory',
         'exp': ident+'EXP',
-
+        'time': ident+'TIME', # Experiment time point derived from the b2md_namelist in b2md.dat
+        'shot': ident+'SHOT', # experimental shot number that was simulated
+        
         # Dimensions
         'nx': snaptopdims+'NX', # grid size in pol direction
         'ny': snaptopdims+'NY', # grid size in rad direction
@@ -1211,7 +1361,7 @@ def get_mdsmap():
         'targ3': snaptopdims+'TARG3', # position of target 3
         'targ4': snaptopdims+'TARG4', # position of target 4 (usually outer)
         'regflx': snaptopgrid+'REGFLX', # x-directed flux region indices
-        'regfly': snaptopgrid+'REGFLY', # y-directeed flux region indices
+        'regfly': snaptopgrid+'REGFLY', # y-directed flux region indices
         'regvol': snaptopgrid+'REGVOL',  # volume region indices
 
         # Neighbours
@@ -1249,7 +1399,7 @@ def get_mdsmap():
         'za': snaptopgrid+'ZA',  # atom charge
         'zn': snaptopgrid+'ZN',  # nuclear charge
         'bb': snaptop+'B',  # B field
-        'po': snaptop+'PO', # electric ppotential
+        'po': snaptop+'PO', # electric potential
         'pot': snaptopgrid+'POT',  # potential energy
         'poti': snaptopgrid+'POTI', # ionization potential
         'qz': snaptop+'QZ',  #?
@@ -1282,8 +1432,8 @@ def get_mdsmap():
         'fchy': snaptop+'FCHY',  # radial current
         'fchy_32': snaptop+'FCHY_32',  # convective radial current
         'fchy_52': snaptop+'FCHY_52',  # conductive radial current        
-        'fhex': snaptop+'FHEX', # poloidal  electron energy flux
-        'fhey': snaptop+'FHEY', # radial  electron energy flux
+        'fhex': snaptop+'FHEX', # poloidal electron energy flux
+        'fhey': snaptop+'FHEY', # radial electron energy flux
         'fhix': snaptop+'FHIX', # poloidal ion energy flux
         'fhiy': snaptop+'FHIY', # radial ion energy flux
         'fhjx': snaptop+'FHJX', # poloidal electrostatic energy flux
