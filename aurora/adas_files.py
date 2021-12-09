@@ -213,8 +213,8 @@ def adas_files_dict():
     files["Be"]["pbs"] = "pbsx5_be.dat"
     files["Be"]["prc"] = "prc89_be.dat"
     files["B"] = {}   #5
-    files["B"]['acd'] = "acd74_b.dat"
-    files["B"]['scd'] = "scd74_b.dat"
+    files["B"]['acd'] = "acd89_b.dat"
+    files["B"]['scd'] = "scd89_b.dat"
     files["B"]['ccd'] = "ccd89_b.dat"
     files["B"]['prb'] = "prb89_b.dat"
     files["B"]['plt'] = "plt89_b.dat"

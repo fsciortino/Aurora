@@ -1,9 +1,9 @@
 '''
-Script to test functionality from namelist creation to run and postprocessing.
-
-It is recommended to run this in IPython.
+Script to demonstrate capabilities to load and post-process SOLPS results.
+Note that SOLPS output is not distributed with Aurora; so, in order to run this script,
+either you are able to access the default AUG SOLPS MDS+ server, or you need
+to appropriately modify the script to point to your own SOLPS results.
 '''
-
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
@@ -11,33 +11,24 @@ from omfit_classes import omfit_eqdsk
 import sys, os
 import aurora
 
+# if one wants to load a SOLPS case from MDS+ (defaults for AUG):
+so = aurora.solps_case(solps_id = 141349)
 
-# info to find and load SOLPS-ITER case
-path = '/home/sciortino/ITER/iter_solps_jl'
-solps_run = 'orig_D1.95e23_Ne2.00e20.done.ids'
-gfilepath = '/home/sciortino/ITER/gfile_iter'
-        
-# load SOLPS results
-so = aurora.solps_case(path, gfilepath, solps_run=solps_run,form='full')
-
+# alternatively, one may want to load SOLPS results from files on disk:
+so2 = aurora.solps_case(b2fstate_path = '/afs/ipp/home/s/sciof/SOLPS/141349/b2fstate',
+                        b2fgmtry_path = '/afs/ipp/home/s/sciof/SOLPS/141349/b2fgmtry')
 
 # plot some important fields
-fig,axs = plt.subplots(1,4, figsize=(20,6),sharex=True) 
-ax = axs.flatten()
-so.plot2d_b2(so.quants['ne'], ax=ax[0], scale='log', label=so.labels['ne'])
-so.plot2d_b2(so.quants['Te'], ax=ax[1], scale='linear', label=so.labels['Te'])
-so.plot2d_b2(so.quants['nn'], ax=ax[2], scale='log', label=so.labels['nn'])
-so.plot2d_b2(so.quants['Tn'], ax=ax[3], scale='linear', label=so.labels['Tn'])
-for axx in ax:
-    # overplot 2D flux surfaces and vacuum contour
-    so.geqdsk.plot(only2D=True, ax=axx)
-    axx.grid(False)
-plt.tight_layout()
-
-
-# comparison of neutrals on B2 (fort.44) and EIRENE (fort.46) grids
 fig,axs = plt.subplots(1,2, figsize=(10,6),sharex=True) 
-so.plot2d_eirene(so.fort46['pdena'][:,0]*1e6, scale='log', label=so.labels['nn'], ax=axs[0])
-so.plot2d_b2(so.fort44['dab2'][:,:,0].T, label=so.labels['nn'], ax=axs[1])
+ax = axs.flatten()
+so.plot2d_b2(so.data('ne'), ax=ax[0], scale='log', label=r'$n_e$ [$m^{-3}$]')
+so.plot2d_b2(so.data('te'), ax=ax[1], scale='linear', label=r'$T_e$ [eV]')
+
+
+# if EIRENE data files (e.g. fort.44, .46, etc.) are available, one can plot EIRENE results
+# on the original EIRENE grid. SOLPS results also include EIRENE outputs on B2 grid:
+fig,axs = plt.subplots(1,2, figsize=(10,6),sharex=True) 
+so.plot2d_eirene(so.fort46['pdena'][:,0]*1e6, scale='log', label=r'$n_n$ [$m^{-3}$]', ax=axs[0])
+so.plot2d_b2(so.fort44['dab2'][:,:,0].T, label=r'$n_n$ [$m^{-3}$]', ax=axs[1])
 plt.tight_layout()
 

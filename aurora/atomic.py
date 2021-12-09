@@ -140,7 +140,9 @@ class adas_file:
                 ax.plot(self.logT, self.data[i,:,0])
             else:
                 ax.set_prop_cycle('color', colormap( np.linspace(0,1,self.data.shape[2])))
-                ax.plot(self.logT, self.data[i])
+                for idens in np.arange(len(self.logNe)):
+                    ax.plot(self.logT, self.data[i,:,idens], label=f'$n_e=10^{{{self.logNe[idens]}}}$ cm$^{{{-3}}}$')
+                ax.legend(loc='best').set_draggable(True)
             ax.grid(True)
             if self.file_type != 'brs':
                 charge = i+1 if self.file_type in ['scd','prs','ccd','prb'] else i+2

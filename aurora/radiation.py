@@ -619,11 +619,11 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
 
         # sometimes multiple lines of the same rate_type can be listed at the same wavelength
         # separate them here by 1e-6 A
-        while True:
-            if lam in log10pec_dict and rate_type in log10pec_dict[lam]:
-                lam += 1e-6
-            else:
-                break
+        # while True:
+        #     if lam in log10pec_dict and rate_type in log10pec_dict[lam]:
+        #         lam += 1e-6
+        #     else:
+        #         break
 
         # create dictionary with keys for each wavelength:
         if lam not in log10pec_dict:
