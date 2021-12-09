@@ -104,13 +104,13 @@ class solps_case:
             self.mdsmap = get_mdsmap()
 
         # figure out if single or double null
-        self.double_null = self.data('cry').shape[2]%4==0
+        self.DN = self.data('cry').shape[2]%4==0
 
         # is the definition of these units robust?
-        self.unit_p = (self.data('crx').shape[2]-4 if self.double_null else self.data('crx').shape[2])//4
+        self.unit_p = (self.data('crx').shape[2]-4 if self.DN else self.data('crx').shape[2])//4
         self.unit_r = (self.data('crx').shape[1]-2)//2
 
-        if self.double_null:
+        if self.DN:
             # TODO: double null generalization still incomplete!
 
             # Obtain indices for chosen radial regions
@@ -142,6 +142,12 @@ class solps_case:
         # identify species (both B2 and EIRENE):
         self.species_id()
 
+        # indices of neutral species in B2 output
+        self.neutral_idxs = np.array([ii for ii in list(self.b2_species.keys()) if self.b2_species[ii]['Z']==0])
+        
+        # SOLPS does not enforce that neutral stage densities are from EIRENE in output. Do this here:
+        #self.data('na')[neutral_idx,:,:] = self.data('dab2')
+        
         # geqdsk offers a description of the magnetic equilibrium; only used here for visualization + postprocessing
         if 'geqdsk' in kwargs:
             if kwargs['geqdsk'] is None:
@@ -174,6 +180,12 @@ class solps_case:
                 except Exception as e:
                     # geqdsk could not be fetched
                     pass
+                
+        # if user provided path to b2fplasmf file, load that too
+        if 'b2fplasmf_path' in kwargs:
+            self.b2fplasmf_path = str(kwargs['b2fplasmf_path'])
+            self.b2fplasmf = omfit_solps.OMFITsolps(self.b2fstate_path)
+
 
     def data(self, varname):
         '''Fetch data either from files or MDS+ tree.
@@ -188,7 +200,7 @@ class solps_case:
         elif self.form=='mdsplus':
             # try fetching from MDS+
             from omfit_classes import omfit_mds
-
+            # cache quantities fetched from MDS+ to increase speed
             setattr(self, varname, omfit_mds.OMFITmdsValue(self.server, self.tree, self.solps_id,
                                                            TDI = self.mdsmap[varname]).data())
             return getattr(self, varname)
@@ -236,8 +248,8 @@ class solps_case:
         self.te = self.b2fstate['te'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
         self.ti = self.b2fstate['ti'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
 
-        # density of atomic species if B2 fluid neutral model is used:
-        #self.na0 = self.b2fstate['na'][0,R_idxs,:][:,P_idxs] # m^-3   # only neutral component
+        # density of all atomic/ionic species.
+        self.na = self.b2fstate['na'][:,R_idxs,:][:,:,P_idxs] # m^-3  # all density components
 
         try:
             self.fort44 = self.load_fort44()
@@ -524,7 +536,6 @@ class solps_case:
             Upper bound for colorbar. If left to None, the maximum value in `vals` is used.
         kwargs
             Additional keyword arguments passed to the `PatchCollection` class.
-
         '''
         if ax is None:
             fig,ax = plt.subplots(1,figsize=(9, 11))
@@ -543,32 +554,27 @@ class solps_case:
         
         p.set_array(np.array(_vals))
 
-        if lb is None:
-            lb = np.min(_vals)
-        if ub is None:
-            ub = np.max(_vals)
+        if lb is None: lb = np.min(_vals)
+        if ub is None: ub = np.max(_vals)
 
         if scale=='linear':
             p.set_clim([lb, ub])
         elif scale=='log':
             p.norm = mpl.colors.LogNorm(vmin=lb,vmax=ub)
         elif scale=='symlog':
-            p.norm = mpl.colors.SymLogNorm(linthresh=ub/10.,base=10,
-                                        linscale=0.5, vmin=lb,vmax=ub)
+            p.norm = mpl.colors.SymLogNorm(linthresh=ub/10.,base=10, linscale=0.5, vmin=lb,vmax=ub)
         else:
             raise ValueError('Unrecognized scale parameter')
         
         ax.add_collection(p)
-        tickLocs = [ub,ub/10,lb/10,lb]
 
-        cbar = plt.colorbar(p, ax=ax, pad=0.01, ticks = tickLocs if scale=='symlog' else None)
+        cbar = plt.colorbar(p, ax=ax, pad=0.01, ticks = [ub,ub/10,lb/10,lb] if scale=='symlog' else None)
         cbar = plot_tools.DraggableColorbar(cbar,p)
         cid = cbar.connect()
 
         ax.set_title(label)
         ax.set_xlabel('R [m]')
         ax.set_ylabel('Z [m]')
-        #plt.grid(True)
         ax.axis('scaled')
         
     
@@ -772,7 +778,9 @@ class solps_case:
     def get_poloidal_prof(self, vals, plot=False, label='', rhop=1.0, topology='LSN', ax=None):
         '''Extract poloidal profile of a quantity "quant" from the SOLPS run. 
         This function returns a profile of the specified quantity at the designated radial coordinate
-        (rhop = 1 = LCFS by default) as a function of the poloidal angle theta
+        (rhop=1 by default) as a function of the poloidal angle, theta.
+
+        Note that double nulls ('DN') are not yet handled. 
 
         Parameters
         ----------
@@ -783,10 +791,7 @@ class solps_case:
         label : string
             Label for plot
         rhop : float
-            Radial coordinate, in rho_p, at which to take poloidal surface. Default is 1 (LCFS)
-        topology : str
-            Magnetic topology, one of ['USN','LSN']
-            Note that double nulls ('DN') are not yet handled. 
+            Radial coordinate, in rho_p, at which to take poloidal surface. Default is 1 (LCFS)            
         ax : matplotlib axes instance
             Axes on which poloidal profile should be plotted. If not given, a new set of axes is created.
             This is useful to possibly overplot profiles at different radii.
@@ -802,27 +807,21 @@ class solps_case:
             Standard deviation of poloidal profile at rhop on the theta_rhop grid, based on variations 
             within +/-`dr_mm`/2 millimeters from the surface at rhop. 
         '''
+        if self.DN:
+            raise ValueError('Detected double-null geometry, not yet handled by this function!')
 
         if self.form=='files' and np.prod(vals.shape)==self.data('crx').shape[1]*self.data('crx').shape[2]:
             # Exclude boundary cells
             vals = vals[1:-1,1:-1]         
 
-        try:
-            assert isinstance(topology, str) and topology!='DN'
-        except AssertionError:
-            raise AssertionError('Unrecognized topology!')
-
         # find x-point coordinates
         self.find_xpoint()
 
-        _R_points=np.linspace(np.min(self.data('cr')),np.max(self.data('cr')), 202)        
-        if topology=='LSN':
-            _Z_points = np.linspace(self.xpoint[1], np.max(self.data('cz')), 200)
-        elif topology=='USN':
+        _R_points=np.linspace(np.min(self.data('cr')),np.max(self.data('cr')), 202)
+        if self.xpoint[1]>0: # USN
             _Z_points = np.linspace(np.min(self.data('cz')), self.xpoint[1], 200)
-        else: 
-            # not yet functional
-            raise ValueError('Unrecognized topology!')
+        else: # LSN (assume not DN)
+            _Z_points = np.linspace(self.xpoint[1], np.max(self.data('cz')), 200)
 
         _R_grid,_Z_grid=np.meshgrid(_R_points,_Z_points,copy=False)
         rhop_2D = coords.get_rhop_RZ(_R_grid,_Z_grid, self.geqdsk)
@@ -886,7 +885,6 @@ class solps_case:
         for filename in os.path.dirname(self.b2fgmtry_path):
             if filename.startswith('g'): # assume only 1 file starts with 'g'
                 return filename
-
 
     def plot_radial_summary(self, ls='o-b'):
         '''Plot a summary of radial profiles (ne, Te, Ti, nn, nm), 
@@ -993,7 +991,7 @@ class solps_case:
 
         return pathR, pathZ, pathL
         
-    def eval_LOS(self, pnt1, pnt2, field,
+    def eval_LOS(self, pnt1, pnt2, vals,
                  npt=501, method='linear', plot=False, ax=None, label=None):
         '''Evaluate the SOLPS output `field` along the line-of-sight (LOS)
         given by the segment going from point `pnt1` to point `pnt2` in 3D
@@ -1005,9 +1003,8 @@ class solps_case:
             Cartesian coordinates x,y,z of first extremum of LOS.
         pnt2 : array (3,)
             Cartesian coordinates x,y,z of second extremum of LOS.
-        field : str
-            Name of SOLPS output field to interpolate along LOS, 
-            e.g. 'ne', 'te', 'ti', etc.
+        vals : array (self.data('ny'), self.data('nx'))
+            Data array for a variable of interest.
         npt : int, optional
             Number of points to use for the path discretization.
         method : {'linear','nearest','cubic'}, optional
@@ -1026,11 +1023,11 @@ class solps_case:
             Values of requested SOLPS output along the LOS
         '''
         # get R,Z and length discretization along LOS
-        pathR, pathZ, pathL = self.get_3d_path(pnt1, pnt2, plot=False)
+        pathR, pathZ, pathL = self.get_3d_path(pnt1, pnt2, npt=npt, plot=False)
 
         # interpolate from SOLPS case (cell centers) onto LOS
         vals_LOS = griddata((self.data('cr').flatten(), self.data('cz').flatten()),
-                            self.data(field).flatten(),
+                            vals.flatten(),
                             (pathR, pathZ), method=str(method))
 
         if plot:
@@ -1038,7 +1035,6 @@ class solps_case:
             if ax is None:
                 fig, ax1 = plt.subplots()
                 ax1.set_xlabel('l [m]')
-                ax1.set_ylabel(field)
             else:                
                 ax1 = ax
             ax1.plot(pathL, vals_LOS, label=label)
