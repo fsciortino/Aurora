@@ -225,7 +225,6 @@ class FACIT:
         g       = (qmag*R0)/(np.sqrt(2*(self.qe*Ti)/mi)*Tauii) # main collisionality parameter [-]
         nuistar = g/eps**1.5                                 # main ion collisionality [-]
         
-        
         alpha = Zimp**2*Nimp/(Zi**2*Ni) # impurity strength parameter [-]
         
         # ion-electron heat exchange term (Fülöp-Helander PoP 2001) [-]
