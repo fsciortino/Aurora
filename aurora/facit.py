@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 #-----------------------------------------------------------------------------
 # Python standalone of FACIT routine for collisional impurity transport
 # Daniel Fajardo (daniel.fajardo@ipp.mpg.de), November 2021
