@@ -14,7 +14,6 @@ from .coords import *
 from .grids_utils import *
 from .radiation import *
 
-from .particle_conserv import *
 from .plot_tools import *
 from .animate import *
 

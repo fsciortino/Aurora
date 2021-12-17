@@ -1,6 +1,28 @@
 '''Collection of classes and functions for loading, interpolation and processing of atomic data. 
 Refer also to the adas_files.py script. 
 '''
+# MIT License
+#
+# Copyright (c) 2021 Francesco Sciortino
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import RectBivariateSpline, interp1d, RegularGridInterpolator
@@ -556,7 +578,6 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include
         recombination (+ charge exchange, if requested). All terms will be in units of :math:`s^{-1}`. 
     '''
     
-
     if Te_eV is None:
         # find smallest Te grid from all files
         _, logTe1,_ = atom_data['scd']
@@ -572,7 +593,6 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include
 
         Te_eV = np.logspace(minTe,maxTe,200)
  
-
     logne = np.log10(ne_cm3)
     logTe = np.log10(Te_eV)
 
@@ -686,10 +706,8 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.
         
     return Te, fz, rate_coeffs
 
-
-
 class CartesianGrid:
-    """Fast linear interpolation for 1D and 2D vecctor data on equally spaced grids.
+    """Fast linear interpolation for 1D and 2D vector data on equally spaced grids.
     This offers optimal speed in Python for interpolation of atomic data tables such
     as the ADAS ones.
 
@@ -713,10 +731,16 @@ class CartesianGrid:
         for g, s in zip(grids, self.N):
             if len(g) != s:
                 raise OMFITexception('wrong size of values array')
-
-        self.offsets = [g[0] for g in grids]
-        self.scales = [(g[-1] - g[0]) / (n - 1) for g, n in zip(grids, self.N)]
-
+        
+        
+        self.eq_spaced_grid = np.all([np.std(np.diff(g))/np.std(g) < 0.01 for g in grids])
+        if self.eq_spaced_grid:
+            self.offsets = [g[0] for g in grids]
+            self.scales = [(g[-1] - g[0]) / (n - 1) for g, n in zip(grids, self.N)]
+        else:
+            self.grids = grids
+            
+            
         A = []
         if len(self.N) == 1:
             A.append(values[:-1])
@@ -742,15 +766,21 @@ class CartesianGrid:
             List of 1D arrays for the N coordines (N=1 or N=2). These arrays must be of the same shape.
  
         """
-        coords = np.array(coords).T
-        coords -= self.offsets
-        coords /= self.scales
-        coords = coords.T
-
+     
+        if self.eq_spaced_grid:
+            coords = np.array(coords).T
+            coords -= self.offsets
+            coords /= self.scales
+            coords = coords.T
+        else:
+            #for non-equally spaced grids must be used linear interpolation to map inputs to equally spaced indexes
+            coords = [np.interp(c,g,np.arange(len(g))) for c,g in zip(coords, self.grids)]
+        
         # clip dimension - it will extrapolation by a nearest value
         for coord, n in zip(coords, self.N):
             np.clip(coord, 0, n - 1.00001, coord)
-
+            
+            
         #  en.wikipedia.org/wiki/Bilinear_interpolation#Unit_square
 
         # get indicies x and weights dx
@@ -780,63 +810,9 @@ class CartesianGrid:
         return np.moveaxis(inter_out, -1, 0)
 
 
-class CartesianGrid_Ndim:
-    """
-    Linear multivariate Cartesian grid interpolation in arbitrary dimensions
-    This is a regular grid with equal spacing.
-
-    Use :py:class:`~aurora.atomic.CartesianGrid` for a version that is optimally fast
-    in 2 dimensions only.
-
-    Parameters
-    ----------
-    grids: list of arrays, N=len(grids), arbitrary N
-        List of 1D arrays with equally spaced grid values for each dimension
-    values: N+1 dimensional array of values used for interpolation
-        Values to interpolate. The first dimension typically refers to different ion stages, for which 
-        data is provided on the input grids. Other dimensions refer to values on the N-dimensional grids.
-
-    """
-    def __init__(self, grids, values):
-
-        self.values = np.ascontiguousarray(values)
-        for g,s in  zip(grids,values.shape[1:]):
-            if len(g) != s: raise Exception('wrong size of values array')
-
-        self.offsets = [g[0] for g in grids]
-        self.scales  = [(g[-1]-g[0])/(n-1) for g,n in zip(grids, values.shape[1:])]
-        self.N = values.shape[1:]
-
-    def __call__(self, *coords):
-        '''Transform coords into pixel values and provide interpolated result.
-
-        Parameters
-        ----------
-        coords:  list of arrays
-            List of 1D arrays for the N coordines (N=1 or N=2). These arrays must be of the same shape.
-        '''
-        out_shape = coords[0].shape
-
-        coords = np.array(coords).T
-        coords -= self.offsets
-        coords /= self.scales
-        coords = coords.T
-
-        # clip dimension - gives extrapolation by nearest value
-        for coord, n in zip(coords, self.N):
-            np.clip(coord,0,n-1,coord)
-
-        # prepare output array
-        inter_out = np.empty((self.values.shape[0],)+out_shape, dtype=self.values.dtype)
-
-        # fast interpolation on a N-dimensional regular grid
-        for out,val in zip(inter_out,self.values):
-            scipy.ndimage.map_coordinates(val, coords, order=1, output=out)
-
-        return inter_out
 
 
-def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
+def interp_atom_prof(atom_table, xprof, yprof, log_val=False, x_multiply=True):
     r''' Fast interpolate atomic data in atom_table onto the xprof and yprof profiles.
     This function assume that xprof, yprof, x, y, table are all base-10 logarithms,
     and xprof, yprof are equally spaced.
@@ -867,25 +843,18 @@ def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
     This function uses `np.log10` and exponential operations to optimize speed, since it has
     been observed that base-e operations are faster than base-10 operations in numpy. 
     '''
-    x,y, table = atom_table
+    x, y, table = atom_table
 
     if x_multiply and xprof is None:
         raise ValueError('Cannot multiply output by 10^{xprof} because xprof is None!')
 
     if x_multiply: # multiplying of logarithms is just adding
-        table = table + x*np.log(10)  # don't modify original table, create copy
-
+        table = table + x  # don't modify original table, create copy
 
     if (abs(table-table[...,[0]]) < 0.05).all() or xprof is None:
         # 1D interpolation if independent of the last dimension - like SXR radiation data
         
-        if np.all(np.diff(y) == (y[1] - y[0])):
-            # ADAS y grid is equally spaced (almost always the case)
-            reg_interp = CartesianGrid((y, ),table[:,:,0]*np.log(10))
-        else:
-            # ADAS y-grid is not equally spaced -- cannot use fast CartesianGrid
-            reg_interp = interp1d(y, table[:,:,0]*np.log(10), axis=1, copy=False, assume_sorted=True)
-
+        reg_interp = CartesianGrid((y, ), table[:,:,0]*np.log(10))
         interp_vals = reg_interp(yprof)
 
     else: # 2D interpolation, assume ADAS grids are equally spaced (only small inaccuracies in data files)
