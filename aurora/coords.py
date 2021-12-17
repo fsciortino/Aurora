@@ -147,9 +147,10 @@ def rV_vol_average(quant,r_V):
 
 
     
-def rad_coord_transform(x,name_in,name_out, geqdsk):
+def rad_coord_transform(x, name_in, name_out, geqdsk):
     """Transform from one radial coordinate to another. Note that this coordinate conversion is only
-    strictly valid inside of the LCFS.
+    strictly valid inside of the LCFS. A number of common coordinate nomenclatures are accepted, but
+    it is recommended to use one of the coordinate names indicated in the input descriptions below.
 
     Parameters
     ----------
@@ -171,6 +172,14 @@ def rad_coord_transform(x,name_in,name_out, geqdsk):
         return x
     x = copy.deepcopy(x)
 
+    # avoid confusion with name conventions
+    conventions = {'rvol':'rvol', 'r_vol':'rvol', 'r_V':'rvol',
+                   'rhon':'rhon', 'rho_tor':'rhon', 'rho_pol':'rhop', 'rhop':'rhop',
+                   'r/a':'r/a', 'roa':'r/a', 'rhov':'rhov', 'rho_V':'rhov', 'rho_v':'rhov',
+                   'Rmid':'Rmid', 'R_mid':'Rmid', 'rmid':'rmid', 'r_mid':'rmid'}
+    name_in = conventions[name_in]
+    name_out = conventions[name_out]
+        
     if 'rvol' not in geqdsk['fluxSurfaces']['geo']:
         R0 = geqdsk['RMAXIS']
         eq_vol = geqdsk['fluxSurfaces']['geo']['vol']
@@ -183,7 +192,7 @@ def rad_coord_transform(x,name_in,name_out, geqdsk):
     psin_ref = geqdsk['fluxSurfaces']['geo']['psin']
     # sqrt(norm. pol. flux)
     rhop_ref = np.sqrt(psin_ref)
-    #volume radius
+    # volume radius
     rvol = geqdsk['fluxSurfaces']['geo']['rvol']
     # R at midplane
     Rmid = geqdsk['fluxSurfaces']['midplane']['R']
@@ -233,10 +242,11 @@ def rad_coord_transform(x,name_in,name_out, geqdsk):
     else:
         raise ValueError('Output coordinate was not recognized!')
 
-    #trick for better extrapolation
-    ind0 = coord_in== 0
-    out = np.interp(x,coord_in[~ind0],coord_out[~ind0]/coord_in[~ind0])*x
-    if (x==coord_in[0]).any():
+    # trick for better extrapolation
+    ind0 = coord_in == 0
+    out = np.interp(x, coord_in[~ind0], coord_out[~ind0]/coord_in[~ind0])*x
+
+    if (x==coord_in[0]).any() and np.sum(ind0):
         x0 = x == coord_in[0]
         out[x0] = coord_out[ind0]  # give exact magnetic axis
 

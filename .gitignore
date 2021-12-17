@@ -33,3 +33,6 @@ ehr5.dat
 aurora/KN1D
 *.sav
 *.pro
+
+# temporary g-files
+g123456.12345

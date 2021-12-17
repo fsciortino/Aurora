@@ -270,7 +270,7 @@ def run_kn1d(rhop, ne_cm3, Te_eV, Ti_eV, geqdsk, p_H2_mTorr,
     For an example application, see the examples/aurora_kn1d.py script. 
     '''
     
-    if 'IDL_STARTUP' not in os.environ:
+    if 'IDL_STARTUP' not in os.environ and 'IDL_HOME' not in os.environ:
         raise ValueError('An IDL installation does not seem to be available! KN1D cannot be run.')
 
     cwd = os.getcwd()

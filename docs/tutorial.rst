@@ -305,13 +305,24 @@ Interfacing with SOLPS-ITER
 
 While running SOLPS-ITER is a complex task, reading and processing its results does't need to be. Aurora offers a convenient Python interface to rapidly load results, set them to convenient data arrays, plot on 1D or 2D grids, etc.
 
-Here's an example of how you could load a SOLPS-ITER run and do some useful plots:
+Here's an example of how you could load a SOLPS-ITER run and create some useful plots:
 
 .. literalinclude:: ../examples/solps_example.py
 
-This example is loading a SOLPS-ITER result for an ITER scenario (described in `this paper <https://doi.org/10.1016/j.nme.2019.100696>_` and `this paper <https://arxiv.org/abs/2106.04528>_`). Note that these data are not distributed with Aurora! You must have the output of a SOLPS-ITER run available to you in order to try out these Aurora capabilities. 
 
-The example above should give the following 2 figures.
+In this example, we are first loading a SOLPS-ITER case from MDS+, using the default server and tree which are set for Asdex-Upgrade. These MDS+ settings can be easily changed by looking at the docstring for :py:class:`~aurora.solps.solps_case`. The alternative of loading SOLPS output from files on disk (`b2fstate` and `b2fgmry`, in this case) is also shown.
+
+The instantiation of a :py:class:`~aurora.solps.solps_case` object enables a large number of operations based on the SOLPS output. The second part of the script above shows how one can plot 2D data on the B2 grid. The last section demonstrates how the EIRENE output can be displayed both on the B2 grid, on which it is interpolated by SOLPS, or on the native EIRENE grid.
+
+.. warning::
+    EIRENE results can only be displayed on the EIRENE mesh if EIRENE (`fort.*`) output files are provided. At present, SOLPS output saved to MDS+ trees only provides EIRENE results interpolated on the B2 mesh. 
+
+
+In the original `Plasma Physics & Fusion Energy <https://iopscience.iop.org/article/10.1088/1361-6587/ac2890>`_ paper on Aurora, an example of processing SOLPS-ITER output for the ITER baseline scenario was described. Some example figures produced via the methods shown above are displayed here below.
+
+.. note::
+   Note that no SOLPS results are not distributed with Aurora. You must have the output of a SOLPS-ITER run available to you in order to try out these Aurora capabilities. 
+
 
 .. figure:: figs/aurora_solps_iter.jpg
     :align: center
@@ -327,7 +338,10 @@ The example above should give the following 2 figures.
 
     Comparison of D/T atomic neutral density on the B2 and EIRENE grids. 
 
+Aurora capabilities to post-process SOLPS results can be useful, for example, to assess synthetic diagnostics for the edge of a fusion device. For this purpose, the :py:meth:`~aurora.solps.solps_case.eval_LOS` method can help to extract a specific data field from the loaded SOLPS case, interpolating resuls along a line-of-sight (LOS) that goes between two spatial (3D) points. This, combined with Aurora's capability to examine and simulate atomic spectra, reduces the technical barrier to investigate edge physics.
 
+
+  
 Atomic spectra
 --------------
 

@@ -175,7 +175,7 @@ def create_time_grid(timing=None, plot=False):
     try:
         from ._aurora import time_steps
     except ModuleNotFoundError:
-        raise MissingAuroraBuild('Could not load particle transport forward model!'+\
+        raise MissingAuroraBuild('Could not load particle transport forward model! '+\
                       'Use the makefile or setup.py to build sources.')
     
     _time, _save = time_steps(
