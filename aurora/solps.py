@@ -1471,46 +1471,75 @@ def get_mdsmap():
         'textmn': snaptop+'TEXTMN',      # molecular species
         'textpl': snaptop+'TEXTPL',      # plasma species
 
-        # Targets
-        'TARGET1_ds': timedept1+'DS',  # S-S_sep, target1
-        'TARGET1_ft': timedept1+'FT',  # poloidal total energy flux
+        # Target 1 -- usually inner
+        'TARGET1_na': timedept1+'AN',  # atom density
+        'TARGET1_da': timedept1+'DA',  # area element
+        'TARGET1_ds': timedept1+'DS',  # S-S_sep
+        'TARGET1_fc': timedept1+'FC',  # poloidal current
         'TARGET1_fe': timedept1+'FE',  # poloidal electron energy flux
         'TARGET1_fi': timedept1+'FI',  # poloidal ion energy flux
-        'TARGET1_fc': timedept1+'FC',  # poloidal current
-        'TARGET1_te': timedept1+'TE',  # Te
-        'TARGET1_ti': timedept1+'TI',  # Ti
-        'TARGET1_ne': timedept1+'NE',  # ne
+        'TARGET1_fl': timedept1+'FL',  # poloidal electron flux
+        'TARGET1_fn': timedept1+'FN',  # poloidal spec one flux
+        'TARGET1_fo': timedept1+'FO',  # poloidal ion flux
+        'TARGET1_ft': timedept1+'FT',  # poloidal total energy flux
+        'TARGET1_mn': timedept1+'MN',  # molecule density
+        'TARGET1_ne': timedept1+'NE',  # electron density
         'TARGET1_po': timedept1+'PO',  # potential
+        'TARGET1_te': timedept1+'TE',  # electron temperature
+        'TARGET1_ti': timedept1+'TI',  # ion temperature
+        'TARGET1_tp': timedept1+'TP',  # target surface temperature
 
-        'TARGET2_ds': timedept2+'DS',
-        'TARGET2_ft': timedept2+'FT',
-        'TARGET2_fe': timedept2+'FE',
-        'TARGET2_fi': timedept2+'FI',
-        'TARGET2_fc': timedept2+'FC',
-        'TARGET2_te': timedept2+'TE',
-        'TARGET2_ti': timedept2+'TI',
-        'TARGET2_ne': timedept2+'NE',
-        'TARGET2_po': timedept2+'PO',
+        'TARGET2_na': timedept2+'AN',  # atom density
+        'TARGET2_da': timedept2+'DA',  # area element
+        'TARGET2_ds': timedept2+'DS',  # S-S_sep
+        'TARGET2_fc': timedept2+'FC',  # poloidal current
+        'TARGET2_fe': timedept2+'FE',  # poloidal electron energy flux
+        'TARGET2_fi': timedept2+'FI',  # poloidal ion energy flux
+        'TARGET2_fl': timedept2+'FL',  # poloidal electron flux
+        'TARGET2_fn': timedept2+'FN',  # poloidal spec one flux
+        'TARGET2_fo': timedept2+'FO',  # poloidal ion flux
+        'TARGET2_ft': timedept2+'FT',  # poloidal total energy flux
+        'TARGET2_mn': timedept2+'MN',  # molecule density
+        'TARGET2_ne': timedept2+'NE',  # electron density
+        'TARGET2_po': timedept2+'PO',  # potential
+        'TARGET2_te': timedept2+'TE',  # electron temperature
+        'TARGET2_ti': timedept2+'TI',  # ion temperature
+        'TARGET2_tp': timedept2+'TP',  # target surface temperature
 
-        'TARGET3_ds': timedept3+'DS',
-        'TARGET3_ft': timedept3+'FT',
-        'TARGET3_fe': timedept3+'FE',
-        'TARGET3_fi': timedept3+'FI',
-        'TARGET3_fc': timedept3+'FC',
-        'TARGET3_te': timedept3+'TE',
-        'TARGET3_ti': timedept3+'TI',
-        'TARGET3_ne': timedept3+'NE',
-        'TARGET3_po': timedept3+'PO',
+        'TARGET3_na': timedept3+'AN',  # atom density
+        'TARGET3_da': timedept3+'DA',  # area element
+        'TARGET3_ds': timedept3+'DS',  # S-S_sep
+        'TARGET3_fc': timedept3+'FC',  # poloidal current
+        'TARGET3_fe': timedept3+'FE',  # poloidal electron energy flux
+        'TARGET3_fi': timedept3+'FI',  # poloidal ion energy flux
+        'TARGET3_fl': timedept3+'FL',  # poloidal electron flux
+        'TARGET3_fn': timedept3+'FN',  # poloidal spec one flux
+        'TARGET3_fo': timedept3+'FO',  # poloidal ion flux
+        'TARGET3_ft': timedept3+'FT',  # poloidal total energy flux
+        'TARGET3_mn': timedept3+'MN',  # molecule density
+        'TARGET3_ne': timedept3+'NE',  # electron density
+        'TARGET3_po': timedept3+'PO',  # potential
+        'TARGET3_te': timedept3+'TE',  # electron temperature
+        'TARGET3_ti': timedept3+'TI',  # ion temperature
+        'TARGET3_tp': timedept3+'TP',  # target surface temperature
 
-        'TARGET4_ds': timedept4+'DS',
-        'TARGET4_ft': timedept4+'FT',
-        'TARGET4_fe': timedept4+'FE',
-        'TARGET4_fi': timedept4+'FI',
-        'TARGET4_fc': timedept4+'FC',
-        'TARGET4_te': timedept4+'TE',
-        'TARGET4_ti': timedept4+'TI',
-        'TARGET4_ne': timedept4+'NE',
-        'TARGET4_po': timedept4+'PO',
+        # target 4 - usually outer target
+        'TARGET4_na': timedept4+'AN',  # atom density
+        'TARGET4_da': timedept4+'DA',  # area element
+        'TARGET4_ds': timedept4+'DS',  # S-S_sep
+        'TARGET4_fc': timedept4+'FC',  # poloidal current
+        'TARGET4_fe': timedept4+'FE',  # poloidal electron energy flux
+        'TARGET4_fi': timedept4+'FI',  # poloidal ion energy flux
+        'TARGET4_fl': timedept4+'FL',  # poloidal electron flux
+        'TARGET4_fn': timedept4+'FN',  # poloidal spec one flux
+        'TARGET4_fo': timedept4+'FO',  # poloidal ion flux
+        'TARGET4_ft': timedept4+'FT',  # poloidal total energy flux
+        'TARGET4_mn': timedept4+'MN',  # molecule density
+        'TARGET4_ne': timedept4+'NE',  # electron density
+        'TARGET4_po': timedept4+'PO',  # potential
+        'TARGET4_te': timedept4+'TE',  # electron temperature
+        'TARGET4_ti': timedept4+'TI',  # ion temperature
+        'TARGET4_tp': timedept4+'TP',  # target surface temperature
 
         # Midplanes
         'OMP_ds': timedepomp+'DS',    
