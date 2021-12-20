@@ -58,7 +58,7 @@ install_requires = open('requirements.txt').read().split('\n')
 setup(
     name=package_name,
     version=get_version('aurora/__init__.py'), #'0.1.7',  
-    description=long_description,
+    long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/fsciortino/Aurora',
     author='F. Sciortino',
