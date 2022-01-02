@@ -845,9 +845,6 @@ def interp_atom_prof(atom_table, xprof, yprof, log_val=False, x_multiply=True):
     '''
     x, y, table = atom_table
 
-    if x_multiply and xprof is None:
-        raise ValueError('Cannot multiply output by 10^{xprof} because xprof is None!')
-
     if x_multiply: # multiplying of logarithms is just adding
         table = table + x  # don't modify original table, create copy
 
@@ -857,8 +854,7 @@ def interp_atom_prof(atom_table, xprof, yprof, log_val=False, x_multiply=True):
         reg_interp = CartesianGrid((y, ), table[:,:,0]*np.log(10))
         interp_vals = reg_interp(yprof)
 
-    else: # 2D interpolation, assume ADAS grids are equally spaced (only small inaccuracies in data files)
-
+    else: # 2D interpolation
         # broadcast both variables to the same shape
         xprof, yprof = np.broadcast_arrays(xprof, yprof)
 
