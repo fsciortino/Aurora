@@ -213,13 +213,13 @@ class aurora_sim:
         self.par_loss_rate = self.get_par_loss_rate()
 
         # Obtain atomic rates on the computational time and radial grids
-        self.S_rates, self.R_rates = self.get_time_dept_atomic_rates(
+        self.Sne_rates, self.Rne_rates = self.get_time_dept_atomic_rates(
             superstages = self.namelist.get('superstages',[]))
 
-        S0 = self.S_rates[:,0,:]
+        Sne0 = self.Sne_rates[:,0,:]
         # get radial profile of source function
         if len(save_time) == 1:  # if time averaged profiles were used
-            S0 = S0[:, [0]]  # 0th charge state (neutral)
+            Sne0 = Sne0[:, [0]]  # 0th charge state (neutral)
 
         if self.namelist['source_type'] == 'arbitrary_2d_source':
             # interpolate explicit source values on time and rhop grids of simulation
@@ -228,12 +228,12 @@ class aurora_sim:
             stime = self.namelist['explicit_source_time']
             source = np.array(self.namelist['explicit_source_vals']).T
             
-            spl = RectBivariateSpline(srho,stime,source,kx=1,ky=1)
+            spl = RectBivariateSpline(srho, stime, source, kx=1, ky=1)
             #extrapolate by the nearest values
             self.source_rad_prof = spl(np.clip(self.rhop_grid, min(srho),  max(srho)), 
-                                np.clip(self.time_grid, min(stime), max(stime)))
+                                       np.clip(self.time_grid, min(stime), max(stime)))
             # Change units to particles/cm^3
-            self.src_core = self.source_rad_prof/S0
+            self.src_core = self.source_rad_prof/Sne0
         else:
             # get time history and radial profiles separately
             source_time_history = source_utils.get_source_time_history(
@@ -245,7 +245,7 @@ class aurora_sim:
             self.source_rad_prof = source_utils.get_radial_source(
                 self.namelist,
                 self.rvol_grid, self.pro_grid,
-                S0,   # 0th charge state (neutral)
+                Sne0,   # 0th charge state (neutral)
                 self._Ti)   
             
             # construct source from separable radial and time dependences
@@ -265,7 +265,7 @@ class aurora_sim:
             self.src_div = np.zeros_like(self.time_grid)
         
         # total number of injected ions, used for a check of particle conservation
-        self.total_source = np.pi*np.sum(self.src_core*S0*(self.rvol_grid/self.pro_grid)[:,None],0)  # sum over radius
+        self.total_source = np.pi*np.sum(self.src_core*Sne0*(self.rvol_grid/self.pro_grid)[:,None],0)  # sum over radius
         self.total_source += self.src_div   # units of particles/s/cm
 
         if self.wall_recycling >= 0: # recycling activated
@@ -298,7 +298,7 @@ class aurora_sim:
                 self.rcl_rad_prof = source_utils.get_radial_source(
                     nml_rcl_prof, # namelist specifically to obtain exp decay from wall
                     self.rvol_grid, self.pro_grid,
-                    S0,
+                    Sne0,
                     self._Ti)
 
         else:
@@ -382,41 +382,41 @@ class aurora_sim:
 
         Returns
         -------
-        S_rates : array (space, nZ(-super), time)
-            Effective ionization rates. If superstages were indicated, these are the rates of superstages.
-        R_rates : array (space, nZ(-super), time)
-            Effective recombination rates. If superstages were indicated, these are the rates of superstages.
+        Sne_rates : array (space, nZ(-super), time)
+            Effective ionization rates [s]. If superstages were indicated, these are the rates of superstages.
+        Rne_rates : array (space, nZ(-super), time)
+            Effective recombination rates [s]. If superstages were indicated, these are the rates of superstages.
         '''
         
         # get electron impact ionization and radiative recombination rates in units of [s^-1]
-        _, S, R, cx = atomic.get_cs_balance_terms(
+        _, Sne, Rne, cxne = atomic.get_cs_balance_terms(
                 self.atom_data, ne_cm3=self._ne, Te_eV = self._Te, Ti_eV=self._Ti,
                 include_cx=self.namelist['cxr_flag'])
                     
         if self.namelist['cxr_flag']:
             # Get an effective recombination rate by summing radiative & CX recombination rates
-            R += cx*(self._n0/self._ne)[:,None] 
+            Rne += cxne*(self._n0/self._ne)[:,None] 
         
         if self.namelist['nbi_cxr_flag']:
             # include charge exchange between NBI neutrals and impurities
             self.nbi_cxr = interp1d(self.namelist['nbi_cxr']['rhop'], self.namelist['nbi_cxr']['vals'], axis=0,
                                     bounds_error=False, fill_value=0.0)(self.rhop_grid)
 
-            R += self.nbi_cxr.T[None,:,:]
+            Rne += self.nbi_cxr.T[None,:,:]
  
         if len(superstages):
-            self.superstages, R, S, self.fz_upstage = \
-                atomic.superstage_rates(R, S, superstages,save_time=self.save_time)
+            self.superstages, Rne, Sne, self.fz_upstage = \
+                atomic.superstage_rates(Rne, Sne, superstages, save_time=self.save_time)
              
-        # S and R for the Z+1 stage must be zero for the forward model.
+        # Sne and Rne for the Z+1 stage must be zero for the forward model.
         # Use Fortran-ordered arrays for speed in forward modeling (both Fortran and Julia)
-        S_rates = np.zeros((S.shape[2], S.shape[1] + 1, self.time_grid.size), order='F')
-        S_rates[:, :-1] = S.T
+        Sne_rates = np.zeros((Sne.shape[2], Sne.shape[1] + 1, self.time_grid.size), order='F')
+        Sne_rates[:, :-1] = Sne.T
 
-        R_rates = np.zeros((R.shape[2], R.shape[1] + 1, self.time_grid.size), order='F')
-        R_rates[:, :-1] = R.T
+        Rne_rates = np.zeros((Rne.shape[2], Rne.shape[1] + 1, self.time_grid.size), order='F')
+        Rne_rates[:, :-1] = Rne.T
 
-        return S_rates, R_rates
+        return Sne_rates, Rne_rates
     
 
     def get_par_loss_rate(self, trust_SOL_Ti=False):
@@ -638,7 +638,7 @@ class aurora_sim:
          
         if not evolneut:
             # prevent recombination back to neutral state to maintain good particle conservation 
-            self.R_rates[:,0] = 0
+            self.Rne_rates[:,0] = 0
 
         if nz_init is None:
             # default: start in a state with no impurity ions
@@ -671,8 +671,8 @@ class aurora_sim:
                                      self.par_loss_rate,  # time dependent
                                      self.src_core,# source profile in radius and time
                                      self.rcl_rad_prof, # recycling radial profile
-                                     self.S_rates, # ioniz_rate,
-                                     self.R_rates, # recomb_rate,
+                                     self.Sne_rates, # ioniz_rate,
+                                     self.Rne_rates, # recomb_rate,
                                      self.rvol_grid, self.pro_grid, self.qpr_grid,
                                      self.mixing_radius, self.decay_length_boundary,
                                      self.time_grid, self.saw_on,
@@ -693,8 +693,8 @@ class aurora_sim:
                                    self.par_loss_rate,  # time dependent
                                    self.src_core, # source profile in radius and time
                                    self.rcl_rad_prof, # recycling radial profile
-                                   self.S_rates, # ioniz_rate
-                                   self.R_rates, # recomb_rate
+                                   self.Sne_rates, # ioniz_rate
+                                   self.Rne_rates, # recomb_rate
                                    self.rvol_grid, self.pro_grid, self.qpr_grid,
                                    self.mixing_radius, self.decay_length_boundary,
                                    self.time_grid, self.saw_on,
@@ -831,8 +831,8 @@ class aurora_sim:
         save_time = self.save_time.copy()
         par_loss_rate = self.par_loss_rate.copy()
         src_core = self.src_core.copy()
-        S_rates = self.S_rates.copy()
-        R_rates = self.R_rates.copy()
+        Sne_rates = self.Sne_rates.copy()
+        Rne_rates = self.Rne_rates.copy()
         saw_on = self.saw_on.copy()
         nz_all = None if nz_init is None else nz_init
 
@@ -842,8 +842,8 @@ class aurora_sim:
             self.save_time = save_time[sim_steps:sim_steps+n_steps]
             self.par_loss_rate = par_loss_rate[:,sim_steps:sim_steps+n_steps]
             self.src_core = src_core[:,sim_steps:sim_steps+n_steps]
-            self.S_rates = S_rates[:,:,sim_steps:sim_steps+n_steps]
-            self.R_rates = R_rates[:,:,sim_steps:sim_steps+n_steps]
+            self.Sne_rates = Sne_rates[:,:,sim_steps:sim_steps+n_steps]
+            self.Rne_rates = Rne_rates[:,:,sim_steps:sim_steps+n_steps]
             self.saw_on = saw_on[sim_steps:sim_steps+n_steps]
 
             sim_steps+= n_steps
