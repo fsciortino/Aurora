@@ -1,3 +1,25 @@
+# MIT License
+#
+# Copyright (c) 2021 Francesco Sciortino
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import os,sys
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, interp1d
@@ -207,8 +229,9 @@ def compute_rad(imp, nz, ne, Te,
     return res
 
 
-def sync_rad(B_T, ne_cm3, Te_eV, r_min_cm, R_maj_cm):
+def sync_rad(B_T, ne_cm3, Te_eV, r_min, R_maj):
     '''Calculate synchrotron radiation following Trubnikov's formula [1]_.
+    We make use of a simplified formulation as given by Zohm [2]_.
 
     Parameters
     -----------------
@@ -218,10 +241,10 @@ def sync_rad(B_T, ne_cm3, Te_eV, r_min_cm, R_maj_cm):
         Electron density [:math:`cm^{-3}`]
     Te_eV : float or 1D array
         Electron temperature [:math:`eV`]
-    r_min_cm : float
-        Minor radius [cm].
-    R_maj_cm : float
-         Major radius [cm].
+    r_min : float
+        Minor radius [m].
+    R_maj : float
+         Major radius [m].
 
     Returns
     array
@@ -231,33 +254,11 @@ def sync_rad(B_T, ne_cm3, Te_eV, r_min_cm, R_maj_cm):
     -----------------
     
     .. [1] Trubnikov, JETP Lett. 16 25 (1972)
+    .. [2] Zohm et al., Journal of Fusion Energy (2019) 38:3-10
     
     '''
-    # reflection coefficient of plasma boundary
-    refl_coeff=0.8
-
-    # plasma frequency
-    w_pe = np.sqrt(4.*np.pi*ne_cm3*constants.e**2/constants.m_e)
-    
-    # electron cyclotron frequency
-    w_ce = constants.e*abs(B_T)/(constants.m_e*constants.c)
-
-    # Trubnikov reduced temperature
-    t   = constants.k*Te_eV/(constants.m_e*constants.c**2)
-
-    # dimensionless opacity parameter
-    pa = r_min_cm*w_pe**2/(constants.c*w_ce)
-
-    # parameter of inhomogeneity of magnetic field in torus 
-    chi_T = 1./(R_maj_cm/r_min_cm)/np.sqrt(t)
-
-    # universal formula (1)
-    phi = 60.*t**1.5*np.sqrt((1. - refl_coeff)*(1.+chi_T)/pa)
-
-    # total rate (eq. 3, but no volume multiplication)
-    sync_rate = 1e7*constants.m_e/(3.*np.pi*constants.c)*t*(w_pe*w_ce)**2.*phi  # erg-->J
-
-    return sync_rate
+    return 1.32e-7 * (B_T * Te_eV/1e3)**2.5 * np.sqrt(ne_cm3*1e-14/r_min)*\
+        (1. + 18.*r_min/(R_maj * np.sqrt(Te_eV/1e3)))
 
 
 
@@ -640,11 +641,11 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
 
         # sometimes multiple lines of the same rate_type can be listed at the same wavelength
         # separate them here by 1e-6 A
-        while True:
-            if lam in log10pec_dict and rate_type in log10pec_dict[lam]:
-                lam += 1e-6
-            else:
-                break
+        # while True:
+        #     if lam in log10pec_dict and rate_type in log10pec_dict[lam]:
+        #         lam += 1e-6
+        #     else:
+        #         break
 
         # create dictionary with keys for each wavelength:
         if lam not in log10pec_dict:

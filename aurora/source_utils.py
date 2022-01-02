@@ -1,8 +1,27 @@
 '''
 Methods related to impurity source functions.
-
-sciortino, 2020
 '''
+# MIT License
+#
+# Copyright (c) 2021 Francesco Sciortino
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 import numpy as np
 import copy,sys
@@ -114,7 +133,8 @@ def get_source_time_history(namelist, Raxis_cm, time):
 
     # For ease of comparison with STRAHL, shift source by one time step
     source_time_history = np.r_[source[1:],0]/circ
-
+    #source_time_history =  source/circ
+    
     return np.asfortranarray(source_time_history)
 
 
@@ -234,7 +254,7 @@ def lbo_source_function(t_start, t_rise, t_fall, n_particles=1.0, time_vec=None)
 
 
 
-def get_radial_source(namelist, rvol_grid, pro_grid, S_rates,nt, Ti_eV=None):
+def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
     '''Obtain spatial dependence of source function.
 
     If namelist['source_width_in']==0 and namelist['source_width_out']==0, the source
@@ -255,7 +275,7 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates,nt, Ti_eV=None):
         Normalized first derivatives of the radial grid in volume-normalized coordinates. 
     S_rates : array (nr,nt)
         Ionization rate of neutral impurity over space and time.
-    Ti_eV : array, optional (nr,nt)
+    Ti_eV : array, optional (nt,nr)
         Background ion temperature, only used if source_width_in=source_width_out=0.0 and 
         imp_source_energy_eV<=0, in which case the source impurity neutrals are taken to 
         have energy equal to the local Ti [eV]. 
@@ -266,7 +286,13 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates,nt, Ti_eV=None):
         Radial profile of the impurity neutral source for each time step.
     '''
     r_src = namelist['rvol_lcfs'] + namelist['source_cm_out_lcfs']
-
+    nt = S_rates.shape[1]
+    try:
+        # TODO: invert order of dimensions of Ti_eV...
+        assert S_rates.shape==Ti_eV.T.shape
+    except AssertionError as msg:
+        raise AssertionError(msg)
+    
     source_rad_prof = np.zeros_like(S_rates)
 
     # find index of radial grid vector that is just greater than r_src
@@ -341,7 +367,6 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates,nt, Ti_eV=None):
     
     # broadcast in right shape if time averaged profiles are used
     source_rad_prof = np.broadcast_to(source_rad_prof, (source_rad_prof.shape[0], nt))
-
 
     return source_rad_prof
 

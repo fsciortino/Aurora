@@ -1,3 +1,25 @@
+# MIT License
+#
+# Copyright (c) 2021 Francesco Sciortino
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import numpy as np,sys,os
 from scipy.interpolate import interp1d, RectBivariateSpline
 from . import grids_utils
@@ -125,9 +147,10 @@ def rV_vol_average(quant,r_V):
 
 
     
-def rad_coord_transform(x,name_in,name_out, geqdsk):
+def rad_coord_transform(x, name_in, name_out, geqdsk):
     """Transform from one radial coordinate to another. Note that this coordinate conversion is only
-    strictly valid inside of the LCFS.
+    strictly valid inside of the LCFS. A number of common coordinate nomenclatures are accepted, but
+    it is recommended to use one of the coordinate names indicated in the input descriptions below.
 
     Parameters
     ----------
@@ -149,6 +172,14 @@ def rad_coord_transform(x,name_in,name_out, geqdsk):
         return x
     x = copy.deepcopy(x)
 
+    # avoid confusion with name conventions
+    conventions = {'rvol':'rvol', 'r_vol':'rvol', 'r_V':'rvol',
+                   'rhon':'rhon', 'rho_tor':'rhon', 'rho_pol':'rhop', 'rhop':'rhop',
+                   'r/a':'r/a', 'roa':'r/a', 'rhov':'rhov', 'rho_V':'rhov', 'rho_v':'rhov',
+                   'Rmid':'Rmid', 'R_mid':'Rmid', 'rmid':'rmid', 'r_mid':'rmid'}
+    name_in = conventions[name_in]
+    name_out = conventions[name_out]
+        
     if 'rvol' not in geqdsk['fluxSurfaces']['geo']:
         R0 = geqdsk['RMAXIS']
         eq_vol = geqdsk['fluxSurfaces']['geo']['vol']
@@ -161,7 +192,7 @@ def rad_coord_transform(x,name_in,name_out, geqdsk):
     psin_ref = geqdsk['fluxSurfaces']['geo']['psin']
     # sqrt(norm. pol. flux)
     rhop_ref = np.sqrt(psin_ref)
-    #volume radius
+    # volume radius
     rvol = geqdsk['fluxSurfaces']['geo']['rvol']
     # R at midplane
     Rmid = geqdsk['fluxSurfaces']['midplane']['R']
@@ -211,10 +242,11 @@ def rad_coord_transform(x,name_in,name_out, geqdsk):
     else:
         raise ValueError('Output coordinate was not recognized!')
 
-    #trick for better extrapolation
-    ind0 = coord_in== 0
-    out = np.interp(x,coord_in[~ind0],coord_out[~ind0]/coord_in[~ind0])*x
-    if (x==coord_in[0]).any():
+    # trick for better extrapolation
+    ind0 = coord_in == 0
+    out = np.interp(x, coord_in[~ind0], coord_out[~ind0]/coord_in[~ind0])*x
+
+    if (x==coord_in[0]).any() and np.sum(ind0):
         x0 = x == coord_in[0]
         out[x0] = coord_out[ind0]  # give exact magnetic axis
 

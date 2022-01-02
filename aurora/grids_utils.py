@@ -1,5 +1,26 @@
 '''Methods to create radial and time grids for aurora simulations.
 '''
+# MIT License
+#
+# Copyright (c) 2021 Francesco Sciortino
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 import matplotlib.pyplot as plt
 import numpy as np, sys, os
@@ -154,7 +175,7 @@ def create_time_grid(timing=None, plot=False):
     try:
         from ._aurora import time_steps
     except ModuleNotFoundError:
-        raise MissingAuroraBuild('Could not load particle transport forward model!'+\
+        raise MissingAuroraBuild('Could not load particle transport forward model! '+\
                       'Use the makefile or setup.py to build sources.')
     
     _time, _save = time_steps(
@@ -671,3 +692,47 @@ def estimate_boundary_distance(shot, device, time_ms):
     lim_sep = round(bound_sep*2./3.,3)
 
     return bound_sep, lim_sep
+
+
+
+def vol_int(var, rvol_grid, pro_grid, Raxis_cm, rvol_max=None):
+    """
+    Perform a volume integral of an input variable. If the variable is f(t,x) 
+    then the result is f(t). If the variable is f(t,*,x) then the result is f(t,charge)
+    when "*" represents charge, line index, etc...
+
+    Parameters
+    ----------
+    var : 2D+ array (time, ..., radius)
+        Data array for which a volume integral should be evaluated.
+        The last dimension must be radial, other dimensions are arbitrary.
+    rvol_grid : 1D array
+        Volume-normalized radial grid.
+    pro_grid : 
+        Normalized first derivative of the radial grid, see :py:func:`~aurora.grids_utils.create_radial_grid`.
+    Raxis_cm : float 
+        Major radius on axis [cm]
+    rvol_max : float
+        Maximum volume-normalized radius for integral. If not provided, integrate
+        over the entire simulation radial grid. 
+
+    Returns
+    -------
+    var_volint : array (nt,)
+        Time history of volume integrated variable
+    """
+    C = 2 * np.pi * Raxis_cm
+    zvol = C * np.pi * rvol_grid / pro_grid
+
+    # Determine range
+    if rvol_max is not None:
+        wh = ( rvol_grid <= rvol_max)
+        zvol = zvol[wh]
+        var  = var[...,wh]
+    
+    # 2D or 3D array f(t,x)
+    var_volint = np.nansum(var*zvol,axis=-1)
+
+    return var_volint
+
+

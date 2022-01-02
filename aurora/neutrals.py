@@ -1,6 +1,27 @@
 '''Aurora functionality for edge neutral modeling. 
 The ehr5 file from DEGAS2 is used. See https://w3.pppl.gov/degas2/ for details.
 '''
+# MIT License
+#
+# Copyright (c) 2021 Francesco Sciortino
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 from matplotlib import cm
 from scipy.optimize import curve_fit, least_squares
@@ -15,6 +36,7 @@ import requests
 
 from . import plot_tools
 from . import radiation
+from . import adas_files
 
 if 'AURORA_ADAS_DIR' in os.environ:
     # if user indicated a directory for atomic data, use that
@@ -396,12 +418,15 @@ def Lya_to_neut_dens(emiss_prof, ne, Te, ni=None, plot=True, rhop=None,
 
 
     elif rates_source=='adas':
-        path = '/home/sciortino/atomAI/atomdat_master/adf15/h/pju#h0.dat'
-        log10pec_dict = radiation.read_adf15(path)[1215.2]
+        filename = 'pec96#h_pju#h0.dat' # for D Ly-alpha
 
+        # fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
+        path = adas_files.get_adas_file_loc(filename, filetype='adf15')
+        log10pec_dict = radiation.read_adf15(path) #, plot_lines=[1215.2])
+        
         # evaluate these interpolations on our profiles
-        pec_recomb = 10**log10pec_dict['recom'].ev(np.log10(ne), np.log10(Te))
-        pec_exc = 10**log10pec_dict['excit'].ev(np.log10(ne), np.log10(Te))
+        pec_recomb = 10**log10pec_dict[1215.2]['recom'].ev(np.log10(ne), np.log10(Te))
+        pec_exc = 10**log10pec_dict[1215.2]['excit'].ev(np.log10(ne), np.log10(Te))
 
         N1 = emiss_prof/E_21/(ne*pec_exc+ni*pec_recomb)
 

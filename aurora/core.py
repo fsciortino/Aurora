@@ -27,15 +27,17 @@ import numpy as np
 from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.constants import e as q_electron, m_p
 import pickle as pkl
+from copy import deepcopy
+from scipy.integrate import cumtrapz
+import matplotlib.pyplot as plt
 from . import interp
 from . import atomic
 from . import grids_utils
 from . import source_utils
-from . import particle_conserv
 from . import plot_tools
 from . import synth_diags
 from . import adas_files
-from copy import deepcopy
+
 
 class aurora_sim:
     '''Setup the input dictionary for an Aurora ion transport simulation from the given namelist.
@@ -121,7 +123,6 @@ class aurora_sim:
         self.mixing_radius = self.namelist['saw_model']['rmix']
         self.decay_length_boundary = self.namelist['SOL_decay']
         self.wall_recycling = self.namelist['wall_recycling']
-        self.source_div_fraction = self.namelist['divbls']   # change of nomenclature
         self.tau_div_SOL_ms = self.namelist['tau_div_SOL_ms']
         self.tau_pump_ms = self.namelist['tau_pump_ms']
         self.tau_rcl_ret_ms = self.namelist['tau_rcl_ret_ms']
@@ -190,7 +191,7 @@ class aurora_sim:
         if self.namelist['saw_model']['saw_flag'] and len(self.saw_times)>0:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
 
-
+        
     def setup_kin_profs_depts(self):
         '''Method to set up Aurora inputs related to the kinetic background from namelist inputs.
         '''        
@@ -220,33 +221,90 @@ class aurora_sim:
         if len(save_time) == 1:  # if time averaged profiles were used
             S0 = S0[:, [0]]  # 0th charge state (neutral)
 
-        if np.ndim(self.namelist['explicit_source_vals'])==2:
+        if self.namelist['source_type'] == 'arbitrary_2d_source':
             # interpolate explicit source values on time and rhop grids of simulation
-            source_rad_prof = RectBivariateSpline(self.namelist['explicit_source_rhop'],
-                                                  self.namelist['explicit_source_time'],
-                                                  self.namelist['explicit_source_vals'].T,
-                                                  kx=1,ky=1)(self.rhop_grid, self.time_grid)
+            # NB: explicit_source_vals should be in units of particles/s/cm^3 <-- ionization rate
+            srho = self.namelist['explicit_source_rhop']
+            stime = self.namelist['explicit_source_time']
+            source = np.array(self.namelist['explicit_source_vals']).T
             
-            # get first ionization stage
-            pnorm = np.pi*np.sum(source_rad_prof*S0*(self.rvol_grid/self.pro_grid)[:,None],0)
-            self.source_time_history = pnorm
-            
-            # neutral density for influx/unit-length = 1/cm
-            self.source_rad_prof = source_rad_prof/pnorm
-
+            spl = RectBivariateSpline(srho,stime,source,kx=1,ky=1)
+            #extrapolate by the nearest values
+            self.source_rad_prof = spl(np.clip(self.rhop_grid, min(srho),  max(srho)), 
+                                np.clip(self.time_grid, min(stime), max(stime)))
+            # Change units to particles/cm^3
+            self.src_core = self.source_rad_prof/S0
         else:
             # get time history and radial profiles separately
-            self.source_time_history = source_utils.get_source_time_history(
-                self.namelist, self.Raxis_cm, self.time_grid)
+            source_time_history = source_utils.get_source_time_history(
+                self.namelist, self.Raxis_cm, self.time_grid)  # units of particles/s/cm
             
             # get radial profile of source function for each time step
-            self.source_rad_prof = source_utils.get_radial_source(self.namelist,
-                                                                  self.rvol_grid, self.pro_grid,
-                                                                  S0,   # 0th charge state (neutral) and 0th time
-                                                                  len(self.time_grid),self._Ti)
+            # dimensionless, normalized such that pnorm=1
+            # i.e. source_time_history*source_rad_prof = # particles/cm^3
+            self.source_rad_prof = source_utils.get_radial_source(
+                self.namelist,
+                self.rvol_grid, self.pro_grid,
+                S0,   # 0th charge state (neutral)
+                self._Ti)   
             
+            # construct source from separable radial and time dependences
+            self.src_core = self.source_rad_prof*source_time_history[None,:]
         
-        self.source_rad_prof = np.asfortranarray(self.source_rad_prof)
+        self.src_core = np.asfortranarray(self.src_core)
+
+        # if wall_recycling>=0, return flows from the divertor are enabled   
+        if self.wall_recycling>=0 and\
+           'source_div_time' in self.namelist and 'source_div_vals' in self.namelist:
+    
+            # interpolate divertor source time history
+            self.src_div = interp1d(
+                self.namelist['source_div_time'], self.namelist['source_div_vals'])(self.time_grid)
+        else:
+            # no source into the divertor
+            self.src_div = np.zeros_like(self.time_grid)
+        
+        # total number of injected ions, used for a check of particle conservation
+        self.total_source = np.pi*np.sum(self.src_core*S0*(self.rvol_grid/self.pro_grid)[:,None],0)  # sum over radius
+        self.total_source += self.src_div   # units of particles/s/cm
+
+        if self.wall_recycling >= 0: # recycling activated
+            
+            # if recycling radial profile is given, interpolate it on radial grid
+            if 'rcl_prof_vals' in self.namelist and 'rcl_prof_rhop' in self.namelist:
+
+                # Check that at least part of the recycling prof is within Aurora radial grid
+                if np.min(self.namelist['rcl_prof_rhop'])<np.max(self.rhop_grid):
+                    raise ValueError('Input recycling radial grid is too far out!')
+
+                rcl_rad_prof = interp1d(
+                    self.namelist['rcl_prof_rhop'], self.namelist['rcl_prof_vals'],
+                    fill_value='extrapolate')(
+                        self.rhop_grid
+                    )
+                self.rcl_rad_prof = np.broadcast_to(rcl_rad_prof, (rcl_rad_prof.shape[0], len(self.time_grid)))
+
+            else:
+                # set recycling prof to exp decay from wall
+                # use all time steps, specified neutral stage energy
+                nml_rcl_prof = {key: self.namelist[key] for key in
+                                ['imp_source_energy_eV', 'rvol_lcfs',
+                                 'source_cm_out_lcfs', 'imp',
+                                 'prompt_redep_flag', 'Baxis', 'main_ion_A']}
+                nml_rcl_prof['source_width_in'] = 0
+                nml_rcl_prof['source_width_out'] = 0
+
+                # NB: we assume here that the 0th time is a good representation of how recycling is radially distributed
+                self.rcl_rad_prof = source_utils.get_radial_source(
+                    nml_rcl_prof, # namelist specifically to obtain exp decay from wall
+                    self.rvol_grid, self.pro_grid,
+                    S0,
+                    self._Ti)
+
+        else:
+            # dummy profile -- recycling is turned off
+            self.rcl_rad_prof = np.zeros((len(self.rhop_grid), len(self.time_grid)))
+        
 
     def interp_kin_prof(self, prof): 
         ''' Interpolate the given kinetic profile on the radial and temporal grids [units of s].
@@ -384,8 +442,8 @@ class aurora_sim:
         self.main_element = self.namelist['main_element']
         out = atomic_element(symbol=self.namelist['main_element'])
         spec = list(out.keys())[0]
-        self.main_ion_A = int(out[spec]['A'])
-        self.main_ion_Z = int(out[spec]['Z'])
+        self.main_ion_A = self.namelist['main_ion_A'] = int(out[spec]['A'])
+        self.main_ion_Z = self.namelist['main_ion_Z'] = int(out[spec]['Z'])
 
         # factor for v = machnumber * sqrt((3T_i+T_e)k/m)
         vpf = self.namelist['SOL_mach']*np.sqrt(q_electron/m_p/self.main_ion_A)  
@@ -611,49 +669,53 @@ class aurora_sim:
                                      times_DV,
                                      D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                      self.par_loss_rate,  # time dependent
-                                     self.source_rad_prof,# source profile in radius
+                                     self.src_core,# source profile in radius and time
+                                     self.rcl_rad_prof, # recycling radial profile
                                      self.S_rates, # ioniz_rate,
                                      self.R_rates, # recomb_rate,
                                      self.rvol_grid, self.pro_grid, self.qpr_grid,
                                      self.mixing_radius, self.decay_length_boundary,
                                      self.time_grid, self.saw_on,
-                                     self.source_time_history, # source profile in time
-                                     self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
+                                     self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm]
                                      self.wall_recycling,
-                                     self.source_div_fraction, # divbls [fraction of source into divertor]
-                                     self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3,#[s] 
+                                     self.tau_div_SOL_ms * 1e-3,  # [s]
+                                     self.tau_pump_ms * 1e-3,     # [s]
+                                     self.tau_rcl_ret_ms * 1e-3,  # [s] 
                                      self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
-                                     nz_init, alg_opt, evolneut)
+                                     nz_init, alg_opt, evolneut, self.src_div)
         else:
             # import here to avoid import when building documentation or package (negligible slow down)
             from ._aurora import run as fortran_run
+
             self.res = fortran_run(nt,  # number of times at which simulation outputs results
                                    times_DV,
                                    D_z, V_z, # cm^2/s & cm/s    #(ir,nt_trans,nion)
                                    self.par_loss_rate,  # time dependent
-                                   self.source_rad_prof,# source profile in radius
-                                   self.S_rates, # ioniz_rate,
-                                   self.R_rates, # recomb_rate,
+                                   self.src_core, # source profile in radius and time
+                                   self.rcl_rad_prof, # recycling radial profile
+                                   self.S_rates, # ioniz_rate
+                                   self.R_rates, # recomb_rate
                                    self.rvol_grid, self.pro_grid, self.qpr_grid,
                                    self.mixing_radius, self.decay_length_boundary,
                                    self.time_grid, self.saw_on,
-                                   self.source_time_history, # source profile in time
-                                   self.save_time, self.sawtooth_erfc_width, # dsaw width  [cm, circ geometry]
+                                   self.save_time, self.sawtooth_erfc_width, # dsaw width [cm]
                                    self.wall_recycling,
-                                   self.source_div_fraction, # divbls [fraction of source into divertor]
-                                   self.tau_div_SOL_ms * 1e-3, self.tau_pump_ms *1e-3, self.tau_rcl_ret_ms *1e-3, # [s]  
+                                   self.tau_div_SOL_ms * 1e-3,  # [s]
+                                   self.tau_pump_ms * 1e-3,     # [s]
+                                   self.tau_rcl_ret_ms * 1e-3,  # [s]  
                                    self.rvol_lcfs, self.bound_sep, self.lim_sep, self.prox_param,
                                    rn_t0 = nz_init,  # if omitted, internally set to 0's
-                                   alg_opt=alg_opt,
-                                   evolneut=evolneut)
+                                   alg_opt = alg_opt,
+                                   evolneut = evolneut,
+                                   src_div = self.src_div)
             
         if plot:
 
             # plot charge state density distributions over radius and time
             plot_tools.slider_plot(self.rvol_grid, self.time_out, self.res[0].transpose(1,0,2),
-                                          xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
-                                          labels=[str(i) for i in np.arange(0,self.res[0].shape[1])],
-                                          plot_sum=True, x_line=self.rvol_lcfs)
+                                   xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$n_z$ [$cm^{-3}$]',
+                                   labels=[str(i) for i in np.arange(0,self.res[0].shape[1])],
+                                   plot_sum=True, x_line=self.rvol_lcfs)
             
             # check particle conservation by summing over simulation reservoirs
             _ = self.check_conservation(plot=True)
@@ -676,7 +738,8 @@ class aurora_sim:
                     nz_unstaged[:,superstages[i]] = self.res[0][:,i]
 
             self.res = nz_unstaged, *self.res[1:]
-         
+        
+        
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         return self.res
 
@@ -767,11 +830,10 @@ class aurora_sim:
         time_out = self.time_out.copy()
         save_time = self.save_time.copy()
         par_loss_rate = self.par_loss_rate.copy()
-        source_rad_prof = self.source_rad_prof.copy()
+        src_core = self.src_core.copy()
         S_rates = self.S_rates.copy()
         R_rates = self.R_rates.copy()
         saw_on = self.saw_on.copy()
-        source_time_history = self.source_time_history.copy()
         nz_all = None if nz_init is None else nz_init
 
         while sim_steps < len(time_grid):
@@ -779,11 +841,10 @@ class aurora_sim:
             self.time_grid = self.time_out = time_grid[sim_steps:sim_steps+n_steps]
             self.save_time = save_time[sim_steps:sim_steps+n_steps]
             self.par_loss_rate = par_loss_rate[:,sim_steps:sim_steps+n_steps]
-            self.source_rad_prof = source_rad_prof[:,sim_steps:sim_steps+n_steps]
+            self.src_core = src_core[:,sim_steps:sim_steps+n_steps]
             self.S_rates = S_rates[:,:,sim_steps:sim_steps+n_steps]
             self.R_rates = R_rates[:,:,sim_steps:sim_steps+n_steps]
             self.saw_on = saw_on[sim_steps:sim_steps+n_steps]
-            self.source_time_history = source_time_history[sim_steps:sim_steps+n_steps]
 
             sim_steps+= n_steps
 
@@ -822,15 +883,17 @@ class aurora_sim:
         if sim_steps >= len(time_grid):
             raise ValueError(f'Could not reach convergence before {max_sim_time:.3f}s of simulated time!')
         
-        # compute effective particle confinement time from latest few time steps 
+        # compute effective particle confinement time from latest few time steps
         circ = 2*np.pi*self.Raxis_cm # cm
         zvol = circ * np.pi * self.rvol_grid / self.pro_grid
 
         wh = self.rhop_grid <= 1
         var_volint = np.nansum(nz_new[wh,:,-2]*zvol[wh,None])
 
-        # compute effective particle confinement time (avoid last time point because source is set to 0 there)
-        self.tau_imp = var_volint / self.source_time_history[-2]
+        # compute effective particle confinement time
+        source_time_history = grids_utils.vol_int(
+            self.src_core.T, self.rvol_grid, self.pro_grid, self.Raxis_cm)
+        self.tau_imp = var_volint / source_time_history[-2] # avoid last time point because source may be 0 there
         
         return nz_new[:,:,-1]
     
@@ -874,61 +937,122 @@ class aurora_sim:
         '''Check particle conservation for an aurora simulation.
 
         Parameters
-        -----------------
+        ----------
         plot : bool, optional
             If True, plot time histories in each particle reservoir and display quality of particle conservation.
-        axs : matplotlib.Axes instances, optional 
-            Axes to pass to :py:meth:`~aurora.particle_conserv.check_particle_conserv`
-            These may be the axes returned from a previous call to this function, to overlap 
-            results for different runs. 
+        axs : 2-tuple or array
+            Array-like structure containing two matplotlib.Axes instances: the first one 
+            for the separate particle time variation in each reservoir, the second for 
+            the total particle-conservation check. This can be used to plot results 
+            from several aurora runs on the same axes. 
         
         Returns
-        ------------
+        -------
         out : dict
             Dictionary containing density of particles in each reservoir.
-        axs : matplotlib.Axes instances , only returned if plot=True
-            New or updated axes returned by :py:meth:`~aurora.particle_conserv.check_particle_conserv`
+        axs : matplotlib.Axes instances, only returned if plot=True
+            Array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
+            See optional input argument.
         '''
-        import xarray # import only if necessary
-        
         nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         nz = nz.transpose(2,1,0)   # time,nZ,space
 
-        if self.namelist['explicit_source_vals'] is None:
-            source_time_history = self.source_time_history
+        # factor to account for cylindrical geometry:
+        circ = 2*np.pi*self.Raxis_cm # cm
+
+        # collect all the relevant quantities for particle conservation
+        out = {}
+        
+        # particles that entered as "source":
+        out['source'] = grids_utils.vol_int(
+            self.src_core.T, self.rvol_grid, self.pro_grid, self.Raxis_cm) * circ
+
+        # integrated source over timee
+        out['integ_source'] =  cumtrapz(out['source'], self.time_out, initial=0)
+    
+        # calculate total impurity density (summed over charge states)
+        total_impurity_density = np.nansum(nz, axis=1) # time, space
+
+        # Compute total number of particles for particle conservation checks:
+        all_particles = grids_utils.vol_int(total_impurity_density, self.rvol_grid, self.pro_grid, self.Raxis_cm)
+        
+        out['total'] = all_particles + (N_wall + N_div + N_pump + N_ret)*circ 
+        out['plasma_particles'] = grids_utils.vol_int(
+            total_impurity_density, self.rvol_grid, self.pro_grid, self.Raxis_cm)
+        out['particles_at_wall'] = N_wall * circ
+        out['particles_retained_at_wall'] = N_ret * circ
+        out['particles_in_divertor'] = N_div * circ
+        out['particles_in_pump'] = N_pump * circ
+        out['parallel_loss'] = N_dsu * circ
+        out['edge_loss'] = N_tsu * circ
+        out['parallel_loss_to_limiter'] = N_dsul * circ
+        out['recycling_from_divertor'] = rcld_rate * circ
+        out['recycling_from_wall'] = rclw_rate * circ
+        if hasattr(self, 'rad'): # radiation has already been compputed
+            out['impurity_radiation'] = grids_utils.vol_int(
+                self.rad['tot'], self.rvol_grid, self.pro_grid, self.Raxis_cm)
+
+        if plot:
+            # -------------------------------------------------
+            # plot time histories for each particle reservoirs:
+            if axs is None:
+                fig, ax1 = plt.subplots(nrows=4, ncols=3, sharex=True, figsize=(15,10))
+            else:
+                ax1 = axs[0]
+
+            ax1[0,0].plot(self.time_out, out['source'], label='Influx ($s^{-1}$)')
+            ax1[0,1].plot(self.time_out, out['particles_in_divertor'], label='Particles in divertor')
+            ax1[0,2].plot(self.time_out, out['particles_in_pump'], label='Particles in pump')
+            
+            ax1[1,0].plot(self.time_out, out['parallel_loss'], label='Parallel Loss')
+            ax1[1,1].plot(self.time_out, out['parallel_loss_to_limiter'], label='Parallel Loss to Limiter')
+            ax1[1,2].plot(self.time_out, out['edge_loss'], label='Edge Loss')
+                  
+            ax1[2,0].plot(self.time_out, out['particles_at_wall'], label='Particles stuck at wall')
+            ax1[2,1].plot(self.time_out, out['particles_retained_at_wall'], label='Particles retained at wall')
+            ax1[2,2].plot(self.time_out, out['recycling_from_wall'], label='Wall rec. rate')
+            
+            ax1[3,0].plot(self.time_out, out['recycling_from_divertor'], label='Divertor rec. rate')
+            ax1[3,1].plot(self.time_out, out['total'], label='Core impurity particles')
+            for aa in ax1.flatten()[:11]:
+                aa.legend(loc='best').set_draggable(True)
+                
+            if 'impurity_radiation' in out:
+                ax1[3,2].plot(self.time_out, out['impurity_radiation'], label='Core radiation (W)')
+                ax1[3,2].legend(loc='best').set_draggable(True)
+                
+            for ii in [0,1,2]:
+                ax1[3,ii].set_xlabel('Time (s)')
+            ax1[3,0].set_xlim(self.time_out[[0,-1]])
+
+            # ----------------------------------------------------------------
+            # now plot all particle reservoirs to check particle conservation:
+            if axs is None:
+                fig, ax2 = plt.subplots()
+            else:
+                ax2 = axs[1]
+                
+            ax2.set_xlabel('time [s]')
+
+            ax2.plot(self.time_out, all_particles, label='Particles in Plasma')
+            ax2.plot(self.time_out, out['particles_at_wall'], label='Particles stuck at wall')
+            ax2.plot(self.time_out, out['particles_in_divertor'], label='Particles in Divertor')
+            ax2.plot(self.time_out, out['particles_in_pump'], label='Particles in Pump')
+            ax2.plot(self.time_out, out['particles_retained_at_wall'],label='Particles retained at wall')
+            ax2.plot(self.time_out, out['total'], label='Total')
+            ax2.plot(self.time_out, out['integ_source'], label='Integrated source')
+
+            if abs((out['total'][-1]-out['integ_source'][-1])/out['integ_source'][-1])> .1:
+                print('Warning: significant error in particle conservation!')
+
+            ax2.set_ylim(0,None)
+            ax2.legend(loc='best')
+            plt.tight_layout()
+
+        if plot:
+            return out, (ax1,ax2)
         else:
-            # if explicit source was provided, all info about the source is in the source_rad_prof array
-            srp = xarray.Dataset({'source': ([ 'time','rvol_grid'], self.source_rad_prof.T),
-                                 'pro': (['rvol_grid'], self.pro_grid), 
-                                 'rhop_grid': (['rvol_grid'], self.rhop_grid)
-            },
-                                coords={'time': self.time_out, 
-                                        'rvol_grid': self.rvol_grid
-                                })
-            source_time_history = particle_conserv.vol_int(self.Raxis_cm, srp, 'source')
-
-        source_time_history = self.source_time_history
-        # Check particle conservation
-        ds = xarray.Dataset({'impurity_density': ([ 'time', 'charge_states','rvol_grid'], nz),
-                         'source_time_history': (['time'], source_time_history ),
-                         'particles_in_divertor': (['time'], N_div), 
-                         'particles_in_pump': (['time'], N_pump), 
-                         'parallel_loss': (['time'], N_dsu), 
-                         'parallel_loss_to_limiter': (['time'], N_dsul), 
-                         'edge_loss': (['time'], N_tsu), 
-                         'particles_at_wall': (['time'], N_wall), 
-                         'particles_retained_at_wall': (['time'], N_ret), 
-                         'recycling_from_wall':  (['time'], rclw_rate), 
-                         'recycling_from_divertor':  (['time'], rcld_rate), 
-                         'pro': (['rvol_grid'], self.pro_grid), 
-                         'rhop_grid': (['rvol_grid'], self.rhop_grid)
-                         },
-                        coords={'time': self.time_out, 
-                                'rvol_grid': self.rvol_grid,
-                                'charge_states': np.arange(nz.shape[1])
-                                })
-
-        return particle_conserv.check_particle_conserv(self.Raxis_cm, ds = ds, plot=plot, axs=axs)
+            return out
 
 
     def centrifugal_asym(self, omega, Zeff, plot=False):
