@@ -465,14 +465,14 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
 
     include_cx = False if not np.any(n0_by_ne) else True
 
-    Te, S, R, cx = get_cs_balance_terms(atom_data, _ne, _Te, _Ti, include_cx=include_cx)
-    Z_imp = S.shape[1]
+    Te, Sne, Rne, cxne = get_cs_balance_terms(atom_data, _ne, _Te, _Ti, include_cx=include_cx)
+    Z_imp = Sne.shape[1]
     
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
-        R += n0_by_ne[:,None]*cx
+        Rne += n0_by_ne[:,None]*cxne
 
-    rate_ratio = np.hstack((np.ones_like(Te)[:, None], S/R))
+    rate_ratio = np.hstack((np.ones_like(Te)[:, None], Sne/Rne))
     fz_full = np.cumprod(rate_ratio, axis=1)
     fz_full /= fz_full.sum(1)[:, None]
     
@@ -480,16 +480,16 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
     if len(superstages):
         
         # superstage_rates expects values in shape (time,nZ,space)
-        superstages, R, S,_ = superstage_rates(R.T[None], S.T[None], superstages)
-        R = R[0].T; S = S[0].T
+        superstages, Rne, Sne, _ = superstage_rates(Rne.T[None], Sne.T[None], superstages)
+        Rne = Rne[0].T; Sne = Sne[0].T
 
-        rate_ratio = np.hstack((np.ones_like(Te)[:, None], S/R))
+        rate_ratio = np.hstack((np.ones_like(Te)[:, None], Sne/Rne))
         fz_super = np.cumprod(rate_ratio, axis=1)
         fz_super /= fz_super.sum(1)[:, None]
         
         # bundled stages can have very high values -- clip here
-        R = np.clip(R, 1e-25, 1) 
-        S = np.clip(S, 1e-25, 1)
+        Rne = np.clip(Rne, 1e-25, 1)
+        Sne = np.clip(Sne, 1e-25, 1)
 
         _superstages = np.r_[superstages, Z_imp+1]
 
@@ -509,13 +509,13 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
             x = rho
             axx.set_xlabel(rho_lbl)
 
-        axx.set_prop_cycle('color',cm.plasma(np.linspace(0,1,fz_full.shape[1])))
+        axx.set_prop_cycle('color', cm.plasma(np.linspace(0, 1, fz_full.shape[1])))
 
         css=0
         for cs in range(fz_full.shape[1]):
             l = axx.semilogy(x, fz_full[:,cs], ls='--')
             imax = np.argmax(fz_full[:,cs])
-            axx.text(np.max([0.1,x[imax]]), fz_full[imax,cs], cs,
+            axx.text(np.max([0.1, x[imax]]), fz_full[imax,cs], cs,
                      horizontalalignment='center', clip_on=True)
 
             if len(superstages) and cs in _superstages:
@@ -573,9 +573,16 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include
     -------
     Te : array (n_Te)
         Te grid on which atomic rates are given
-    S, R (,cx): arrays (n_ne,n_Te)
+    Sne, Rne (,cxne): arrays (n_ne,n_Te)
         atomic rates for effective ionization, radiative+dielectronic
-        recombination (+ charge exchange, if requested). All terms will be in units of :math:`s^{-1}`. 
+        recombination (+ charge exchange, if requested). 
+        All terms will be in units of :math:`s^{-1}`. 
+
+    Notes
+    -----
+        The nomenclature with 'ne' at the end of rate names
+        indicates that these are rates in units of :math:`m^3\cdot s^{-1}` multiplied by the
+        electron density 'ne' (hence, final units of :math:`s^{-1}`).
     '''
     
     if Te_eV is None:
@@ -596,18 +603,18 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include
     logne = np.log10(ne_cm3)
     logTe = np.log10(Te_eV)
 
-    S = interp_atom_prof(atom_data['scd'], logne, logTe, x_multiply=True)
-    R = interp_atom_prof(atom_data['acd'], logne, logTe, x_multiply=True)
+    Sne = interp_atom_prof(atom_data['scd'], logne, logTe, x_multiply=True)
+    Rne = interp_atom_prof(atom_data['acd'], logne, logTe, x_multiply=True)
     if include_cx:
         logTi = np.log10(Ti_eV) if Ti_eV is not None else logTe
         x,y,tab = atom_data['ccd']         
         # select appropriate number of charge states
         # this allows use of CCD files from higher-Z ions because of simple CX scaling
-        cx = interp_atom_prof((x,y,tab[:S.shape[1]]), logne, logTi, x_multiply=True)
+        cxne = interp_atom_prof((x,y,tab[:S.shape[1]]), logne, logTi, x_multiply=True)
     else:
-        cx = None
+        cxne = None
     
-    return Te_eV, S, R, cx
+    return Te_eV, Sne, Rne, cxne
 
 
 
@@ -665,25 +672,26 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.
 
     include_cx = False if not np.any(n0_by_ne) else True
 
-    Te, S, R, cx = get_cs_balance_terms(atom_data, _ne, _Te, include_cx=include_cx)
+    Te, Sne, Rne, cxne = get_cs_balance_terms(atom_data, _ne, _Te, include_cx=include_cx)
     
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
-        R += cx*_n0_by_ne
+        Rne += cxne*_n0_by_ne
         
     # Enable use of superstages
     if len(superstages):
-        _, R, S,_ = superstage_rates(R, S, superstages)
+        _, Rne, Sne, _ = superstage_rates(Rne, Sne, superstages)
 
     # numerical method that calculates also rate_coeffs
-    nion = R.shape[1]
+    nion = Rne.shape[1]
     fz  = np.zeros((Te.size,nion+1))
     rate_coeffs = np.zeros(Te.size)
 
     for it,t in enumerate(Te):
-        A = - np.diag(np.r_[S[it], 0] + np.r_[0, R[it]] + 1e6 / ne_tau) + np.diag(S[it], -1) + np.diag(R[it], 1)
+        A = - np.diag(np.r_[Sne[it], 0] + np.r_[0, Rne[it]] + 1e6 / ne_tau)\
+            + np.diag(Sne[it], -1) + np.diag(Rne[it], 1)
 
-        N,rate_coeffs[it] = null_space(A)
+        N, rate_coeffs[it] = null_space(A)
         fz[it] = N/np.sum(N)
 
  

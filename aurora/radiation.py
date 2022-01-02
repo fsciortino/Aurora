@@ -140,16 +140,16 @@ def compute_rad(imp, nz, ne, Te,
     if prad_flag:
 
         atom_data = atomic.get_atom_data(imp, files = {'plt': adas_files_sub.get('plt',None)})
-        pltt = atomic.interp_atom_prof(atom_data['plt'],logne,logTe) # W
+        pltne = atomic.interp_atom_prof(atom_data['plt'], logne, logTe, x_multiply=True) # W
 
         atom_data = atomic.get_atom_data(imp, files = {'prb': adas_files_sub.get('prb',None)})
-        prb = atomic.interp_atom_prof(atom_data['prb'],logne,logTe) # W
+        prbne = atomic.interp_atom_prof(atom_data['prb'], logne, logTe, x_multiply=True) # W
 
         # line radiation for each charge state
-        res['line_rad'] = np.maximum(nz[:,:-1] * pltt, 1e-60) # no line rad for fully stripped ion       
+        res['line_rad'] = np.maximum(nz[:,:-1] * pltne, 1e-60) # no line rad for fully stripped ion
 
         # total continuum radiation (NB: neutrals do not have continuum radiation)
-        res['cont_rad'] = nz[:,1:] * prb
+        res['cont_rad'] = nz[:,1:] * prbne
 
         # impurity brems (inaccurate Gaunt factor!) -- already included in 'cont_rad'
         res['brems'] = atomic.impurity_brems(nz, ne, Te)
@@ -177,7 +177,7 @@ def compute_rad(imp, nz, ne, Te,
                 atom_data = atomic.get_atom_data(imp, files = {'prc': adas_files_sub.get('prc',None)})
 
                 # prc has weak dependence on density, so no difference between using ni or ne
-                prc = atomic.interp_atom_prof(atom_data['prc'],logne,logTi,x_multiply=False) # W
+                prc = atomic.interp_atom_prof(atom_data['prc'],logne,logTi,x_multiply=False) # W.m^3
 
                 # broadcast n0 to dimensions (nt,nZ,nr):
                 res['thermal_cx_cont_rad'] = nz[:,1:] * n0[:,None] * prc
@@ -189,22 +189,22 @@ def compute_rad(imp, nz, ne, Te,
                        
     if sxr_flag: # SXR-filtered radiation (spectral range depends on filter used for files)
         atom_data = atomic.get_atom_data(imp, files = {'pls': adas_files_sub.get('pls',None)})
-        pls = atomic.interp_atom_prof(atom_data['pls'],logne,logTe) # W
+        plsne = atomic.interp_atom_prof(atom_data['pls'], logne, logTe, x_multiply=True) # W
 
         atom_data = atomic.get_atom_data(imp, files = {'prs': adas_files_sub.get('prs', None)})
-        prs = atomic.interp_atom_prof(atom_data['prs'],logne,logTe) # W
+        prsne = atomic.interp_atom_prof(atom_data['prs'], logne, logTe, x_multiply=True) # W
 
         # SXR line radiation for each charge state
-        res['sxr_line_rad'] = np.maximum(nz[:,:-1] * pls, 1e-60)
+        res['sxr_line_rad'] = np.maximum(nz[:,:-1] * plsne, 1e-60)
 
         # SXR continuum radiation for each charge state
-        res['sxr_cont_rad'] = nz[:,1:] * prs
+        res['sxr_cont_rad'] = nz[:,1:] * prsne
 
         try:
             # impurity bremsstrahlung in SXR range -- already included in 'sxr_cont_rad'
             atom_data = atomic.get_atom_data(imp, files = {'pbs': adas_files_sub.get('pbs',None)})
-            pbs = atomic.interp_atom_prof(atom_data['pbs'],logne,logTe) # W
-            res['sxr_brems'] = nz[:,1:] * pbs 
+            pbsne = atomic.interp_atom_prof(atom_data['pbs'], logne, logTe, x_multiply=True) # W
+            res['sxr_brems'] = nz[:,1:] * pbsne 
         except:
             # pbs file not available by default for this ion. Users may specify it in adas_files_sub
             pass
@@ -217,14 +217,14 @@ def compute_rad(imp, nz, ne, Te,
 
         atom_data = atomic.get_atom_data(imp, files = {'brs': adas_files_sub.get('brs',None)})
         x,y,tab = atom_data['brs']
-        brs = atomic.interp_atom_prof((x,y,tab.T),None,logTe) # W
+        _brsne = atomic.interp_atom_prof((x,y,tab.T), None, logTe, x_multiply=True) # W
 
         # interpolate on Z grid of impurity of interest
         logZ_rep = np.log10(np.arange(Z_imp)+1)
-        brs = interp1d(x, brs,axis=1,copy=False,assume_sorted=True)(logZ_rep)
+        brsne = interp1d(x, _brsne, axis=1, copy=False, assume_sorted=True)(logZ_rep)
 
         # Note: no spectral bremsstrahlung from neutral stage
-        res['spectral_brems'] = nz[:,1:] * brs
+        res['spectral_brems'] = nz[:,1:] * brsne
 
     return res
 
@@ -1001,13 +1001,15 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, ion_resolved=False, supe
                                                n0_by_ne=n0_cm3/ne_cm3, superstages=superstages)
     
 
-    # line radiation
+    # line radiation [W.cm^3]
     atom_data = atomic.get_atom_data(imp,{'pls' if sxr else 'plt': line_rad_file})
-    PLT= atomic.interp_atom_prof(atom_data['pls' if sxr else 'plt'], None, np.log10(Te_eV)) # line radiation [W.cm^3]
+    PLT= atomic.interp_atom_prof(atom_data['pls' if sxr else 'plt'],
+                                 None, np.log10(Te_eV), x_multiply=False)
 
-    # recombination and bremsstrahlung radiation
+    # recombination and bremsstrahlung radiation [W.cm^3]
     atom_data = atomic.get_atom_data(imp,{'prs' if sxr else 'prb': cont_rad_file})
-    PRB = atomic.interp_atom_prof(atom_data['prs' if sxr else 'prb'],None, np.log10(Te_eV)) # continuum radiation [W.cm^3]
+    PRB = atomic.interp_atom_prof(atom_data['prs' if sxr else 'prb'],
+                                  None, np.log10(Te_eV), x_multiply=False)
 
     # zero bremstrahlung of neutral stage
     PRB = np.hstack(( np.zeros((_Te.size,1)), PRB))
