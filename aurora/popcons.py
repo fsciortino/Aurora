@@ -18,7 +18,7 @@ class POPCON:
                  n_frac_edge=0.4, nalpha1=2, nalpha2=1.5,
                  jalpha1=2, jalpha2=1.5,
                  override=False, volavgcurr=False, maxit=150,
-                 relax=0.9, nmin_frac=0.05, nmax_frac=1, Ti_keV_min=1.,
+                 relax=0.9, Ti_keV_min=1.,
                  Ti_keV_max=30, M=50):
         '''Initialization of the POPCON class.
 
@@ -80,10 +80,6 @@ class POPCON:
             Maximum number of iterations for solver
         relax : float
             Relaxation parameter in power balance solver, e.g. 0.9
-        nmin_frac : float
-            Min density, as a fraction of n_GW
-        nmax_frac : float
-            Max density, as a fraction of n_GW
         Ti_keV_min : float
             Min temperature [keV]
         Ti_keV_max : float
@@ -129,8 +125,6 @@ class POPCON:
         self.volavgcurr = bool(volavgcurr)
         self.maxit      = int(maxit)
         self.relax      = float(relax)
-        self.nmin_frac  = float(nmin_frac)
-        self.nmax_frac  = float(nmax_frac)
         self.Ti_keV_min = float(Ti_keV_min)
         self.Ti_keV_max = float(Ti_keV_max)
         self.M          = int(M)
@@ -178,19 +172,14 @@ class POPCON:
 
         # set up list of Ti and n for which POPCON will evaluate power balance
         n_norm  = integrate.quad(self._nfun,0,1,args=(1))[0] # defined s.t. n_avg = n_peak*n_norm
-        self.n20_arr = np.linspace(self.nmin_frac*self.n_g/n_norm, self.nmax_frac*self.n_g/n_norm, self.M)
+        nmin_frac=0.05; nmax_frac=1  
+        self.n20_arr = np.linspace(nmin_frac*self.n_g/n_norm, nmax_frac*self.n_g/n_norm, self.M)
         self.T_keV_arr  = np.linspace(self.Ti_keV_min,self.Ti_keV_max,self.M)
 
-        NE,TE=np.meshgrid(self.n20_arr*1e14,self.T_keV_arr*1e3) 
-        # line and continuum radiation at all values of ne and Te
-        _line_rad, _cont_rad = aurora.get_cooling_factors(
-            self.imp,
-            NE.flatten(),
-            TE.flatten(),
-            plot=False)  # W.m^3
-        self.line_rad = np.reshape(_line_rad, (len(self.n20_arr),len(self.T_keV_arr)))
-        self.cont_rad = np.reshape(_cont_rad, (len(self.n20_arr),len(self.T_keV_arr)))
-                    
+        # line and continuum radiation at all values of Te (no dependence on ne) - W.m^3
+        line_rad, cont_rad = aurora.get_cooling_factors(self.imp, self.T_keV_arr*1e3, plot=False)
+        self.Lz = line_rad + cont_rad
+        
         print("\n### Solve power balance at each (n,T)")
         for i in np.arange(self.M): # T_i loop
             Ti_keV = self.T_keV_arr[i]
@@ -212,9 +201,6 @@ class POPCON:
                 _out = self._auxpowIt(n20, Ti_keV, Prad_norm, P_sync)
                 self.auxp[i,j],self.plmat[i,j],self.pamat[i,j], self.prmat[i,j],self.qpmat[i,j], self.pohmat[i,j] = _out
 
-                if i==20 and j==20:
-                    embed()
-                    
                 # L-H power threshold
                 self.flh[i,j]= (self.plmat[i,j]-self.prmat[i,j]-self.psmat[i,j]) / get_P_LH_threshold(n20, self.bs)
 
@@ -236,11 +222,11 @@ class POPCON:
                 if self.M <= 3:
                     print(f'For n20={n20:.2f}, Ti_keV={Ti_keV:.2f}')
                     print(f'P_aux={self.auxp[i,j]:.2f}, P_alpha={self.pamat[i,j]:.2f}, '+\
-                          'P_rad={self.prmat[i,j]:.2f}, P_sync={self.psmat[i,j]:.2f}, '+\
-                          'P_ohm={self.pohmat[i,j]:.2f}')
+                          f'P_rad={self.prmat[i,j]:.2f}, P_sync={self.psmat[i,j]:.2f}, '+\
+                          f'P_ohm={self.pohmat[i,j]:.2f}')
 
-                # progress bar for overview
-                ascii_progress_bar(i+1, b=self.M, mess='of POPCON map completed')
+            # progress bar for overview
+            ascii_progress_bar(i, b=self.M, mess='of POPCON map completed')
 
     def plot_contours(self):
         ''' Plot popcon contours. The `plot_fields' dictionary contains boolean flags for each of the allowed 
@@ -266,8 +252,8 @@ class POPCON:
         Pload_rad_levels = None
         betaN_levels = [3]
         
-        #Igshade = plt.contourf(xx, yy, np.transpose(self.qpmat),
-        #                      levels=[6000,10000], colors='r', alpha=0.25)
+        #Igshade = plt.contourf(xx, yy, np.transpose(self.detmat),
+        #                      levels=[1], colors='r', alpha=0.25)
         
         if self.plot_fields['Paux']: self._plot_single_contour(
                 ax, "$P_\mathrm{aux}$", xx, yy, self.auxp, 'r', Pauxlevels, 1.0, fmt='%1.0f')
@@ -315,7 +301,7 @@ class POPCON:
                 
                 plt.subplots_adjust(wspace=None, hspace=None)
                 
-                plt.title(r"$n_0/n_{GR} =$ %.1f, $T^0_\mathrm{keV} =$ %.0f" % (n20/get_n_GR(self.Ip, self.a), T_keV), pad=-100)
+                plt.title(r"$n_0/n_{GR} =$ %.1f, $T^0_\mathrm{keV} =$ %.0f" % (n20/get_n_GW(self.Ip, self.a), T_keV), pad=-100)
                 
                 rho = np.linspace(1e-10, 1, 100)
                 Prad = np.empty(len(rho))
@@ -338,7 +324,7 @@ class POPCON:
                 plt.xlim([0,1])
                 
                 if i_temp == 0:
-                    plt.ylabel(r"$P$ in MW/m$^3$")
+                    plt.ylabel(r"$P$ [MW/m$^3$]")
                 if i_dens == self.M-1:
                     plt.xlabel(r"$\rho$")
                 if i_dens == 0 and i_temp == 0:
@@ -377,7 +363,7 @@ class POPCON:
         self.Zeff = get_Zeff_simple(self.c_imp, self.Z_imp, self.c_He)
 
         # n_g, Greenwald density (10^20 m^-3)
-        self.n_g = get_n_GR(self.Ip, self.a)
+        self.n_g = get_n_GW(self.Ip, self.a)
 
         # q_a edge safety factor
         self.q_a = get_q_a(self.a, self.B0, self.kappa, self.R, self.Ip)
@@ -511,15 +497,8 @@ class POPCON:
     def _P_rad(self, rho, n20, Te_keV, c_imp, a, R):
         ''' Radiated power, sum of continuum (brems), line radiation and synchrotron radiation
         using ADAS rates. Units of :math:`MW/m$^3$`. '''
-        i_dens = np.argmin(np.abs(self.n20_arr - n20))
-        i_temp = np.argmin(np.abs(self.T_keV_arr - Te_keV))
-        line_rad = self.line_rad[i_temp, i_dens]
-        cont_rad = self.cont_rad[i_temp, i_dens]
-        
-        P_line = rho * line_rad/1e6 * (self._nfun(rho, n20)*1e20)**2 * c_imp
-        P_cont = rho * cont_rad/1e6 * (self._nfun(rho, n20)*1e20)**2 * c_imp
-
-        return P_line + P_cont # MW/m^3
+        Lz = self.Lz[np.argmin(np.abs(self.T_keV_arr - Te_keV))]
+        return rho * Lz/1e6 * (self._nfun(rho, n20)*1e20)**2 * c_imp # MW/m^3
 
     def _P_sync(self, rho, n20, Te_keV, B0, a, R):
         ''' Calculate synchrotron radiation, which does not scale with impurity density.
@@ -715,9 +694,10 @@ def get_Zeff(fz_imp, c_imp, c_He):
     Zvals = np.arange(fz_imp.shape[1])
     return (1 - c_He - c_imp) + 2. * c_He + np.sum((Zvals**2 - Zvals) * fz_imp[0,:]) * c_imp
 
-def get_n_GR(Ip, a):
-    ''' n_GR, Greenwald density in 10^20/m^3 '''
+def get_n_GW(Ip, a):
+    ''' n_GW, Greenwald density in 10^20/m^3 '''
     return Ip/(np.pi*a**2)
+
 
 def get_q_a(a, B0, kappa, R, Ip):
     ''' Edge safety factor. TODO: allow one to extract this from geqdsk data.
@@ -750,27 +730,149 @@ def get_IPB98y2(Ip, B0, P, n20, M_i, R, a, kappa):
     epsilon = a/R
     return 0.0562 * Ip**0.93 * B0**0.15 * P**(-0.69) * n19**0.41 * M_i**0.19 * R**1.97 * epsilon**0.58 * kappa**0.78
     
-def get_reinke_fz(B0, f_LH, qstar, R, a, f_sep, f_gw, kappa, lhat, m_L):
-    '''Divertor impurity fraction predicted to lead to detachment from Eq. 10 in
-    M.L. Reinke 2017 Nucl. Fusion 57 034004
+def get_reinke_div_detach_cimp(B0, a, R, f_LH, f_sep, f_gw, kappa, lhat=4.33):
+    '''Divertor impurity fraction predicted to lead to detachment from Eq. 10 in [1]_.
 
-    Note
-    ----
-    In Reinke's paper, `fz` stands for an impurity concentration, rather than charge state fractional abundances.
+    Parameters
+    ----------
+    B0 : float
+        Toroidal magnetic field [T]
+    a : float
+        Minor radius [m]
+    R : float
+        Major radius [m]
+    f_LH : float
+        Fraction of L-H transition power
+    f_sep : float
+        Separatrix density ratio of volume-averaged density, n_SEP/<n>.
+    f_gw : float
+        Greenwald density
+    kappa : float
+        Elongation
+    lhat : float
+        Connection length multiplier, approximating effect of advanced divertor configurations.
+        Default is 4.33, based on estimates from [2]_.
+
+    Returns
+    -------
+    float : 
+        Divertor impurity concentration predicted to lead to detachment.
+
+    Notes
+    -----
+    In Reinke's paper, `fz` stands for an impurity concentration, 
+    rather than charge state fractional abundances.
     Here, to avoid confusion, we use c_z rather than f_z for concentrations.
+
+    References
+    ---------
+    .. [1] M L Reinke 2017 Nucl. Fusion 57 034004
+
+    .. [2] Post D. et al 1995 J. Nucl. Mater. 220-2 1014
     '''
-    qstar = get_qstar(a, kappa, B0, R, Ip)
+    qstar = get_qstar(a, R, kappa, B0, Ip)
+
+    # use a dummy Tu and then divide by it, as in Reinke's paper
+    Tu = 100.
+    m_L = get_Lint(imp, Tu, Tt=0)/Tu
+
+    # aspect ratio
     epsilon = a/R
+
     return 0.014 * (B0**0.88 * f_LH**1.14 * qstar**0.32 * R**1.33 * epsilon**0.59)/\
         (f_sep**2 * f_gw**1.18 * (1 + kappa**2)**0.64 * lhat**0.86 * m_L)
 
-def get_qstar(a, kappa, B0, R, Ip):
-    '''Definition of qstar, see near Eq. 3 in 
-    M.L. Reinke 2017 Nucl. Fusion 57 034004
+def get_qstar(a, R, kappa, B0, Ip):
+    '''Definition of qstar, see near Eq. 3 in [1]_.
+
+    Parameters
+    ----------
+    a : float
+        Minor radius [m]
+    R : float
+        Major radius [m]
+    kappa : float
+        Elongation
+    B0 : float
+        Toroidal magnetic field [T]
+    Ip : float
+        Plasma current [MA]
+
+    Returns
+    -------
+    float:
+        qstar value, as defined in [1]_.    
+
+    References
+    ---------
+    .. [1] M L Reinke 2017 Nucl. Fusion 57 034004
     '''
     return np.pi*a**2 * (1+kappa**2)*B0/(constants.mu_0 * R * Ip)
+
+def get_Lint(imp, Tu=500., Tt=1e-10, ne_tau=np.inf):
+    '''Compute :math:`L_{INT}` integral used in [1]_ and closely related to Eq. 1 in [2]_.
+
+    Parameters
+    ----------
+    imp : str
+        Ion atomic symbol
+    Tu : float
+        Upstream electron temperature (upper limit of integral)
+    Tt : float
+        Target electron temperature (lower limit of integral).
+        Default is 0 (fully detached divertor).
+    ne_tau : float, opt
+        Value of electron density :math:`\times` particle residence time in :math:`m^{-3}\cdot s`. 
+        This is a scalar value that can be used to model the effect of transport on 
+        ionization equilibrium. Setting ne_tau=np.inf (default) corresponds to no transport. 
+
+    Returns
+    -------
+    1D array :
+        Evaluated :math:`L_{INT}` integral as a function of Tu.  
+
+    References
+    ---------
+    .. [1] M L Reinke 2017 Nucl. Fusion 57 034004
     
-def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = ' ', printEnd = "\r"):
+    .. [2] R J Goldston et al 2017 Plasma Phys. Control. Fusion 59 055015
+
+    '''
+    Te_eV_vec = np.linspace(Tt, Tu, 1000)
+    
+    # line and continuum radiation at all values of ne and Te - W.m^3
+    line_rad, cont_rad = aurora.get_cooling_factors(imp, Te_eV_vec, ne_tau=ne_tau, plot=False)
+    Lz = line_rad + cont_rad
+
+    # integral
+    return Te_eV_vec, integrate.cumtrapz(Lz * np.sqrt(Te_eV_vec), Te_eV_vec, initial=0.0)
+
+def plot_Lint(imp):
+    '''Assess dependence of Lint on Tu and ne*tau, as in Fig. 2 of [1]_.
+
+    Parameters
+    ----------
+    imp : str
+        Impurity atomic symbol
+
+    References
+    ----------
+    .. [1] M L Reinke 2017 Nucl. Fusion 57 034004
+    '''
+
+    Tu, vals_01 = get_Lint(imp, Tu=500., Tt=1e-10, ne_tau=1e22)
+    Tu, vals_1 = get_Lint(imp, Tu=500., Tt=1e-10, ne_tau=1e23)
+    Tu, vals_10 = get_Lint(imp, Tu=500., Tt=1e-10, ne_tau=1e24)
+
+    fig, ax = plt.subplots()
+    ax.plot(Tu, vals_01/1e-30, 'r', label=r'$n_e\tau=10$^{22}$ [m$^3$ s]')
+    ax.plot(Tu, vals_1/1e-30, 'b', label=r'$n_e\tau=10$^{23}$ [m$^3$ s]')
+    ax.plot(Tu, vals_10/1e-30, 'g', label=r'$n_e\tau=10$^{24}$ [m$^3$ s]')
+    ax.set_ylabel(r'$L_{INT}$ [10$^{-30}$ [W$\cdot$m$^3$ eV$^{3/2}$]')
+    ax.set_xlabel(r'$T_u$ [eV]')
+    
+def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1,
+                     length = 100, fill = ' ', printEnd = "\r"):
     """
     Call in a loop to create terminal progress bar
     @params:
@@ -905,9 +1007,9 @@ if __name__=='__main__':
     popcon.H=1.
     popcon.M_i=2.5
     popcon.c_He=0.02
-    popcon.imp='W' #'Xe'
-    popcon.c_imp=1e-3 # 1e-5 #0.0005
-    popcon.Z_imp=50 #42
+    popcon.imp='Xe'
+    popcon.c_imp=0.0005
+    popcon.Z_imp=42
     popcon.f_LH=1.0
     popcon.fixed_quantity='P_SOL'
     popcon.Psol_target=20
@@ -916,13 +1018,11 @@ if __name__=='__main__':
     popcon.T_edge=0.1
     popcon.Talpha1=2.
     popcon.Talpha2=1.5
-    popcon.Ti_keV_min=1.
+    popcon.Ti_keV_min=2.
     popcon.Ti_keV_max=30      
     popcon.n_frac_edge=0.4    
     popcon.nalpha1=2
     popcon.nalpha2=1.5
-    popcon.nmin_frac=0.05
-    popcon.nmax_frac=1  
     popcon.jalpha1=2
     popcon.jalpha2=1.5
 
@@ -931,7 +1031,7 @@ if __name__=='__main__':
     popcon.volavgcurr=True
     popcon.maxit=150
     popcon.relax=0.9
-    popcon.M=50
+    popcon.M=3
 
     # plotting choices
     popcon.plot_fields['Psol']  = not (popcon.fixed_quantity == "P_SOL")
@@ -944,5 +1044,6 @@ if __name__=='__main__':
     # plot result
     popcon.plot_contours()
 
-    # use only if M is small...
-    #popcon.plot_profiles()
+    if popcon.M<=3:
+        # plot profiles for inspection or close examination
+        popcon.plot_profiles()

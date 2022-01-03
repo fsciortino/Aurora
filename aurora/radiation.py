@@ -933,7 +933,8 @@ def get_local_spectrum(adf15_file, ion, ne_cm3, Te_eV, ion_exc_rec_dens,
 
 
 
-def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, ion_resolved=False, superstages = [],
+def get_cooling_factors(imp, Te_eV, ne_cm3=None, n0_cm3=0.0,
+                        ion_resolved=False, superstages = [], ne_tau=np.inf,
                         line_rad_file=None, cont_rad_file=None, sxr=False, plot=True, ax=None):
     '''Calculate cooling coefficients for the given fractional abundances and kinetic profiles.
 
@@ -941,21 +942,29 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, ion_resolved=False, supe
     ----------
     imp : str
         Atomic symbol of ion of interest
-    ne_cm3 : 1D array
-        Electron density [:math:`cm^{-3}`], used to find charge state fractions at ionization equilibrium.
     Te_eV : 1D array
         Electron temperature [:math:`eV`] at which cooling factors should be obtained. 
+    ne_cm3 : 1D array
+        Electron density [:math:`cm^{-3}`]. 
+        If provided, this is used to find charge state fractions at ionization equilibrium; 
+        if not provided, fractional abundances are assumed to be independent of electron density.
     n0_cm3 : 1D array or float
         Background H/D/T neutral density [:math:`cm^{-3}`] used to account for charge exchange 
         when calculating ionization equilibrium. 
         If left to 0, charge exchange effects are not included.
     ion_resolved : bool
-        If True, cooling factors are returned for each charge state. If False, they are summed over charge states.
-        The latter option is useful for modeling where charge states are assumed to be in ionization equilibrium 
-        (no transport). Default is False.
+        If True, cooling factors are returned for each charge state. 
+        If False, they are summed over charge states.
+        The latter option is useful for modeling where charge states are assumed to be
+        in ionization equilibrium (no transport). Default is False.
     superstages : list or 1D array
-        List of superstages to consider. An empty list (default) corresponds to the inclusion of all charge states.
-        Note that when ion_resolved=False, cooling coefficients are independent of whether superstages are being used or not.
+        List of superstages to consider. An empty list (default) corresponds to the inclusion
+        of all charge states. Note that when ion_resolved=False, cooling coefficients are
+        independent of whether superstages are being used or not.
+    ne_tau : float, opt
+        Value of electron density :math:`\times` particle residence time in :math:`m^{-3}\cdot s`. 
+        This is a scalar value that can be used to model the effect of transport on 
+        ionization equilibrium. Setting ne_tau=np.inf (default) corresponds to no transport. 
     line_rad_file : str or None
         Location of ADAS ADF11 file containing line radiation data. This can be a PLT (unfiltered) or 
         PLS (filtered) file. If left to None, the default file given in :py:func:`~aurora.adas_files.adas_files_dict` 
@@ -986,19 +995,20 @@ def get_cooling_factors(imp, ne_cm3, Te_eV, n0_cm3=0.0, ion_resolved=False, supe
 
     '''
     files = ['scd','acd']
+    if ne_cm3 is None: ne_cm3 = np.ones_like(Te_eV)*1e14 # dummy
     if n0_cm3 != 0.0: files+=['ccd']
     atom_data_eq = atomic.get_atom_data(imp,files)
 
     if superstages is None:
         superstages = []
 
-    _Te, fz = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV, plot=False,
-                                           n0_by_ne=n0_cm3/ne_cm3)
+    _Te, fz = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV,
+                                         n0_by_ne=n0_cm3/ne_cm3, ne_tau=ne_tau, plot=False)
 
     if superstages:
         fz_full = copy.deepcopy(fz)
-        _Te, fz = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV, plot=False,
-                                               n0_by_ne=n0_cm3/ne_cm3, superstages=superstages)
+        _Te, fz = atomic.get_frac_abundances(atom_data_eq, ne_cm3, Te_eV, n0_by_ne=n0_cm3/ne_cm3,
+                                             superstages=superstages, ne_tau=ne_tau, plot=False)
     
 
     # line radiation [W.cm^3]
