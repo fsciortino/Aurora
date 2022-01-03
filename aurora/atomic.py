@@ -434,9 +434,9 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
         Indices of charge states of chosen ion that should be included. If left empty, all ion stages
         are included. If only some indices are given, these are modeled as "superstages".
     ne_tau : float, opt
-        Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
-        This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
-        Setting ne_tau=np.inf (default) corresponds to no effect from transport. 
+        Value of electron density :math:`\times` particle residence time in :math:`m^{-3}\cdot s`. 
+        This is a scalar value that can be used to model the effect of transport on 
+        ionization equilibrium. Setting ne_tau=np.inf (default) corresponds to no transport. 
     plot : bool, optional
         Show fractional abundances as a function of ne,Te profiles parameterization.
     ax : matplotlib.pyplot Axes instance
@@ -472,10 +472,9 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
         # Get an effective recombination rate by summing radiative & CX recombination rates
         Rne += n0_by_ne[:,None]*cxne
 
-    rate_ratio = np.hstack((np.ones_like(Te)[:, None], Sne/Rne))
-    fz_full = np.cumprod(rate_ratio, axis=1)
-    fz_full /= fz_full.sum(1)[:, None]
-    
+    # fractional abundances for all charge states
+    fz_full = _calc_fz(Te, Sne, Rne, ne_tau=ne_tau, compute_rate_coeffs=False)
+
     # Enable use of superstages
     if len(superstages):
         
@@ -483,14 +482,9 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
         superstages, Rne, Sne, _ = superstage_rates(Rne.T[None], Sne.T[None], superstages)
         Rne = Rne[0].T; Sne = Sne[0].T
 
-        rate_ratio = np.hstack((np.ones_like(Te)[:, None], Sne/Rne))
-        fz_super = np.cumprod(rate_ratio, axis=1)
-        fz_super /= fz_super.sum(1)[:, None]
-        
-        # bundled stages can have very high values -- clip here
-        Rne = np.clip(Rne, 1e-25, 1)
-        Sne = np.clip(Sne, 1e-25, 1)
-
+        # fractional abundances for all charge states
+        fz_super = _calc_fz(Te, Sne, Rne, ne_tau=ne_tau, compute_rate_coeffs=False)
+                
         _superstages = np.r_[superstages, Z_imp+1]
 
     if plot:
@@ -546,9 +540,6 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
             fz_super = fz_super.reshape(*np.array(ne_cm3).shape, fz_super.shape[1])
     
     return [Te,] + [fz_super if len(superstages) else fz_full,]
- 
-
-
 
 
 
@@ -682,19 +673,9 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.
     if len(superstages):
         _, Rne, Sne, _ = superstage_rates(Rne, Sne, superstages)
 
-    # numerical method that calculates also rate_coeffs
-    nion = Rne.shape[1]
-    fz  = np.zeros((Te.size,nion+1))
-    rate_coeffs = np.zeros(Te.size)
-
-    for it,t in enumerate(Te):
-        A = - np.diag(np.r_[Sne[it], 0] + np.r_[0, Rne[it]] + 1e6 / ne_tau)\
-            + np.diag(Sne[it], -1) + np.diag(Rne[it], 1)
-
-        N, rate_coeffs[it] = null_space(A)
-        fz[it] = N/np.sum(N)
-
- 
+    # fractional abundances for all charge states
+    fz, rate_coeffs = _calc_fz(Te, Sne, Rne, ne_tau=ne_tau, compute_rate_coeffs=True)
+     
     if np.size(ne_cm3)>1:
         # re-structure to original array dimensions
         Te = Te.reshape(np.shape(ne_cm3))
@@ -713,6 +694,33 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.
         ax.set_ylabel(r'$\tau_\mathrm{relax}$ [ms]')
         
     return Te, fz, rate_coeffs
+
+def _calc_fz(Te, Sne, Rne, ne_tau=np.inf, compute_rate_coeffs=False):
+    '''Calculate fractional abundances given effective atomic rates.
+    Allows for finite values of :math:`$n_e$ $\tau$' to model out-of-equilibrium
+    ionization balance.
+    '''        
+    Z_imp = Sne.shape[1]
+
+    if compute_rate_coeffs or np.isfinite(ne_tau):
+        # numerical method that calculates also rate_coeffs
+        fz  = np.zeros((Te.size, Z_imp+1))
+        rate_coeffs = np.zeros(Te.size)
+        print(Sne)
+        for it,t in enumerate(Te):
+            A = - np.diag(np.r_[Sne[it], 0] + np.r_[0, Rne[it]] + 1e6 / ne_tau)\
+                + np.diag(Sne[it], -1) + np.diag(Rne[it], 1)
+            
+            N, rate_coeffs[it] = null_space(A)
+            fz[it] = N/np.sum(N)
+
+    else:
+        rate_ratio = np.hstack((np.ones_like(Te)[:, None], Sne/Rne))
+        fz = np.cumprod(rate_ratio, axis=1)
+        fz /= fz.sum(1)[:, None]
+
+    return [fz, rate_coeffs] if compute_rate_coeffs else fz
+
 
 class CartesianGrid:
     """Fast linear interpolation for 1D and 2D vector data on equally spaced grids.
@@ -879,9 +887,6 @@ def interp_atom_prof(atom_table, xprof, yprof, log_val=False, x_multiply=True):
         np.exp(interp_vals, out=interp_vals)
 
     return interp_vals
-
-
-
 
 
 def gff_mean(Z,Te):

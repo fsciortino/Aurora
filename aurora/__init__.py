@@ -26,4 +26,6 @@ from .synth_diags import *
 from .solps import *
 from .kn1d import *
 
+from .popcons import *
+
 aurora_dir = os.path.dirname(os.path.abspath(__file__))
