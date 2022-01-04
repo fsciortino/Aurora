@@ -19,6 +19,10 @@ Aurora: a modern toolbox for impurity transport, neutrals and radiation modeling
 .. image:: https://anaconda.org/conda-forge/aurorafusion/badges/downloads.svg   
     :target: https://anaconda.org/conda-forge/aurorafusion
 
+[![PyPI license](https://img.shields.io/pypi/l/ansicolortags.svg)](https://pypi.python.org/pypi/ansicolortags/)
+
+[![PyPi version](https://badgen.net/pypi/v/pip/)](https://pypi.com/project/pip)
+
 Aurora is a package to simulate heavy-ion transportm neutrals and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model, thoroughly benchmarked with the widely-adopted STRAHL code. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. A simple interface to atomic data for fusion plasmas makes it a convenient tool for spectroscopy and integrated modeling. Aurora's code is mostly written in Python 3 and Fortran 90. An experimental Julia interface has also been added. 
 
 Documentation is available at https://aurora-fusion.readthedocs.io.
