@@ -553,7 +553,7 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
 
 
 def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include_cx=True):
-    '''Get S, R and cx rates on the same logTe grid. 
+    '''Get S*ne, R*ne and cx*ne rates on the same logTe grid. 
     
     Parameters
     ----------
@@ -610,7 +610,7 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include
         x,y,tab = atom_data['ccd']         
         # select appropriate number of charge states
         # this allows use of CCD files from higher-Z ions because of simple CX scaling
-        cxne = interp_atom_prof((x,y,tab[:S.shape[1]]), logne, logTi, x_multiply=True)
+        cxne = interp_atom_prof((x,y,tab[:Sne.shape[1]]), logne, logTi, x_multiply=True)
     else:
         cxne = None
     

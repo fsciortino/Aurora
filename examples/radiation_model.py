@@ -7,7 +7,7 @@ It is recommended to run this in IPython.
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-from omfit_classes import omfit_eqdsk, omfit_gapy
+from omfit_classes import omfit_eqdsk
 import sys, os
 from scipy.interpolate import interp1d
 
@@ -23,14 +23,21 @@ except:
 # Use gfile and statefile in local directory:
 examples_dir = os.path.dirname(os.path.abspath(__file__))
 geqdsk = omfit_eqdsk.OMFITgeqdsk(examples_dir+'/example.gfile')
-inputgacode = omfit_gapy.OMFITgacode(examples_dir+'/example.input.gacode')
 
 # save kinetic profiles on a rhop (sqrt of norm. pol. flux) grid
+# parameterization f=(f_center-f_edge)*(1-rhop**alpha1)**alpha2 + f_edge
+T_core = 5e3  # eV
+T_edge = 100  # eV
+T_alpha1 = 2.
+T_alpha2 = 1.5
+n_core = 1e14  # cm^-3
+n_edge = 0.4e14  # cm^-3
+n_alpha1 = 2
+n_alpha2 = 0.5
 
-rhop = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
-ne_cm3 = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
-Te_eV = inputgacode['Te']*1e3  # keV --> eV
-
+rhop = np.linspace(0, 1, 100)
+ne_cm3 = (n_core - n_edge)*(1-rhop**n_alpha1)**n_alpha2 + n_edge
+Te_eV = (T_core - T_edge)*(1-rhop**T_alpha1)**T_alpha2 + T_edge
 
 # choice of ion and fractional abundance wrt electron density:
 ion = 'Ar'

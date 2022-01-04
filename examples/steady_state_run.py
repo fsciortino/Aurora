@@ -7,7 +7,7 @@ It is recommended to run this in IPython.
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-from omfit_classes import omfit_eqdsk, omfit_gapy
+from omfit_classes import omfit_eqdsk
 import sys, os
 from scipy.interpolate import interp1d
 import copy
@@ -22,13 +22,22 @@ namelist = aurora.default_nml.load_default_namelist()
 # Use gfile and statefile in local directory:
 examples_dir = os.path.dirname(os.path.abspath(__file__))
 geqdsk = omfit_eqdsk.OMFITgeqdsk(examples_dir+'/example.gfile')
-inputgacode = omfit_gapy.OMFITgacode(examples_dir+'/example.input.gacode')
 
 # save kinetic profiles on a rhop (sqrt of norm. pol. flux) grid
+# parameterization f=(f_center-f_edge)*(1-rhop**alpha1)**alpha2 + f_edge
 kp = namelist['kin_profs']
-rhop = kp['Te']['rhop'] = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
-ne = kp['ne']['vals'] = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
-Te = kp['Te']['vals'] = inputgacode['Te']*1e3  # keV --> eV
+T_core = 5e3  # eV
+T_edge = 100  # eV
+T_alpha1 = 2.
+T_alpha2 = 1.5
+n_core = 1e14  # cm^-3
+n_edge = 0.4e14  # cm^-3
+n_alpha1 = 2
+n_alpha2 = 0.5
+
+rhop = kp['Te']['rhop'] = kp['ne']['rhop'] = np.linspace(0, 1, 100)
+ne = kp['ne']['vals'] = (n_core - n_edge)*(1-rhop**n_alpha1)**n_alpha2 + n_edge
+Te = kp['Te']['vals'] = (T_core - T_edge)*(1-rhop**T_alpha1)**T_alpha2 + T_edge
 
 # set impurity species and sources rate to 0
 imp = namelist['imp'] = 'Ar'

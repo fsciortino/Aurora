@@ -7,11 +7,11 @@ It is recommended to run this in IPython.
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-from omfit_classes import omfit_eqdsk, omfit_gapy
+from omfit_classes import omfit_eqdsk
 import scipy,sys,os
 import time
 from scipy.interpolate import interp1d
-plt.style.use('/home/sciortino/SPARC/sparc_plots.mplstyle')
+
 # Make sure that package home is added to sys.path
 sys.path.append('../')
 import aurora
@@ -23,12 +23,22 @@ kp = namelist['kin_profs']
 # Use gfile and statefile in local directory:
 examples_dir = os.path.dirname(os.path.abspath(__file__))
 geqdsk = omfit_eqdsk.OMFITgeqdsk(examples_dir+'/example.gfile')
-inputgacode = omfit_gapy.OMFITgacode(examples_dir+'/example.input.gacode')
 
-# transform rho_phi (=sqrt toroidal flux) into rho_psi (=sqrt poloidal flux) and save kinetic profiles
-rhop = kp['Te']['rhop'] = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
-kp['ne']['vals'] = inputgacode['ne'][None,:]*1e13 # 1e19 m^-3 --> cm^-3
-kp['Te']['vals'] = inputgacode['Te'][None,:]*1e3  # keV --> eV
+# save kinetic profiles on a rhop (sqrt of norm. pol. flux) grid
+# parameterization f=(f_center-f_edge)*(1-rhop**alpha1)**alpha2 + f_edge
+kp = namelist['kin_profs']
+T_core = 5e3 # eV
+T_edge = 100 # eV
+T_alpha1 = 2.
+T_alpha2 = 1.5
+n_core = 1e14 # cm^-3
+n_edge = 0.4e14 # cm^-3
+n_alpha1 = 2
+n_alpha2 = 0.5
+                 
+rhop = kp['Te']['rhop'] = kp['ne']['rhop'] = np.linspace(0, 1, 100)
+ne_cm3 = kp['ne']['vals'] = (n_core - n_edge)*(1-rhop**n_alpha1)**n_alpha2 + n_edge
+Te_eV = kp['Te']['vals'] = (T_core - T_edge)*(1-rhop**T_alpha1)**T_alpha2 + T_edge
 
 # set impurity species and sources rate
 imp = namelist['imp'] = 'F' #'Ar'
@@ -40,7 +50,7 @@ asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
 # plot normalized ionization frequency for the last time point, only within LCFS:
 rhop_in = asim.rhop_grid[asim.rhop_grid<1.0]
-S_z = asim.S_rates[asim.rhop_grid<1.0,:,-1] # take last time point
+Sne_z = asim.Sne_rates[asim.rhop_grid<1.0,:,-1] # take last time point
 q_prof = interp1d(geqdsk['AuxQuantities']['RHOp'], geqdsk['QPSI'])(rhop_in)
 Rhfs,Rlfs = aurora.grids_utils.get_HFS_LFS(geqdsk, rho_pol=rhop_in)
 R_prof = (Rhfs+Rlfs)/2.   # take as average of flux surface
@@ -49,22 +59,17 @@ Ti_prof = asim.Te[-1, asim.rhop_grid<1.0] # use Ti=Te, only last time point
 
 # inverse aspect ratio profile
 eps_prof = (Rlfs-geqdsk['RMAXIS'])/geqdsk['RMAXIS'] # use LFS radius for considerations on trapped particles
-nu_ioniz_star = aurora.atomic.plot_norm_ion_freq( S_z, q_prof, R_prof, asim.A_imp, Ti_prof,
+nu_ioniz_star = aurora.atomic.plot_norm_ion_freq( Sne_z, q_prof, R_prof, asim.A_imp, Ti_prof,
                                                       rhop=rhop_in, plot=True, eps_prof=eps_prof)
-
-
-# get average over charge states using fractional abundances in ionization equilibrium (no transport)
-ne_avg = np.mean(kp['ne']['vals'],axis=0) # average over time
-Te_avg = np.mean(kp['Te']['vals'],axis=0) # assume on the same radial basis as ne_avg
 
 # get fractional abundances on ne (cm^-3) and Te (eV) grid
 atom_data = aurora.get_atom_data(imp,['acd','scd'])
-_Te, fz = aurora.atomic.get_frac_abundances(atom_data, ne_avg, Te_avg, rho=rhop)
+_Te, fz = aurora.atomic.get_frac_abundances(atom_data, ne_cm3, Te_eV, rho=rhop)
 
-fz_profs = np.zeros_like(S_z)
-for cs in np.arange(S_z.shape[1]):
+fz_profs = np.zeros_like(Sne_z)
+for cs in np.arange(Sne_z.shape[1]):
     fz_profs[:,cs] = interp1d(rhop, fz[:,cs])(rhop_in)
 
-nu_ioniz_star = aurora.atomic.plot_norm_ion_freq(S_z, q_prof, R_prof, asim.A_imp, Ti_prof,
+nu_ioniz_star = aurora.atomic.plot_norm_ion_freq(Sne_z, q_prof, R_prof, asim.A_imp, Ti_prof,
                                                  nz_profs=fz_profs, rhop=rhop_in, plot=True,
                                                  eps_prof=eps_prof)

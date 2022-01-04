@@ -7,8 +7,8 @@ It is recommended to run this in IPython.
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-from omfit_classes import omfit_gapy
-import scipy,sys,os
+import sys
+import os
 import time
 from scipy.interpolate import interp1d
 from matplotlib import cm
@@ -17,10 +17,8 @@ from matplotlib import cm
 sys.path.append('../')
 import aurora
 
-try: # pass any argument via the command line to show plots
-    plot = len(sys.argv)>1
-except:
-    plot = False
+# pass any argument via the command line to show plots
+plot = len(sys.argv)>1
 
 ion = 'Al'
 

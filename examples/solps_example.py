@@ -25,10 +25,14 @@ so.plot2d_b2(so.data('ne'), ax=ax[0], scale='log', label=r'$n_e$ [$m^{-3}$]')
 so.plot2d_b2(so.data('te'), ax=ax[1], scale='linear', label=r'$T_e$ [eV]')
 
 
-# if EIRENE data files (e.g. fort.44, .46, etc.) are available, one can plot EIRENE results
-# on the original EIRENE grid. SOLPS results also include EIRENE outputs on B2 grid:
-fig,axs = plt.subplots(1,2, figsize=(10,6),sharex=True) 
-so.plot2d_eirene(so.fort46['pdena'][:,0]*1e6, scale='log', label=r'$n_n$ [$m^{-3}$]', ax=axs[0])
-so.plot2d_b2(so.fort44['dab2'][:,:,0].T, label=r'$n_n$ [$m^{-3}$]', ax=axs[1])
-plt.tight_layout()
+if hasattr(so, 'fort46') and hasattr(so, 'fort44'):
+    # if EIRENE data files (e.g. fort.44, .46, etc.) are available,
+    # one can plot EIRENE results on the original EIRENE grid.
+    # SOLPS results also include EIRENE outputs on B2 grid
+    fig,axs = plt.subplots(1,2, figsize=(10,6),sharex=True) 
+    so.plot2d_eirene(so.fort46['pdena'][:,0]*1e6, scale='log',
+                     label=r'$n_n$ [$m^{-3}$]', ax=axs[0])
+    so.plot2d_b2(so.fort44['dab2'][:,:,0].T,
+                 label=r'$n_n$ [$m^{-3}$]', ax=axs[1])
+    plt.tight_layout()
 

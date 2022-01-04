@@ -10,9 +10,8 @@ jmcclena and sciortino, Nov 2020
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ion()
-from omfit_classes import omfit_eqdsk, omfit_gapy
+from omfit_classes import omfit_eqdsk
 import sys, copy, os
-from scipy.interpolate import interp1d
 
 # Make sure that package home is added to sys.path
 sys.path.append('../')
@@ -60,13 +59,22 @@ namelist = aurora.default_nml.load_default_namelist()
 # Use gfile and statefile in local directory:
 examples_dir = os.path.dirname(os.path.abspath(__file__))
 geqdsk = omfit_eqdsk.OMFITgeqdsk(examples_dir+'/example.gfile')
-inputgacode = omfit_gapy.OMFITgacode(examples_dir+'/example.input.gacode')
 
 # save kinetic profiles on a rhop (sqrt of norm. pol. flux) grid
+# parameterization f=(f_center-f_edge)*(1-rhop**alpha1)**alpha2 + f_edge
 kp = namelist['kin_profs']
-kp['Te']['rhop'] = rhop = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
-kp['ne']['vals'] = ne_cm3 = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
-kp['Te']['vals'] = Te_eV = inputgacode['Te']*1e3  # keV --> eV
+T_core = 5e3  # eV
+T_edge = 100  # eV
+T_alpha1 = 2.
+T_alpha2 = 1.5
+n_core = 1e14  # cm^-3
+n_edge = 0.4e14  # cm^-3
+n_alpha1 = 2
+n_alpha2 = 0.5
+
+rhop = kp['Te']['rhop'] = kp['ne']['rhop'] = np.linspace(0, 1, 100)
+ne_cm3 = kp['ne']['vals'] = (n_core - n_edge)*(1-rhop**n_alpha1)**n_alpha2 + n_edge
+Te_eV = kp['Te']['vals'] = (T_core - T_edge)*(1-rhop**T_alpha1)**T_alpha2 + T_edge
 nd_cm3 = copy.deepcopy(ne_cm3)
 
 ################## Simulation time steps and duration settings ##################
@@ -90,22 +98,13 @@ namelist['timing'] = {'dt_increase': np.array([1., 1.   ]),
 # set impurity species and sources rate
 imp = namelist['imp'] = 'Ar'
 
-'''
-# provide impurity neutral sources on explicit radial and time grids
+# provide explicit impurity neutral sources only as a function of time
+namelist['source_type'] = 'arbitrary_2d_source'
 namelist['explicit_source_time'] = np.linspace(0.,namelist['timing']['times'][-1]*n_rep,99)
 namelist['explicit_source_rhop'] = np.linspace(0,1.3,101)
+time_decay = 1e10 * np.exp(- namelist['explicit_source_time']/0.02)  # decay over 20ms time scale
 gaussian_rhop = 1e9 * np.exp(- (namelist['explicit_source_rhop']-0.5)**2/(2*0.1**2))
-exp_time = np.exp(- namelist['explicit_source_time']/0.02)  # decay over 20ms time scale
-namelist['explicit_source_vals'] = gaussian_rhop[None,:]*exp_time[:,None]
-'''
-
-# provide explicit impurity neutral sources only as a function of time; radial distribution defined by source_width_in/out
-namelist['explicit_source_time'] = np.linspace(0.,namelist['timing']['times'][-1]*n_rep,99)
-namelist['explicit_source_vals'] = 1e10 * np.exp(- namelist['explicit_source_time']/0.02)  # decay over 20ms time scale
-namelist['source_width_in'] = 1.0
-namelist['source_width_out'] = 5.0
-namelist['source_cm_out_lcfs'] = -18.0 # cm inside of LCFS
-
+namelist['explicit_source_vals'] = gaussian_rhop[None,:] * decay[:,None]
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -114,7 +113,7 @@ asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 fig,ax = plt.subplots(num='Impurity neutral source')
 ax.contourf(asim.rhop_grid,
             asim.time_grid,
-            asim.source_rad_prof.T)
+            asim.src_core.T)
 ax.set_xlabel(r'$\rho_p$')
 ax.set_ylabel('time [s]')
 
