@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath('../aurora'))
 # -- Project information -----------------------------------------------------
 
 project = 'Aurora'
-copyright = '2020, F.Sciortino'
+copyright = '2020, F. Sciortino'
 author = 'F.Sciortino'
 
 # The full version, including alpha/beta/rc tags
