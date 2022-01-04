@@ -60,7 +60,7 @@ setup(
     version=get_version('aurora/__init__.py'),
     description='Aurora package for particle transport, radiation and neutrals in magnetically-confined plasmas',
     long_description=long_description,
-    long_description_content_type='text/markdown',
+    #long_description_content_type='text/markdown',
     url='https://github.com/fsciortino/Aurora',
     author='F. Sciortino',
     author_email='sciortino@psfc.mit.edu',
