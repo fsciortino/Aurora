@@ -4,4 +4,4 @@ matplotlib
 pexpect
 omfit_classes
 requests
-uncertainties
+omas
