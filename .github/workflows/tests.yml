@@ -34,8 +34,8 @@ jobs:
       run: |
         cd /
         python -c "import aurora; print(aurora.__version__)"
-    - name: Test with pytest and coverage
-      run: |
-        pip install pytest
-        pip install pytest-cov
-        pytest --junitxml=junit/test-results.xml --cov=aurora --cov-report=xml --cov-report=html
+#    - name: Test with pytest and coverage
+#      run: |
+#        pip install pytest
+#        pip install pytest-cov
+#        pytest --junitxml=junit/test-results.xml --cov=aurora --cov-report=xml --cov-report=html
