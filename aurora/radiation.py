@@ -590,12 +590,15 @@ def get_main_ion_dens(ne_cm3, ions, rhop_plot=None):
     return ni_cm3
 
 
-def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
+def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d=False):
     """Read photon emissivity coefficients from an ADAS ADF15 file.
 
-    Returns a dictionary whose keys are the wavelengths of the lines in angstroms. 
-    The value is an interpolant that will evaluate the log10 of the PEC at a desired density 
-    and temperature. The power-10 exponentiation of this PEC has units of :math:`photons \cdot cm^3/s`
+    Returns a dictionary whose keys are the indices in the ADF15 file or the wavelengths 
+    of the lines in angstroms. 
+
+    The dictionary value for each key is an interpolant that will evaluate the log10 of the
+    PEC at a desired density and temperature. The power-10 exponentiation of this PEC has 
+    units of :math:`photons \cdot cm^3/s`.
 
     Units for interpolation: :math:`cm^{-3}` for density; :math:`eV` for temperature.
 
@@ -603,12 +606,18 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
     ----------
     path : str
         Path to adf15 file to read.
+    index_lines : bool
+        If True, identify spectral lines using the ADAS indexing scheme ("ISEL" indices).
+        Default is False, which means that lines are identified in the output dictionary based on
+        their wavelength. This can be a problem if multiple lines in the ADF15 file have the
+        same wavelength (rare, but possible).
     order : int, opt
         Parameter to control the order of interpolation. Default is 1 (linear interpolation).
     plot_lines : list
         List of lines whose PEC data should be displayed. Lines should be identified
-        by their wavelengths. The list of available wavelengths in a given file can be retrieved
-        by first running this function ones, checking dictionary keys, and then requesting a
+        by their wavelengths if `index_lines=False` or by their index if `index_lines=True`. 
+        When `index_lines=False`, the list of available wavelengths in a given file can be retrieved
+        by first running this function once, checking dictionary keys, and then requesting a
         plot of one (or more) of them.
     ax : matplotlib axes instance
         If not None, plot on this set of axes.
@@ -703,6 +712,10 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
             dens += [float(v) for v in lines.pop(0).split()]
         dens = np.asarray(dens)
 
+        if index_lines:
+            # use ISEL indexing scheme by ADAS to identify lines
+            isel = int(header[-1])
+
         # Get the temperatures:
         temp = []
         while len(temp) < num_temp:
@@ -732,17 +745,6 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
             # attempt to report unknown rate type -- this should be fairly robust
             rate_type = l.replace(" ", "").lower().split("type=")[1].split("/")[0]
 
-        # sometimes multiple lines of the same rate_type can be listed at the same wavelength
-        # separate them here by 1e-6 A
-        # while True:
-        #     if lam in log10pec_dict and rate_type in log10pec_dict[lam]:
-        #         lam += 1e-6
-        #     else:
-        #         break
-
-        # create dictionary with keys for each wavelength:
-        if lam not in log10pec_dict:
-            log10pec_dict[lam] = {}
 
         # add a key to the log10pec_dict[lam] dictionary for each type of rate: recom, excit or chexc
         # interpolate PEC on log dens,temp scales
@@ -756,14 +758,32 @@ def read_adf15(path, order=1, plot_lines=[], ax=None, plot_3d=False):
             ky=order,
         )
 
-        if meta_resolved:
-            if rate_type not in log10pec_dict[lam]:
-                log10pec_dict[lam][rate_type] = {}
-            log10pec_dict[lam][rate_type][f"meta{INDM}"] = pec_fun
+        if index_lines:
+            # simple indexing for each line, with different indices for different upper-state
+            # populating mechanisms for the same spectral line
+            log10pec_dict[isel] = pec_fun
         else:
-            log10pec_dict[lam][rate_type] = pec_fun
+            # create dictionary with keys for each wavelength:
+            if lam not in log10pec_dict:
+                log10pec_dict[lam] = {}
 
-        if lam in plot_lines:
+            # sometimes multiple lines of the same rate_type can be listed at the same wavelength
+            # separate them here by 1e-6 A. Makes it challenging to identify which line is which...
+            # For ambiguous cases, users may be better off using the `index_lines=True` option.
+            while True:
+                if lam in log10pec_dict and rate_type in log10pec_dict[lam]:
+                    lam += 1e-6
+                else:
+                    break
+
+            if meta_resolved:
+                if rate_type not in log10pec_dict[lam]:
+                    log10pec_dict[lam][rate_type] = {}
+                log10pec_dict[lam][rate_type][f"meta{INDM}"] = pec_fun
+            else:
+                log10pec_dict[lam][rate_type] = pec_fun
+
+        if (lam in plot_lines) or (isel in plot_lines):
 
             # plot PEC values over ne,Te grid given by ADAS, showing interpolation quality
             NE, TE = np.meshgrid(dens, temp)
