@@ -674,6 +674,7 @@ def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d
     num_lines = int(header.split()[0])
     log10pec_dict = {}
 
+    dredundant = {}
     for i in range(0, num_lines):
 
         while "isel" not in lines[0].lower():
@@ -712,9 +713,8 @@ def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d
             dens += [float(v) for v in lines.pop(0).split()]
         dens = np.asarray(dens)
 
-        if index_lines:
-            # use ISEL indexing scheme by ADAS to identify lines
-            isel = int(header[-1])
+        # get ISEL indexing scheme by ADAS (to identify lines if index_lines)
+        isel = int(header[-1])
 
         # Get the temperatures:
         temp = []
@@ -763,18 +763,22 @@ def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d
             # populating mechanisms for the same spectral line
             log10pec_dict[isel] = pec_fun
         else:
-            # create dictionary with keys for each wavelength:
-            if lam not in log10pec_dict:
-                log10pec_dict[lam] = {}
-
             # sometimes multiple lines of the same rate_type can be listed at the same wavelength
             # separate them here by 1e-6 A. Makes it challenging to identify which line is which...
             # For ambiguous cases, users may be better off using the `index_lines=True` option.
             while True:
                 if lam in log10pec_dict and rate_type in log10pec_dict[lam]:
+                    dredundant[isel] = {
+                        'original': lam,
+                        'msg': f"{lam} => {lam + 1e-6} A",
+                    }
                     lam += 1e-6
                 else:
                     break
+
+            # create dictionary with keys for each wavelength:
+            if lam not in log10pec_dict:
+                log10pec_dict[lam] = {}
 
             if meta_resolved:
                 if rate_type not in log10pec_dict[lam]:
@@ -783,7 +787,7 @@ def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d
             else:
                 log10pec_dict[lam][rate_type] = pec_fun
 
-        if (lam in plot_lines) or (isel in plot_lines):
+        if (lam in plot_lines) or (index_lines and isel in plot_lines):
 
             # plot PEC values over ne,Te grid given by ADAS, showing interpolation quality
             NE, TE = np.meshgrid(dens, temp)
@@ -800,6 +804,22 @@ def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d
                 cs + r" , $\lambda$ = " + str(lam) + " $\AA$, " + rate_type + meta_str
             )
             plt.tight_layout()
+
+    # --------------------------------------------
+    #  Unique common warning if any redundant line
+
+    nredon = len(dredundant)
+    if nredon > 0:
+        keys, lamb = zip(*[
+            (k0, v0['original']) for k0, v0 in dredundant.items()
+        ])
+        keys = np.array(keys)[np.argsort(lamb)]
+        lstr = [f"{k0}: {dredundant[k0]['msg']}" for k0 in keys]
+        msg = (
+            f"The following {nredon} transitions have redundant wavelength:\n"
+            + "\n".join(lstr)
+        )
+        warnings.warn(msg)
 
     return log10pec_dict
 
