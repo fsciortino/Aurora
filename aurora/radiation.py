@@ -770,9 +770,9 @@ def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d
                 if lam in log10pec_dict and rate_type in log10pec_dict[lam]:
                     dredundant[isel] = {
                         'original': lam,
-                        'msg': f"{lam} => {lam + 1e-6} A",
+                        'msg': f"{lam} => {lam + 1e-10} A",
                     }
-                    lam += 1e-6
+                    lam += 1e-10
                 else:
                     break
 
