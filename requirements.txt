@@ -4,6 +4,3 @@ matplotlib
 pexpect
 omfit_classes
 requests
-
-omas
-fortranformat
