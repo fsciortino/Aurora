@@ -17,7 +17,6 @@ requirements:
     - numpy {{ numpy }}
     - scipy
     - matplotlib
-    - xarray
     - pexpect
     - omfit_classes
     - requests
@@ -27,7 +26,6 @@ requirements:
     - {{ pin_compatible('numpy') }}
     - scipy
     - matplotlib
-    - xarray
     - pexpect
     - omfit_classes
     - requests

@@ -1,12 +1,32 @@
-'''
+"""
 Script collecting rates from Janev & Smith, NF 1993. 
 These are useful in aurora to compute total (n-unresolved) charge exchange rates between heavy ions and neutrals. 
-
-sciortino, 2020
-'''
+"""
+# MIT License
+#
+# Copyright (c) 2021 Francesco Sciortino
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 plt.ion()
 import copy
 
@@ -30,7 +50,14 @@ def js_sigma_ioniz_n1_q8(E):
     A6 = -0.71309
     A7 = 3.2918e3
     A8 = -2.7541
-    return 1e-16 * A1 * ((np.exp(-A2 / E) * np.log(1.0 + A3 * E)) / E + (A4 * np.exp(-A5 * E)) / (E ** A6 + A7 * E ** A8))  # cm^2
+    return (
+        1e-16
+        * A1
+        * (
+            (np.exp(-A2 / E) * np.log(1.0 + A3 * E)) / E
+            + (A4 * np.exp(-A5 * E)) / (E ** A6 + A7 * E ** A8)
+        )
+    )  # cm^2
 
 
 def js_sigma_cx_n1_q1(E):
@@ -50,7 +77,9 @@ def js_sigma_cx_n1_q1(E):
     A4 = 3.8068e-6
     A5 = 1.1832e-10
     A6 = 2.3713
-    return (1e-16 * A1 * np.log(A2 / E + A6)) / (1.0 + A3 * E + A4 * E ** 3.5 + A5 * E ** 5.4)  # cm^2
+    return (1e-16 * A1 * np.log(A2 / E + A6)) / (
+        1.0 + A3 * E + A4 * E ** 3.5 + A5 * E ** 5.4
+    )  # cm^2
 
 
 def js_sigma_cx_ng1_q1(E, n1):
@@ -82,7 +111,11 @@ def js_sigma_cx_ng1_q1(E, n1):
         A4 = 1.3426e6
 
     Ew = E * n1 ** 2
-    return n1 ** 4 * (1e-16 * A1 * np.log(A2 / Ew + A4)) / (1.0 + A3 * Ew + 3.0842e-6 * Ew ** 3.5 + 1.1832e-10 * Ew ** 5.4)  # cm^2
+    return (
+        n1 ** 4
+        * (1e-16 * A1 * np.log(A2 / Ew + A4))
+        / (1.0 + A3 * Ew + 3.0842e-6 * Ew ** 3.5 + 1.1832e-10 * Ew ** 5.4)
+    )  # cm^2
 
 
 def js_sigma_cx_n1_q2(E):
@@ -106,7 +139,14 @@ def js_sigma_cx_n1_q2(E):
     A8 = 7.9193
     A9 = -4.4053
 
-    return 1e-16 * A1 * ((np.exp(-A2 / E) / (1.0 + A3 * E ** A4 + A5 * E ** 3.5 + A6 * E ** 5.4)) + (A7 * np.exp(-A8 * E)) / (E ** A9))
+    return (
+        1e-16
+        * A1
+        * (
+            (np.exp(-A2 / E) / (1.0 + A3 * E ** A4 + A5 * E ** 3.5 + A6 * E ** 5.4))
+            + (A7 * np.exp(-A8 * E)) / (E ** A9)
+        )
+    )
 
 
 def js_sigma_cx_n2_q2(E):
@@ -130,7 +170,12 @@ def js_sigma_cx_n2_q2(E):
     A8 = 0.22349
     A9 = -0.68604
     return (
-        1e-16 * A1 * ((np.exp(-A2 / E)) / (1.0 + A3 * E ** A4 + A5 * E ** 3.5 + A6 * E ** 5.4) + (A7 * np.exp(-A8 * E)) / (E ** A9))
+        1e-16
+        * A1
+        * (
+            (np.exp(-A2 / E)) / (1.0 + A3 * E ** A4 + A5 * E ** 3.5 + A6 * E ** 5.4)
+            + (A7 * np.exp(-A8 * E)) / (E ** A9)
+        )
     )  # cm^2
 
 
@@ -154,7 +199,12 @@ def js_sigma_cx_ng2_q2(E, n1):
         n1 ** 4
         * 7.04e-16
         * A1
-        * (1.0 - np.exp(-(4.0 / 3.0 * A1) * (1.0 + Ew ** A2 + A3 * Ew ** 3.5 + A4 * Ew ** 5.4)))
+        * (
+            1.0
+            - np.exp(
+                -(4.0 / 3.0 * A1) * (1.0 + Ew ** A2 + A3 * Ew ** 3.5 + A4 * Ew ** 5.4)
+            )
+        )
         / (1.0 + Ew ** A2 + A3 * Ew ** 3.5 + A4 * Ew ** 5.4)
     )  # cm^2
 
@@ -184,7 +234,11 @@ def js_sigma_cx_n1_q4(E):
     return (
         1e-16
         * A1
-        * ((np.exp(-A2 / (E ** A8))) / (1.0 + A3 * (E ** 2) + A4 * (E ** A5) + A6 * (E ** A7)) + (A9 * np.exp(-A10 * E)) / (E ** A11))
+        * (
+            (np.exp(-A2 / (E ** A8)))
+            / (1.0 + A3 * (E ** 2) + A4 * (E ** A5) + A6 * (E ** A7))
+            + (A9 * np.exp(-A10 * E)) / (E ** A11)
+        )
     )  # cm^2
 
 
@@ -213,7 +267,11 @@ def js_sigma_cx_n1_q5(E):
     return (
         1e-16
         * A1
-        * ((np.exp(-A2 / (E ** A8))) / (1.0 + A3 * (E ** 2) + A4 * (E ** A5) + A6 * (E ** A7)) + (A9 * np.exp(-A10 * E)) / (E ** A11))
+        * (
+            (np.exp(-A2 / (E ** A8)))
+            / (1.0 + A3 * (E ** 2) + A4 * (E ** A5) + A6 * (E ** A7))
+            + (A9 * np.exp(-A10 * E)) / (E ** A11)
+        )
     )  # cm^2
 
 
@@ -242,7 +300,11 @@ def js_sigma_cx_n1_q6(E):
     return (
         1e-16
         * A1
-        * ((np.exp(-A2 / (E ** A8))) / (1.0 + A3 * (E ** 2) + A4 * (E ** A5) + A6 * (E ** A7)) + (A9 * np.exp(-A10 * E)) / (E ** A11))
+        * (
+            (np.exp(-A2 / (E ** A8)))
+            / (1.0 + A3 * (E ** 2) + A4 * (E ** A5) + A6 * (E ** A7))
+            + (A9 * np.exp(-A10 * E)) / (E ** A11)
+        )
     )  # cm^2
 
 
@@ -265,7 +327,14 @@ def js_sigma_cx_n1_q8(E):
     A6 = -0.71309
     A7 = 3.2918e3
     A8 = -2.7541
-    return 1e-16 * A1 * ((np.exp(-A2 / E) * np.log(1.0 + A3 * E)) / E + (A4 * np.exp(-A5 * E)) / (E ** A6 + A7 * E ** A8))  # cm^2
+    return (
+        1e-16
+        * A1
+        * (
+            (np.exp(-A2 / E) * np.log(1.0 + A3 * E)) / E
+            + (A4 * np.exp(-A5 * E)) / (E ** A6 + A7 * E ** A8)
+        )
+    )  # cm^2
 
 
 def js_sigma_cx_n1_qg8(E, q):
@@ -286,7 +355,11 @@ def js_sigma_cx_n1_qg8(E, q):
     A4 = 7.1023e-3
     A5 = 3.4749e-6
     A6 = 1.1832e-10
-    return q * (1e-16 * A1 * np.log(A2 / Ew + A3)) / (1 + A4 * Ew + A5 * Ew ** 3.5 + A6 * Ew ** 5.4)  # cm^2
+    return (
+        q
+        * (1e-16 * A1 * np.log(A2 / Ew + A3))
+        / (1 + A4 * Ew + A5 * Ew ** 3.5 + A6 * Ew ** 5.4)
+    )  # cm^2
 
 
 def js_sigma_cx_ng1_qg3(E, n1, q):
@@ -304,11 +377,16 @@ def js_sigma_cx_ng1_qg3(E, n1, q):
     B = 1.974e-5
     Ew = E * n1 ** 2 / q ** 0.5
     return (
-        q * n1 ** 4 * 7.04e-16 * A / (Ew ** 3.5 * (1 + B * Ew ** 2)) * (1 - np.exp((-2.0 * Ew ** 3.5 * (1 + B * Ew ** 2)) / (3.0 * A)))
+        q
+        * n1 ** 4
+        * 7.04e-16
+        * A
+        / (Ew ** 3.5 * (1 + B * Ew ** 2))
+        * (1 - np.exp((-2.0 * Ew ** 3.5 * (1 + B * Ew ** 2)) / (3.0 * A)))
     )  # cm^2
 
 
-def js_sigma(E, q, n1, n2=None, type='cx'):
+def js_sigma(E, q, n1, n2=None, type="cx"):
     """Cross sections for collisional processes between beam neutrals and highly-charged 
     ions, from Janev & Smith 1993.
 
@@ -337,18 +415,18 @@ def js_sigma(E, q, n1, n2=None, type='cx'):
     See comments in Janev & Smith 1993 for uncertainty estimates.
     """
 
-    if type == 'exc':
+    if type == "exc":
         # p.124 - 146
-        raise ValueError('Not implemented yet')
+        raise ValueError("Not implemented yet")
 
-    elif type == 'ioniz':
+    elif type == "ioniz":
         # p.150-160
         if n1 == 1 and q == 8:  # O-like
             sigma = js_sigma_ioniz_n1_q8(E)
         else:
-            raise ValueError('Not implemented yet')
+            raise ValueError("Not implemented yet")
 
-    elif type == 'cx':  # electron capture
+    elif type == "cx":  # electron capture
         if n1 == 1 and q == 1:
             sigma = js_sigma_cx_n1_q1(E)
 
@@ -398,47 +476,57 @@ def js_sigma(E, q, n1, n2=None, type='cx'):
             sigma = js_sigma_cx_ng1_qg3(E, n1, q)
 
     else:
-        raise ValueError('Unrecognized type of interaction')
+        raise ValueError("Unrecognized type of interaction")
 
     return sigma
 
 
-
-
 def plot_js_sigma(q=18):
-    '''Plot/check sensitivity of JS cross sections to beam energy.
+    """Plot/check sensitivity of JS cross sections to beam energy.
     NB: cross section is taken to only depend on partially-screened ion charge
-    '''
+    """
     Ebeam = np.geomspace(10, 1e2, 1000)  # keV/amu
 
-    sigma = np.array([js_sigma(E, q, n1=1, type='cx') for E in Ebeam])
+    sigma = np.array([js_sigma(E, q, n1=1, type="cx") for E in Ebeam])
     fig, ax = plt.subplots(1, 2, figsize=(14, 8))
-    ax[0].loglog(1e3 * Ebeam / (q ** (3.0 / 7.0)), sigma / q, '*-')
-    ax[0].set_xlabel(r'Scaled Energy ($E/q^{3/7}$) [eV/amu]', fontsize=18)
-    ax[0].set_ylabel(r'Scaled Cross Section ($\sigma_{cx}/q$) [$cm^2$]', fontsize=18)
-    ax[0].grid(True, which='both')
-    ax[0].set_xlim([np.min(1e3 * Ebeam / (q ** (3.0 / 7.0))), np.max(1e3 * Ebeam / (q ** (3.0 / 7.0)))])
+    ax[0].loglog(1e3 * Ebeam / (q ** (3.0 / 7.0)), sigma / q, "*-")
+    ax[0].set_xlabel(r"Scaled Energy ($E/q^{3/7}$) [eV/amu]", fontsize=18)
+    ax[0].set_ylabel(r"Scaled Cross Section ($\sigma_{cx}/q$) [$cm^2$]", fontsize=18)
+    ax[0].grid(True, which="both")
+    ax[0].set_xlim(
+        [
+            np.min(1e3 * Ebeam / (q ** (3.0 / 7.0))),
+            np.max(1e3 * Ebeam / (q ** (3.0 / 7.0))),
+        ]
+    )
 
-    ax[1].loglog(Ebeam, sigma, '*-')
-    ax[1].set_xlabel(r'$E$ [keV/amu]', fontsize=18)
-    ax[1].set_ylabel(r'$\sigma_{cx}$ [$cm^2$]', fontsize=18)
-    ax[1].grid(True, which='both')
+    ax[1].loglog(Ebeam, sigma, "*-")
+    ax[1].set_xlabel(r"$E$ [keV/amu]", fontsize=18)
+    ax[1].set_ylabel(r"$\sigma_{cx}$ [$cm^2$]", fontsize=18)
+    ax[1].grid(True, which="both")
     ax[1].set_xlim([np.min(Ebeam), np.max(Ebeam)])
-    plt.suptitle(r'$A^{q+}$ + $H^*(n=1)$ --> $A^{(q-1)+}$+$H^+$ , $q>8$', fontsize=20)
+    plt.suptitle(r"$A^{q+}$ + $H^*(n=1)$ --> $A^{(q-1)+}$+$H^+$ , $q>8$", fontsize=20)
 
     # n1=2 excited state
     n1 = 2
-    sigma = np.array([js_sigma(E, q, n1=n1, type='cx') for E in Ebeam])
+    sigma = np.array([js_sigma(E, q, n1=n1, type="cx") for E in Ebeam])
     fig, ax = plt.subplots(1, 2, figsize=(14, 8))
-    ax[0].loglog(1e3 * Ebeam * n1 ** 2 / (q ** 0.5), sigma / (q * n1 ** 4), '*-')
-    ax[0].set_xlabel(r'Scaled energy ($E n^2 / q^{0.5}$) [eV/amu]', fontsize=18)
-    ax[0].set_ylabel(r'Scaled Cross Section ($\sigma_{cx}/(q n^4)$) [$cm^2$]', fontsize=18)
-    ax[0].grid(True, which='both')
-    ax[0].set_xlim([np.min(1e3 * Ebeam * n1 ** 2 / (q ** 0.5)), np.max(1e3 * Ebeam * n1 ** 2 / (q ** 0.5))])
+    ax[0].loglog(1e3 * Ebeam * n1 ** 2 / (q ** 0.5), sigma / (q * n1 ** 4), "*-")
+    ax[0].set_xlabel(r"Scaled energy ($E n^2 / q^{0.5}$) [eV/amu]", fontsize=18)
+    ax[0].set_ylabel(
+        r"Scaled Cross Section ($\sigma_{cx}/(q n^4)$) [$cm^2$]", fontsize=18
+    )
+    ax[0].grid(True, which="both")
+    ax[0].set_xlim(
+        [
+            np.min(1e3 * Ebeam * n1 ** 2 / (q ** 0.5)),
+            np.max(1e3 * Ebeam * n1 ** 2 / (q ** 0.5)),
+        ]
+    )
 
-    ax[1].loglog(Ebeam, sigma, '*-')
-    ax[1].set_xlabel(r'$E$ [keV/amu]', fontsize=18)
-    ax[1].set_ylabel(r'$\sigma_{cx}$ [$cm^2$]', fontsize=18)
-    ax[1].grid(True, which='both')
+    ax[1].loglog(Ebeam, sigma, "*-")
+    ax[1].set_xlabel(r"$E$ [keV/amu]", fontsize=18)
+    ax[1].set_ylabel(r"$\sigma_{cx}$ [$cm^2$]", fontsize=18)
+    ax[1].grid(True, which="both")
     ax[1].set_xlim([np.min(Ebeam), np.max(Ebeam)])
-    plt.suptitle(r'$A^{q+}$ + $H^*(n=2)$ --> $A^{(q-1)+}$+$H^+$ , $q>3$', fontsize=20)
+    plt.suptitle(r"$A^{q+}$ + $H^*(n=2)$ --> $A^{(q-1)+}$+$H^+$ , $q>3$", fontsize=20)
