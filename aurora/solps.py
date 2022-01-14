@@ -7,7 +7,7 @@ F.Sciortino & R.Reksoatmodjo, 2021
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-from scipy.interpolate import griddata, interp1d
+from scipy.interpolate import griddata, RBFInterpolator
 import matplotlib as mpl
 import matplotlib.tri as tri
 from matplotlib import collections as mc
@@ -97,10 +97,18 @@ class solps_case:
 
         elif form=='full':
             from omfit_classes import omfit_solps # import omfit_solps here to avoid issues with docs and packaging
+                               
             self.b2fstate = omfit_solps.OMFITsolps(self.path+os.sep+self.solps_run+os.sep+'b2fstate')
             self.geom = omfit_solps.OMFITsolps(path+os.sep+'baserun'+os.sep+'b2fgmtry')
 
+            try:
+                self.b2fplasmf = omfit_solps.OMFITsolps(self.path+os.sep+self.solps_run+os.sep+'b2fplasmf')
+            except:
+                self.b2plasmf = []
+                print('b2fplasmf file not found! Some quantities may not be available for plotting!')
+
             self.nx,self.ny = self.geom['nx,ny']
+            self.ns = self.b2fstate['ns']
             
             # (0,:,:): lower left corner, (1,:,:): lower right corner
             # (2,:,:): upper left corner, (3,:,:): upper right corner.
@@ -218,10 +226,18 @@ class solps_case:
             self.fort44 = self.load_fort44()
             self.fort46 = self.load_fort46()
             
+            if hasattr(self,'b2fplasmf'):
+                _grid_dim = (self.nx+2)*(self.ny+2)
+                for q in self.b2fplasmf.keys():
+                    _mm = len(self.b2fplasmf[q])/_grid_dim
+                    if _mm%1 == 0:
+                        self.b2fplasmf[q]=self.b2fplasmf[q].reshape(int(_mm),self.ny+2,self.nx+2)
+                        self.b2fplasmf[q]=self.b2fplasmf[q][:,1:-1,1:-1][:,R_idxs,:][:,:,P_idxs]
+            
             quants['ne'] = self.b2fstate['ne'][1:-1,1:-1][R_idxs,:][:,P_idxs] # m^-3
             quants['Te'] = self.b2fstate['te'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
             quants['Ti'] = self.b2fstate['ti'][1:-1,1:-1][R_idxs,:][:,P_idxs]/constants.e # eV
-            
+                
             # density of atomic species if B2 fluid neutral model is used:
             #quants['nn'] = self.b2fstate['na'][0,R_idxs,:][:,P_idxs] # m^-3   # only neutral component
 
@@ -433,8 +449,13 @@ class solps_case:
         return xnodes, ynodes, triangles-1  # -1 for python indexing
 
    
-    def plot_wall_geometry(self):
+    def plot_wall_geometry(self,ax=None):
         '''Method to plot vessel wall segment geometry from wall_geometry field in fort.44 file'''
+        
+        if ax is None:
+            wallfig, wallax = plt.subplots()
+        else:
+            wallax=ax
         
         out=self.load_fort44()
         wall_geometry=out['wall_geometry']
@@ -450,8 +471,6 @@ class solps_case:
             
         Wall_Collection=mc.LineCollection(Wall_Seg,colors='b',linewidth=2)
         
-        wallfig, wallax = plt.subplots()
-        
         wallax.add_collection(Wall_Collection)
         wallax.set_xlim(RR.min()-0.05,RR.max()+0.05)
         wallax.set_ylim(ZZ.min()-0.05,ZZ.max()+0.05)
@@ -462,7 +481,6 @@ class solps_case:
         self.WS=Wall_Seg
         self.WC=Wall_Collection
                  
-        
 
     def plot2d_b2(self, vals, ax=None, scale='log', label='', lb=None, ub=None, **kwargs):
         '''Method to plot 2D fields on B2 grids. 
@@ -508,7 +526,7 @@ class solps_case:
                 zz = np.atleast_2d(yy[ix,iy,[0,1,3,2]]).T
                 patches.append(mpl.patches.Polygon(np.hstack((rr,zz)), True,linewidth=3))
 
-        # collect al patches
+        # collect all patches
         p = mpl.collections.PatchCollection(patches,False, edgecolor='k',linewidth=0.1, **kwargs)
 
         p.set_array(np.array(vals))
@@ -604,7 +622,7 @@ class solps_case:
 
 
 
-    def get_radial_prof(self, vals, dz_mm=5, theta=0, label='', plot=False):
+    def get_radial_prof(self, vals, dz_mm=5, theta=0, label='', plot=False, method='cubic'):
         '''Extract radial profiles of a quantity "quant" from the SOLPS run. 
         This function returns profiles on the low- (LFS) and high-field-side (HFS) midplane, 
         as well as flux surface averaged (FSA) ones. 
@@ -624,7 +642,9 @@ class solps_case:
         label : string
             Optional string label for plot and legend. Default is empty ('')
         plot : bool
-            If True, plot radial profiles. 
+            If True, plot radial profiles.
+        method : string
+            Interpolation method to be used by griddata(). Default is 'linear'
 
         Returns
         -------
@@ -648,6 +668,17 @@ class solps_case:
             within +/-`dz_mm`/2 millimeters from the midplane.
         '''
         
+        def get_coords_from_theta(theta):
+            hyp=1.0
+            
+            R0=self.geqdsk['RMAXIS']
+            Z0=self.geqdsk['ZMAXIS']
+            
+            R1=R0+hyp*np.cos(np.radians(theta))
+            Z1=Z0+hyp*np.sin(np.radians(theta))
+            
+            return R0,Z0,R1,Z1
+        
         if np.prod(vals.shape)==self.crx.shape[1]*self.crx.shape[2]:
             # Exclude boundary cells
             vals = vals[1:-1,1:-1]
@@ -659,8 +690,11 @@ class solps_case:
             if any(coords.get_rhop_RZ(r,z, self.geqdsk)<np.min(rhop_2D)):
                 return np.nan
             else:
-                return griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(),
-                                (r,z), method='linear')
+                return RBFInterpolator(np.array([self.R.flatten(),self.Z.flatten()]).T,
+                                vals.flatten(), neighbors=100,
+                                kernel='cubic')(np.array([r,z]).T)
+                #return griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(),
+                #                (r,z), method='linear')
 
         prof_FSA = self.geqdsk['fluxSurfaces'].surfAvg(function=avg_function)
         rhop_FSA = np.sqrt(self.geqdsk['fluxSurfaces']['geo']['psin'])
@@ -678,31 +712,37 @@ class solps_case:
 
         # get midplane radial profile...
         # ...on the LFS:
-        _prof_LFS = griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(),
-                             (_R_LFS,0.5*dz_mm*1e-3*np.random.random(len(_R_LFS))),
+        #_prof_LFS = griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(),
+                             #(_R_LFS,0.5*dz_mm*1e-3*np.random.random(len(_R_LFS))),
                              #(_R_LFS,np.zeros_like(_R_LFS)),
-                             method='linear')
+                             #method=method)
+        _prof_LFS = RBFInterpolator(np.array([self.R.flatten(),self.Z.flatten()]).T,
+                             vals.flatten(), neighbors=100,
+                             kernel=method)(np.array([_R_LFS,np.zeros_like(_R_LFS)]).T) 
         _prof_LFS[_prof_LFS<0]=np.nan
         R_LFS = np.linspace(np.min(R_midplane_lfs), np.max(R_midplane_lfs),100)
         rhop_LFS = coords.get_rhop_RZ(R_LFS,np.zeros_like(R_LFS), self.geqdsk)
 
         # ... and on the HFS:
-        _prof_HFS = griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(), #self.quants[quant].flatten(),
+        #_prof_HFS = griddata((self.R.flatten(),self.Z.flatten()), vals.flatten(), #self.quants[quant].flatten(),
                              #(_R_HFS, np.zeros_like(_R_HFS)),
-                             (_R_HFS,0.5*dz_mm*1e-3*np.random.random(len(_R_HFS))),
-                             method='linear')
+                             #(_R_HFS,0.5*dz_mm*1e-3*np.random.random(len(_R_HFS))),
+                             #method=method)
+        _prof_HFS = RBFInterpolator(np.array([self.R.flatten(),self.Z.flatten()]).T,
+                             vals.flatten(), neighbors=100,
+                             kernel=method)(np.array([_R_HFS,np.zeros_like(_R_HFS)]).T)
         _prof_HFS[_prof_HFS<0]=np.nan
         R_HFS = np.linspace(np.min(R_midplane_hfs), np.max(R_midplane_hfs),100)   
         rhop_HFS = coords.get_rhop_RZ(R_HFS,np.zeros_like(R_HFS), self.geqdsk)
         
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore') # we might take the mean of slices with only nan's, but that's OK
-            prof_LFS = np.nanmean(_prof_LFS.reshape(-1,10),axis=1) # average across 10 near points
-            prof_HFS = np.nanmean(_prof_HFS.reshape(-1,10),axis=1)  # average across 10 near points
+            prof_LFS = np.nanmedian(_prof_LFS.reshape(-1,10),axis=1) # average across 10 near points
+            prof_HFS = np.nanmedian(_prof_HFS.reshape(-1,10),axis=1) # average across 10 near points
 
             # take std as a measure of variation/noise around chosen location
-            prof_LFS_std = np.nanstd(_prof_LFS.reshape(-1,10),axis=1) # std across 10 near points
-            prof_HFS_std = np.nanstd(_prof_HFS.reshape(-1,10),axis=1)  # std across 10 near points
+            prof_LFS_std = np.nanstd(_prof_LFS.reshape(-1,1),axis=1) # std across 10 near points
+            prof_HFS_std = np.nanstd(_prof_HFS.reshape(-1,1),axis=1)  # std across 10 near points
             
         # now obtain also the simple poloidal grid slice near the midplane (LFS and HFS)
         # These are commonly used for SOLPS analysis, using the JXA and JXI indices (which we re-compute here)
