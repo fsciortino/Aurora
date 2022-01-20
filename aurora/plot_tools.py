@@ -163,9 +163,18 @@ def get_ls_cycle():
     return itertools.cycle(ls_vals)
 
 
-def get_color_cycle():
-    color_vals = ["b", "g", "r", "c", "m", "y", "k"]
-    return itertools.cycle(color_vals)
+def get_color_cycle(num=None, map='plasma'):
+    '''Get an iterable to select different colors in a loop.
+    Efficiently splits a chosen color map into as many (`num`) parts as needed.
+    '''
+    cols = ["b", "g", "r", "c", "m", "y", "k"]
+    if num is None or num<=len(cols):
+        return itertools.cycle(cols[:num])
+    cm = plt.get_cmap(map)
+    cols = np.empty(num)
+    for j in np.arange(num):
+        cols[j] = cm(1.*j/num)
+    return itertools.cycle(cols)
 
 
 def get_line_cycle():

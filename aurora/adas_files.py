@@ -1,5 +1,5 @@
 """Functions to provide default ADAS files for Aurora modelling, including capabilities to fetch
-these files remotely from the OPEN-ADAS website.
+derived data files remotely from the OPEN-ADAS website.
 """
 # MIT License
 #
@@ -33,7 +33,9 @@ adas_data_dir = (
 
 
 def get_adas_file_loc(filename, filetype="adf11"):
-    """Find location of requested atomic data file for the indicated ion. 
+    """Find location of requested atomic data file for the indicated ion.
+    Accepts all ADAS "derived" data file types 
+    (adf11, adf12, adf13, adf15, adf21, adf22).
     The search proceeds with the following attempts, in this order:
 
     #. If the file is available in Aurora/adas_data/*filetype*, with filetype given by the user, 
@@ -56,8 +58,8 @@ def get_adas_file_loc(filename, filetype="adf11"):
     filename : str
         Name of the ADAS file of interest, e.g. 'plt89_ar.dat'.
     filetype : str
-        ADAS file type. Currently allowed: 'adf11' or 'adf15'
-    
+        ADAS file type. Only derived data types are allowed, i.e. one of 
+        "adf11", "adf12", "adf13", "adf15", "adf21", "adf22"
     Returns
     -------
     file_loc : str
@@ -65,21 +67,48 @@ def get_adas_file_loc(filename, filetype="adf11"):
     """
 
     def fetch_file(filename, filetype, loc):
+        # make sure that aurora/adas_data/adf** directory exists
         if not os.path.isdir(os.path.dirname(os.path.dirname(loc))):
-            # make sure that aurora/adas_data/adf** directory exists, so that we can store data files in it
             os.makedirs(os.path.dirname(os.path.dirname(loc)))
         if not os.path.isdir(os.path.dirname(loc)):
-            # make sure that aurora/adas_data/adf** directory exists, so that we can store data files in it
             os.makedirs(os.path.dirname(loc))
 
+        url = "https://open.adas.ac.uk/download/" + filetype + os.sep
         if filetype == "adf11":
-            fetch_adf11_file(filename, loc)
+            filename_mod = filename.split("_")[0] + os.sep + filename
+            
+        elif filetype in ["adf12", "adf13", "adf21", "adf22"]:
+            filename_mod = filename.replace("#","][").split("_")[0] +\
+                           os.sep + filename.replace("#", "][")
+
         elif filetype == "adf15":
-            fetch_adf15_file(filename, loc)
+            
+            if filename.startswith("pec"):
+                # more standard format, the following patterns should work fine:
+                num = filename[3:5]
+                spec = filename.split("#")[1].split("_")[0]
+                filename_mod = filename.replace("#", "][").replace("_", f"/pec{num}][{spec}_")
+            elif filename.startswith("transport"):
+                # different link format for files with "transport" name:
+                filename_mod = "transport/" + filename.replace("#", "][")
+            else:
+                # patterns may be different, attempt simple guess:
+                filename_mod = filename.split("_")[0] + os.sep + filename.replace("#", "][")
+                
         else:
             raise ValueError(
-                "ADAS file type/format not recognized. Could not find it or download it automatically!"
+                "ADAS file type/format not recognized.\n"+\
+                "Could not find it or download it automatically!"
             )
+
+        r = requests.get(url + os.sep + filename_mod)
+            
+        if len(r.text) < 1000:
+            # OPEN-ADAS reports short URL error text rather than an error code
+            raise ValueError(f"Could not fetch file {filename} from ADAS!")
+        
+        with open(loc, "wb") as f:
+            f.write(r.content)     
 
     if os.path.exists(adas_data_dir + filetype + os.sep + filename):
         # file is available in adas_data:
@@ -108,64 +137,6 @@ def get_adas_file_loc(filename, filetype="adf11"):
         fetch_file(filename, filetype, loc=loc)
         return loc
 
-
-def fetch_adf11_file(filename, loc):
-    """Download ADF11 file from the OPEN-ADAS website and store it in the 'adas_data/adf11'
-    directory. 
-
-    Parameters
-    ----------
-    filename : str
-        Name of ADF11 file to be downloaded, e.g. 'plt89_ar.dat'.
-    loc : str
-        Location to save fetched ADF11 in.
-    """
-    url = "https://open.adas.ac.uk/download/adf11/"
-    str1 = filename.split("_")[0]
-
-    r = requests.get(url + str1 + "/" + filename)
-
-    if len(r.text) < 1000:
-        # OPEN-ADAS reports short URL error text rather than an error code
-        raise ValueError(f"Could not fetch file {filename} from ADAS!")
-
-    with open(loc, "wb") as f:
-        f.write(r.content)
-
-
-def fetch_adf15_file(filename, loc):
-    """Download ADF15 file from the OPEN-ADAS website and store it in the 'adas_data/adf15'
-    directory. 
-
-    Parameters
-    ----------
-    filename : str
-        Name of ADF15 file to be downloaded, e.g. 'pec96#c_pju#c2.dat'.
-    loc : str
-        Location to save fetched ADF15 file in.
-    """
-    url = "https://open.adas.ac.uk/download/adf15/"
-
-    if filename.startswith("pec"):
-        # more standard format, the following patterns should work fine:
-        num = filename[3:5]
-        spec = filename.split("#")[1].split("_")[0]
-        filename_mod = filename.replace("#", "][").replace("_", f"/pec{num}][{spec}_")
-    elif filename.startswith("transport"):
-        # different link format for files with "transport" name:
-        filename_mod = "transport/" + filename.replace("#", "][")
-    else:
-        # patterns may be different, attempt simple guess:
-        filename_mod = filename.split("_")[0] + "/" + filename.replace("#", "][")
-
-    r = requests.get(url + "/" + filename_mod)
-
-    if len(r.text) < 1000:
-        # OPEN-ADAS reports short URL error text rather than an error code
-        raise ValueError(f"Could not fetch file {filename_mod} from ADAS!")
-
-    with open(loc, "wb") as f:
-        f.write(r.content)
 
 
 def adas_files_dict():
@@ -279,12 +250,8 @@ def adas_files_dict():
     files["O"]["pbs"] = "pbsx5_o.dat"
     files["O"]["prc"] = "prc89_o.dat"
     files["F"] = {}  # 9
-    files["F"][
-        "acd"
-    ] = "acd89_f.dat"  # sub with Puetterich data when available from OPEN-ADAS
-    files["F"][
-        "scd"
-    ] = "scd89_f.dat"  # sub with Puetterich data when available from OPEN-ADAS
+    files["F"]["acd"] = "acd89_f.dat"
+    files["F"]["scd"] = "scd89_f.dat"
     files["F"]["ccd"] = "ccd89_f.dat"
     files["F"]["prb"] = "prb89_f.dat"
     files["F"]["plt"] = "plt89_f.dat"
