@@ -1156,7 +1156,7 @@ def plot_norm_ion_freq(
 def read_adf12(filename, block, Ebeam, ne_cm3, Ti_eV, zeff):
     """Read charge exchange effective emission coefficients from ADAS ADF12 files.
 
-    See https://open.adas.ac.uk/adf12 for details and to download files.
+    Files may be automatically downloaded using :py:fun:`~aurora.adas_files.get_adas_file_loc`.
 
     Parameters
     ----------
@@ -1233,8 +1233,7 @@ def read_adf21(filename, Ebeam, ne_cm3, Te_eV):
     ADF21 files contain effective beam stopping/excitation coefficients.
     ADF22 contain effective beam emission/population coefficients.
 
-    See https://open.adas.ac.uk/adf21 and https://open.adas.ac.uk/adf22 for details
-    and to download files.
+    Files may be automatically downloaded using :py:fun:`~aurora.adas_files.get_adas_file_loc`.
 
     Parameters
     ----------
