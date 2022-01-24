@@ -301,7 +301,7 @@ class POPCON:
                 
                 plt.subplots_adjust(wspace=None, hspace=None)
                 
-                plt.title(r"$n_0/n_{GR} =$ %.1f, $T^0_\mathrm{keV} =$ %.0f" % (n20/get_n_GW(self.Ip, self.a), T_keV), pad=-100)
+                plt.title(r"$n_0/n_{GR} =$ %.1f, $T^0_\mathrm{keV} =$ %.0f" % (n20/get_n_GW(self.Ip, self.a), T_keV))
                 
                 rho = np.linspace(1e-10, 1, 100)
                 Prad = np.empty(len(rho))
@@ -954,7 +954,7 @@ def ascii_progress_bar(
         elif n == b and clean:
             buff = '\r' + ' ' * len(buff) + '\r'
         if not quiet:
-            print(buff) #, tag=tag, end='')
+            print(buff, flush=True) #, tag=tag, end='')
         return n
 
     def ascii_progress_bar_iterable(n, **kw):
@@ -1031,7 +1031,7 @@ if __name__=='__main__':
     popcon.volavgcurr=True
     popcon.maxit=150
     popcon.relax=0.9
-    popcon.M=3
+    popcon.M=50
 
     # plotting choices
     popcon.plot_fields['Psol']  = not (popcon.fixed_quantity == "P_SOL")
