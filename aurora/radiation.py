@@ -30,6 +30,7 @@ plt.ion()
 from scipy import constants
 import warnings, copy
 from scipy import constants
+from collections import OrderedDict
 
 from . import atomic
 from . import adas_files
@@ -590,14 +591,14 @@ def get_main_ion_dens(ne_cm3, ions, rhop_plot=None):
     return ni_cm3
 
 
-def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d=False):
-    """Read photon emissivity coefficients from an ADAS ADF15 file.
+def read_adf15(path, order=1, store_adas_points=True):
+    """Read photon emissivity coefficients (PECs) from an ADAS ADF15 file.
 
-    Returns a dictionary whose keys are the indices in the ADF15 file or the wavelengths 
-    of the lines in angstroms. 
+    Returns a `pandas.DataFrame` object describing all transitions
+    available within the chosen ADF15 file.
 
-    The dictionary value for each key is an interpolant that will evaluate the log10 of the
-    PEC at a desired density and temperature. The power-10 exponentiation of this PEC has 
+    PECs are provided in the form of an interpolant that will evaluate the log10 of the PEC at
+    a desired electron density and temperature. The power-10 exponentiation of this PEC has 
     units of :math:`photons \cdot cm^3/s`.
 
     Units for interpolation: :math:`cm^{-3}` for density; :math:`eV` for temperature.
@@ -606,30 +607,18 @@ def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d
     ----------
     path : str
         Path to adf15 file to read.
-    index_lines : bool
-        If True, identify spectral lines using the ADAS indexing scheme ("ISEL" indices).
-        Default is False, which means that lines are identified in the output dictionary based on
-        their wavelength. This can be a problem if multiple lines in the ADF15 file have the
-        same wavelength (rare, but possible).
-    order : int, opt
+    order : int
         Parameter to control the order of interpolation. Default is 1 (linear interpolation).
-    plot_lines : list
-        List of lines whose PEC data should be displayed. Lines should be identified
-        by their wavelengths if `index_lines=False` or by their index if `index_lines=True`. 
-        When `index_lines=False`, the list of available wavelengths in a given file can be retrieved
-        by first running this function once, checking dictionary keys, and then requesting a
-        plot of one (or more) of them.
-    ax : matplotlib axes instance
-        If not None, plot on this set of axes.
-    plot_3d : bool
-        Display PEC data as 3D plots rather than 2D ones.
+    store_adas_points : bool
+        If True, PEC values tabulated by ADAS are stored in the output, otherwise only interpolation
+        functions are kept. Set this to True to obtain a comparison of the original points and
+        the interpolation functions when using :py:fun:`~aurora.radiation.plot_pec`.
 
     Returns
     -------
-    log10pec_dict : dict
-        Dictionary containing interpolation functions for each of the available lines of the
-        indicated type (ionization or recombination). Each interpolation function takes as arguments
-        the log-10 of ne and Te and returns the log-10 of the chosen PEC.
+    pandas.DataFrame:
+        Results with keys ['ispp', 'lambda [A]', 'lower level', 'nspp', 'pr', 'sz', 'tg', 'type',
+        'upper level', 'wr', 'log10 PEC']
     
     Examples
     --------
@@ -655,6 +644,9 @@ def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d
     >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')
     >>> log10pec_dict = aurora.read_adf15(path, plot_lines=[584.4])
 
+    To select lines in a pandas DataFrame based on some conditions, one can do for example:
+    out.loc[(out['type']=='EXCIT') & (out['lambda [A]']<5000)]
+
     Notes
     -----
     This function expects the format of PEC files produced via the ADAS adas810 or adas218 routines.
@@ -672,15 +664,14 @@ def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d
     header = lines.pop(0)
     # Get the expected number of lines by reading the header:
     num_lines = int(header.split()[0])
+    
     log10pec_dict = {}
-
-    dredundant = {}
     for i in range(0, num_lines):
 
         while "isel" not in lines[0].lower():
             # eliminate variable number of label lines at the top
             _ = lines.pop(0)
-
+        
         # Get the wavelength, number of densities and number of temperatures
         # from the first line of the entry:
         l = lines.pop(0)
@@ -713,9 +704,10 @@ def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d
             dens += [float(v) for v in lines.pop(0).split()]
         dens = np.asarray(dens)
 
-        # get ISEL indexing scheme by ADAS (to identify lines if index_lines)
+        # get ISEL index
         isel = int(header[-1])
-
+        log10pec_dict[isel] = {}
+        
         # Get the temperatures:
         temp = []
         while len(temp) < num_temp:
@@ -730,103 +722,200 @@ def read_adf15(path, index_lines=False, order=1, plot_lines=[], ax=None, plot_3d
                 PEC[-1] += [float(v) for v in lines.pop(0).split()]
         PEC = np.asarray(PEC)
 
-        # find what kind of rate we are dealing with
-        if "recom" in l.lower():
-            rate_type = "recom"
-        elif "excit" in l.lower():
-            rate_type = "excit"
-        elif "chexc" in l.lower():
-            rate_type = "chexc"
-        elif "drsat" in l.lower():
-            rate_type = "drsat"
-        elif "ion" in l.lower():
-            rate_type = "ioniz"
-        else:
-            # attempt to report unknown rate type -- this should be fairly robust
-            rate_type = l.replace(" ", "").lower().split("type=")[1].split("/")[0]
-
-
         # add a key to the log10pec_dict[lam] dictionary for each type of rate: recom, excit or chexc
         # interpolate PEC on log dens,temp scales
         pec_fun = RectBivariateSpline(
             np.log10(dens),
             np.log10(temp),
-            np.log10(
-                PEC
-            ),  # NB: interpolation of log10 of PEC to avoid issues at low ne or Te
+            np.log10(PEC),  # interpolation of log10(PEC) to avoid issues at low ne or Te
             kx=order,
             ky=order,
         )
 
-        if index_lines:
-            # simple indexing for each line, with different indices for different upper-state
-            # populating mechanisms for the same spectral line
-            log10pec_dict[isel] = pec_fun
-        else:
-            # sometimes multiple lines of the same rate_type can be listed at the same wavelength
-            # separate them here by 1e-6 A. Makes it challenging to identify which line is which...
-            # For ambiguous cases, users may be better off using the `index_lines=True` option.
-            while True:
-                if lam in log10pec_dict and rate_type in log10pec_dict[lam]:
-                    dredundant[isel] = {
-                        'original': lam,
-                        'msg': f"{lam} => {lam + 1e-10} A",
-                    }
-                    lam += 1e-10
-                else:
-                    break
+        # simple indexing for each line, with different indices for different upper-state
+        # populating mechanisms for the same spectral line
+        log10pec_dict[isel]['log10 PEC fun'] = pec_fun
+        log10pec_dict[isel]['dens pnts'] = dens
+        log10pec_dict[isel]['temp pnts'] = temp
+        log10pec_dict[isel]['PEC pnts'] = PEC
+        
+    # if ISEL indexing is requested, provide full description of loaded transitions
+    out = _parse_adf15_spec(lines, num_lines)
 
-            # create dictionary with keys for each wavelength:
-            if lam not in log10pec_dict:
-                log10pec_dict[lam] = {}
+    # add log10pec interpolants to pandas DataFrame or dictionary
+    out['log10 PEC fun'] = [log10pec_dict[i]['log10 PEC fun'] for i in log10pec_dict]
 
-            if meta_resolved:
-                if rate_type not in log10pec_dict[lam]:
-                    log10pec_dict[lam][rate_type] = {}
-                log10pec_dict[lam][rate_type][f"meta{INDM}"] = pec_fun
-            else:
-                log10pec_dict[lam][rate_type] = pec_fun
+    # store density and temperature grids on which original data was provided
+    out['dens pnts'] = [log10pec_dict[i]['dens pnts'] for i in log10pec_dict]
+    out['temp pnts'] = [log10pec_dict[i]['temp pnts'] for i in log10pec_dict]
 
-        if (lam in plot_lines) or (index_lines and isel in plot_lines):
+    if store_adas_points:
+        out['PEC pnts'] = [log10pec_dict[i]['PEC pnts'] for i in log10pec_dict]
 
-            # plot PEC values over ne,Te grid given by ADAS, showing interpolation quality
-            NE, TE = np.meshgrid(dens, temp)
-
-            PEC_eval = 10 ** pec_fun.ev(np.log10(NE), np.log10(TE)).T
-
-            # plot PEC rates
-            _ax = _plot_pec(dens, temp, PEC, PEC_eval, lam, cs, rate_type, ax, plot_3d)
-
-            meta_str = ""
-            if meta_resolved:
-                meta_str = f" , meta = {INDM}"
-            _ax.set_title(
-                cs + r" , $\lambda$ = " + str(lam) + " $\AA$, " + rate_type + meta_str
-            )
-            plt.tight_layout()
-
-    # --------------------------------------------
-    #  Unique common warning if any redundant line
-
-    nredon = len(dredundant)
-    if nredon > 0:
-        keys, lamb = zip(*[
-            (k0, v0['original']) for k0, v0 in dredundant.items()
-        ])
-        keys = np.array(keys)[np.argsort(lamb)]
-        lstr = [f"{k0}: {dredundant[k0]['msg']}" for k0 in keys]
-        msg = (
-            f"The following {nredon} transitions have redundant wavelength:\n"
-            + "\n".join(lstr)
-        )
-        warnings.warn(msg)
-
-    return log10pec_dict
+    return out
 
 
-def _plot_pec(dens, temp, PEC, PEC_eval, lam, cs, rate_type, ax=None, plot_3d=False):
-    """Private method to plot PEC data within :py:func:`~aurora.atomic.read_adf15` function.
+def _parse_adf15_spec(lines, num_lines):
+    '''Parse full description of provided rates from an ADF15 file.
+    
+    Parameters
+    ----------
+    lines : list or None
+        List of lines read from ADF15 files.
+    num_lines : int
+        Number of spectral lines in the processed ADF15 file.
+
+    Returns
+    -------
+    dict : 
+        Dictionary containing information about all loaded transitions.
+    '''
+    try:
+        import pandas as pd
+    except ImportError:
+        raise ImportError('Missing installation of pandas!')
+
+    # try to load info on configurations
+    try:
+        levels = {}
+        while True:
+            l = lines.pop(0)
+
+            if 'energy levels' in l:
+                # start collecting info on configurations
+                break
+        _ = lines.pop(0) # ----
+        _ = lines.pop(0) # \n
+        _ = lines.pop(0) # header
+        _ll = lines.pop(0)[2:] # ----
+        splitvals = [len(_ll.split()[j]) for j in np.arange(len(_ll.split()))]
+
+        i = 1
+        while True:
+            l = lines.pop(0)[2:].strip()
+            if l == '':
+                break
+
+            levels[i] = {}
+            config = l[splitvals[0]-1: splitvals[0]+splitvals[1]-1].strip()
+            aa = l[splitvals[0]+splitvals[0+1]-1:]
+            energy = float(aa.split()[-1])
+            term = ''.join(aa.split()[:-1])
+
+            levels[i]['config'] = config
+            levels[i]['2S+1'] = int(term.split(')')[0].replace('(',''))
+            levels[i]['L'] = int(term.split(')')[1].split('(')[0])
+            levels[i]['J'] = float(term.split(')')[1].split('(')[1])
+            levels[i]['energy (cm^-1)'] = energy
+            i+=1
+    except Exception:
+        pass
+ 
+    # collect info on transitions        
+    while True:
+        l = lines.pop(0)
+        if ('isel' in l.lower()) and ('transition' in l.lower()) and ('type' in l.lower()):
+            break
+
+    #_ = lines.pop(0) # ----
+    #_ = lines.pop(0) # \n
+    #header = lines.pop(0)[2:].split() # header
+    #header2 = lines.pop(0)[2:].split() # issep...
+    #_ = lines.pop(0) # ---
+    h = l[2:].split()
+    
+    l1 = lines.pop(0)[2:]
+    if '--' in l1: 
+        splitvals = [len(l1.split()[j])+1 for j in np.arange(len(l1.split()))]
+        headers = h
+    else:
+        # double header
+        l2 = lines.pop(0)[2:].strip()
+        splitvals = [len(l2.split()[j])+1 for j in np.arange(len(l2.split()))]
+        headers2 = l1.split()
+        headers = ['tmp',]*len(splitvals)
+        for ii,ss in enumerate(headers2):
+            headers[-len(headers2)+ii] = ss
+        headers[:len(h)+1] = h
+        
+    d = {}
+    for key in headers:
+        d[key] = []
+    #d = {'isel': [], 'lambda [A]': [],
+    #     'upper level': [], 'lower level': [], 'type': [],
+    #     'wr': [], 'pr': [], 'tg': [], 'sz': [], 'nspp': [], 'ispp': []}
+
+    from IPython import embed
+    embed()
+    
+    for i in range(1, num_lines+1): # not python indexing
+        l = lines.pop(0)[2:]
+
+        assert int(l.split()[0])==i # line number must match
+        
+        d['isel'] = int(l[:splitvals[0]+1])
+        import copy
+        sp = copy.deepcopy(splitvals)
+        sp.insert(0,0)
+        for ii,key in enumerate(list(d.keys())[1:]):
+            d[key] = l[np.sum(sp[:ii]): np.sum(sp[:ii])+1+sp[ii]].replace(' ','')
+
+        lam = l[np.sum(splitvals[:1])+1: np.sum(splitvals[:1])+1+splitvals[1]]
+        trans = l[np.sum(splitvals[:2])+1: np.sum(splitvals[:2])+1+splitvals[2]]
+        rate_type =  l[np.sum(splitvals[:3])+1: np.sum(splitvals[:3])+1+splitvals[3]]
+        
+        ul = l[14:44].strip().split('-')[0].replace(' ','')
+        ll = l[14:44].strip().split('-')[1].replace(' ','')
+
+        d['isel'].append(i)
+        d['lambda [A]'].append(float(l[3:12].strip()))
+        d['upper level'].append(levels[int(ul.split('(')[0])])
+        d['lower level'].append(levels[int(ul.split('(')[0])])
+        d['wr'].append(int(l.split()[-1]))
+        d['pr'].append(int(l.split()[-2]))
+        d['tg'].append(int(l.split()[-3]))
+        d['sz'].append(int(l.split()[-4]))
+        d['nspp'].append(int(l.split()[-5]))
+        d['ispp'].append(int(l.split()[-6]))
+        d['type'].append(l.split()[-7])
+
+    # turn into pandas DataFrame
+    return pd.DataFrame(data=d)
+
+def plot_pec(transition, ax=None, plot_3d=False):
+    """Plot a single Photon Emissivity Coefficient dependency on electron density 
+    and temperature.
+
+    Parameters
+    ----------
+    transition : 
+    ax : matplotlib axes instance
+        If not None, plot on this set of axes.
+    plot_3d : bool
+        Display PEC data as 3D plots rather than 2D ones.    
+
+    Examples
+    --------
+    >>> filename = 'pec96#h_pju#h0.dat'
+    Fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
+    >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')  
+    Load all transitions provided in the chosen ADF15 file:
+    >>> trs = aurora.read_adf15(path)
+    Select the Lyman-alpha transition and plot its rates:
+    >>> tr = trs[(trs['lambda [A]']==1215.2) & (trs['type']=='excit')]
+    >>> aurora.plot_pec(tr)
+
     """
+    dens = transition['dens pnts']
+    temp = transition['temp pnts']
+    if 'PEC pnts' in transition:
+        PEC_pnts = transition['PEC pnts']
+        
+    # plot PEC values over ne,Te grid given by ADAS, showing interpolation quality
+    NE, TE = np.meshgrid(dens, temp)
+    
+    PEC_eval = 10 ** pec_fun.ev(np.log10(NE), np.log10(TE)).T
+    
     if ax is None:
         f1 = plt.figure(figsize=(9, 8))
         if plot_3d:
@@ -844,8 +933,9 @@ def _plot_pec(dens, temp, PEC, PEC_eval, lam, cs, rate_type, ax=None, plot_3d=Fa
         # plot interpolation surface
         ax1.plot_surface(DENS, TEMP, PEC_eval.T, alpha=0.5)
 
-        # overplot ADAS data points
-        ax1.scatter(DENS.ravel(), TEMP.ravel(), PEC.T.ravel(), color="b")
+        if 'PEC pnts' in transition:
+            # overplot ADAS data points
+            ax1.scatter(DENS.ravel(), TEMP.ravel(), PEC_pnts.T.ravel(), color="b")
 
         if ax is None:
             ax1.set_xlabel("$log_{10}(n_e)$ [cm$^{-3}$]")
@@ -857,18 +947,20 @@ def _plot_pec(dens, temp, PEC, PEC_eval, lam, cs, rate_type, ax=None, plot_3d=Fa
         labels = ["{:.0e}".format(ne) + r" $cm^{-3}$" for ne in dens]  # ne_eval]
 
         ls_cycle = plot_tools.get_ls_cycle()
-        for ine in np.arange(PEC.shape[0]):
+        for ine in np.arange(PEC_pnts.shape[0]):
             ls = next(ls_cycle)
             (l,) = ax1.plot(temp, PEC_eval[ine, :], ls, label=labels[ine])
-            # ax1.plot(temp, PEC[ine,:], color=l.get_color(), marker='o', mfc=l.get_color(), ms=5.)
-            ax1.plot(temp, PEC[ine, :], ls, marker="o", mfc=l.get_color(), ms=5.0)
+            if 'PEC pnts' in transition:
+                ax1.plot(temp, PEC_pnts[ine, :], ls, marker="o", mfc=l.get_color(), ms=5.0)
         ax1.set_xlabel(r"$T_e$ [eV]")
         ax1.set_ylabel("PEC [photons $\cdot cm^3/s$]")
         ax1.set_yscale("log")
 
         ax1.legend(loc="best").set_draggable(True)
 
-    return ax1
+    ax1.set_title(f'{transition["isel"]}, {transition["lambda [A]"]} A, {transition["type"]}')
+    plt.tight_layout()
+
 
 
 def get_local_spectrum(
