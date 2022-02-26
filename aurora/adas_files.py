@@ -108,11 +108,15 @@ def get_adas_file_loc(filename, filetype="adf11"):
             raise ValueError(f"Could not fetch file {filename} from ADAS!")
         
         with open(loc, "wb") as f:
-            f.write(r.content)     
-
-    if os.path.exists(adas_data_dir + filetype + os.sep + filename):
+            f.write(r.content) 
+            
+    if filename == 'none':
+        #user don't want to load this file
+        return 
+    
+    elif os.path.exists(adas_data_dir+filetype+os.sep+filename):
         # file is available in adas_data:
-        return adas_data_dir + filetype + os.sep + filename
+        return adas_data_dir+filetype+os.sep+filename
 
     elif os.path.exists(filename):
         # user gave a complete filepath. Don't copy the file from the original location
