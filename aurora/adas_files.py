@@ -111,7 +111,7 @@ def get_adas_file_loc(filename, filetype="adf11"):
             f.write(r.content) 
             
     if filename == 'none':
-        #user don't want to load this file
+        # user doesn't want to load this file
         return 
     
     elif os.path.exists(adas_data_dir+filetype+os.sep+filename):
