@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath('../aurora'))
 # -- Project information -----------------------------------------------------
 
 project = 'Aurora'
-copyright = '2020, F.Sciortino'
+copyright = '2020, F. Sciortino'
 author = 'F.Sciortino'
 
 # The full version, including alpha/beta/rc tags
@@ -75,7 +75,8 @@ if not on_rtd: # only import and set the theme if we're buiding docs locally
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = [] #['_static']
 
-
+#
+html_logo = 'figs/aurora_logo.png'
 
 
 # -- Options for LaTeX output --------------------------------------------------

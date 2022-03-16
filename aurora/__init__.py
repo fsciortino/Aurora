@@ -1,5 +1,5 @@
-name='aurora'
-__version__="2.0.0"
+name = "aurora"
+__version__ = "2.0.7"
 
 import numpy as np, os
 
@@ -11,9 +11,9 @@ from .source_utils import *
 from .default_nml import *
 from .grids_utils import *
 from .coords import *
+from .grids_utils import *
 from .radiation import *
 
-from .particle_conserv import *
 from .plot_tools import *
 from .animate import *
 

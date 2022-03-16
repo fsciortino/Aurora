@@ -33,3 +33,11 @@ ehr5.dat
 aurora/KN1D
 *.sav
 *.pro
+
+# temporary g-files
+g123456.12345
+
+# various bits and pieces related to functionality and coverage tests
+coverage.xml
+junit
+.coverage
