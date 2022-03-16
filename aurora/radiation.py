@@ -613,38 +613,52 @@ def read_adf15(path, order=1):
     Returns
     -------
     pandas.DataFrame:
-        Results with keys ['ispp', 'lambda [A]', 'lower level', 'nspp', 'pr', 'sz', 'tg', 'type',
-        'upper level', 'wr', 'log10 PEC']
+        Parsed data from the given ADF15 file, including an interpolation function
+        for the log-10 of the PEC of each spectral line.
+        See the examples below for advice on using this form of output for plotting and 
+        further analysis.
     
     Examples
     --------
-    To plot the Lyman-alpha photon emissivity coefficients for H (or its isotopes), you can use:
+    To plot the Lyman-alpha photon emissivity coefficients for H (or its isotopes), one can use:
 
-    >>> filename = 'pec96#h_pju#h0.dat' # for D Ly-alpha
+    >>> import aurora
+    >>> filename = 'pec96#h_pju#h0.dat'
     >>> # fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
     >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')  
-    >>>
-    >>> # plot Lyman-alpha line at 1215.2 A. 
-    >>> # see available lines with log10pec_dict.keys() after calling without plot_lines argument
-    >>> log10pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
+    >>> # load all transitions provided in the chosen ADF15 file:
+    >>> trs = aurora.read_adf15(path)
+    >>> # select the excitation-driven component of the Lyman-alpha transition:
+    >>> tr = trs[(trs['lambda [A]']==1215.2) & (trs['type']=='EXCIT')]
+    >>> # now plot the rates:
+    >>> aurora.plot_pec(tr)
 
-    plot_pec(transition)
+    Note that excitation-, recombination- and charge-exchange driven components can
+    be fetched in the same way by specifying the `type`, e.g. using
+    >>> trs['type']=='EXCIT' # 'EXCIT', 'RECOM' or 'CHEXC'
 
-    Another example, this time also with charge exchange::
+    Since the output of `aurora.radiation.read_adf15` is a pandas DataFrame, its contents
+    can be indexed in a variety of ways, e.g. one can select a line based on the 
+    ADAS "ISEL" indices and plot it using
+    >>> aurora.plot_pec(trs.loc[(trs['isel']==1)])
+    or simply
+    >>> aurora.plot_pec(trs.iloc[0])
+    Spectral lines are ordered by ISEL numbers -1 (Python indexing!), so using the 
+    `iloc` method of a pandas DataFrame allows effective indexing by ISEL numbers.
 
-    >>> filename = 'pec96#c_pju#c2.dat'
-    >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')
-    >>> log10pec_dict = aurora.read_adf15(path, plot_lines=[361.7])
+    The log-10 of the PEC interpolation function can be used as
+    >>> tr['log10 PEC fun'].iloc[0].ev(np.log10(ne_cm3), np.log10(Te_eV))
+    where the interpolant was evaluated (via the `ev` method) at specific points of `n_e`
+    (units of [:math:`cm^{-3}`]) and `T_e` (units of :math:`eV`). Note that the log-10
+    of `n_e` and `T_e` is needed, not `n_e` and `T_e` themselves!
 
-    Metastable-resolved files will be automatically identified and parsed accordingly, e.g.::
+    Metastable-resolved files are automatically identified based on the file nomenclature
+    and parsed accordingly, e.g.::
 
     >>> filename = 'pec96#he_pjr#he0.dat'
     >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')
-    >>> log10pec_dict = aurora.read_adf15(path, plot_lines=[584.4])
-
-    To select lines in a pandas DataFrame based on some conditions, one can do for example:
-    out.loc[(out['type']=='EXCIT') & (out['lambda [A]']<5000)]
-    out.loc[(out['isel']==1)]
+    >>> trs = aurora.read_adf15(path)
+    >>> aurora.plot_pec(trs[(trs['lambda [A]'==584.4])])
 
     Notes
     -----
