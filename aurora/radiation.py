@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os, sys
+import os, sys, re
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, interp1d
 from scipy.integrate import cumtrapz
@@ -591,7 +591,7 @@ def get_main_ion_dens(ne_cm3, ions, rhop_plot=None):
     return ni_cm3
 
 
-def read_adf15(path, order=1, store_adas_points=True):
+def read_adf15(path, order=1):
     """Read photon emissivity coefficients (PECs) from an ADAS ADF15 file.
 
     Returns a `pandas.DataFrame` object describing all transitions
@@ -609,10 +609,6 @@ def read_adf15(path, order=1, store_adas_points=True):
         Path to adf15 file to read.
     order : int
         Parameter to control the order of interpolation. Default is 1 (linear interpolation).
-    store_adas_points : bool
-        If True, PEC values tabulated by ADAS are stored in the output, otherwise only interpolation
-        functions are kept. Set this to True to obtain a comparison of the original points and
-        the interpolation functions when using :py:fun:`~aurora.radiation.plot_pec`.
 
     Returns
     -------
@@ -632,6 +628,8 @@ def read_adf15(path, order=1, store_adas_points=True):
     >>> # see available lines with log10pec_dict.keys() after calling without plot_lines argument
     >>> log10pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
 
+    plot_pec(transition)
+
     Another example, this time also with charge exchange::
 
     >>> filename = 'pec96#c_pju#c2.dat'
@@ -646,10 +644,12 @@ def read_adf15(path, order=1, store_adas_points=True):
 
     To select lines in a pandas DataFrame based on some conditions, one can do for example:
     out.loc[(out['type']=='EXCIT') & (out['lambda [A]']<5000)]
+    out.loc[(out['isel']==1)]
 
     Notes
     -----
-    This function expects the format of PEC files produced via the ADAS adas810 or adas218 routines.
+    This function expects the format of PEC files produced via the ADAS 
+    adas810 or adas218 routines.
 
     """
     # find out whether file is metastable resolved
@@ -722,7 +722,9 @@ def read_adf15(path, order=1, store_adas_points=True):
                 PEC[-1] += [float(v) for v in lines.pop(0).split()]
         PEC = np.asarray(PEC)
 
-        # add a key to the log10pec_dict[lam] dictionary for each type of rate: recom, excit or chexc
+        # add a key to the log10pec_dict[lam] dictionary for each type of rate:
+        # recom, excit or chexc
+        
         # interpolate PEC on log dens,temp scales
         pec_fun = RectBivariateSpline(
             np.log10(dens),
@@ -738,24 +740,119 @@ def read_adf15(path, order=1, store_adas_points=True):
         log10pec_dict[isel]['dens pnts'] = dens
         log10pec_dict[isel]['temp pnts'] = temp
         log10pec_dict[isel]['PEC pnts'] = PEC
-        
-    # if ISEL indexing is requested, provide full description of loaded transitions
-    out = _parse_adf15_spec(lines, num_lines)
 
+    # if ISEL indexing is requested, provide full description of loaded transitions
+    out = parse_adf15_spec(lines, num_lines)
+    
     # add log10pec interpolants to pandas DataFrame or dictionary
     out['log10 PEC fun'] = [log10pec_dict[i]['log10 PEC fun'] for i in log10pec_dict]
 
-    # store density and temperature grids on which original data was provided
+    # store original data as well as its density and temperature grids
     out['dens pnts'] = [log10pec_dict[i]['dens pnts'] for i in log10pec_dict]
     out['temp pnts'] = [log10pec_dict[i]['temp pnts'] for i in log10pec_dict]
-
-    if store_adas_points:
-        out['PEC pnts'] = [log10pec_dict[i]['PEC pnts'] for i in log10pec_dict]
+    out['PEC pnts'] = [log10pec_dict[i]['PEC pnts'] for i in log10pec_dict]
 
     return out
 
+def _find_adf15_spacing(l):
+    l = l.replace('\n',' ')
+    splitvals = []
+    for elem in l.split():
+        for m in re.finditer(' '+elem,l):
+            pair = [m.start()+1, m.end()+1] # read additional end character
+            if pair not in splitvals:
+                splitvals.append(pair)
+    # re-order pairs
+    idx = np.argsort(np.array(splitvals)[:,0])
+    splitvals = np.array(splitvals)[idx]
 
-def _parse_adf15_spec(lines, num_lines):
+    # ensure uniqueness
+    vals = np.unique(np.array(splitvals)[:,0])
+    sv = [splitvals[0]]
+    for row in splitvals[1:]:
+        if row[0] not in np.array(sv)[:,0]:
+            sv.append(row)
+        else:
+            ind = np.argmin(np.abs(row[0] - np.array(sv)[:,0]))
+            if row[1] > np.array(sv)[ind,1]:
+                sv[ind][1] = row[1]
+
+    splitvals = splitvals[np.unique(np.array(splitvals)[:,0], return_index=True)[1]]
+    return splitvals
+
+def parse_adf15_configs(path):
+    '''Parse ADF15 file to identify electron configurations and 
+    energies used to produce Photon Emissivity Coefficients (PECs)
+    in the same file.
+
+    Parameters
+    ----------
+    path : str
+        Path to adf15 file to read.
+
+    Returns
+    -------
+    pandas.DataFrame:
+        DataFrame containing information about all electron configurations
+        used for PEC calculations.  
+
+    Notes
+    -----
+    The format of ADAS ADF15 files has varied over time; consequently, it is
+    surprisingly difficult to figure out parsing methods that work for all files.
+    If this function fails on one of your files, please report this via a Github 
+    issue and one of the Aurora core developers will help adapting the parser.
+    '''
+    try:
+        import pandas as pd
+    except ImportError:
+        raise ImportError('Missing installation of pandas!')
+    
+    with open(path, "r") as f:
+        lines = f.readlines()
+        
+    # try to parse info on configurations
+    out = {}
+    while True:
+        try:
+            l = lines.pop(0)
+        except IndexError:
+            raise ValueError('Could not detect energy levels and electron configurations in the file')
+        if 'energy levels' in l:
+            # start collecting info on configurations
+            break
+
+    _ = lines.pop(0) # ----
+    _ = lines.pop(0) # \n
+    headers_line = lines.pop(0)[2:]
+    _ll = lines.pop(0)[2:] # ----
+    splitvals = _find_adf15_spacing(_ll)
+
+    headers = []
+    for sv in splitvals:
+        headers.append(headers_line[sv[0]:sv[1]].strip())
+
+    for key in headers:
+        out[key.lower()] = []
+
+    while True:
+        l = lines.pop(0)[2:] # .strip()
+        if l == '':
+            break
+
+        for sv,header in zip(splitvals,headers):
+            out[header.lower()].append(l[sv[0]:sv[1]].strip())
+
+    # some type conversions:
+    out['lv'] = np.array(out['lv'], dtype=int)
+    out['energy (cm^-1)'] = np.array(out['energy (cm^-1)'], dtype=float)
+    for key in out:
+        out[key] = np.array(out[key])
+
+    # return as a pandas DataFrame
+    return pd.DataFrame(data=out)
+
+def parse_adf15_spec(lines, num_lines):
     '''Parse full description of provided rates from an ADF15 file.
     
     Parameters
@@ -775,111 +872,53 @@ def _parse_adf15_spec(lines, num_lines):
     except ImportError:
         raise ImportError('Missing installation of pandas!')
 
-    # try to load info on configurations
-    try:
-        levels = {}
-        while True:
-            l = lines.pop(0)
-
-            if 'energy levels' in l:
-                # start collecting info on configurations
-                break
-        _ = lines.pop(0) # ----
-        _ = lines.pop(0) # \n
-        _ = lines.pop(0) # header
-        _ll = lines.pop(0)[2:] # ----
-        splitvals = [len(_ll.split()[j]) for j in np.arange(len(_ll.split()))]
-
-        i = 1
-        while True:
-            l = lines.pop(0)[2:].strip()
-            if l == '':
-                break
-
-            levels[i] = {}
-            config = l[splitvals[0]-1: splitvals[0]+splitvals[1]-1].strip()
-            aa = l[splitvals[0]+splitvals[0+1]-1:]
-            energy = float(aa.split()[-1])
-            term = ''.join(aa.split()[:-1])
-
-            levels[i]['config'] = config
-            levels[i]['2S+1'] = int(term.split(')')[0].replace('(',''))
-            levels[i]['L'] = int(term.split(')')[1].split('(')[0])
-            levels[i]['J'] = float(term.split(')')[1].split('(')[1])
-            levels[i]['energy (cm^-1)'] = energy
-            i+=1
-    except Exception:
-        pass
- 
     # collect info on transitions        
     while True:
         l = lines.pop(0)
         if ('isel' in l.lower()) and ('transition' in l.lower()) and ('type' in l.lower()):
             break
-
-    #_ = lines.pop(0) # ----
-    #_ = lines.pop(0) # \n
-    #header = lines.pop(0)[2:].split() # header
-    #header2 = lines.pop(0)[2:].split() # issep...
-    #_ = lines.pop(0) # ---
-    h = l[2:].split()
+        
+    hh = l[2:].split()
     
     l1 = lines.pop(0)[2:]
-    if '--' in l1: 
-        splitvals = [len(l1.split()[j])+1 for j in np.arange(len(l1.split()))]
-        headers = h
+
+    if '--' in l1:
+        #l1 = l1.replace('\n',' ')
+        splitvals = _find_adf15_spacing(l1)
+        headers = hh
     else:
         # double header
-        l2 = lines.pop(0)[2:].strip()
-        splitvals = [len(l2.split()[j])+1 for j in np.arange(len(l2.split()))]
+        l2 = lines.pop(0)[2:] # .strip() #.replace('\n',' ')
+        splitvals = np.array(_find_adf15_spacing(l2))
+        # ensure uniqueness
+        #splitvals = splitvals[np.unique(np.array(splitvals)[:,0], return_index=True)[1]] 
         headers2 = l1.split()
         headers = ['tmp',]*len(splitvals)
         for ii,ss in enumerate(headers2):
             headers[-len(headers2)+ii] = ss
-        headers[:len(h)+1] = h
-        
+        headers[:len(hh)+1] = hh
+    headers = [head.lower() for head in headers]
+
     d = {}
     for key in headers:
-        d[key] = []
-    #d = {'isel': [], 'lambda [A]': [],
-    #     'upper level': [], 'lower level': [], 'type': [],
-    #     'wr': [], 'pr': [], 'tg': [], 'sz': [], 'nspp': [], 'ispp': []}
-
-    from IPython import embed
-    embed()
+        d[key.lower()] = []
     
     for i in range(1, num_lines+1): # not python indexing
         l = lines.pop(0)[2:]
 
-        assert int(l.split()[0])==i # line number must match
-        
-        d['isel'] = int(l[:splitvals[0]+1])
-        import copy
-        sp = copy.deepcopy(splitvals)
-        sp.insert(0,0)
-        for ii,key in enumerate(list(d.keys())[1:]):
-            d[key] = l[np.sum(sp[:ii]): np.sum(sp[:ii])+1+sp[ii]].replace(' ','')
+        assert int(float(l.split()[0]))==i # line number must match
 
-        lam = l[np.sum(splitvals[:1])+1: np.sum(splitvals[:1])+1+splitvals[1]]
-        trans = l[np.sum(splitvals[:2])+1: np.sum(splitvals[:2])+1+splitvals[2]]
-        rate_type =  l[np.sum(splitvals[:3])+1: np.sum(splitvals[:3])+1+splitvals[3]]
-        
-        ul = l[14:44].strip().split('-')[0].replace(' ','')
-        ll = l[14:44].strip().split('-')[1].replace(' ','')
+        for sv,header in zip(splitvals,headers):
+            d[header].append(l[sv[0]:sv[1]])
 
-        d['isel'].append(i)
-        d['lambda [A]'].append(float(l[3:12].strip()))
-        d['upper level'].append(levels[int(ul.split('(')[0])])
-        d['lower level'].append(levels[int(ul.split('(')[0])])
-        d['wr'].append(int(l.split()[-1]))
-        d['pr'].append(int(l.split()[-2]))
-        d['tg'].append(int(l.split()[-3]))
-        d['sz'].append(int(l.split()[-4]))
-        d['nspp'].append(int(l.split()[-5]))
-        d['ispp'].append(int(l.split()[-6]))
-        d['type'].append(l.split()[-7])
+    # 2-step conversion to make isel numbers into integers
+    d['isel'] = np.array(d['isel'],dtype=float)
+    d['isel'] = np.array(d['isel'],dtype=int)
 
-    # turn into pandas DataFrame
+    # make wavelengths into floats and change nomenclature
+    d['lambda [A]'] = np.array(d[headers[1]], dtype=float)
+
+    # return as a pandas DataFrame
     return pd.DataFrame(data=d)
 
 def plot_pec(transition, ax=None, plot_3d=False):
@@ -902,20 +941,20 @@ def plot_pec(transition, ax=None, plot_3d=False):
     Load all transitions provided in the chosen ADF15 file:
     >>> trs = aurora.read_adf15(path)
     Select the Lyman-alpha transition and plot its rates:
-    >>> tr = trs[(trs['lambda [A]']==1215.2) & (trs['type']=='excit')]
+    >>> tr = trs[(trs['lambda [A]']==1215.2) & (trs['type']=='EXCIT')]
     >>> aurora.plot_pec(tr)
-
+    Alternatively, to select a line using the ADAS "ISEL" indices:
+    >>> aurora.plot_pec(out.loc[(out['isel']==1)])
     """
-    dens = transition['dens pnts']
-    temp = transition['temp pnts']
-    if 'PEC pnts' in transition:
-        PEC_pnts = transition['PEC pnts']
-        
-    # plot PEC values over ne,Te grid given by ADAS, showing interpolation quality
+    dens = np.array(transition['dens pnts'])[0]
+    temp = np.array(transition['temp pnts'])[0]
+    PEC_pnts = np.array(transition['PEC pnts'])[0]
+    pec_fun = np.array(transition['log10 PEC fun'])[0]
+    
+    # plot PEC values over ne,Te grid given by ADAS, showing interpolation validity
     NE, TE = np.meshgrid(dens, temp)
-    
     PEC_eval = 10 ** pec_fun.ev(np.log10(NE), np.log10(TE)).T
-    
+
     if ax is None:
         f1 = plt.figure(figsize=(9, 8))
         if plot_3d:
@@ -958,7 +997,7 @@ def plot_pec(transition, ax=None, plot_3d=False):
 
         ax1.legend(loc="best").set_draggable(True)
 
-    ax1.set_title(f'{transition["isel"]}, {transition["lambda [A]"]} A, {transition["type"]}')
+    ax1.set_title(f'{transition["isel"][0]}, {transition["lambda [A]"][0]} A, {transition["type"][0]}')
     plt.tight_layout()
 
 
@@ -1132,19 +1171,16 @@ def get_local_spectrum(
     lams_profs_A = np.linspace(wave_A - _dlam_A, wave_A + _dlam_A, 100, axis=1)
 
     theta_tmp = (
-        1.0
-        / (np.sqrt(np.pi) * dnu_g[:, None])
-        * np.exp(
+        1.0 / (np.sqrt(np.pi) * dnu_g[:, None]) * np.exp(
             -(
                 (
                     (constants.c / lams_profs_A - constants.c / wave_A[:, None])
                     / dnu_g[:, None]
-                )
-                ** 2
+                )**2
             )
         )
     )
-
+    
     # Normalize Gaussian profile
     theta = np.einsum(
         "ij,i->ij", theta_tmp, 1.0 / np.trapz(theta_tmp, x=lams_profs_A, axis=1)
@@ -1398,7 +1434,8 @@ def get_cooling_factors(
             for cs in np.arange(fz.shape[1] - 1):
                 ax.loglog(Te_eV / 1e3, PLT[:, cs], lss, lw=2.0, label=f"{imp}{cs+1}+")
 
-                # change line style here because there's no line rad for fully-ionized stage or recombination from neutral stage
+                # change line style here because there's no line rad
+                # for fully-ionized stage or recombination from neutral stage
                 lss = next(ls_cycle)
 
                 # show line and continuum recombination components separately
@@ -1445,29 +1482,32 @@ def get_cooling_factors(
 
 
 def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mult=[]):
-    """Display all photon emissivity coefficients from the given list of ADF15 files and (optionally) compare to a set
-    of chosen wavelengths, given in units of Angstrom.
+    """Display all photon emissivity coefficients from the given list of ADF15 files 
+    and (optionally) compare to a set of chosen wavelengths, given in units of Angstrom.
 
     Parameters
     -----------------
     pec_files : str or list of str
         Path to a single ADF15 file or a list of files.
     lines : dict, list or 1D array
-        Lines to overplot with the loaded PECs to consider overlap within spectrum. This argument may be a dictionary, with
-        keys corresponding to line names and values corresponding to wavelengths (in units of Angstrom). If provided as a 
+        Lines to overplot with the loaded PECs to consider overlap within spectrum. 
+        This argument may be a dictionary, with keys corresponding to line names and 
+        values corresponding to wavelengths (in units of Angstrom). If provided as a 
         list or array, this is assumed to contain only wavelengths in Angstrom.
     Te_eV : float
         Single value of electron temperature at which PECs should be evaluated [:math:`eV`].
     ne_cm3 : float
         Single value of electron density at which PECs should be evaluated [:math:`cm^{-3}`].
     mult : list or array
-        Multiplier to apply to lines from each PEC file. This could be used for example to rescale the results of
-        multiple ADF15 files by the expected fractional abundance or density of each element/charge state.
+        Multiplier to apply to lines from each PEC file. This could be used for example to 
+        rescale the results of multiple ADF15 files by the expected fractional abundance or 
+        density of each element/charge state.
 
     Notes
     --------
-    To attempt identification of spectral lines, one can load a set of ADF15 files, calculate approximate fractional
-    abundances at equilibrium and overplot expected emissivities in a few steps::
+    To attempt identification of spectral lines, one can load a set of ADF15 files, 
+    calculate approximate fractional abundances at equilibrium and overplot expected 
+    emissivities in a few steps::
 
     >>> pec_files = ['mypecs1','mypecs2','mypecs3']
     >>> Te_eV=500; ne_cm3=5e13; ion='Ar'   # examples
