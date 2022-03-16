@@ -629,13 +629,13 @@ def read_adf15(path, order=1):
     >>> # load all transitions provided in the chosen ADF15 file:
     >>> trs = aurora.read_adf15(path)
     >>> # select the excitation-driven component of the Lyman-alpha transition:
-    >>> tr = trs[(trs['lambda [A]']==1215.2) & (trs['type']=='EXCIT')]
+    >>> tr = trs[(trs['lambda [A]']==1215.2) & (trs['type']=='excit')]
     >>> # now plot the rates:
     >>> aurora.plot_pec(tr)
 
     Note that excitation-, recombination- and charge-exchange driven components can
     be fetched in the same way by specifying the `type`, e.g. using
-    >>> trs['type']=='EXCIT' # 'EXCIT', 'RECOM' or 'CHEXC'
+    >>> trs['type']=='excit' # 'excit', 'recom' or 'chexc'
 
     Since the output of `aurora.radiation.read_adf15` is a pandas DataFrame, its contents
     can be indexed in a variety of ways, e.g. one can select a line based on the 
@@ -931,6 +931,10 @@ def parse_adf15_spec(lines, num_lines):
 
     # make wavelengths into floats and change nomenclature
     d['lambda [A]'] = np.array(d[headers[1]], dtype=float)
+    if headers[1]!='lambda [A]': del d[headers[1]]
+    
+    # ensure consistency of labels across files
+    d['type'] = np.array([val.lower() for val in d['type']])
 
     # return as a pandas DataFrame
     return pd.DataFrame(data=d)
