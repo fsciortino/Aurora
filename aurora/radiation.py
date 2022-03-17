@@ -934,7 +934,7 @@ def parse_adf15_spec(lines, num_lines):
     if headers[1]!='lambda [A]': del d[headers[1]]
     
     # ensure consistency of labels across files
-    d['type'] = np.array([val.lower() for val in d['type']])
+    d['type'] = np.array([val.lower().strip() for val in d['type']])
 
     # return as a pandas DataFrame
     return pd.DataFrame(data=d)
@@ -964,10 +964,10 @@ def plot_pec(transition, ax=None, plot_3d=False):
     Alternatively, to select a line using the ADAS "ISEL" indices:
     >>> aurora.plot_pec(out.loc[(out['isel']==1)])
     """
-    dens = np.array(transition['dens pnts'])[0]
-    temp = np.array(transition['temp pnts'])[0]
-    PEC_pnts = np.array(transition['PEC pnts'])[0]
-    pec_fun = np.array(transition['log10 PEC fun'])[0]
+    dens = np.atleast_1d(transition['dens pnts'])[0]
+    temp = np.atleast_1d(transition['temp pnts'])[0]
+    PEC_pnts = np.atleast_1d(transition['PEC pnts'])[0]
+    pec_fun = np.atleast_1d(transition['log10 PEC fun'])[0]
     
     # plot PEC values over ne,Te grid given by ADAS, showing interpolation validity
     NE, TE = np.meshgrid(dens, temp)
