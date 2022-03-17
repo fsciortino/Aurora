@@ -31,12 +31,12 @@ from scipy import constants
 import warnings, copy
 from scipy import constants
 from collections import OrderedDict
+import pandas as pd
 
 from . import atomic
 from . import adas_files
 from . import plot_tools
-
-
+    
 def compute_rad(
     imp,
     nz,
@@ -817,11 +817,6 @@ def parse_adf15_configs(path):
     If this function fails on one of your files, please report this via a Github 
     issue and one of the Aurora core developers will help adapting the parser.
     '''
-    try:
-        import pandas as pd
-    except ImportError:
-        raise ImportError('Missing installation of pandas!')
-    
     with open(path, "r") as f:
         lines = f.readlines()
         
@@ -881,11 +876,6 @@ def parse_adf15_spec(lines, num_lines):
     dict : 
         Dictionary containing information about all loaded transitions.
     '''
-    try:
-        import pandas as pd
-    except ImportError:
-        raise ImportError('Missing installation of pandas!')
-
     # collect info on transitions        
     while True:
         l = lines.pop(0)
@@ -959,16 +949,21 @@ def plot_pec(transition, ax=None, plot_3d=False):
     Load all transitions provided in the chosen ADF15 file:
     >>> trs = aurora.read_adf15(path)
     Select the Lyman-alpha transition and plot its rates:
-    >>> tr = trs[(trs['lambda [A]']==1215.2) & (trs['type']=='EXCIT')]
+    >>> tr = trs[(trs['lambda [A]']==1215.2) & (trs['type']=='excit')]
     >>> aurora.plot_pec(tr)
     Alternatively, to select a line using the ADAS "ISEL" indices:
-    >>> aurora.plot_pec(out.loc[(out['isel']==1)])
+    >>> aurora.plot_pec(trs.loc[(trs['isel']==1)])
+    or
+    >>> aurora.plot_pec(trs.iloc[0])
     """
-    dens = np.atleast_1d(transition['dens pnts'])[0]
-    temp = np.atleast_1d(transition['temp pnts'])[0]
-    PEC_pnts = np.atleast_1d(transition['PEC pnts'])[0]
-    pec_fun = np.atleast_1d(transition['log10 PEC fun'])[0]
-    
+    if isinstance(transition, pd.core.frame.DataFrame):
+        transition = transition.iloc[0]
+
+    dens = transition['dens pnts']
+    temp = transition['temp pnts']
+    PEC_pnts = transition['PEC pnts']
+    pec_fun = transition['log10 PEC fun']
+        
     # plot PEC values over ne,Te grid given by ADAS, showing interpolation validity
     NE, TE = np.meshgrid(dens, temp)
     PEC_eval = 10 ** pec_fun.ev(np.log10(NE), np.log10(TE)).T
@@ -1015,7 +1010,7 @@ def plot_pec(transition, ax=None, plot_3d=False):
 
         ax1.legend(loc="best").set_draggable(True)
 
-    ax1.set_title(f'{transition["isel"][0]}, {transition["lambda [A]"][0]} A, {transition["type"][0]}')
+    ax1.set_title(f'{transition["isel"]}, {transition["lambda [A]"]} A, {transition["type"]}')
     plt.tight_layout()
 
 
