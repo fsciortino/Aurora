@@ -887,7 +887,6 @@ def parse_adf15_spec(lines, num_lines):
     l1 = lines.pop(0)[2:]
 
     if '--' in l1:
-        #l1 = l1.replace('\n',' ')
         splitvals = _find_adf15_spacing(l1)
         headers = hh
     else:
@@ -895,7 +894,6 @@ def parse_adf15_spec(lines, num_lines):
         l2 = lines.pop(0)[2:] # .strip() #.replace('\n',' ')
         splitvals = np.array(_find_adf15_spacing(l2))
         # ensure uniqueness
-        #splitvals = splitvals[np.unique(np.array(splitvals)[:,0], return_index=True)[1]] 
         headers2 = l1.split()
         headers = ['tmp',]*len(splitvals)
         for ii,ss in enumerate(headers2):
@@ -906,19 +904,29 @@ def parse_adf15_spec(lines, num_lines):
     d = {}
     for key in headers:
         d[key.lower()] = []
-    
+
     for i in range(1, num_lines+1): # not python indexing
         l = lines.pop(0)[2:]
-
-        assert int(float(l.split()[0]))==i # line number must match
-
-        for sv,header in zip(splitvals,headers):
+            
+        if l[splitvals[1][0]-1] != ' ': # no space before beginning of lam
+            # wavelength field invasion into isel column
+            d['isel'].append(int(float(l.split('.')[0])))
+            lam_int = l.split('.')[1]
+            lam_digit = l.split('.')[2].split()[0]                
+            d[headers[1]].append(float(lam_int+'.'+lam_digit))
+        else:
+            d['isel'].append(int(float(l[splitvals[0][0]:splitvals[0][1]])))
+            d[headers[1]].append(float(l[splitvals[1][0]:splitvals[1][1]]))
+            
+        for sv,header in zip(splitvals[2:],headers[2:]):
             d[header].append(l[sv[0]:sv[1]])
 
-    # 2-step conversion to make isel numbers into integers
-    d['isel'] = np.array(d['isel'],dtype=float)
-    d['isel'] = np.array(d['isel'],dtype=int)
-
+        # sanity check: line number must match
+        try:
+            assert d['isel'][-1]==i
+        except:
+            raise ValueError(f'Some issue with file parsing for ISEL={i+1}')
+            
     # make wavelengths into floats and change nomenclature
     d['lambda [A]'] = np.array(d[headers[1]], dtype=float)
     if headers[1]!='lambda [A]': del d[headers[1]]
