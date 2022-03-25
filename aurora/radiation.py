@@ -44,7 +44,6 @@ def compute_rad(
     Te,
     n0=None,
     Ti=None,
-    ni=None,
     adas_files_sub={},
     prad_flag=False,
     sxr_flag=False,
