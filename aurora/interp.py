@@ -109,7 +109,8 @@ def ratfun(params, d, rLCFS, r):
 def interp_quad(x, y, d, rLCFS, r):
     """Function 'interp' used for kinetic profiles.
     """
-    f = interp1d(x, np.log(y), kind="quadratic", assume_sorted=True, copy=False)
+    f = interp1d(x, np.log(y), kind="quadratic", assume_sorted=True,
+                 copy=False, fill_value='extrapolate')
     idx = np.searchsorted(r, rLCFS)
     core = np.exp(f(np.clip(r[:idx] / rLCFS, 0, x[-1])))
     edge = core[..., [idx - 1]] * np.exp(
