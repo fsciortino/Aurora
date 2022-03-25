@@ -330,7 +330,7 @@ class aurora_sim:
                 nml_rcl_prof["source_width_out"] = 0
 
                 # NB: we assume here that the 0th time is a good representation of how recycling is radially distributed
-                self.rcl_rad_prof = source_utils.get_radial_source(
+                rcl_rad_prof = source_utils.get_radial_source(
                     nml_rcl_prof,  # namelist specifically to obtain exp decay from wall
                     self.rvol_grid,
                     self.pro_grid,
