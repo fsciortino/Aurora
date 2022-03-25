@@ -45,13 +45,13 @@ class aurora_sim:
     Parameters
     ----------
     namelist : dict
-        Dictionary containing aurora inputs. See default_nml.py for some defaults, 
+        Dictionary containing aurora inputs. See default_nml.py for some defaults,
         which users should modify for their runs.
     geqdsk : dict, optional
-        EFIT gfile as returned after postprocessing by the :py:mod:`omfit_classes.omfit_eqdsk` 
-        package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary 
+        EFIT gfile as returned after postprocessing by the :py:mod:`omfit_classes.omfit_eqdsk`
+        package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary
         is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
-          
+
     """
 
     def __init__(self, namelist, geqdsk=None):
@@ -307,9 +307,6 @@ class aurora_sim:
                     self.namelist["rcl_prof_vals"],
                     fill_value="extrapolate",
                 )(self.rhop_grid)
-                self.rcl_rad_prof = np.broadcast_to(
-                    rcl_rad_prof, (rcl_rad_prof.shape[0], len(self.time_grid))
-                )
 
             else:
                 # set recycling prof to exp decay from wall
@@ -330,13 +327,17 @@ class aurora_sim:
                 nml_rcl_prof["source_width_out"] = 0
 
                 # NB: we assume here that the 0th time is a good representation of how recycling is radially distributed
-                self.rcl_rad_prof = source_utils.get_radial_source(
+                rcl_rad_prof = source_utils.get_radial_source(
                     nml_rcl_prof,  # namelist specifically to obtain exp decay from wall
                     self.rvol_grid,
                     self.pro_grid,
                     Sne0,
                     self._Ti,
                 )
+
+            self.rcl_rad_prof = np.broadcast_to(
+                rcl_rad_prof, (rcl_rad_prof.shape[0], len(self.time_grid))
+            )
 
         else:
             # dummy profile -- recycling is turned off
@@ -487,15 +488,15 @@ class aurora_sim:
         Parameters
         ----------
         trust_SOL_Ti : bool
-            If True, the input Ti is trusted also in the SOL to calculate a parallel loss rate. 
+            If True, the input Ti is trusted also in the SOL to calculate a parallel loss rate.
             Often, Ti measurements in the SOL are unrealiable, so this parameter is set to False by default.
 
         Returns
         -------
         dv : array (space,time)
-            Parallel loss rates in :math:`s^{-1}` units. 
-            Values are zero in the core region and non-zero in the SOL. 
-        
+            Parallel loss rates in :math:`s^{-1}` units.
+            Values are zero in the core region and non-zero in the SOL.
+
         """
         # import here to avoid issues when building docs or package
         from omfit_classes.utils_math import atomic_element
@@ -544,10 +545,10 @@ class aurora_sim:
     def superstage_DV(self, D_z, V_z, times_DV=None, opt=1):
         """Reduce the dimensionality of D and V time-dependent profiles for the case in which superstaging is applied.
 
-        Three options are currently available: 
+        Three options are currently available:
 
         #. opt=1 gives a simple selection of D_z and V_z fields corresponding to each superstage index.
-        
+
         #. opt=2 averages D_z and V_z over the charge states that are part of each superstage.
 
         #. opt=3 weights D_z and V_z corresponding to each superstage by the fractional abundances at ionization
@@ -566,7 +567,7 @@ class aurora_sim:
             Diffusion coefficients of superstages, in units of :math:`cm^2/s`.
         Vzf: array, shape of (space,time,nZ-superstages)
             Convection coefficients of superstages, in units of :math:`cm/s`.
-        
+
         """
         # simple selection of elements corresponding to superstage
         Dzf = D_z[:, :, self.superstages]
@@ -632,15 +633,15 @@ class aurora_sim:
         use_julia=False,
         plot=False,
     ):
-        """Run a simulation using the provided diffusion and convection profiles as a function of space, time 
-        and potentially also ionization state. Users can give an initial state of each ion charge state as an input. 
+        """Run a simulation using the provided diffusion and convection profiles as a function of space, time
+        and potentially also ionization state. Users can give an initial state of each ion charge state as an input.
 
         Results can be conveniently visualized with time-slider using
 
         .. code-block:: python
 
             aurora.slider_plot(rhop,time, nz.transpose(1,2,0),
-                               xlabel=r'$\\rho_p$', ylabel='time [s]', 
+                               xlabel=r'$\\rho_p$', ylabel='time [s]',
                                zlabel=r'$n_z$ [cm$^{-3}$]', plot_sum=True,
                                labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(nz_w.shape[1]])
 
@@ -648,32 +649,32 @@ class aurora_sim:
         ----------
         D_z: array, shape of (space,time,nZ) or (space,time) or (space,)
             Diffusion coefficients, in units of :math:`cm^2/s`.
-            This may be given as a function of space only, (space,time) or (space,nZ, time), 
-            where nZ indicates the number of charge states. If given with 1 or 2 dimensions, 
+            This may be given as a function of space only, (space,time) or (space,nZ, time),
+            where nZ indicates the number of charge states. If given with 1 or 2 dimensions,
             it is assumed that all charge states should have the same diffusion coefficients.
-            If given as 1D, it is further assumed that diffusion is time-independent. 
+            If given as 1D, it is further assumed that diffusion is time-independent.
             Note that it is assumed that radial profiles are already on the self.rvol_grid radial grid.
         V_z: array, shape of (space,time,nZ) or (space,time) or (space,)
             Convection coefficients, in units of :math:`cm/s`.
-            This may be given as a function of space only, (space,time) or (space,nZ, time), 
-            where nZ indicates the number of charge states. If given with 1 or 2 dimensions, 
+            This may be given as a function of space only, (space,time) or (space,nZ, time),
+            where nZ indicates the number of charge states. If given with 1 or 2 dimensions,
             it is assumed that all charge states should have the same convection coefficients.
-            If given as 1D, it is further assumed that convection is time-independent. 
+            If given as 1D, it is further assumed that convection is time-independent.
             Note that it is assumed that radial profiles are already on the self.rvol_grid radial grid.
         times_DV : 1D array, optional
-            Array of times at which `D_z` and `V_z` profiles are given. By Default, this is None, 
-            which implies that `D_z` and `V_z` are time independent. 
+            Array of times at which `D_z` and `V_z` profiles are given. By Default, this is None,
+            which implies that `D_z` and `V_z` are time independent.
         nz_init: array, shape of (space, nZ)
             Impurity charge states at the initial time of the simulation. If left to None, this is
             internally set to an array of 0's.
         unstage : bool, optional
-            If superstages are indicated in the namelist, this parameter sets whether the output 
-            should be "unstaged" by multiplying by the appropriate fractional abundances of all 
-            charge states at ionization equilibrium. 
+            If superstages are indicated in the namelist, this parameter sets whether the output
+            should be "unstaged" by multiplying by the appropriate fractional abundances of all
+            charge states at ionization equilibrium.
             Note that this unstaging process cannot account for transport and is therefore
             only an approximation, to be used carefully.
         alg_opt : int, optional
-            If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
+            If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020.
             If `alg_opt=0`, use the older finite-differences algorithm in the 2018 version of STRAHL.
         evolneut : bool, optional
             If True, evolve neutral impurities based on their D,V coefficients. Default is False, in
@@ -681,11 +682,11 @@ class aurora_sim:
             injection are neglected.
             NB: It is recommended to only use this with explicit 2D sources, otherwise
         use_julia : bool, optional
-            If True, run the Julia pre-compiled version of the code. Run the julia makefile option to set 
+            If True, run the Julia pre-compiled version of the code. Run the julia makefile option to set
             this up. Default is False (still under development)
         plot : bool, optional
-            If True, plot density for each charge state using a convenient slides over time and check 
-            particle conservation in each particle reservoir. 
+            If True, plot density for each charge state using a convenient slides over time and check
+            particle conservation in each particle reservoir.
 
         Returns
         -------
@@ -700,7 +701,7 @@ class aurora_sim:
         N_pump : array (nt,)
             Number of particles in the pump reservoir over time.
         N_ret : array (nt,)
-             Number of particles temporarily held in the wall reservoirs. 
+             Number of particles temporarily held in the wall reservoirs.
         N_tsu : array (nt,)
              Edge particle loss [:math:`cm^{-3}`]
         N_dsu : array (nt,)
@@ -895,20 +896,20 @@ class aurora_sim:
         Parameters
         ----------
         D_z: array, shape of (space,nZ) or (space,)
-            Diffusion coefficients, in units of :math:`cm^2/s`. This may be given as a function of space only or (space,nZ). 
+            Diffusion coefficients, in units of :math:`cm^2/s`. This may be given as a function of space only or (space,nZ).
             No time dependence is allowed in this function. Here, nZ indicates the number of charge states.
             Note that it is assumed that radial profiles are already on the self.rvol_grid radial grid.
         V_z: array, shape of (space,nZ) or (space,)
-            Convection coefficients, in units of :math:`cm/s`. This may be given as a function of space only or (space,nZ). 
+            Convection coefficients, in units of :math:`cm/s`. This may be given as a function of space only or (space,nZ).
             No time dependence is allowed in this function. Here, nZ indicates the number of charge states.
         nz_init: array, shape of (space, nZ)
             Impurity charge states at the initial time of the simulation. If left to None, this is
             internally set to an array of 0's.
         unstage : bool, optional
-            If a list of superstages are provided in the namelist, this parameter sets whether the 
+            If a list of superstages are provided in the namelist, this parameter sets whether the
             output should be "unstaged". See docs for :py:meth:`~aurora.core.run_aurora` for details.
         alg_opt : int, optional
-            If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020. 
+            If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020.
             If `alg_opt=0`, use the older finite-differences algorithm in the 2018 version of STRAHL.
         evolneut : bool, optional
             If True, evolve neutral impurities based on their D,V coefficients. Default is False.
@@ -916,10 +917,10 @@ class aurora_sim:
         use_julia : bool, optional
             If True, run the Julia pre-compiled version of the code. See docs for :py:meth:`~aurora.core.run_aurora` for details.
         tolerance : float
-            Fractional tolerance in charge state profile shapes. This method reports charge state density profiles obtained when 
-            the discrepancy between normalized profiles at adjacent time steps varies by less than this tolerance fraction. 
+            Fractional tolerance in charge state profile shapes. This method reports charge state density profiles obtained when
+            the discrepancy between normalized profiles at adjacent time steps varies by less than this tolerance fraction.
         max_sim_time : float
-            Maximum time in units of seconds for which simulations should be run if a steady state is not found.        
+            Maximum time in units of seconds for which simulations should be run if a steady state is not found.
         dt : float
             Initial time step to apply, in units of seconds. This can be increased by a multiplier given by :param:`dt_increase`
             after each time step.
@@ -1071,10 +1072,10 @@ class aurora_sim:
 
     def calc_Zeff(self):
         """Compute Zeff from each charge state density, using the result of an AURORA simulation.
-        The total Zeff change over time and space due to the simulated impurity can be simply obtained by summing 
+        The total Zeff change over time and space due to the simulated impurity can be simply obtained by summing
         over charge states.
 
-        Results are stored as an attribute of the simulation object instance. 
+        Results are stored as an attribute of the simulation object instance.
         """
         # This method requires that a simulation has already been run:
         assert hasattr(self, "res")
@@ -1097,7 +1098,7 @@ class aurora_sim:
         self.delta_Zeff /= self.ne.T[:, None, :]
 
     def plot_resolutions(self):
-        """Convenience function to show time and spatial resolution in Aurora simulation setup. 
+        """Convenience function to show time and spatial resolution in Aurora simulation setup.
         """
         # display radial resolution
         _ = grids_utils.create_radial_grid(self.namelist, plot=True)
@@ -1113,11 +1114,11 @@ class aurora_sim:
         plot : bool, optional
             If True, plot time histories in each particle reservoir and display quality of particle conservation.
         axs : 2-tuple or array
-            Array-like structure containing two matplotlib.Axes instances: the first one 
-            for the separate particle time variation in each reservoir, the second for 
-            the total particle-conservation check. This can be used to plot results 
-            from several aurora runs on the same axes. 
-        
+            Array-like structure containing two matplotlib.Axes instances: the first one
+            for the separate particle time variation in each reservoir, the second for
+            the total particle-conservation check. This can be used to plot results
+            from several aurora runs on the same axes.
+
         Returns
         -------
         out : dict
@@ -1286,7 +1287,7 @@ class aurora_sim:
             return out
 
     def centrifugal_asym(self, omega, Zeff, plot=False):
-        """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the 
+        """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the
         :py:func:`~aurora.synth_diags.centrifugal_asym` function docstring for details.
 
         In this function, we use the average Z of the impurity species in the Aurora simulation result, using only
@@ -1294,7 +1295,7 @@ class aurora_sim:
 
         Parameters
         -----------------
-        omega : array (nt,nr) or (nr,) [ rad/s ] 
+        omega : array (nt,nr) or (nr,) [ rad/s ]
              Toroidal rotation on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
         Zeff : array (nt,nr), (nr,) or float
              Effective plasma charge on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
