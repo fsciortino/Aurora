@@ -307,9 +307,6 @@ class aurora_sim:
                     self.namelist["rcl_prof_vals"],
                     fill_value="extrapolate",
                 )(self.rhop_grid)
-                self.rcl_rad_prof = np.broadcast_to(
-                    rcl_rad_prof, (rcl_rad_prof.shape[0], len(self.time_grid))
-                )
 
             else:
                 # set recycling prof to exp decay from wall
@@ -338,9 +335,9 @@ class aurora_sim:
                     self._Ti,
                 )
 
-                self.rcl_rad_prof = np.broadcast_to(
-                    rcl_rad_prof, (rcl_rad_prof.shape[0], len(self.time_grid))
-                )
+            self.rcl_rad_prof = np.broadcast_to(
+                rcl_rad_prof, (rcl_rad_prof.shape[0], len(self.time_grid))
+            )
 
         else:
             # dummy profile -- recycling is turned off
