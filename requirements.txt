@@ -4,3 +4,4 @@ matplotlib
 pexpect
 omfit_classes
 requests
+pandas
