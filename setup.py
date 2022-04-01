@@ -12,10 +12,12 @@ python3 setup.py build --fcompiler=intelem --opt="-fast"
 
 """
 
-from setuptools import setup, Extension
-#import setuptools
 import os, sys, subprocess
-#from numpy.distutils.core import setup, Extension
+
+# need to import setuptools first and then also numpy.distutils to get Extension to work, see
+# https://stackoverflow.com/questions/51681438/numpy-distutils-not-recognizing-fortran-file-types
+import setuptools
+from numpy.distutils.core import setup, Extension
 
 package_name = "aurorafusion"
 

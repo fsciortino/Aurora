@@ -358,9 +358,9 @@ class aurora_sim:
         if self.kin_profs[prof]["fun"] == "interp":
             if "decay" not in self.kin_profs[prof]:
                 # if decay length in the SOL was not given by the user, assume a decay length of 1cm
-                print(
-                    f"Namelist did not provide a {prof} decay length for the SOL. Setting it to 1cm."
-                )
+                #print(
+                #    f"Namelist did not provide a {prof} decay length for the SOL. Setting it to 1cm."
+                #)
                 self.kin_profs[prof]["decay"] = np.ones(
                     len(self.kin_profs[prof]["vals"])
                 )
