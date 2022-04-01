@@ -12,9 +12,10 @@ python3 setup.py build --fcompiler=intelem --opt="-fast"
 
 """
 
-import setuptools
+from setuptools import setup, Extension
+#import setuptools
 import os, sys, subprocess
-from numpy.distutils.core import setup, Extension
+#from numpy.distutils.core import setup, Extension
 
 package_name = "aurorafusion"
 

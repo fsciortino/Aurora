@@ -20,6 +20,7 @@ requirements:
     - pexpect
     - omfit_classes
     - requests
+    - pandas
 
   run:
     - python
@@ -29,6 +30,7 @@ requirements:
     - pexpect
     - omfit_classes
     - requests
+    - pandas
     
 test:
   imports:
