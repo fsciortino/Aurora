@@ -924,11 +924,6 @@ def parse_adf15_spec(lines, num_lines):
         try:
             assert d['isel'][-1]==i
         except:
-<<<<<<< HEAD
-=======
-            from IPython import embed
-            embed()
->>>>>>> master
             raise ValueError(f'Some issue with file parsing for ISEL={i+1}')
             
     # make wavelengths into floats and change nomenclature
