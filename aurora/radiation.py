@@ -44,7 +44,6 @@ def compute_rad(
     Te,
     n0=None,
     Ti=None,
-    ni=None,
     adas_files_sub={},
     prad_flag=False,
     sxr_flag=False,
@@ -773,7 +772,7 @@ def _find_adf15_spacing(l):
     splitvals = []
     for elem in l.split():
         for m in re.finditer(' '+elem,l):
-            pair = [m.start()+1, m.end()+1] # read additional end character
+            pair = [m.start(), m.end()+1] # read additional end character
             if pair not in splitvals:
                 splitvals.append(pair)
     # re-order pairs
@@ -925,6 +924,11 @@ def parse_adf15_spec(lines, num_lines):
         try:
             assert d['isel'][-1]==i
         except:
+<<<<<<< HEAD
+=======
+            from IPython import embed
+            embed()
+>>>>>>> master
             raise ValueError(f'Some issue with file parsing for ISEL={i+1}')
             
     # make wavelengths into floats and change nomenclature

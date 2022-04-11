@@ -654,9 +654,7 @@ class solps_case:
             patches, False, fc="w", edgecolor="k", linewidth=0.1
         )
 
-    def plot2d_b2(
-        self, vals, ax=None, scale="log", label="", lb=None, ub=None, **kwargs
-    ):
+    def plot2d_b2(self, vals, ax=None, scale="log", label="", lb=None, ub=None, **kwargs):
         """Method to plot 2D fields on B2 grids. 
         Colorbars are set to be manually adjustable, allowing variable image saturation.
 
@@ -731,17 +729,8 @@ class solps_case:
         ax.set_ylabel("Z [m]")
         ax.axis("scaled")
 
-    def plot2d_eirene(
-        self,
-        vals,
-        ax=None,
-        scale="log",
-        label="",
-        lb=None,
-        ub=None,
-        replace_zero=True,
-        **kwargs,
-    ):
+    def plot2d_eirene(self, vals, ax=None, scale="log", label="", lb=None, ub=None,
+        replace_zero=True, **kwargs):
         """Method to plot 2D fields from EIRENE.
 
         Parameters
@@ -812,6 +801,30 @@ class solps_case:
         cbar = plot_tools.DraggableColorbar(cbar, cntr)
         cid = cbar.connect()
 
+    def plot_solps_2d_overview(self):
+        '''Display 2D views of most important SOLPS outputs.
+        '''
+        imp = self.solps.b2_species[2]['A']
+        
+        fig, axs = plt.subplots(2,4, figsize=(15,8))
+        self.plot2d_b2(self.data('ne'), ax = axs[0,0],
+                             label=r'$n_e$ [m$^{-3}$]')
+        self.plot2d_b2(self.data('te')/constants.e, ax = axs[0,1],
+                             label=r'$T_e$ [eV]')
+        self.plot2d_b2(self.data('ti')/constants.e, ax = axs[0,2],
+                             label=r'$T_i$ [eV]')
+        self.plot2d_b2(self.data('dab2')[0], ax = axs[0,3],
+                             label=r'$n_{DI}$ [m$^{-3}$]')
+        self.plot2d_b2(self.data('dab2')[1], ax = axs[1,0],
+                             label=fr'$n_{{{imp}I}}$ [m$^{-3}$]')
+        self.plot2d_b2(self.data('na')[3], ax = axs[1,1],
+                             label=fr'$n_{{{imp}II}}$ [m$^{-3}$]')
+        self.plot2d_b2(self.data('na')[4], ax = axs[1,2],
+                             label=fr'$n_{{{imp}III}}$ [m$^{-3}$]')
+        self.plot2d_b2(self.data('na')[5], ax = axs[1,3],
+                             label=fr'$n_{{{imp}IV}}$ [m$^{-3}$]')
+        plt.tight_layout()
+        
     def get_radial_prof(self, vals, dz_mm=5, theta=0, label="", plot=False):
         """Extract radial profiles of a quantity "quant" from the SOLPS run. 
         This function returns profiles on the low- (LFS) and high-field-side (HFS) midplane, 
@@ -1785,8 +1798,7 @@ def get_mdsmap():
         "solpsversion": ident + "SOLPSVERSION",
         "directory": ident + "directory",
         "exp": ident + "EXP",
-        "time": ident
-        + "TIME",  # Experiment time point derived from the b2md_namelist in b2md.dat
+        "time": ident + "TIME",  # Experiment time point derived from the b2md_namelist in b2md.dat
         "shot": ident + "SHOT",  # experimental shot number that was simulated
         # Dimensions
         "nx": snaptopdims + "NX",  # grid size in pol direction
