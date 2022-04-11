@@ -31,8 +31,7 @@ import os, sys, copy
 import scipy.ndimage
 from scipy.linalg import svd
 from scipy import constants
-from scipy.integrate import simpson
-
+from scipy.integrate import simps
 from . import adas_files
 
 
@@ -1055,7 +1054,7 @@ def impurity_brems(nz, ne, Te, freq='all', cutoff=0.1):
         Bremsstrahlung for each charge state at the given frequency or, if 
         multiple frequences are given (or if `freq='all'`), integrated over frequencies.
         Units of :math:`W/cm^3`.
-    """
+    """ 
     if freq=='all':
         # sufficient range of frequencies to obtain accurate result
         freq = np.linspace(1e10, 1e18, num = 10000)
@@ -1093,7 +1092,7 @@ def impurity_brems(nz, ne, Te, freq='all', cutoff=0.1):
         # integration over frequency domain (only exponential term)
         intgrnd = np.exp(-constants.h*freqT/(Te*constants.e))
         intgrnd[mask] = 0
-        intV = simpson(intgrnd, freqT, axis=0)
+        intV = simps(intgrnd, freqT, axis=0)
         
     return 4*np.pi*Z**2*nz[:,1:]*gff*(ne*1e12*const*np.sqrt(1/(Te*constants.e))*intV)[:,None]
 
