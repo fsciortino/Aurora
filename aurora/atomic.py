@@ -31,6 +31,7 @@ import os, sys, copy
 import scipy.ndimage
 from scipy.linalg import svd
 from scipy import constants
+from scipy.integrate import simpson
 
 from . import adas_files
 
@@ -1017,16 +1018,18 @@ def gff_mean(Z, Te):
     # dangerous/inaccurate extrapolation...
     return np.interp(log_gamma2, log_gamma2_grid, gff_mean_grid)
 
+def impurity_brems(nz, ne, Te, freq='all', cutoff=0.1):
+    """Approximate impurity bremsstrahlung in :math:`W/m^3`for a given range 
+    of frequencies or a specific frequency. 
 
-def impurity_brems(nz, ne, Te):
-    """Approximate bremsstrahlung in units of :math:`mW/nm/sr/m^3 \cdot cm^3`, or
-    equivalently :math:`W/m^3` for full spherical emission. 
+    We apply here a cutoff for Bremsstrahlung at h*c/lambda = cutoff*Te, 
+    where `cutoff` is an input parameter, conventionally set to 0.1 (default). 
 
-    Note that this may not be very useful, since this contribution is already included 
-    in the continuum radiation component in ADAS files. The bremsstrahlung estimate in 
-    ADAS continuum radiation files is more accurate than the one give by this function, 
-    which uses a simpler interpolation of the Gaunt factor with weak ne-dependence. 
-    Use with care!
+    Gaunt factors from :py:func:`~aurora.atomic.gff_mean` are applied.
+    NB: recombination is not included.
+
+    Formulation based on Hutchinson's Principles of Plasma Diagnostics, 
+    p. 196, Eq. (5.3.40).
 
     Parameters
     ----------
@@ -1036,20 +1039,65 @@ def impurity_brems(nz, ne, Te):
         Electron density [:math:`cm^{-3}`]
     Te : array (time,space)
         Electron temperature [:math:`cm^{-3}`]
+    freq : float, 1D array, or str
+        If a float, calculate bremsstrahlung from all charge states at
+        this frequency. If a 1D array, integrate bremsstrahlung over these wavelengths.
+        If set to `all`, then bremsstrahlung is integrated over all frequencies typical
+        of a tokamak plasma.
+        Frequencies are expected in units of :math:`s^{-1}`.
+    cutoff : float
+        Fraction of Te below which bremsstrahlung is set to 0.
+        A value of 0.1 is commonly set and is the default.
 
     Returns
     -------
-    brems : array (time,nZ,space)
-        Bremsstrahlung for each charge state 
+    array (time,nZ,space):
+        Bremsstrahlung for each charge state at the given frequency or, if 
+        multiple frequences are given (or if `freq='all'`), integrated over frequencies.
+        Units of :math:`W/cm^3`.
     """
-    # neutral stage doesn't produce brems
+    if freq=='all':
+        # sufficient range of frequencies to obtain accurate result
+        freq = np.linspace(1e10, 1e18, num = 10000)
+    else:
+        freq = np.atleast_1d(freq)
     Z_imp = nz.shape[1] - 1
     Z = np.arange(Z_imp)[None, :, None] + 1
 
     gff = gff_mean(Z, Te[:, None])
-    brems = Z ** 2 * nz[:, 1:] * gff * (1.69e-32 * np.sqrt(Te) * ne)[:, None]
 
-    return brems
+    # take cutoff frequency to be cutoff*Te
+    cut = cutoff*Te*constants.e/(constants.h)
+
+    # plasma frequency (divide by 2pi to have units of Hz)
+    fp = np.sqrt(1e6*ne*constants.e**2/(constants.epsilon_0*constants.m_e))/(2.*np.pi)
+
+    freqT = np.tile(freq, (ne.shape[1], ne.shape[0], 1)).T
+
+    # find all values below fw and above cut
+    mask = np.logical_or(freqT<fp, freqT>cut)
+    
+    # constant in Hutchinson Eq. 5.3.10
+    const = 32*np.pi**2/(3*np.sqrt(3)*constants.m_e**2*constants.c**3)*\
+            (constants.e**2/(4*np.pi*constants.epsilon_0))**3*\
+            np.sqrt(2*constants.m_e/np.pi)
+
+    # conversion factor to eventually have result in units of W/cm^3 rather than W/m^3
+    const *= 1e-6
+
+    if len(freq)==1:
+        intV = np.exp(-constants.h*freqT[0]/(Te*constants.e))
+        # set brems to 0 below plasma frequency and above chosen cutoff frequency
+        intV[mask[0,:,:]] = 0 
+    else:
+        # integration over frequency domain (only exponential term)
+        intgrnd = np.exp(-constants.h*freqT/(Te*constants.e))
+        intgrnd[mask] = 0
+        intV = simpson(intgrnd, freqT, axis=0)
+        
+    return 4*np.pi*Z**2*nz[:,1:]*gff*(ne*1e12*const*np.sqrt(1/(Te*constants.e))*intV)[:,None]
+
+
 
 
 def plot_norm_ion_freq(
