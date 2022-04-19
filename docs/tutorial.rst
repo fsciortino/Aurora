@@ -262,8 +262,12 @@ Note that in order to find the photon emissivity coefficient of specific neutral
   # fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
   path = aurora.get_adas_file_loc(filename, filetype='adf15')  
   
-  # plot Lyman-alpha line at 1215.2 A. See available lines with log10pec_dict.keys() after calling without plot_lines argument
-  log10pec_dict = aurora.read_adf15(path, plot_lines=[1215.2])
+  # load all the transitions in the chosen ADF15 file -- returns a pandas.DataFrame
+  trs = aurora.read_adf15(path)
+
+  # select and plot the Lyman-alpha line at 1215.2 A
+  tr = trs.loc[(trs['lambda [A]']==1215.2) & (trs['type']=='excit')]
+  aurora.plot_pec(tr)
   
 
 This will plot the Lyman-alpha photon emissivity coefficients (both the components due to excitation and recombination) as a function of temperature in eV, as shown in the figures below.
@@ -345,7 +349,7 @@ Aurora capabilities to post-process SOLPS results can be useful, for example, to
 Atomic spectra
 --------------
 
-If you have atomic data files containing photon emissivity coefficients (PECs) in ADF15 format, you can use Aurora to combine them and see what the overall spectrum might look like. Let's say you want to look at the :math:`K_\alpha` spectrum of Ca at a specific electron density of :math:`10^{14}` :math:`cm^{-3}` and temperature of 1 keV. Let's begin with a single ADF15 file named::
+If you have atomic data files containing photon emissivity coefficients (PECs) in ADF15 format, you can use Aurora to combine them and see what the overall spectrum might look like. Let's say you want to look at the :math:`K_\alpha` spectrum of Ca at a specific electron density of :math:`10^{14}` :math:`cm^{-3}` and temperature of 1 keV. Let's begin with a single ADF15 file located at the following path::
 
   filepath_he='~/pec#ca18.dat'
 

@@ -1288,7 +1288,7 @@ class aurora_sim:
 
     def centrifugal_asym(self, omega, Zeff, plot=False):
         """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the
-        :py:func:`~aurora.synth_diags.centrifugal_asym` function docstring for details.
+        :py:func:`~aurora.synth_diags.centrifugal_asymmetry` function docstring for details.
 
         In this function, we use the average Z of the impurity species in the Aurora simulation result, using only
         the last time slice to calculate fractional abundances. The CF lambda factor
@@ -1306,7 +1306,7 @@ class aurora_sim:
         Returns
         ------------
         CF_lambda : array (nr,)
-            Asymmetry factor, defined as :math:`\lambda` in the :py:func:`~aurora.synth_diags.centrifugal_asym` function
+            Asymmetry factor, defined as :math:`\lambda` in the :py:func:`~aurora.synth_diags.centrifugal_asymmetry` function
             docstring.
         """
         # this method requires all charge states to be made available
@@ -1320,7 +1320,7 @@ class aurora_sim:
         fz = self.res[0][..., -1] / np.sum(self.res[0][..., -1], axis=1)[:, None]
         Z_ave_vec = np.sum(fz * np.arange(self.Z_imp + 1)[None, :], axis=1)
 
-        self.CF_lambda = synth_diags.centrifugal_asym(
+        self.CF_lambda = synth_diags.centrifugal_asymmetry(
             self.rhop_grid,
             self.Rlfs,
             omega,

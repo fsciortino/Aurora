@@ -91,7 +91,7 @@ def line_int_weights(
     return weights
 
 
-def centrifugal_asym(
+def centrifugal_asymmetry(
     rhop,
     Rlfs,
     omega,
