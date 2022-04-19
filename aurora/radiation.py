@@ -657,7 +657,7 @@ def read_adf15(path, order=1):
     >>> filename = 'pec96#he_pjr#he0.dat'
     >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')
     >>> trs = aurora.read_adf15(path)
-    >>> aurora.plot_pec(trs[(trs['lambda [A]'==584.4])])
+    >>> aurora.plot_pec(trs[trs['lambda [A]']==584.4])
 
     Notes
     -----
@@ -720,7 +720,7 @@ def read_adf15(path, order=1):
         # get ISEL index
         isel = int(header[-1])
         log10pec_dict[isel] = {}
-        
+
         # Get the temperatures:
         temp = []
         while len(temp) < num_temp:
@@ -734,9 +734,6 @@ def read_adf15(path, order=1):
             while len(PEC[-1]) < num_temp:
                 PEC[-1] += [float(v) for v in lines.pop(0).split()]
         PEC = np.asarray(PEC)
-
-        # add a key to the log10pec_dict[lam] dictionary for each type of rate:
-        # recom, excit or chexc
         
         # interpolate PEC on log dens,temp scales
         pec_fun = RectBivariateSpline(
@@ -753,10 +750,19 @@ def read_adf15(path, order=1):
         log10pec_dict[isel]['dens pnts'] = dens
         log10pec_dict[isel]['temp pnts'] = temp
         log10pec_dict[isel]['PEC pnts'] = PEC
+        log10pec_dict[isel]['lambda [A]'] = lam
+        log10pec_dict[isel]['type'] = header[header.index(r'/TYPE')+2]
 
-    # if ISEL indexing is requested, provide full description of loaded transitions
-    out = parse_adf15_spec(lines, num_lines)
-    
+    # attempt to parse info at end of file:
+    try:
+        out = parse_adf15_spec(lines, num_lines)
+    except:
+        # save only basic info for each line, since parsing of end of file failed
+        d = {'isel': [int(iselval) for iselval in log10pec_dict.keys()]}
+        d['lambda [A]'] = [float(log10pec_dict[i]['lambda [A]']) for i in log10pec_dict]
+        d['type'] = [log10pec_dict[i]['type'].lower() for i in log10pec_dict]
+        out = pd.DataFrame(data=d)
+        
     # add log10pec interpolants to pandas DataFrame or dictionary
     out['log10 PEC fun'] = [log10pec_dict[i]['log10 PEC fun'] for i in log10pec_dict]
 
@@ -906,8 +912,8 @@ def parse_adf15_spec(lines, num_lines):
 
     for i in range(1, num_lines+1): # not python indexing
         l = lines.pop(0)[2:]
-            
-        if l[splitvals[1][0]-1] != ' ': # no space before beginning of lam
+
+        if (l[splitvals[1][0]-1]!=' ') and (l[splitvals[1][0]]=='.'): # no space before beginning of lam
             # wavelength field invasion into isel column
             d['isel'].append(int(float(l.split('.')[0])))
             lam_int = l.split('.')[1]
@@ -1027,7 +1033,7 @@ def get_local_spectrum(
     ion,
     ne_cm3,
     Te_eV,
-    ion_exc_rec_dens,
+    ion_exc_rec_dens=[0,1,0],
     Ti_eV=None,
     n0_cm3=0.0,
     dlam_A=0.0,
@@ -1059,6 +1065,7 @@ def get_local_spectrum(
         emission from the given ADF15 file. In the absence of charge state densities from 
         particle transport modeling, these scalars may be taken from the output of 
         :py:func:`aurora.atomic.get_frac_abundances`.
+        Default is [0,1,0], which means that only excitation components are considered.
     Ti_eV : float
         Local value of ion temperature, in units of :math:`eV`. This is used to represent the 
         effect of Doppler broadening. If left to None, it is internally set equal to `Te_eV`.
@@ -1126,6 +1133,14 @@ def get_local_spectrum(
 
     Refs: S. Loch's and C. Johnson's PhD theses.
 
+    Minimal Working Example
+    -----------------------
+    Plot spectrum in one of the neutral H ADF15 files
+    >>> filepath = aurora.get_adas_file_loc('pec96#h_pju#h0.dat', filetype='adf15')  
+    >>> trs = aurora.read_adf15(filepath)
+    >>> Te_eV = 80.; ne_cm3 = 1e14  # local ne [:math:`cm^{-3}`]and Te [:math:`eV`]
+    >>> out = aurora.get_local_spectrum(filepath, 'H', ne_cm3, Te_eV) # defaults to excitation-only
+
     """
     # ensure input ne,Te,n0 are floats
     ne_cm3 = float(ne_cm3)
@@ -1138,10 +1153,10 @@ def get_local_spectrum(
 
     if isinstance(adf15_file, str):
         # read ADF15 file
-        log10pec_dict = read_adf15(adf15_file)
-    elif isinstance(adf15_file, dict):
-        # user passed dictionary containing a cached log10pec_dict
-        log10pec_dict = adf15_file
+        trs = read_adf15(adf15_file)
+    elif isinstance(adf15_file, pd.core.frame.DataFrame):
+        # user passed pandas DataFrame with transitions of interest
+        trs = adf15_file
     else:
         raise ValueError("Unrecognized adf15_file format!")
 
@@ -1154,28 +1169,25 @@ def get_local_spectrum(
     ion_Z = int(out[spec]["Z"])
     ion_A = int(out[spec]["A"])
 
-    nlines = len(list(log10pec_dict.keys()))
-    wave_A = np.zeros(nlines)
+    nlines = len(trs['isel'])
+    wave_A = np.array(trs['lambda [A]'])
 
+    # safety checks for populating process nomenclature -- often inconsistent
+    trs.type.where(~trs.type.str.startswith('ion'), 'ioniz', inplace=True)
+    trs.type.where(~trs.type.str.startswith('rec'), 'recom', inplace=True)
+    trs.type.where(~trs.type.str.startswith('exc'), 'excit', inplace=True)
+    trs.type.where(~trs.type.str.startswith('dr'), 'drsat', inplace=True)
+    trs.type.where(~trs.type.str.startswith('cx'), 'chexc', inplace=True)
+
+    # now interpolate all rates on chosen ne and Te values
     pec = {}
     for typ in ["ioniz", "excit", "recom", "chexc", "drsat"]:
+        _trs_type = trs.loc[trs['type']==typ]
         pec[typ] = np.zeros(nlines)
-        for ii, lam in enumerate(log10pec_dict):
-            wave_A[ii] = lam
-            if typ in log10pec_dict[lam]:
-                pec[typ][ii] = 0.0
-                if isinstance(log10pec_dict[lam][typ], dict):  # metastable resolved
-                    for metastable in log10pec_dict[lam][
-                        typ
-                    ]:  # loop over all metastables
-                        pec[typ][ii] += 10 ** log10pec_dict[lam][typ][metastable].ev(
-                            np.log10(ne_cm3), np.log10(Te_eV)
-                        )
-                else:
-                    # no metastables
-                    pec[typ][ii] += 10 ** log10pec_dict[lam][typ].ev(
-                        np.log10(ne_cm3), np.log10(Te_eV)
-                    )
+        for ii,lam in enumerate(trs['lambda [A]']):
+            if lam in np.array(_trs_type['lambda [A]']):
+                log10pec_fun = _trs_type.loc[trs['lambda [A]']==lam]['log10 PEC fun'].iloc[0]
+                pec[typ][ii] = 10**log10pec_fun.ev(np.log10(ne_cm3), np.log10(Te_eV))
 
     # Doppler broadening
     mass = constants.m_p * ion_A
@@ -1211,11 +1223,13 @@ def get_local_spectrum(
     if (plot_all_lines or plot_spec_tot) and ax is None:
         fig, ax = plt.subplots()
 
+
     # contributions to spectrum
     source = {"ioniz": 0, "excit": 1, "recom": 2, "chexc": 2, "drsat": 2}
     spec_ion = np.zeros_like(wave_final_A)
     spec = {}
     spec_tot = np.zeros_like(wave_final_A)
+
     for typ, c in zip(
         ["ioniz", "excit", "recom", "drsat", "chexc"], ["r", "b", "g", "m", "c"]
     ):
@@ -1295,7 +1309,7 @@ def get_local_spectrum(
         spec["recom"],
         spec["drsat"],
         spec["chexc"],
-        ax,
+        ax
     )
 
 
@@ -1534,7 +1548,14 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
     >>> atom_data = aurora.atomic.get_atom_data(ion,['scd','acd'])
     >>> _Te, fz = aurora.atomic.get_frac_abundances(atom_data, ne_cm3, Te_eV, plot=False)
     >>> mult = [fz[0,10], fz[0,11], fz[0,12]] # to select charge states 11+, 12+ and 13+, for example
-    >>> adf15_line_identification(pec_files, Te_eV=Te_eV, ne_cm3=ne_cm3, mult=mult)
+    >>> aurora.adf15_line_identification(pec_files, Te_eV=Te_eV, ne_cm3=ne_cm3, mult=mult)
+
+    Minimal Working Example
+    -----------------------
+    >>> Te_eV=500; ne_cm3=5e13 # eV and cm^{-3}
+    >>> filepath = aurora.get_adas_file_loc('pec96#he_pjr#he0.dat', filetype='adf15')
+    >>> aurora.adf15_line_identification(filepath, Te_eV=Te_eV, ne_cm3=ne_cm3)
+    
     """
 
     fig = plt.figure(figsize=(10, 7))
@@ -1548,64 +1569,46 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
     ymax = -np.inf
 
     if isinstance(pec_files, str):
-        pec_files = [
-            pec_files,
-        ]
+         # only a single file was given as input
+        pec_files = [pec_files,]
+        mult = [1,]
 
     if len(mult) and len(pec_files) != len(mult):
         raise ValueError("Different number of ADF15 files and multipliers detected!")
 
     cols = iter(plt.cm.rainbow(np.linspace(0, 1, len(pec_files))))
 
-    def _plot_line(log10pec_interp_fun, lam, ymin, ymax, c):
+    # use different line styles for different populating processes
+    proc_ls = {'ioniz': 'o-.', 'excit': 'o-', 'recom': 'o--'}
+    
+    def _plot_line(tr, mult_val, ymin, ymax, c):
+        log10pec_fun = tr['log10 PEC fun'].iloc[0]
+        lam = tr['lambda [A]'].iloc[0]
+        typ = tr['type'].iloc[0]
+        
         _pec = (
-            _mult * 10 ** log10pec_interp_fun(np.log10(ne_cm3), np.log10(Te_eV))[0, 0]
+            mult_val * 10 ** log10pec_fun.ev(np.log10(ne_cm3), np.log10(Te_eV)) #[0, 0]
         )
         if _pec > 1e-20:  # plot only stronger lines
             ymin = min(_pec, ymin)
             ymax = max(_pec, ymax)
-            ax.semilogy([lam, lam], [1e-70, _pec], "o-.", c=c)
+            ax.semilogy([lam, lam], [1e-70, _pec], proc_ls[typ], c=c)
         return ymin, ymax
 
     lams = []
     for pp, pec_file in enumerate(pec_files):
 
         # load single PEC file from given list
-        log10_pecs = read_adf15(pec_file)
-
+        trs = read_adf15(pec_file)
         _mult = mult[pp] if len(mult) else 1.0
 
         c = next(cols)
 
-        # now plot all ionization-, excitation- and recombination-driven components
-        for lam, log10pec_interps in log10_pecs.items():
+        # now plot all lines
+        for isel in trs['isel']:
+            ymin, ymax = _plot_line(trs.loc[trs['isel']==isel], _mult, ymin, ymax, c)
 
-            for process in [
-                "ioniz",
-                "excit",
-                "recom",
-            ]:  # loop over populating processes
-
-                if process in log10pec_interps:  # often, only excit is relevant
-                    if isinstance(
-                        log10pec_interps[process], dict
-                    ):  # metastable resolved
-                        for metastable in log10pec_interps[
-                            process
-                        ]:  # loop over all metastables
-                            ymin, ymax = _plot_line(
-                                log10pec_interps[process][metastable],
-                                lam,
-                                ymin,
-                                ymax,
-                                c,
-                            )
-                    else:  # no metastables
-                        ymin, ymax = _plot_line(
-                            log10pec_interps[process], lam, ymin, ymax, c
-                        )
-
-        lams += log10_pecs.keys()
+        lams += list(trs['lambda [A]'])
         if len(pec_files) > 1:
             a_legend.plot([], [], c=c, label=pec_file.split("/")[-1])
 
@@ -1628,9 +1631,9 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
                 ax.axvline(wvl, c="k", lw=2.0)
                 a_id.text(wvl, 0.1, str(i), rotation=90)  # , clip_on=True)
 
-    a_legend.plot([], [], "o-.", label="PEC ionization")
-    a_legend.plot([], [], "o-", label="PEC excitation")
-    a_legend.plot([], [], "o--", label="PEC recombination")
+    a_legend.plot([], [], proc_ls['ioniz'], label="PEC ionization")
+    a_legend.plot([], [], proc_ls['excit'], label="PEC excitation")
+    a_legend.plot([], [], proc_ls['recom'], label="PEC recombination")
 
     if len(pec_files) == 1:
         # show path of single file that was passed
