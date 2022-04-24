@@ -1096,7 +1096,8 @@ class aurora_sim:
         Z = np.arange(Zmax + 1)
         self.delta_Zeff = nz * (Z * (Z - 1))[None, :, None]  # for each charge state
         self.delta_Zeff /= self.ne.T[:, None, :]
-
+        return self.delta_Zeff
+        
     def plot_resolutions(self):
         """Convenience function to show time and spatial resolution in Aurora simulation setup.
         """
