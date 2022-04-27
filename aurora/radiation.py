@@ -688,6 +688,12 @@ def read_adf15(path, order=1):
         # Get the wavelength, number of densities and number of temperatures
         # from the first line of the entry:
         l = lines.pop(0)
+
+        # prevent issues with inconsistent spacing/characters
+        l = l.replace('/', ' /').replace('=', ' = ')
+        if l.find('TYPE') == -1:
+            l = l.replace('type', 'TYPE')
+
         header = l.split()
 
         # sometimes the wavelength and its units are not separated:
