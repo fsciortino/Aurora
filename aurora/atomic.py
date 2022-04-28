@@ -1011,7 +1011,7 @@ def gff_mean(Z, Te):
 
     # set min Te here to 10 eV, because the grid above does not extend to lower temperatures
     Te = np.maximum(Te, 10.0)
-
+    Z  = np.ravel(Z)
     log_gamma2 = np.log10(Z ** 2 * thirteenpointsix / Te)
 
     # dangerous/inaccurate extrapolation...
