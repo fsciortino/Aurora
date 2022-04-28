@@ -1071,7 +1071,7 @@ def impurity_brems(nz, ne, Te, freq='all', cutoff=0.1):
     # plasma frequency (divide by 2pi to have units of Hz)
     fp = np.sqrt(1e6*ne*constants.e**2/(constants.epsilon_0*constants.m_e))/(2.*np.pi)
 
-    freqT = np.tile(freq, (ne.shape[1], ne.shape[0], 1)).T
+    freqT = np.tile(freq, (ne.shape[0], 1)).T
 
     # find all values below fw and above cut
     mask = np.logical_or(freqT<fp, freqT>cut)
@@ -1093,7 +1093,8 @@ def impurity_brems(nz, ne, Te, freq='all', cutoff=0.1):
         intgrnd = np.exp(-constants.h*freqT/(Te*constants.e))
         intgrnd[mask] = 0
         intV = simps(intgrnd, freqT, axis=0)
-        
+
+    Z = np.ravel(Z)    
     return 4*np.pi*Z**2*nz[:,1:]*gff*(ne*1e12*const*np.sqrt(1/(Te*constants.e))*intV)[:,None]
 
 
