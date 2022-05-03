@@ -797,11 +797,11 @@ class CartesianGrid:
         self.N = values.shape[:-1]
 
         if len(self.N) > 2:
-            raise OMFITexception("Only 1 and 2 dimensional interpolation is supported")
+            raise valueError("Only 1 and 2 dimensional interpolation is supported")
 
         for g, s in zip(grids, self.N):
             if len(g) != s:
-                raise OMFITexception("wrong size of values array")
+                raise ValueError("wrong size of values array")
 
         self.eq_spaced_grid = np.all(
             [np.std(np.diff(g)) / np.std(g) < 0.01 for g in grids]
