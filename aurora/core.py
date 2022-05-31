@@ -307,9 +307,7 @@ class aurora_sim:
                     self.namelist["rcl_prof_vals"],
                     fill_value="extrapolate",
                 )(self.rhop_grid)
-                self.rcl_rad_prof = np.broadcast_to(
-                    rcl_rad_prof, (rcl_rad_prof.shape[0], len(self.time_grid))
-                )
+
 
             else:
                 # set recycling prof to exp decay from wall
@@ -340,8 +338,13 @@ class aurora_sim:
 
         else:
             # dummy profile -- recycling is turned off
-            self.rcl_rad_prof = np.zeros((len(self.rhop_grid), len(self.time_grid)))
-
+            self.rcl_rad_prof = np.zeros_like(self.rhop_grid)
+    
+        #get 2D profile if the rcl_rad_prof is constant in time 
+        self.rcl_rad_prof = np.broadcast_to(
+            self.rcl_rad_prof, (len(self.rhop_grid), len(self.time_grid))
+        )
+        
     def interp_kin_prof(self, prof):
         """ Interpolate the given kinetic profile on the radial and temporal grids [units of s].
         This function extrapolates in the SOL based on input options using the same methods as in STRAHL.
