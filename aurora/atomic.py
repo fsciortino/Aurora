@@ -429,7 +429,6 @@ def get_frac_abundances(
     Ti_eV=None,
     n0_by_ne=0.0,
     superstages=[],
-    ne_tau=np.inf,
     plot=True,
     ax=None,
     rho=None,
@@ -457,10 +456,6 @@ def get_frac_abundances(
     superstages : list or 1D array
         Indices of charge states of chosen ion that should be included. If left empty, all ion stages
         are included. If only some indices are given, these are modeled as "superstages".
-    ne_tau : float, opt
-        Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
-        This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
-        Setting ne_tau=np.inf (default) corresponds to no effect from transport. 
     plot : bool, optional
         Show fractional abundances as a function of ne,Te profiles parameterization.
     ax : matplotlib.pyplot Axes instance
@@ -672,7 +667,7 @@ def get_atomic_relax_time(
     Ti_eV=None,
     n0_by_ne=0.0,
     superstages=[],
-    ne_tau=np.inf,
+    tau_s=np.inf,
     plot=True,
     ax=None,
     ls="-",
@@ -683,7 +678,11 @@ def get_atomic_relax_time(
     This function can work with ne,Te and n0_by_ne arrays of arbitrary dimension.
     It uses a matrix SVD approach in order to find the relaxation rates, as opposed to the simpler
     approach of :py:func:`~aurora.get_frac_abundances`, but fractional abundances produced by the two
-    methods should be the same.
+    methods should always be the same.
+
+    This function also allows use of superstages as well as specification of a :math:`\tau` value
+    representing the effect of transport on the ionization equilibrium. NB: this is only a rough metric
+    to characterize complex physics.    
 
     Parameters
     ----------
@@ -700,10 +699,10 @@ def get_atomic_relax_time(
     superstages : list or 1D array
         Indices of charge states of chosen ion that should be included. If left empty, all ion stages
         are included. If only some indices are given, these are modeled as "superstages".
-    ne_tau : float, opt
-        Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
-        This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
-        Setting ne_tau=np.inf (default) corresponds to no effect from transport. 
+    tau_s : float, opt
+        Value of the particle residence time [s]. This is a scalar value that can be used to model 
+        the effect of transport on ionization equilibrium. 
+        Setting tau=np.inf (default) corresponds to no effect from transport. 
     plot : bool, optional
         If True, the atomic relaxation time is plotted as a function of Te. Default is True.
     ax : matplotlib.pyplot Axes instance
@@ -720,6 +719,24 @@ def get_atomic_relax_time(
         Fractional abundances across the same grid used by the input ne,Te values. 
     rate_coeffs : array, (space, nZ)
         Rate coefficients in units of [:math:`s^{-1}`]. 
+
+    Examples
+    --------
+    To visualize relaxation times for a given species:
+    >>> atom_data = aurora.atomic.get_atom_data('N', ["scd", "acd"])
+    >>> aurora.get_atomic_relax_time(atom_data, [1e14], Te_eV=np.linspace(0.1,200,1000), plot=True)
+
+    To compare ionization balance with different values of ne*tau:
+    >>> Te0, fz0, r0 = aurora.get_atomic_relax_time(atom_data, [1e14], Te_eV=np.linspace(0.1,200,1000), tau_s=1e-3, plot=False)
+    >>> Te1, fz1, r1 = aurora.get_atomic_relax_time(atom_data, [1e14], Te_eV=np.linspace(0.1,200,1000), tau_s=1e-2, plot=False)
+    >>> Te2, fz2, r2 = aurora.get_atomic_relax_time(atom_data, [1e14], Te_eV=np.linspace(0.1,200,1000), tau_s=1e-1, plot=False)
+    >>>
+    >>> plt.figure()
+    >>> for cs in np.arange(fz0.shape[1]):
+    >>>     l = plt.plot(Te0, fz0[:,cs], ls='-')
+    >>>     plt.plot(Te1, fz1[:,cs], c=l[0].get_color(), ls='--')
+    >>>     plt.plot(Te2, fz2[:,cs], c=l[0].get_color(), ls='-.')
+
     """
     # if input arrays are multi-dimensional, flatten them here and restructure at the end
     _ne = np.ravel(ne_cm3)
@@ -748,7 +765,7 @@ def get_atomic_relax_time(
 
     for it, t in enumerate(Te):
         A = (
-            -np.diag(np.r_[Sne[it], 0] + np.r_[0, Rne[it]] + 1e6 / ne_tau)
+            -np.diag(np.r_[Sne[it], 0] + np.r_[0, Rne[it]] + 1. / tau_s)
             + np.diag(Sne[it], -1)
             + np.diag(Rne[it], 1)
         )

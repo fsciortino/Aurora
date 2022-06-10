@@ -1062,7 +1062,8 @@ class aurora_sim:
 
         # compute effective particle confinement time
         source_time_history = grids_utils.vol_int(
-            self.src_core.T, self.rvol_grid, self.pro_grid, self.Raxis_cm
+            self.src_core.T, self.rvol_grid, self.pro_grid, self.Raxis_cm,
+            rvol_max = self.rvol_lcfs
         )
         self.tau_imp = (
             var_volint / source_time_history[-2]
@@ -1147,29 +1148,22 @@ class aurora_sim:
         # collect all the relevant quantities for particle conservation
         out = {}
 
-        # particles that entered as "source":
-        out["source"] = (
-            grids_utils.vol_int(
-                self.src_core.T, self.rvol_grid, self.pro_grid, self.Raxis_cm
-            )
-            * circ
-        )
-
-        # integrated source over timee
-        out["integ_source"] = cumtrapz(out["source"], self.time_out, initial=0)
-
         # calculate total impurity density (summed over charge states)
         total_impurity_density = np.nansum(nz, axis=1)  # time, space
 
         # Compute total number of particles for particle conservation checks:
         all_particles = grids_utils.vol_int(
-            total_impurity_density, self.rvol_grid, self.pro_grid, self.Raxis_cm
+            total_impurity_density, self.rvol_grid, self.pro_grid, self.Raxis_cm,
+            rvol_max = self.rvol_lcfs
         )
 
         out["total"] = all_particles + (N_wall + N_div + N_pump + N_ret) * circ
-        out["plasma_particles"] = grids_utils.vol_int(
-            total_impurity_density, self.rvol_grid, self.pro_grid, self.Raxis_cm
-        )
+
+        out["source"] = self.total_source*circ + out["total"][0]
+
+        # integrated source over time
+        out["integ_source"] = cumtrapz(out["source"], self.time_out, initial=0)
+
         out["particles_at_wall"] = N_wall * circ
         out["particles_retained_at_wall"] = N_ret * circ
         out["particles_in_divertor"] = N_div * circ
@@ -1181,7 +1175,8 @@ class aurora_sim:
         out["recycling_from_wall"] = rclw_rate * circ
         if hasattr(self, "rad"):  # radiation has already been compputed
             out["impurity_radiation"] = grids_utils.vol_int(
-                self.rad["tot"], self.rvol_grid, self.pro_grid, self.Raxis_cm
+                self.rad["tot"], self.rvol_grid, self.pro_grid, self.Raxis_cm,
+                rvol_max = self.rvol_lcfs
             )
 
         if plot:
@@ -1193,48 +1188,28 @@ class aurora_sim:
                 ax1 = axs[0]
 
             ax1[0, 0].plot(self.time_out, out["source"], label="Influx ($s^{-1}$)")
-            ax1[0, 1].plot(
-                self.time_out,
-                out["particles_in_divertor"],
-                label="Particles in divertor",
-            )
-            ax1[0, 2].plot(
-                self.time_out, out["particles_in_pump"], label="Particles in pump"
-            )
+            ax1[0, 1].plot(self.time_out, out["particles_in_divertor"],
+                           label="Particles in divertor")
+            ax1[0, 2].plot(self.time_out, out["particles_in_pump"], label="Particles in pump")
 
             ax1[1, 0].plot(self.time_out, out["parallel_loss"], label="Parallel Loss")
-            ax1[1, 1].plot(
-                self.time_out,
-                out["parallel_loss_to_limiter"],
-                label="Parallel Loss to Limiter",
-            )
+            ax1[1, 1].plot(self.time_out, out["parallel_loss_to_limiter"],
+                           label="Parallel Loss to Limiter")
             ax1[1, 2].plot(self.time_out, out["edge_loss"], label="Edge Loss")
 
-            ax1[2, 0].plot(
-                self.time_out, out["particles_at_wall"], label="Particles stuck at wall"
-            )
-            ax1[2, 1].plot(
-                self.time_out,
-                out["particles_retained_at_wall"],
-                label="Particles retained at wall",
-            )
-            ax1[2, 2].plot(
-                self.time_out, out["recycling_from_wall"], label="Wall rec. rate"
-            )
+            ax1[2, 0].plot(self.time_out, out["particles_at_wall"], label="Particles stuck at wall")
+            ax1[2, 1].plot(self.time_out, out["particles_retained_at_wall"],
+                label="Particles retained at wall")
+            ax1[2, 2].plot(self.time_out, out["recycling_from_wall"], label="Wall rec. rate")
 
-            ax1[3, 0].plot(
-                self.time_out,
-                out["recycling_from_divertor"],
-                label="Divertor rec. rate",
-            )
+            ax1[3, 0].plot(self.time_out, out["recycling_from_divertor"],
+                           label="Divertor rec. rate")
             ax1[3, 1].plot(self.time_out, out["total"], label="Core impurity particles")
             for aa in ax1.flatten()[:11]:
                 aa.legend(loc="best").set_draggable(True)
 
             if "impurity_radiation" in out:
-                ax1[3, 2].plot(
-                    self.time_out, out["impurity_radiation"], label="Core radiation (W)"
-                )
+                ax1[3, 2].plot(self.time_out, out["impurity_radiation"], label="Core radiation (W)")
                 ax1[3, 2].legend(loc="best").set_draggable(True)
 
             for ii in [0, 1, 2]:
@@ -1251,32 +1226,22 @@ class aurora_sim:
             ax2.set_xlabel("time [s]")
 
             ax2.plot(self.time_out, all_particles, label="Particles in Plasma")
-            ax2.plot(
-                self.time_out, out["particles_at_wall"], label="Particles stuck at wall"
-            )
-            ax2.plot(
-                self.time_out,
-                out["particles_in_divertor"],
-                label="Particles in Divertor",
-            )
+            ax2.plot(self.time_out, out["particles_at_wall"], label="Particles stuck at wall")
+            ax2.plot(self.time_out, out["particles_in_divertor"], label="Particles in Divertor")
             ax2.plot(self.time_out, out["particles_in_pump"], label="Particles in Pump")
-            ax2.plot(
-                self.time_out,
-                out["particles_retained_at_wall"],
-                label="Particles retained at wall",
-            )
+            ax2.plot(self.time_out, out["particles_retained_at_wall"],
+                     label="Particles retained at wall")
             ax2.plot(self.time_out, out["total"], label="Total")
             ax2.plot(self.time_out, out["integ_source"], label="Integrated source")
 
-            if (
-                abs(
-                    (out["total"][-1] - out["integ_source"][-1])
-                    / out["integ_source"][-1]
-                )
-                > 0.1
-            ):
+            if (abs((out["total"][-1] - out["integ_source"][-1]) / out["integ_source"][-1]) > 0.1):
                 print("Warning: significant error in particle conservation!")
 
+            Ntot = out["integ_source"][-1]
+            dN = np.trapz((out["total"] / Ntot - out["integ_source"] / Ntot) ** 2, self.time_out)
+            dN /= np.trapz((out["integ_source"] / Ntot) ** 2, self.time_out)
+            print('Particle conservation error %.1f%%' % (np.sqrt(dN) * 100))
+        
             ax2.set_ylim(0, None)
             ax2.legend(loc="best")
             plt.tight_layout()
