@@ -338,7 +338,7 @@ class aurora_sim:
 
         else:
             # dummy profile -- recycling is turned off
-            self.rcl_rad_prof = np.zeros_like(self.rhop_grid)
+            self.rcl_rad_prof = np.zeros_like(self.rhop_grid)[:,None]
     
         #get 2D profile if the rcl_rad_prof is constant in time 
         self.rcl_rad_prof = np.broadcast_to(
