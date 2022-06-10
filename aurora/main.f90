@@ -54,33 +54,33 @@ subroutine run(  &
   !     ir           integer
   !                    Number of radial grid points. Not needed for Python calls.
   !     nt           integer
-  !                    Number of time steps for the solution. Not needed for Python calls.
+  !                    Number of time steps for the solution. Not needed for Python calls
   !     nt_out       integer
-  !                    Number of times at which the impurity densities shall be saved.
+  !                    Number of times at which the impurity densities shall be saved
   !     nt_trans     integer
   !                    Number of times at which D,V profiles are given. Not needed for Python calls.
   !     t_trans      real*8 (nt_trans)
-  !                    Times at which transport coefficients change [s].
+  !                    Times at which transport coefficients change [s]
   !     D            real*8 (ir,nt_trans,nion)
   !                    Diffusion coefficient on time and radial grids [cm^2/s]
   !                    This must be given for each charge state and time.
   !     V            real*8 (ir,nt_trans,nion)
   !                    Drift velocity on time and radial grids [cm/s]
-  !                    This must be given for each charge state and time.
+  !                    This must be given for each charge state and time
   !     par_loss_rates  real*8 (ir,nt)
   !                    Frequency for parallel loss on radial and time grids [1/s]
   !     src_core real*8 (ir,nt)
-  !                    Radial profile of neutrals over time.
+  !                    Radial profile of neutrals over time [1/cm^3]
   !     rcl_rad_prof real*8 (ir, nt)
   !                    Radial distribution of impurities re-entering the core reservoir after recycling,
   !                    given as a function of time.
   !                    NB: this should be a normalized profile!
   !     S_rates      real*8 (ir,nion,nt)
-  !                    Ionisation rates (nz=nion must be filled with zeros).
+  !                    Ionisation rates (nz=nion must be filled with zeros). Units of [1/s].
   !     R_rates      real*8 (ir,nion,nt)
-  !                    Recombination rates (nz=nion must be filled with zeros)
+  !                    Recombination rates (nz=nion must be filled with zeros). Units of [1/s].
   !     rr           real*8 (ir)
-  !                    Radial grid, defined using normalized flux surface volumes
+  !                    Radial grid, defined using normalized flux surface volumes [cm]
   !     pro          real*8 (ir)
   !                    Normalized first derivative of the radial grid, defined by
   !                    pro = (drho/dr)/(2 d_rho) = rho'/(2 d_rho)
@@ -140,8 +140,8 @@ subroutine run(  &
   !                    Boolean to activate evolution of neutrals (like any ionization stage).
   !                    The D and v given for the 0th charge state apply to these neutrals.
   !     src_div   real*8 (nt), optional
-  !                  Flux of particles going into the divertor, given as a function of time.
-  !                  These particles will only affect the simulation if rcl>=0.
+  !                  Flux of particles going into the divertor, given as a function of time in units
+  !                  of [1/cm^3]. These particles will only affect the simulation if rcl>=0.
   !                  If not provided, src_div is automatically set to an array of zeros.
   !  
   ! Returns:
@@ -150,23 +150,23 @@ subroutine run(  &
   !                    Impurity densities (temporarily) in the magnetically-confined plasma at the
   !                    requested times [1/cm^3].
   !     N_ret        real*8 (nt_out)
-  !                    Impurity densities (permanently) retained at the wall over time [1/cm^3].
+  !                    Impurity densities (permanently) retained at the wall over time [1/cm].
   !     N_wall       real*8 (nt_out)
-  !                    Impurity densities (temporarily) at the wall over time [1/cm^3].
+  !                    Impurity densities (temporarily) at the wall over time [1/cm].
   !     N_div        real*8 (nt_out)
-  !                    Impurity densities (temporarily) in the divertor reservoir over time [1/cm^3].
+  !                    Impurity densities (temporarily) in the divertor reservoir over time [1/cm].
   !     N_pump       real*8 (nt_out)
-  !                    Impurity densities (permanently) in the pump [1/cm^3].
+  !                    Impurity densities (permanently) in the pump [1/cm].
   !     N_tsu        real*8 (nt_out)
-  !                    Edge loss [1/cm^3].
+  !                    Edge loss [1/cm].
   !     N_dsu        real*8 (nt_out)
-  !                    Parallel loss [1/cm^3].
+  !                    Parallel loss [1/cm].
   !     N_dsul       real*8 (nt_out)
-  !                    Parallel loss to limiter [1/cm^3].
+  !                    Parallel loss to limiter [1/cm].
   !     rcld_rate    real*8 (nt_out)
-  !                    Recycling from divertor [1/cm^3/s].
+  !                    Recycling from divertor [1/cm/s].
   !     rclw_rate    real*8 (nt_out)
-  !                    Recycling from wall [1/cm^3/s].
+  !                    Recycling from wall [1/cm/s].
   ! ---------------------------------------------------------------------------
 
   IMPLICIT NONE
