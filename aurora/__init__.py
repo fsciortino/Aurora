@@ -13,6 +13,7 @@ from .grids_utils import *
 from .coords import *
 from .grids_utils import *
 from .radiation import *
+from .amdata import *
 
 from .plot_tools import *
 from .animate import *
