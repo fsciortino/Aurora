@@ -11,9 +11,7 @@ import pandas as pd
 import shutil
 from collections import OrderedDict
 from scipy import constants
-from omfit_classes.omfit_namelist import namelist
-from omfit_classes.utils_base import is_numeric, tolist
-from omfit_classes.omfit_nc import OMFITnc
+
 from scipy.interpolate import griddata, interp1d
 
 from . import radiation
@@ -217,6 +215,9 @@ class oedge_input(dict):
         end_width = 20
         data_width = 10
 
+        # import here to avoid issues during regression tests
+        from omfit_classes.utils_base import tolist
+        
         # create output list
         out = []
         for item in self:
@@ -480,7 +481,10 @@ class oedge_output:
         """
         if output_nc_file is not None:
             self.output_nc_file = str(output_nc_file)
-            
+
+        # import omfit_classes here to prevent import during regression tests
+        from omfit_classes.omfit_nc import OMFITnc
+        
         # Load in the output netCDF file
         self.nc = OMFITnc(self.output_nc_file)
 
@@ -2141,6 +2145,9 @@ class oedge_output:
 
 def interpret(x):
 
+    # import here to avoid issues during regression tests
+    from omfit_classes.omfit_namelist import namelist
+        
     x = x.split('\'')
     for k in range(1, len(x), 1)[::2]:
         x[k] = '\'' + x[k] + '\''
@@ -2157,7 +2164,7 @@ def interpret(x):
     inline_comment = ''
 
     for k in range(len(xx)):
-        if not len(inline_comment) and is_numeric(xx[k]):
+        if not len(inline_comment) and isinstance(xx[k],(int,float)):
             data.append(xx[k])
         elif not len(inline_comment) and xx[k][0] == '\'':
             data.append(xx[k][1:-1])

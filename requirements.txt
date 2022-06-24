@@ -3,6 +3,5 @@ scipy
 matplotlib
 pexpect
 omfit_classes
-uncertainties
 requests
 pandas
