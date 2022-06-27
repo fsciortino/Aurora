@@ -1061,7 +1061,7 @@ class oedge_output:
             # Create a good sized figure with correct proportions.
             fig = plt.figure(figsize=(7, 9))
             ax  = fig.add_subplot(111)
-
+            
         if normtype == 'linear':
             if vmin is None: vmin = data.min()
             if vmax is None: vmax = data.max()
@@ -1131,7 +1131,7 @@ class oedge_output:
         ax.add_collection(sc)
 
         # Use correct number of levels for colorbar, if specified
-        cbar = fig.colorbar(coll, ax=ax, boundaries=levels, ticks=levels, extend='both')
+        cbar = ax.get_figure().colorbar(coll, ax=ax, boundaries=levels, ticks=levels, extend='both')
         
         if (cbar_label is None) and (dataname is not None):
             for key in self.name_maps:
@@ -1140,7 +1140,7 @@ class oedge_output:
                     if charge is not None:
                         cbar_label += f', Z={charge}' if charge!='all' else '(tot)'
                     cbar_label += f' [{self.name_maps[key]["units"]}]'
-            
+
         cbar.ax.set_ylabel(cbar_label)
 
         ax.axis('equal')
