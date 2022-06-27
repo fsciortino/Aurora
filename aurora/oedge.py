@@ -1061,7 +1061,7 @@ class oedge_output:
             # Create a good sized figure with correct proportions.
             fig = plt.figure(figsize=(7, 9))
             ax  = fig.add_subplot(111)
-            
+
         if normtype == 'linear':
             if vmin is None: vmin = data.min()
             if vmax is None: vmax = data.max()
