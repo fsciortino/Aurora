@@ -6,6 +6,7 @@ import numpy as np, os
 from .core import *
 from .atomic import *
 from .adas_files import *
+from .amdata import *
 
 from .source_utils import *
 from .default_nml import *

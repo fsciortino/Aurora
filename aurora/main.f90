@@ -141,7 +141,7 @@ subroutine run(  &
   !                    The D and v given for the 0th charge state apply to these neutrals.
   !     src_div   real*8 (nt), optional
   !                  Flux of particles going into the divertor, given as a function of time in units
-  !                  of [1/cm^3]. These particles will only affect the simulation if rcl>=0.
+  !                  of [1/cm/s]. These particles will only affect the simulation if rcl>=0.
   !                  If not provided, src_div is automatically set to an array of zeros.
   !  
   ! Returns:
