@@ -41,3 +41,9 @@ g123456.12345
 coverage.xml
 junit
 .coverage
+
+# tex files for amjuel and hydhel
+*.tex
+
+# json databases should not bee shared publicly
+*.json

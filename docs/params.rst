@@ -121,9 +121,12 @@ The table below describes the main input parameters to Aurora's forward model of
    * - `wall_recycling`
      - 0.0
      - If True, recycling is activated: particles from the wall and divertor may return to main chamber.
-   * - `divbls`
-     - 0.0
-     - Fraction of source that is puffed into the divertor, as opposed to into the main chamber.
+   * - `source_div_time`
+     - None
+     - (Optional) Time base for any particle sources going into the divertor reservoir [s].
+   * - `source_div_vals`
+     - None
+     - (Optional) Particle sources going into the divertor reservoir [particles/s/cm].
    * - `tau_div_SOL_ms`
      - 50.0
      - Time scale for transport between the divertor and the open SOL [ms].
@@ -267,7 +270,7 @@ Particle sources can also be specified such that they enter the simulation from 
    
 #. `source_div_vals` : values of the particle source into the divertor.
 
-
+Note that while core sources (e.g. in `explicit_source_vals`) are in units of :math:`particles/cm^3`, sources going into the divertor have different units of :math:`particles/cm/s` since they are going into a 0D edge model.
 
 
 Edge parameters

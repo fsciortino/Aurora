@@ -292,6 +292,7 @@ class aurora_sim:
             self.src_core * Sne0 * (self.rvol_grid / self.pro_grid)[:, None], 0
         )  # sum over radius
         self.total_source += self.src_div  # units of particles/s/cm
+        # NB: src_core [1/cm^3] and src_div [1/cm/s] have different units!
 
         if self.wall_recycling >= 0:  # recycling activated
 
