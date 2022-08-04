@@ -448,9 +448,14 @@ class aurora_sim:
             include_cx=self.namelist["cxr_flag"],
         )
 
+        # cache radiative & dielectronic recomb:
+        self.alpha_RDR_rates = Rne
+        
+        
         if self.namelist["cxr_flag"]:
             # Get an effective recombination rate by summing radiative & CX recombination rates
-            Rne += cxne * (self._n0 / self._ne)[:, None]
+            self.alpha_CX_rates = cxne * (self._n0 / self._ne)[:, None]
+            Rne = Rne + self.alpha_CX_rates  #inplace addition would change also self.alpha_RDR_rates
 
         if self.namelist["nbi_cxr_flag"]:
             # include charge exchange between NBI neutrals and impurities
