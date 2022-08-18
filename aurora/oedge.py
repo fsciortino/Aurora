@@ -609,7 +609,7 @@ class oedge_output:
 
     def __repr__(self):
         '''Briefly describe loaded case on the command line.
-            '''
+        '''
         message = '  OEDGE case:  ' + str(self.nc['TITLE']['data']) + '\n' +\
                   '  Date run:    ' + str(self.nc['JOB']['data']).strip()[:8] + '\n' +\
                   '  Grid:        ' + str(self.nc['EQUIL']['data']) + '\n' +\
@@ -625,7 +625,7 @@ class oedge_output:
         return {'ne': {'data': 'KNBS', 'targ': 'KNDS', 'label': r'$n_e$', 'units': r'$m^{-3}$'},
                 'Te': {'data': 'KTEBS', 'targ': 'KTEDS', 'label': r'$T_e$', 'units': 'eV'},
                 'Ti': {'data': 'KTIBS', 'targ': 'KTIDS', 'label': 'Ti', 'units': 'eV'},
-                'Vb': {'data': 'KVHS', 'targ': 'KVDS', 'label': r'$v_{||}$', 'units': 'm/s', 'scale': '1/QTIM'},
+                'Vb': {'data': 'KVHS', 'targ': 'KVDS', 'label': r'$v_{||}$', 'units': 'm/s', 'scale': 1./self.qtim},
                 'Epar': {'data': 'KES', 'targ': 'KEDS', 'label': r'$E_{||}$', 'units': 'V/m'},
                 'ExB_pol': {'data': 'E_POL', 'targ': None, 'label': r'$E_\theta$', 'units': 'V/m'},
                 'ExB_rad': {'data': 'E_RAD', 'targ': None, 'label': r'$E_r$', 'units': 'V/m'},
@@ -648,12 +648,12 @@ class oedge_output:
                                        'label': 'Hydrogen-Electron Energy Loss Term',
                                        'units': r'$W/m^3$'}, # to check
                 # impurity-related quantities (only if DIVIMP was run):
-                'nimp': {'data': 'DDLIMS', 'targ': None, 'label': r'$n_z$', 'units': r'$1/m^3$', 'scale': 'ABSFAC'},
+                'nimp': {'data': 'DDLIMS', 'targ': None, 'label': r'$n_z$', 'units': r'$1/m^3$', 'scale': self.absfac},
                 'Timp': {'data': 'DDTS', 'targ': None, 'label': r'$T_z$', 'units': 'eV'},
                 'S_z': {'data': 'TIZS', 'targ': None, # impurity ionization
-                        'label': r'S_z$', 'units': r'$1/m^3/s$', 'scale': 'ABSFAC'},
+                        'label': r'S_z$', 'units': r'$1/m^3/s$', 'scale': self.absfac},
                 'imp Prad': {'data': 'POWLS', 'targ': None, 'label': r'$P_z$',
-                             'units': r'$W/m^3$', 'scale': 'ABSFAC'},
+                             'units': r'$W/m^3$', 'scale': self.absfac},
                 # added by this class
                 'p0': {'data': 'p0', 'label': r'$p_0$', 'units': r'$N/m^2$'}
         }
@@ -952,7 +952,7 @@ class oedge_output:
             #return ff + fpg + feg + fig + fe
             return ff + feg + fig + fe
 
-    def plot_2d(self, data, charge=None, scaling=1.0,
+    def plot_2d(self, data, charge=None, scaling=None,
                 normtype='linear', cmap='plasma',
                 levels=None, cbar_label=None, lut=21,
                 smooth_cmap=False, vmin=None, vmax=None,
@@ -972,6 +972,8 @@ class oedge_output:
             The charge state to be plotted, if applicable.
         scaling: float
             Scaling factor to apply to the data, if applicable.
+            If not given, the routine looks for a scaling factor from :py:meth:`~aurora.oedge.oedge_output.name_maps`.
+            If no such default scaling factor is indicated there, no scaling is applied.
         normtype: str
             One of 'linear', 'log', ... of how to normalize the data on the plot.
         cmap: str
@@ -997,13 +999,12 @@ class oedge_output:
         ax: matplotlib Axes instance
             If provided, plot on these axes.
         """
-
         # if data was not directly provided as an array, load the requested variable
         dataname = None
         if isinstance(data, str):
             dataname = copy.deepcopy(data)
-            # Read in the data into a form for PolyCollection, accounting for some special options
-            
+
+            # Now read data into a form for PolyCollection, accounting for some special options
             # Flow velocity with additional velocity specified by T13
             if dataname == 'KVHSimp':
                 data = self.read_data_2d_kvhs_t13(no_core=no_core)
@@ -1027,21 +1028,29 @@ class oedge_output:
             elif dataname == 'KVHS - Mach':
                 te   = self.read_data_2d('KTEBS', no_core=no_core)
                 ti   = self.read_data_2d('KTIBS', no_core=no_core)
-                kvhs = self.read_data_2d('KVHS',  no_core=no_core, charge=charge, scaling=scaling)
+                kvhs = self.read_data_2d('KVHS',  no_core=no_core, charge=charge, scaling=1./self.qtim)
                 mi   = self.crmb * 931.494*10**6 / (3e8)**2  # amu --> eV s2 / m2
                 cs   = np.sqrt((te + ti) / mi)
                 print(f"CRMB = {self.crmb} amu")
                 data = kvhs / cs  # Mach number
 
-            # Special function for plotting the forces on impurities
             elif dataname.lower() in ['ff', 'fig', 'feg', 'fpg', 'fe', 'fnet']:
+                #  Special function for plotting the forces on impurities
                 if charge is None:
                     raise ValueError('Specify impurity charge for which forces should be computed')
                 data = self.calculate_forces(dataname, charge=charge,
                                              no_core=no_core, vz_mult=vz_mult)
 
-            # Everything else in the netCDF file
             else:
+                # Everything else in the netCDF file
+                if scaling is None:
+                    # find appropriate scaling from `name_maps`
+                    for var in self.name_maps:
+                        if self.name_maps[var]['data'] == dataname:
+                            scaling = self.name_maps[var].get('scale', 1.0)
+                    # if no scaling indicated, set to 1.
+                    if scaling is None: scaling = 1.0
+
                 data = self.read_data_2d(dataname, charge, scaling, no_core)
 
         elif isinstance(data, np.ndarray) and data.shape==self.nc['KNBS']['data'].shape:
@@ -1052,7 +1061,7 @@ class oedge_output:
         else:
             # assume data was already provided in required format
             pass
-        
+
         # Remove any cells that have nan values.
         not_nan_idx = np.where(~np.isnan(data))[0]
         mesh = np.array(self.mesh)[not_nan_idx, :, :]
