@@ -589,8 +589,12 @@ class oedge_output:
             with open(dat_path) as f:
                 self.dat_file = f.read()
 
-            # read total run time -- seems robust to DIVIMP versions
-            self.cpu_time = float(self.dat_file.split('CPU TIME USED')[-1].split('(S)')[-1].split('\n')[0])
+            try:
+                # read total run time -- seems robust to DIVIMP versions
+                self.cpu_time = float(self.dat_file.split('CPU TIME USED')[-1].split('(S)')[-1].split('\n')[0])
+            except:
+                print('Could not read CPU time from .dat file')
+                self.cpu_time = np.nan
         else:
             self.dat_file = None
             print('Could not automatically read the .dat file')
