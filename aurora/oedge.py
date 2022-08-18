@@ -523,6 +523,14 @@ class oedge_output:
             self.nc[field.replace(' ','_')] = self.nc[field]
             del self.nc[field]
 
+        # if the word "JET" is in the case title, infer use of non-SONNET grid <-- better criteria?
+        # --> inverted target indexing & inverted Z values
+        self.sonnet_grid = False if 'JET' in str(self.nc['TITLE']['data']) else True
+        if not self.sonnet_grid:
+            self.zs = -self.zs
+            self.zvertp = -self.zvertp
+            self.zvesm = -self.zvesm
+        
         # estimate neutral pressure that would be measured by an ASDEX gauge
         try:
             Twall = 300 * constants.k/constants.e # 300K in eV
@@ -945,8 +953,7 @@ class oedge_output:
             return ff + feg + fig + fe
 
     def plot_2d(self, data, charge=None, scaling=1.0,
-                normtype='linear', cmap='plasma', xlim=[0.9, 2.4],
-                ylim = [-1.4, 1.4],
+                normtype='linear', cmap='plasma',
                 levels=None, cbar_label=None, lut=21,
                 smooth_cmap=False, vmin=None, vmax=None,
                 no_core=False, vz_mult=0.0, wall_data=None, show_grid=True,
@@ -969,10 +976,6 @@ class oedge_output:
             One of 'linear', 'log', ... of how to normalize the data on the plot.
         cmap: str
             The colormap to apply to the plot. Uses standard matplotlib names.
-        xlim: float
-            X range of axes.
-        ylim: float
-            Y range of axes.
         levels: 1D array or None
             Number of levels for colorbar (needs work).
         cbar_label: str
@@ -1148,8 +1151,6 @@ class oedge_output:
         cbar.ax.set_ylabel(cbar_label)
 
         ax.axis('equal')
-        ax.set_xlim(xlim)
-        ax.set_ylim(ylim)
         ax.set_xlabel('R [m]')
         ax.set_ylabel('Z [m]')
         fig.tight_layout()
@@ -2060,24 +2061,24 @@ class oedge_output:
 
             # plot as a function of psin
             fig,ax = plt.subplots()
-            ax.plot(res['psiN'][0], res['data'][0], label='outer')
-            ax.plot(res['psiN'][1], res['data'][1], label='inner')
+            ax.plot(res['psiN'][0], res['data'][0], label='outer' if self.sonnet_grid else 'inner')
+            ax.plot(res['psiN'][1], res['data'][1], label='inner' if self.sonnet_grid else 'outer')
             ax.legend(loc='best').set_draggable(True)
             ax.set_xlabel(r'$\psi_N$')
             ax.set_ylabel(var_label)
             
             # plot target profiles as a function of ds
             fig, ax = plt.subplots()
-            ax.plot(res['ds'][0], res['data'][0], '.', label='outer')
-            ax.plot(res['ds'][1], res['data'][1], '.', label='inner')
+            ax.plot(res['ds'][0], res['data'][0], '.', label='outer' if self.sonnet_grid else 'inner')
+            ax.plot(res['ds'][1], res['data'][1], '.', label='inner' if self.sonnet_grid else 'outer')
             ax.legend(loc='best').set_draggable(True)
             ax.set_xlabel('ds [m]')
             ax.set_ylabel(var_label)
 
             # plot as a function of Z
             fig, ax = plt.subplots()
-            ax.plot(res['Z'][0], res['data'][0], '.', label='outer')
-            ax.plot(res['Z'][1], res['data'][1], '.', label='inner')
+            ax.plot(res['Z'][0], res['data'][0], '.', label='outer' if self.sonnet_grid else 'inner')
+            ax.plot(res['Z'][1], res['data'][1], '.', label='inner' if self.sonnet_grid else 'outer')
             ax.legend(loc='best').set_draggable(True)
             ax.set_xlabel('Z [m]')
             ax.set_ylabel(var_label)
