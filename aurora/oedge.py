@@ -536,7 +536,8 @@ class oedge_output:
             Twall = 300 * constants.k/constants.e # 300K in eV
             n_gauge = (self.nc['PINATO']['data']/np.sqrt(2))*np.sqrt(self.nc['PINENA']['data']/Twall) +\
                       self.nc['PINMOL']['data']*np.sqrt(self.nc['PINENM']['data']/Twall)
-            self.nc['p0'] = {'data': n_gauge * Twall * constants.k} # Pa = N/m^2
+            p0_Pa = n_gauge * Twall * constants.k # 1 Pa = 1 N/m^2 = 1e-5 bar = 1e-2 mbar
+            self.nc['p0'] = {'data': p0_Pa*1e-2} # pressure in mbar
         except:
             # EIRENE results not necessarily loaded in DIVIMP runs
             pass
@@ -1162,7 +1163,7 @@ class oedge_output:
         ax.axis('equal')
         ax.set_xlabel('R [m]')
         ax.set_ylabel('Z [m]')
-        fig.tight_layout()
+        plt.gcf().tight_layout()
 
     def plot_2d_overview(self):
         '''Plot the main background quantities and lowest ionization stages of the
