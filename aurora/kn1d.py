@@ -40,6 +40,7 @@ from scipy.integrate import cumtrapz
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 from scipy.constants import e, h, c as c_light, Rydberg
+import copy
 
 from . import neutrals
 from . import coords
