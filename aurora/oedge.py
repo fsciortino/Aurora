@@ -317,17 +317,17 @@ class oedge_input(dict):
 
         return out
         
-    def write_input_file(self, filename=None):
+    def write_input_file(self, filepath=None):
         '''Write the OEDGE options currently in `self` to a file of given name.
 
         Users can modify input options by changing the loaded inputs before writing a new input file, e.g.
         >> oedgein = oedge_input(myfile)
         >> oedgein['+228']['data'] = [0000, 1111]
-        >> oedgein.write_input_file(filename='mynewfile.d6i')
+        >> oedgein.write_input_file(filepath='./mynewfile.d6i')
         '''
         new_input = self.create_input()
 
-        with open(filename, 'w') as f:
+        with open(filepath, 'w') as f:
             f.write('\n'.join(new_input))
 
 
@@ -537,7 +537,7 @@ class oedge_output:
             n_gauge = (self.nc['PINATO']['data']/np.sqrt(2))*np.sqrt(self.nc['PINENA']['data']/Twall) +\
                       self.nc['PINMOL']['data']*np.sqrt(self.nc['PINENM']['data']/Twall)
             p0_Pa = n_gauge * Twall * constants.k # 1 Pa = 1 N/m^2 = 1e-5 bar = 1e-2 mbar
-            self.nc['p0'] = {'data': p0_Pa*1e-2} # pressure in mbar
+            self.nc['p0'] = {'data': p0_Pa*1e2} # pressure in mbar (100 Pa = 1 mbar)
         except:
             # EIRENE results not necessarily loaded in DIVIMP runs
             pass
