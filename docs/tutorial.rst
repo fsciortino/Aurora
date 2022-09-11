@@ -272,7 +272,8 @@ By changing the `dlam_A` parameter, you can also add a wavelength shift (e.g. fr
 
 By repeating the same operations using several ADF15 files, one can overplot contributions to the spectrum from several charge states. As an example, the figure below shows the K-alpha spectrum of Ca, with contributions from Li-like, He-like and H-like Ca, evaluated at 1 keV and :math:`10^{20}` :math:`cm^{-3}`.
 
-.. figure:: figs/Helike_Ca_spectrum_Te1keV_ne1e14cm3_lin.pdf
+
+.. figure:: figs/Helike_Ca_spectrum_Te1keV_ne1e14cm3_lin.png
     :align: center
     :alt: example of high-resolution K-alpha spectrum of Ca
     :figclass: align-center
@@ -294,7 +295,7 @@ and can be used to plot something like this:
     Example of Ca spectrum overview combining several PEC files
 
 
-A&M data from AMJUEL and HYDHEL
+A&M data from AMJUEL/HYDHEL
 -------------------------------
 
 Aurora allows one to load and process atomic and molecular (A&M) rates collected in the form of polynomial fits in the AMJUEL and HYDHEL databases, publicly released as part of the EIRENE code. These rates are partly redundant and partly complement those provided by ADAS.
