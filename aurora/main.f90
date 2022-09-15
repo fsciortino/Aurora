@@ -20,22 +20,21 @@
 !OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 !SOFTWARE.
 
+
 subroutine run(  &
         nion, ir, nt, &
         nt_out,  nt_trans, &
         t_trans, D, V, &
-        par_loss_rates, src_rad_prof, &
+        par_loss_rates, &
+        src_core, rcl_rad_prof, &
         S_rates, R_rates,  &
         rr, pro, qpr, &
         r_saw, dlen,  &
-        time, &
-        saw, flx,  it_out, &
-        dsaw, &
-        rcl, divbls, taudiv, &
-        taupump, tauwret, &
+        time, saw, &
+        it_out, dsaw, &
+        rcl, taudiv, taupump, tauwret, &
         rvol_lcfs, dbound, dlim, prox, &
-        rn_t0, &
-        alg_opt, evolneut, &
+        rn_t0, alg_opt, evolneut, src_div, &   ! OPTIONAL INPUTS:
         rn_out, &  ! OUT
         N_wall, N_div, N_pump, N_ret, &  ! OUT
         N_tsu, N_dsu, N_dsul,&   !OUT
@@ -55,29 +54,33 @@ subroutine run(  &
   !     ir           integer
   !                    Number of radial grid points. Not needed for Python calls.
   !     nt           integer
-  !                    Number of time steps for the solution. Not needed for Python calls.
+  !                    Number of time steps for the solution. Not needed for Python calls
   !     nt_out       integer
-  !                    Number of times at which the impurity densities shall be saved.
+  !                    Number of times at which the impurity densities shall be saved
   !     nt_trans     integer
   !                    Number of times at which D,V profiles are given. Not needed for Python calls.
   !     t_trans      real*8 (nt_trans)
-  !                    Times at which transport coefficients change [s].
+  !                    Times at which transport coefficients change [s]
   !     D            real*8 (ir,nt_trans,nion)
   !                    Diffusion coefficient on time and radial grids [cm^2/s]
   !                    This must be given for each charge state and time.
   !     V            real*8 (ir,nt_trans,nion)
   !                    Drift velocity on time and radial grids [cm/s]
-  !                    This must be given for each charge state and time.
+  !                    This must be given for each charge state and time
   !     par_loss_rates  real*8 (ir,nt)
   !                    Frequency for parallel loss on radial and time grids [1/s]
-  !     src_rad_prof real*8 (ir,nt)
-  !                    Radial profile of neutrals over time: n0(ir,t) = flx*src_rad_prof(ir,t).
+  !     src_core real*8 (ir,nt)
+  !                    Radial profile of neutrals over time [1/cm^3]
+  !     rcl_rad_prof real*8 (ir, nt)
+  !                    Radial distribution of impurities re-entering the core reservoir after recycling,
+  !                    given as a function of time.
+  !                    NB: this should be a normalized profile!
   !     S_rates      real*8 (ir,nion,nt)
-  !                    Ionisation rates (nz=nion must be filled with zeros).
+  !                    Ionisation rates (nz=nion must be filled with zeros). Units of [1/s].
   !     R_rates      real*8 (ir,nion,nt)
-  !                    Recombination rates (nz=nion must be filled with zeros)
+  !                    Recombination rates (nz=nion must be filled with zeros). Units of [1/s].
   !     rr           real*8 (ir)
-  !                    Radial grid, defined using normalized flux surface volumes
+  !                    Radial grid, defined using normalized flux surface volumes [cm]
   !     pro          real*8 (ir)
   !                    Normalized first derivative of the radial grid, defined by
   !                    pro = (drho/dr)/(2 d_rho) = rho'/(2 d_rho)
@@ -93,9 +96,6 @@ subroutine run(  &
   !     saw          integer (nt)
   !                    Switch to induce a sawtooth crashes
   !                    If saw(it) eq 1 there is a crash at time(it)
-  !     flx          real*8 (nt)
-  !                    Impurity influx per unit length and time [1/cm/s]
-  !                    (only 1 to nt-1 are used)
   !     it_out       integer (nt)
   !                    Store the impurity distributions if it_out(it).eq.1
   !     dsaw         real*8
@@ -105,9 +105,6 @@ subroutine run(  &
   !                    However, if set to a value <0, then this is interpreted as a flag, indicating
   !                    that particles in the divertor should NEVER return to the main plasma.
   !                    This is effectively what the rclswitch flag does in STRAHL (confusingly).
-  !     divbls       real*8
-  !                    Fraction of the total flux (given by flx) that is directed to the divertor
-  !                    reservoir. This value should be between 0 and 1.
   !     taudiv       real*8
   !                    Time scale for transport out of the divertor reservoir [s]
   !     taupump      real*8
@@ -128,15 +125,24 @@ subroutine run(  &
   !     prox         real*8
   !                    Grid parameter for loss rate at the last radial point, returned by
   !                    `get_radial_grid' subroutine.
+  !
+  !
+  !     OPTIONAL ARGUMENTS
+  !
   !     rn_t0        real*8 (ir,nion), optional
-  !                    Impurity densities at the start time [1/cm^3]. If not provided, all elements are
-  !                    set to 0.
+  !                    Impurity densities at the start time [1/cm^3].
+  !                    If not provided, all elements are set to 0.
   !     alg_opt      integer, optional
   !                    Integer to indicate algorithm to be used.
   !                    If set to 0, use the finite-differences algorithm used in the 2018 version of STRAHL.
   !                    If set to 1, use the Linder finite-volume algorithm (see Linder et al. NF 2020)
   !     evolneut     logical, optional  
-  !                    Boolean to activate evolution of neutrals (like any ionization stage)
+  !                    Boolean to activate evolution of neutrals (like any ionization stage).
+  !                    The D and v given for the 0th charge state apply to these neutrals.
+  !     src_div   real*8 (nt), optional
+  !                  Flux of particles going into the divertor, given as a function of time in units
+  !                  of [1/cm/s]. These particles will only affect the simulation if rcl>=0.
+  !                  If not provided, src_div is automatically set to an array of zeros.
   !  
   ! Returns:
   !
@@ -144,23 +150,23 @@ subroutine run(  &
   !                    Impurity densities (temporarily) in the magnetically-confined plasma at the
   !                    requested times [1/cm^3].
   !     N_ret        real*8 (nt_out)
-  !                    Impurity densities (permanently) retained at the wall over time [1/cm^3].
+  !                    Impurity densities (permanently) retained at the wall over time [1/cm].
   !     N_wall       real*8 (nt_out)
-  !                    Impurity densities (temporarily) at the wall over time [1/cm^3].
+  !                    Impurity densities (temporarily) at the wall over time [1/cm].
   !     N_div        real*8 (nt_out)
-  !                    Impurity densities (temporarily) in the divertor reservoir over time [1/cm^3].
+  !                    Impurity densities (temporarily) in the divertor reservoir over time [1/cm].
   !     N_pump       real*8 (nt_out)
-  !                    Impurity densities (permanently) in the pump [1/cm^3].
+  !                    Impurity densities (permanently) in the pump [1/cm].
   !     N_tsu        real*8 (nt_out)
-  !                    Edge loss [1/cm^3].
+  !                    Edge loss [1/cm].
   !     N_dsu        real*8 (nt_out)
-  !                    Parallel loss [1/cm^3].
+  !                    Parallel loss [1/cm].
   !     N_dsul       real*8 (nt_out)
-  !                    Parallel loss to limiter [1/cm^3].
+  !                    Parallel loss to limiter [1/cm].
   !     rcld_rate    real*8 (nt_out)
-  !                    Recycling from divertor [1/cm^3/s].
+  !                    Recycling from divertor [1/cm/s].
   !     rclw_rate    real*8 (nt_out)
-  !                    Recycling from wall [1/cm^3/s].
+  !                    Recycling from wall [1/cm/s].
   ! ---------------------------------------------------------------------------
 
   IMPLICIT NONE
@@ -171,11 +177,12 @@ subroutine run(  &
   INTEGER, INTENT(IN)                  :: nt_out   ! required as input
   INTEGER, INTENT(IN)                  :: nt_trans
 
-  REAL*8, INTENT(IN)                    :: t_trans(nt_trans)
-  REAL*8, INTENT(IN)                    :: D(ir,nt_trans,nion)
-  REAL*8, INTENT(IN)                    :: V(ir,nt_trans,nion)
-  REAL*8, INTENT(IN)                    :: par_loss_rates(ir,nt)
-  REAL*8, INTENT(IN)                    :: src_rad_prof(ir,nt)
+  REAL*8, INTENT(IN)                   :: t_trans(nt_trans)
+  REAL*8, INTENT(IN)                   :: D(ir,nt_trans,nion)
+  REAL*8, INTENT(IN)                   :: V(ir,nt_trans,nion)
+  REAL*8, INTENT(IN)                   :: par_loss_rates(ir,nt)
+  REAL*8, INTENT(IN)                   :: src_core(ir,nt)
+  REAL*8, INTENT(IN)                   :: rcl_rad_prof(ir,nt)  
 
   REAL*8, INTENT(IN)                   :: S_rates(ir,nion,nt)
   REAL*8, INTENT(IN)                   :: R_rates(ir,nion,nt)
@@ -191,29 +198,27 @@ subroutine run(  &
 !!!  REAL*8, INTENT(IN)                   :: time_out(nt_out)
 
   INTEGER, INTENT(IN)                  :: saw(nt)
-  REAL*8, INTENT(IN)                   :: flx(nt)
   INTEGER, INTENT(IN)                  :: it_out(nt)   !!!
 
   REAL*8, INTENT(IN)                   :: dsaw
 
   ! recycling inputs
-  REAL*8, INTENT(IN)                       :: rcl
-  REAL*8, INTENT(IN)                       :: divbls
-  REAL*8, INTENT(IN)                       :: taudiv
-  REAL*8, INTENT(IN)                       :: taupump
-  REAL*8, INTENT(IN)                       :: tauwret   ! renamed from rclret
+  REAL*8, INTENT(IN)                   :: rcl
+  REAL*8, INTENT(IN)                   :: taudiv
+  REAL*8, INTENT(IN)                   :: taupump
+  REAL*8, INTENT(IN)                   :: tauwret
 
   ! edge
-  REAL*8, INTENT(IN)                       :: rvol_lcfs
-  REAL*8, INTENT(IN)                       :: dbound
-  REAL*8, INTENT(IN)                       :: dlim
-  REAL*8, INTENT(IN)                       :: prox
+  REAL*8, INTENT(IN)                   :: rvol_lcfs
+  REAL*8, INTENT(IN)                   :: dbound
+  REAL*8, INTENT(IN)                   :: dlim
+  REAL*8, INTENT(IN)                   :: prox
 
-  ! t=0 impurity densities
-  REAL*8, INTENT(IN), OPTIONAL      :: rn_t0(ir,nion)
-
-  INTEGER, INTENT(IN), OPTIONAL     :: alg_opt
-  LOGICAL, INTENT(IN), OPTIONAL     :: evolneut
+  ! OPTIONAL ARGUMENTS
+  REAL*8, INTENT(IN), OPTIONAL         :: rn_t0(ir,nion)
+  INTEGER, INTENT(IN), OPTIONAL        :: alg_opt
+  LOGICAL, INTENT(IN), OPTIONAL        :: evolneut
+  REAL*8, INTENT(IN), OPTIONAL         :: src_div(nt)
   
   ! outputs
   REAL*8, INTENT(OUT)                  :: rn_out(ir,nion,nt_out)
@@ -237,6 +242,7 @@ subroutine run(  &
   REAL*8      :: tsu, dsu, dsul
   REAL*8      :: rcld, rclw
   REAL*8      :: rn_t0_in(ir,nion) ! used to support optional argument rn_t0
+  REAL*8      :: src_div_in(nt) ! used to support optional argument src_div
   INTEGER     :: sel_alg_opt
   
   ! Only used in impden (define here to avoid re-allocating memory at each impden call)
@@ -261,6 +267,12 @@ subroutine run(  &
      evolveneut=evolneut
   else
      evolveneut=.false.
+  endif
+
+  if (present(src_div))then
+     src_div_in = src_div
+  else
+     src_div_in = 0.0d0 ! all elements set to 0
   endif
   
   ! initialize edge quantities
@@ -314,27 +326,31 @@ subroutine run(  &
      if (sel_alg_opt.eq.0) then
         ! Use old algorithm, just for benchmarking
         call impden0( nion, ir, ra, rn,  &   !OUT: rn
-             diff, conv, par_loss_rates(:,it), src_rad_prof(:,it), &
+             diff, conv, par_loss_rates(:,it), src_core(:,it), &
+             rcl_rad_prof(:,it), &
              S_rates(:,:,it), R_rates(:,:,it),  &
-             rr, pro, qpr, flx(it-1), dlen,  &
+             rr, pro, qpr, &
+             dlen,  &
              dt, &   ! full time step
              rcl, tsu, dsul, divold, & ! tsu,dsul,divnew from previous recycling step
-             divbls, taudiv, tauwret, &
+             taudiv, tauwret, &
              a, b, c, d1, bet, gam, &  ! re-use memory allocation
              Nret, &         ! INOUT: Nret
-             rcld, rclw )    !OUT: rcld, rclw
+             rcld, rclw )    ! OUT: rcld, rclw
         
      else   ! currently use Linder algorithm for any option other than 0
         ! Linder algorithm
         call impden1(nion, ir, ra, rn,&
-             diff, conv, par_loss_rates(:,it), src_rad_prof(:,it), &
+             diff, conv, par_loss_rates(:,it), &
+             src_core(:,it), rcl_rad_prof(:,it), &
              S_rates(:,:,it), R_rates(:,:,it),  &
-             rr, flx(it-1), dlen, &
+             rr, &
+             dlen, &
              dt,  &    ! renaming dt-->det. In this subroutine, dt is half-step
              rcl, tsu, dsul, divold, &
-             divbls, taudiv,tauwret, &
+             taudiv, tauwret, &
              evolveneut, &  
-             Nret, rcld,rclw)
+             Nret, rcld, rclw)
        
      endif
      
@@ -348,8 +364,8 @@ subroutine run(  &
           diff, conv, par_loss_rates(:,it), dt, rvol_lcfs, &    ! dt is the full type step here
           dbound, dlim, prox, &
           rr, pro,  &
-          rcl,taudiv,taupump, &
-          divbls, divold, flx(it-1), &
+          rcl, taudiv, taupump, &
+          src_div_in(it), divold, &
           divnew, &        ! OUT: update to divold
           tve, npump, &     ! INOUT: updated values
           tsu, dsu, dsul)  ! OUT: updated by edge model
@@ -463,62 +479,58 @@ end subroutine saw_mix
 
 
 
-subroutine edge_model(&
-    nion, ir, ra, rn,  &
-    diff, conv,  &
+subroutine edge_model( &
+    nion, ir, ra, rn, &
+    diff, conv, &
     par_loss_rate, det, rvol_lcfs, &
     dbound, dlim, prox, &
     rr, pro,  &
-    rcl,taudiv,taupump, &
-    divbls, divold, flx, &
-    divnew, tve, npump, tsu,dsu,dsul )
+    rcl, taudiv, taupump, &
+    src_div_t, divold, &
+    divnew, tve, npump, tsu, dsu, dsul)
 
   IMPLICIT NONE
 
-  INTEGER, INTENT(IN)                      :: nion
-  INTEGER, INTENT(IN)                      :: ir
+  INTEGER, INTENT(IN)                   :: nion
+  INTEGER, INTENT(IN)                   :: ir
   REAL*8, INTENT(INOUT)                 :: ra(ir,nion)
   REAL*8, INTENT(INOUT)                 :: rn(ir,nion)
 
-  REAL*8, INTENT(IN)                        :: diff(ir, nion)
-  REAL*8, INTENT(IN)                        :: conv(ir, nion)
+  REAL*8, INTENT(IN)                    :: diff(ir, nion)
+  REAL*8, INTENT(IN)                    :: conv(ir, nion)
 
+  REAL*8, INTENT(IN)                    :: par_loss_rate(ir)
+  REAL*8, INTENT(IN)                    :: det   ! full time step
+  REAL*8, INTENT(IN)                    :: rvol_lcfs 
+  REAL*8, INTENT(IN)                    :: dbound
+  REAL*8, INTENT(IN)                    :: dlim
+  REAL*8, INTENT(IN)                    :: prox  ! for edge loss calculation
 
-  REAL*8, INTENT(IN)                       :: par_loss_rate(ir)
-  REAL*8, INTENT(IN)                       :: det   ! full time step
-  REAL*8, INTENT(IN)                       :: rvol_lcfs 
-  REAL*8, INTENT(IN)                       :: dbound
-  REAL*8, INTENT(IN)                       :: dlim
-  REAL*8, INTENT(IN)                       :: prox  ! for edge loss calculation
+  REAL*8, INTENT(IN)                    :: rr(ir)
+  REAL*8, INTENT(IN)                    :: pro(ir)
 
-  REAL*8, INTENT(IN)                       :: rr(ir)
-  REAL*8, INTENT(IN)                       :: pro(ir)
+  REAL*8, INTENT(IN)                    :: rcl
+  REAL*8, INTENT(IN)                    :: taudiv  !time scale for divertor
+  REAL*8, INTENT(IN)                    :: taupump !time scale for pump
 
-  REAL*8, INTENT(IN)                       :: rcl
-  REAL*8, INTENT(IN)                       :: taudiv  !time scale for divertor
-  REAL*8, INTENT(IN)                       :: taupump !time scale for pump
+  REAL*8, INTENT(IN)                    :: src_div_t ! injected flux into the divertor 
+  REAL*8, INTENT(IN)                    :: divold !particles initially in divertor (to update)
 
-  REAL*8, INTENT(IN)                       :: divbls
-  REAL*8, INTENT(IN)                       :: divold !particles initially in divertor (to update)
-  REAL*8, INTENT(IN)                       :: flx
-
-  REAL*8, INTENT(OUT)                    :: divnew !particles in divertor (updated)
+  REAL*8, INTENT(OUT)                   :: divnew !particles in divertor (updated)
   REAL*8, INTENT(INOUT)                 :: tve   !particles at wall (updated)
   REAL*8, INTENT(INOUT)                 :: npump !particles in pump (updated)
-  REAL*8, INTENT(OUT)                    :: tsu   !edge loss
-  REAL*8, INTENT(OUT)                    :: dsu   !parallel loss
-  REAL*8, INTENT(OUT)                    :: dsul   !parallel loss to limiter
+  REAL*8, INTENT(OUT)                   :: tsu   !edge loss
+  REAL*8, INTENT(OUT)                   :: dsu   !parallel loss
+  REAL*8, INTENT(OUT)                   :: dsul   !parallel loss to limiter
 
   INTEGER :: i, nz, ids, idl, ids1, idl1
   REAL*8 :: rx, pi, taustar, ff
 
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !      Compute edge fluxes given multi-reservoir parameters
-  !      Core-densities do not directly depend on this -- but recycling can only be activated
-  !      if this 1D edge model is included.
-  !      This subroutine is equivalent to what is done in strahl.f between L1043 and L1110
-  !      (with a few bug fixes)
-  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! Compute edge fluxes given multi-reservoir parameters
+  ! Core-densities do not directly depend on this -- but recycling
+  ! can only be activated if this 1D edge model is included.
+  ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   pi = 4. * atan(1.)
   rx=rvol_lcfs+dbound   ! wall (final) location
@@ -532,8 +544,8 @@ subroutine edge_model(&
   ids1=ids-1
   idl1 = idl-1 
 
-  ! ----------------------------------------------
-  !  ions lost at periphery (not parallel) --- NB: ii in main STRAHL code is = ir-1
+  ! --------------------------------------
+  !  ions lost at periphery (not parallel)
   tsu=0.d0
   do nz=2,nion
      tsu=tsu - prox * (diff(ir-1,nz)+diff(ir,nz)) * (rn(ir,nz)+ra(ir,nz) - rn(ir-1,nz)-ra(ir-1,nz))  + &
@@ -571,10 +583,10 @@ subroutine edge_model(&
   if (rcl.ge.0) then  ! activated divertor return (rcl>=0) + recycling mode (if rcl>0)
      taustar = 1./(1./taudiv+1./taupump)    ! time scale for divertor depletion
      ff = .5*det/taustar
-     !divnew = ( divold*(1.-ff) + det*dsu )/(1.+ff)
-     divnew = ( divold*(1.-ff) + (dsu + flx*divbls)*det )/(1.+ff)     ! FS corrected
+     
+     divnew = ( divold*(1.-ff) + (dsu + src_div_t)*det )/(1.+ff)
   else
-     divnew = divold + (dsu+flx*divbls)*det
+     divnew = divold + (dsu+src_div_t)*det
   endif
 
   ! particles in pump
