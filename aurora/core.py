@@ -1160,7 +1160,7 @@ class aurora_sim:
         # Compute total number of particles for particle conservation checks:
         all_particles = grids_utils.vol_int(
             total_impurity_density, self.rvol_grid, self.pro_grid, self.Raxis_cm,
-            rvol_max = self.rvol_lcfs
+            rvol_max = None
         )
 
         out["total"] = all_particles + (N_wall + N_div + N_pump + N_ret) * circ
