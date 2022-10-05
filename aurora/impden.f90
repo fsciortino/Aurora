@@ -29,9 +29,9 @@
 subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
      src_prof, rcl_rad_prof, s_rates, r_rates,  &
      rr, pro, qpr, dlen, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
-     rcl,tsuold, dsulold, divold, taudiv,tauwret, &
+     rcl,tsuold, dsulold, divold, pumpold, taudiv, tauwret, leak, volpump, &
      a, b, c, d1, bet, gam, &
-     Nret, rcld,rclw)
+     Nret, rcld, rclp, rclw)
   !
   !  Impurity transport forward modeling with default STRAHL finite-differences scheme.
   !  Refer to STRAHL manual 2018 for details.
@@ -61,18 +61,23 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
   REAL*8, INTENT(IN)        :: rcl
   REAL*8, INTENT(IN)        :: tsuold   ! tsu from previous recycling step
   REAL*8, INTENT(IN)        :: dsulold  ! dsul from previous recycling step
-  REAL*8, INTENT(IN)        :: divold   ! divnew from previous step (even without recycling)
+  REAL*8, INTENT(IN)        :: divold   ! divnew from previous step (even without backflow)
+  REAL*8, INTENT(IN)        :: pumpold  ! pumpnew from previous step (even without leakage)
 
   REAL*8, INTENT(IN)        :: taudiv
   REAL*8, INTENT(IN)        :: tauwret
+  REAL*8, INTENT(IN)        :: leak
+  REAL*8, INTENT(IN)        :: volpump
 
   ! Re-use memory allocation
   REAL*8, INTENT(INOUT)     :: a(ir,nion), b(ir,nion), c(ir,nion), d1(ir), bet(ir), gam(ir)
 
   REAL*8, INTENT(INOUT)     :: Nret
   REAL*8, INTENT(OUT)       :: rcld
+  REAL*8, INTENT(OUT)       :: rclp
   REAL*8, INTENT(OUT)       :: rclw
   
+  REAL*8 :: tauleak
   REAL*8 :: der
   INTEGER :: i, nz
 
@@ -94,8 +99,14 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
   ! Particles that are only temporarily retained at the wall (given by the recycling fraction) come back
   ! (recycle) according to the tauwret time scale.
 
-  if (rcl.ge.0) then    ! activated divertor return (R>=0) + recycling mode (if R>0)
+  if (rcl.ge.0) then    ! activated divertor/pump return (R>=0) + recycling mode (if R>0)
      rcld = divold/taudiv
+     if (leak.gt.0) then    ! pump reservoir present and activated leakage
+        tauleak = volpump/leak
+        rclp = pumpold/tauleak
+     else
+        rclp = 0.d0
+     endif
      rclw = rcl*(tsuold+dsulold)
 
      if (tauwret.gt.0.0d0) then
@@ -104,8 +115,9 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
         rclw = Nret/tauwret    ! component that goes back to be a source
      endif
 
-  else   ! no divertor return at all
+  else   ! no divertor/pump return at all
         rcld = 0.d0
+        rclp = 0.d0
         rclw = 0.d0
   endif
 
@@ -259,8 +271,8 @@ end subroutine impden0
 
 subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_rad_prof, s_rates, r_rates,  &
      rr, fall_outsol, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
-     rcl,tsuold, dsulold, divold, taudiv,tauwret, &
-     evolveneut, Nret, rcld,rclw)
+     rcl,tsuold, dsulold, divold, pumpold, taudiv, tauwret, leak, volpump, &
+     evolveneut, Nret, rcld, rclp, rclw)
   !
   !  Impurity transport forward modeling with Linder's finite-volume scheme.
   !  See Linder et al. NF 2020
@@ -287,19 +299,23 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
   REAL*8, INTENT(IN)        :: rcl
   REAL*8, INTENT(IN)        :: tsuold   ! tsu from previous recycling step
   REAL*8, INTENT(IN)        :: dsulold  ! dsul from previous recycling step
-  REAL*8, INTENT(IN)        :: divold   ! divnew from previous step (even without recycling)
+  REAL*8, INTENT(IN)        :: divold   ! divnew from previous step (even without backflow)
+  REAL*8, INTENT(IN)        :: pumpold  ! pumpnew from previous step (even without leakage)
 
   REAL*8, INTENT(IN)        :: taudiv
   REAL*8, INTENT(IN)        :: tauwret
+  REAL*8, INTENT(IN)        :: leak
+  REAL*8, INTENT(IN)        :: volpump
 
   ! Extras
   LOGICAL, INTENT(IN)       :: evolveneut
   
   REAL*8, INTENT(INOUT)     :: Nret
   REAL*8, INTENT(OUT)       :: rcld
+  REAL*8, INTENT(OUT)       :: rclp
   REAL*8, INTENT(OUT)       :: rclw
 
-  REAL*8 :: flx_rcl
+  REAL*8 :: flx_rcl, tauleak
   INTEGER :: i, nz, ns
 
   REAL*8 :: dt
@@ -311,8 +327,14 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
   dt = det/2.    
   
   ! Recycling 
-  if (rcl.ge.0) then    ! activated divertor return (R>=0) + recycling mode (if R>0)
+  if (rcl.ge.0) then    ! activated divertor/pump return (R>=0) + recycling mode (if R>0)
      rcld = divold/taudiv
+     if (leak.gt.0) then    ! pump reservoir present and activated leakage
+        tauleak = volpump/leak
+        rclp = pumpold/tauleak
+     else
+        rclp = 0.d0
+     endif
      rclw = rcl*(tsuold+dsulold)
      
      if (tauwret.gt.0.0d0) then
@@ -321,9 +343,10 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
         rclw = Nret/tauwret    ! component that goes back to be a source
      endif
      
-     flx_rcl = rclw + rcld
-  else   ! no divertor return at all
+     flx_rcl = rclw + rclp + rcld
+  else   ! no divertor/pump return at all
      rcld = 0.d0
+     rclp = 0.d0
      rclw = 0.d0
      flx_rcl = 0.d0
   endif

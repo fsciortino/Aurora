@@ -54,7 +54,7 @@ class aurora_sim:
 
     """
 
-    def __init__(self, namelist, geqdsk=None):
+    def __init__(self, namelist, geqdsk=None, plot_time_grid=False, plot_radial_grid=False):
 
         if namelist is None:
             # option useful for calls like omfit_classes.OMFITaurora(filename)
@@ -117,7 +117,7 @@ class aurora_sim:
         self.superstages = self.namelist.get("superstages", [])
 
         # set up radial and temporal grids
-        self.setup_grids()
+        self.setup_grids(plot_time_grid,plot_radial_grid)
 
         # set up kinetic profiles and atomic rates
         self.setup_kin_profs_depts()
@@ -135,11 +135,44 @@ class aurora_sim:
         self.tau_div_SOL_ms = self.namelist["tau_div_SOL_ms"]
         self.tau_pump_ms = self.namelist["tau_pump_ms"]
         self.tau_rcl_ret_ms = self.namelist["tau_rcl_ret_ms"]
+        self.S_pump = self.namelist["S_pump"]
+        self.vol_div = self.namelist["vol_div"]
+        self.L_divpump = self.namelist["L_divpump"]
+        self.vol_pump = self.namelist["vol_pump"]
+        self.L_leak = self.namelist["L_leak"]
+        
+        # if phys_volumes and pump_chamber flags are set to False, pumping is done
+        # directly from the divertor chamber and is defined by the time tau_pump_ms
+        if not self.namelist["phys_volumes"] and not self.namelist["pump_chamber"]:
+            self.vol_div = 0.0  # adimensional divertor chamber
+            self.vol_pump = 0.0  # adimensional pump chamber
+            self.L_divpump = 0.0  # no conductance
+            self.L_leak = 0.0  # no leakage
+            self.S_pump = 0.0
+            
+        # if pump_chamber flag is set to False but phys_volumes flag is set to True,
+        # pumping is done directly from the divertor chamber and is defined by the
+        # pumping speed S_pump
+        if self.namelist["phys_volumes"] and not self.namelist["pump_chamber"]:
+            self.vol_pump = 0.0  # adimensional pump chamber
+            self.L_divpump = 0.0  # no conductance
+            self.L_leak = 0.0  # no leakage
+            self.tau_pump_ms = 0.0
+            
+        # if phys_volumes and pump_chamber flags are set to True, pumping is done from
+        # a pump chamber, the transport between divertor and pump chambers is defined
+        # by the conductance L_divpump, and the pumping from the pump chamber is defined
+        # by a pumping speed S_pump
+        if self.namelist["phys_volumes"] and self.namelist["pump_chamber"]:
+            self.tau_pump_ms = 0.0
+            
+        if not self.namelist["phys_volumes"] and self.namelist["pump_chamber"]:    
+            raise ValueError("Assuming a secondary pump chamber requires defining the physical chamber volumes!")          
 
-        # if recycling flag is set to False, avoid any divertor return flows
-        # To include divertor return flows but no recycling, set wall_recycling=0
+        # if recycling flag is set to False, avoid any divertor/pump return flows
+        # To include divertor/pump return flows but no recycling, set wall_recycling=0
         if not self.namelist["recycling_flag"]:
-            self.wall_recycling = -1.0  # no divertor return flows
+            self.wall_recycling = -1.0  # no divertor/pump return flows
 
         self.bound_sep = self.namelist["bound_sep"]
         self.lim_sep = self.namelist["lim_sep"]
@@ -166,7 +199,7 @@ class aurora_sim:
     def load_dict(self, aurora_dict):
         self.__dict__.update(aurora_dict)
 
-    def setup_grids(self):
+    def setup_grids(self,plot_time_grid,plot_radial_grid):
         """Method to set up radial and temporal grids given namelist inputs.
         """
         # Get r_V to rho_pol mapping
@@ -178,7 +211,7 @@ class aurora_sim:
         )  # set limit on accuracy
 
         # create radial grid
-        grid_params = grids_utils.create_radial_grid(self.namelist, plot=False)
+        grid_params = grids_utils.create_radial_grid(self.namelist, plot=plot_radial_grid)
         self.rvol_grid, self.pro_grid, self.qpr_grid, self.prox_param = grid_params
 
         # get rho_poloidal grid corresponding to aurora internal (rvol) grid
@@ -194,7 +227,7 @@ class aurora_sim:
 
         # define time grid ('timing' must be in namelist)
         self.time_grid, self.save_time = grids_utils.create_time_grid(
-            timing=self.namelist["timing"], plot=False
+            timing=self.namelist["timing"], plot=plot_time_grid
         )
         self.time_out = self.time_grid[self.save_time]
 
@@ -705,7 +738,9 @@ class aurora_sim:
         N_div : array (nt,)
             Number of particles in the divertor reservoir over time.
         N_pump : array (nt,)
-            Number of particles in the pump reservoir over time.
+            Number of particles in the pump reservoir (if present) over time.
+        N_out : array (nt,)
+            Number of particles permanently removed through the pump over time.
         N_ret : array (nt,)
              Number of particles temporarily held in the wall reservoirs.
         N_tsu : array (nt,)
@@ -715,7 +750,9 @@ class aurora_sim:
         N_dsul : array (nt,)
              Parallel particle loss at the limiter [:math:`cm^{-3}`]
         rcld_rate : array (nt,)
-             Recycling from the divertor [:math:`s^{-1} cm^{-3}`]
+             Recycling from the divertor reservoir [:math:`s^{-1} cm^{-3}`]
+        rclp_rate : array (nt,)
+             Leakage from the pump reservoir [:math:`s^{-1} cm^{-3}`]
         rclw_rate : array (nt,)
              Recycling from the wall [:math:`s^{-1} cm^{-3}`]
         """
@@ -832,6 +869,11 @@ class aurora_sim:
                 self.tau_div_SOL_ms * 1e-3,  # [s]
                 self.tau_pump_ms * 1e-3,  # [s]
                 self.tau_rcl_ret_ms * 1e-3,  # [s]
+                self.S_pump, # [cm^3/s]
+                self.vol_div, # [cm^3]
+                self.L_divpump, # [cm^3/s]
+                self.vol_pump, # [cm^3]
+                self.L_leak, # [cm^3/s]
                 self.rvol_lcfs,
                 self.bound_sep,
                 self.lim_sep,
@@ -858,7 +900,7 @@ class aurora_sim:
             )
 
             # check particle conservation by summing over simulation reservoirs
-            _ = self.check_conservation(plot=True)
+            _ = self.plot_reservoirs(plot=True)
 
         if len(self.superstages) and unstage:
             # "unstage" superstages to recover estimates for density of all charge states
@@ -877,7 +919,7 @@ class aurora_sim:
 
             self.res = nz_unstaged, *self.res[1:]
 
-        # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
+        # nz, N_wall, N_div, N_pump, N_out, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclp_rate, rclw_rate = self.res
         return self.res
 
     def run_aurora_steady(
@@ -1103,18 +1145,93 @@ class aurora_sim:
         Z = np.arange(Zmax + 1)
         self.delta_Zeff = nz * (Z * (Z - 1))[None, :, None]  # for each charge state
         self.delta_Zeff /= self.ne.T[:, None, :]
+        
+    def calc_taumain(self):
+        (
+            nz,
+            N_wall,
+            N_div,
+            N_pump,
+            N_out,
+            N_ret,
+            N_tsu,
+            N_dsu,
+            N_dsul,
+            rcld_rate,
+            rclp_rate,
+            rclw_rate,
+        ) = self.res
+        nz = nz.transpose(2, 1, 0)  # time,nZ,space
+        
+        # factor to account for cylindrical geometry:
+        circ = 2 * np.pi * self.Raxis_cm  # cm
+
+        # calculate total impurity density (summed over charge states)
+        total_impurity_density = np.nansum(nz, axis=1)  # time, space
+
+        # compute total number of particles in the plasma
+        N_main = grids_utils.vol_int(
+            total_impurity_density, self.rvol_grid, self.pro_grid, self.Raxis_cm,
+            rvol_max = None
+        )
+        
+        # compute fluxes leaving the plasma
+        edge_loss = N_tsu * circ
+        limiter_loss = N_dsul * circ
+        parallel_loss = N_dsu * circ
+        flux_out = edge_loss + limiter_loss + parallel_loss
+        
+        # calculate the impurity confinement time in the plasma
+        tau_main = np.divide(N_main, flux_out, out=np.zeros_like(N_main), where=flux_out!=0)
+        
+        return tau_main
+    
+    def calc_compression(self):
+        (
+            nz,
+            N_wall,
+            N_div,
+            N_pump,
+            N_out,
+            N_ret,
+            N_tsu,
+            N_dsu,
+            N_dsul,
+            rcld_rate,
+            rclp_rate,
+            rclw_rate,
+        ) = self.res
+        nz = nz.transpose(2, 1, 0)  # time,nZ,space
+        
+        # factor to account for cylindrical geometry:
+        circ = 2 * np.pi * self.Raxis_cm  # cm
+        
+        if not self.namelist["phys_volumes"]:    
+            raise ValueError("Calculating the divertor compression requires the physical volumes of the reservoirs to be defined.") 
+        
+        ones = np.ones_like(nz)
+        num = grids_utils.vol_int(nz[:,-1,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=self.rvol_lcfs)
+        den = grids_utils.vol_int(ones[:,-1,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=self.rvol_lcfs)
+        n_plasma = num/den
+        n_div = (N_div*circ)/self.vol_div
+        
+        compression = np.divide(n_div, n_plasma, out=np.zeros_like(n_div), where=n_plasma!=0)
+
+        return n_plasma, n_div, compression
+        
 
     def plot_resolutions(self):
         """Convenience function to show time and spatial resolution in Aurora simulation setup.
         """
         # display radial resolution
-        _ = grids_utils.create_radial_grid(self.namelist, plot=True)
+        _ = grids_utils.create_radial_grid(self.namelist, plot=False)
 
         # display time resolution
-        _ = grids_utils.create_time_grid(timing=self.namelist["timing"], plot=True)
+        _ = grids_utils.create_time_grid(timing=self.namelist["timing"], plot=False)
 
-    def check_conservation(self, plot=True, axs=None, plot_resolutions=False):
-        """Check particle conservation for an aurora simulation.
+    def plot_reservoirs(self, plot=True, axs=None, plot_resolutions=False):
+        """Plot the particle content in the various reservoirs
+        and check the particle conservation for an aurora simulation.
 
         Parameters
         ----------
@@ -1128,7 +1245,7 @@ class aurora_sim:
 
         Returns
         -------
-        out : dict
+        reservoirs : dict
             Dictionary containing density of particles in each reservoir.
         axs : matplotlib.Axes instances, only returned if plot=True
             Array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
@@ -1139,11 +1256,13 @@ class aurora_sim:
             N_wall,
             N_div,
             N_pump,
+            N_out,
             N_ret,
             N_tsu,
             N_dsu,
             N_dsul,
             rcld_rate,
+            rclp_rate,
             rclw_rate,
         ) = self.res
         nz = nz.transpose(2, 1, 0)  # time,nZ,space
@@ -1152,7 +1271,7 @@ class aurora_sim:
         circ = 2 * np.pi * self.Raxis_cm  # cm
 
         # collect all the relevant quantities for particle conservation
-        out = {}
+        reservoirs = {}
 
         # calculate total impurity density (summed over charge states)
         total_impurity_density = np.nansum(nz, axis=1)  # time, space
@@ -1160,27 +1279,58 @@ class aurora_sim:
         # Compute total number of particles for particle conservation checks:
         all_particles = grids_utils.vol_int(
             total_impurity_density, self.rvol_grid, self.pro_grid, self.Raxis_cm,
-            rvol_max = self.rvol_lcfs
+            rvol_max = None
         )
+        reservoirs["total"] = all_particles + (N_wall + N_div + N_pump + N_out + N_ret) * circ
 
-        out["total"] = all_particles + (N_wall + N_div + N_pump + N_ret) * circ
-
-        out["source"] = self.total_source*circ + out["total"][0]
+        # main fluxes
+        reservoirs["source"] = self.total_source*circ + reservoirs["total"][0]
+        reservoirs["wall_source"] = rclw_rate * circ
+        reservoirs["divertor_recycling"] = rcld_rate * circ + rclp_rate * circ
+        reservoirs["plasma_removal_rate"] = - N_dsu * circ - N_tsu * circ - N_dsul * circ
+        reservoirs["net_plasma_flow"] = reservoirs["source"] + reservoirs["wall_source"] + reservoirs["divertor_recycling"] + reservoirs["plasma_removal_rate"]
 
         # integrated source over time
-        out["integ_source"] = cumtrapz(out["source"], self.time_out, initial=0)
+        reservoirs["integ_source"] = cumtrapz(reservoirs["source"], self.time_out, initial=0)    
+        
+        # main plasma content
+        if self.namelist["phys_volumes"]:    
+            ones = np.ones_like(total_impurity_density)
+            den = grids_utils.vol_int(ones[:,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=self.rvol_lcfs)
+            reservoirs["particle_density_in_plasma"] = all_particles/den
+        reservoirs["particles_in_plasma"] = all_particles
+        
+        # divertor and pump reservoirs
+        if self.namelist["phys_volumes"]:
+            reservoirs["particle_density_in_divertor"] = (N_div * circ)/self.vol_div
+            if self.namelist["pump_chamber"]:
+                reservoirs["particle_density_in_pump"] = (N_pump * circ)/self.vol_pump
+        reservoirs["particles_in_divertor"] = N_div * circ
+        reservoirs["particles_in_pump"] = N_pump * circ
+        
+        # fluxes towards main wall
+        reservoirs["edge_loss"] = N_tsu * circ
+        reservoirs["limiter_loss"] = N_dsul * circ
+        
+        # recycling rates from main wall
+        reservoirs["wall_recycling"] = rclw_rate * circ
+        
+        # main wall reservoir
+        reservoirs["particles_stuck_at_wall"] = N_wall * circ
+        reservoirs["particles_retained_at_wall"] = N_ret * circ
 
-        out["particles_at_wall"] = N_wall * circ
-        out["particles_retained_at_wall"] = N_ret * circ
-        out["particles_in_divertor"] = N_div * circ
-        out["particles_in_pump"] = N_pump * circ
-        out["parallel_loss"] = N_dsu * circ
-        out["edge_loss"] = N_tsu * circ
-        out["parallel_loss_to_limiter"] = N_dsul * circ
-        out["recycling_from_divertor"] = rcld_rate * circ
-        out["recycling_from_wall"] = rclw_rate * circ
-        if hasattr(self, "rad"):  # radiation has already been compputed
-            out["impurity_radiation"] = grids_utils.vol_int(
+        # flux towards divertor
+        reservoirs["parallel_loss"] = N_dsu * circ
+
+        # recycling rates from divertor
+        reservoirs["divertor_backflow"] = rcld_rate * circ
+        reservoirs["pump_leakage"] = rclp_rate * circ
+
+        # particles pumped away
+        reservoirs["particles_pumped"] = N_out * circ
+
+        if hasattr(self, "rad"):  # radiation has already been computed
+            reservoirs["impurity_radiation"] = grids_utils.vol_int(
                 self.rad["tot"], self.rvol_grid, self.pro_grid, self.Raxis_cm,
                 rvol_max = self.rvol_lcfs
             )
@@ -1189,73 +1339,341 @@ class aurora_sim:
             # -------------------------------------------------
             # plot time histories for each particle reservoirs:
             if axs is None:
-                fig, ax1 = plt.subplots(nrows=4, ncols=3, sharex=True, figsize=(15, 10))
+                fig, ax1 = plt.subplots(nrows=3, ncols=3, sharex=True, figsize=(15, 10))
             else:
                 ax1 = axs[0]
 
-            ax1[0, 0].plot(self.time_out, out["source"], label="Influx ($s^{-1}$)")
-            ax1[0, 1].plot(self.time_out, out["particles_in_divertor"],
-                           label="Particles in divertor")
-            ax1[0, 2].plot(self.time_out, out["particles_in_pump"], label="Particles in pump")
+            ax1[0, 0].plot(self.time_out, reservoirs["source"], label="Ext. influx")
+            ax1[0, 0].plot(self.time_out, reservoirs["wall_source"], label="Wall source")
+            ax1[0, 0].plot(self.time_out, reservoirs["divertor_recycling"], label="Div.+pump recycling")
+            ax1[0, 0].plot(self.time_out, reservoirs["plasma_removal_rate"], label="Removal rate")
+            ax1[0, 0].plot(self.time_out, reservoirs["net_plasma_flow"], label="Net sum")
+            ax1[0, 0].set_ylabel('[$s^{-1}$]')
 
-            ax1[1, 0].plot(self.time_out, out["parallel_loss"], label="Parallel Loss")
-            ax1[1, 1].plot(self.time_out, out["parallel_loss_to_limiter"],
-                           label="Parallel Loss to Limiter")
-            ax1[1, 2].plot(self.time_out, out["edge_loss"], label="Edge Loss")
+            if self.namelist["phys_volumes"]:
+                ax1[0, 1].plot(self.time_out, reservoirs["particle_density_in_plasma"],
+                               label="Plasma")
+                ax1[0, 1].set_ylabel('[$cm^{-3}$]')
+            else:
+                ax1[0, 1].plot(self.time_out, reservoirs["particles_in_plasma"],
+                           label="Plasma")
+                ax1[0, 1].set_ylabel('[#]')
 
-            ax1[2, 0].plot(self.time_out, out["particles_at_wall"], label="Particles stuck at wall")
-            ax1[2, 1].plot(self.time_out, out["particles_retained_at_wall"],
-                label="Particles retained at wall")
-            ax1[2, 2].plot(self.time_out, out["recycling_from_wall"], label="Wall rec. rate")
+            if self.namelist["phys_volumes"]:
+                ax1[0, 2].plot(self.time_out, reservoirs["particle_density_in_divertor"],
+                           label="Div. reservoir")
+                if self.namelist["pump_chamber"]:
+                    ax1[0, 2].plot(self.time_out, reservoirs["particle_density_in_pump"],
+                           label="Pump reservoir")
+                ax1[0, 2].set_ylabel('[$cm^{-3}$]')
+            else:
+                ax1[0, 2].plot(self.time_out, reservoirs["particles_in_divertor"],
+                           label="Div. reservoir")
+                if self.namelist["pump_chamber"]:
+                    ax1[0, 2].plot(self.time_out, reservoirs["particles_in_pump"],
+                           label="Pump reservoir")
+                ax1[0, 2].set_ylabel('[#]')
 
-            ax1[3, 0].plot(self.time_out, out["recycling_from_divertor"],
-                           label="Divertor rec. rate")
-            ax1[3, 1].plot(self.time_out, out["total"], label="Core impurity particles")
-            for aa in ax1.flatten()[:11]:
+            ax1[1, 0].plot(self.time_out, reservoirs["edge_loss"], label="Edge loss to wall")
+            ax1[1, 0].plot(self.time_out, reservoirs["limiter_loss"], label="Limiter loss to wall")
+            ax1[1, 0].set_ylabel('[$s^{-1}$]')  
+
+            ax1[1, 1].plot(self.time_out, reservoirs["wall_recycling"], label="Wall rec. rate")
+            ax1[1, 1].set_ylabel('[$s^{-1}$]')  
+
+            ax1[1, 2].plot(self.time_out, reservoirs["particles_stuck_at_wall"], label="Part. stuck at wall")
+            ax1[1, 2].plot(self.time_out, reservoirs["particles_retained_at_wall"],
+                label="Part. retained at wall")
+            ax1[1, 2].set_ylabel('[#]')
+
+            ax1[2, 0].plot(self.time_out, reservoirs["parallel_loss"], label="Par. loss to divertor")
+            ax1[2, 0].plot(self.time_out, reservoirs["divertor_backflow"],
+                           label="Divertor backflow rate")
+            if self.namelist["pump_chamber"]:
+                ax1[2, 0].plot(self.time_out, reservoirs["pump_leakage"],
+                           label="Pump leakage rate")
+            ax1[2, 0].set_ylabel('[$s^{-1}$]')
+
+            for aa in ax1.flatten()[:7]:
                 aa.legend(loc="best").set_draggable(True)
 
-            if "impurity_radiation" in out:
-                ax1[3, 2].plot(self.time_out, out["impurity_radiation"], label="Core radiation (W)")
-                ax1[3, 2].legend(loc="best").set_draggable(True)
-
             for ii in [0, 1, 2]:
-                ax1[3, ii].set_xlabel("Time (s)")
-            ax1[3, 0].set_xlim(self.time_out[[0, -1]])
+                ax1[2, ii].set_xlabel("Time [s]")
+            ax1[2, 0].set_xlim(self.time_out[[0, -1]])
+
+            # ----------------------------------------------------------------
+            # plot the impurity radiation, if present:
+            if "impurity_radiation" in reservoirs:
+                if axs is None:
+                    fig, ax2 = plt.subplots()
+                else:
+                    ax2 = axs[1]
+
+                ax2.plot(self.time_out, reservoirs["impurity_radiation"], label="Core radiation")
+                ax2.legend(loc="best").set_draggable(True)
+                ax2.set_xlabel("Time [s]")
+                ax2.set_ylabel('[W]')
 
             # ----------------------------------------------------------------
             # now plot all particle reservoirs to check particle conservation:
             if axs is None:
-                fig, ax2 = plt.subplots()
+                fig, ax3 = plt.subplots()
             else:
-                ax2 = axs[1]
+                ax3 = axs[1]
 
-            ax2.set_xlabel("time [s]")
+            ax3.set_xlabel("time [s]")
 
-            ax2.plot(self.time_out, all_particles, label="Particles in Plasma")
-            ax2.plot(self.time_out, out["particles_at_wall"], label="Particles stuck at wall")
-            ax2.plot(self.time_out, out["particles_in_divertor"], label="Particles in Divertor")
-            ax2.plot(self.time_out, out["particles_in_pump"], label="Particles in Pump")
-            ax2.plot(self.time_out, out["particles_retained_at_wall"],
-                     label="Particles retained at wall")
-            ax2.plot(self.time_out, out["total"], label="Total")
-            ax2.plot(self.time_out, out["integ_source"], label="Integrated source")
+            ax3.plot(self.time_out, all_particles, label="Particles in the plasma")
+            ax3.plot(self.time_out, reservoirs["particles_in_divertor"], label="Particles in the divertor chamber")
+            if self.namelist["pump_chamber"]:
+                ax3.plot(self.time_out, reservoirs["particles_in_pump"], label="Particles in the pump chamber")
+            ax3.plot(self.time_out, reservoirs["particles_stuck_at_wall"], label="Particle stuck at the main wall")
+            ax3.plot(self.time_out, reservoirs["particles_retained_at_wall"],
+                     label="Particles retained at the main wall")
+            ax3.plot(self.time_out, reservoirs["particles_pumped"], label="Particles pumped away")
+            ax3.plot(self.time_out, reservoirs["total"], label="Total particles in the system")
+            ax3.plot(self.time_out, reservoirs["integ_source"], label="Integrated source")
 
-            if (abs((out["total"][-1] - out["integ_source"][-1]) / out["integ_source"][-1]) > 0.1):
+            if (abs((reservoirs["total"][-1] - reservoirs["integ_source"][-1]) / reservoirs["integ_source"][-1]) > 0.1):
                 print("Warning: significant error in particle conservation!")
 
-            Ntot = out["integ_source"][-1]
-            dN = np.trapz((out["total"] / Ntot - out["integ_source"] / Ntot) ** 2, self.time_out)
-            dN /= np.trapz((out["integ_source"] / Ntot) ** 2, self.time_out)
+            Ntot = reservoirs["integ_source"][-1]
+            dN = np.trapz((reservoirs["total"] / Ntot - reservoirs["integ_source"] / Ntot) ** 2, self.time_out)
+            dN /= np.trapz((reservoirs["integ_source"] / Ntot) ** 2, self.time_out)
             print('Particle conservation error %.1f%%' % (np.sqrt(dN) * 100))
         
-            ax2.set_ylim(0, None)
-            ax2.legend(loc="best")
+            ax3.set_xlim(self.time_out[[0, -1]])
+            ax3.set_ylim(0, None)
+            ax3.legend(loc="best")
             plt.tight_layout()
 
         if plot:
-            return out, (ax1, ax2)
+            if "impurity_radiation" in reservoirs:
+                return reservoirs, (ax1, ax2, ax3)
+            else:
+                return reservoirs, (ax1, ax3)
         else:
-            return out
+            return reservoirs
+  
+    def plot_reservoirs_average(self, time_start, time_end, interval, plot=True, axs=None, plot_resolutions=False):
+        """Plot the particle content in the various reservoirs
+        time-averaged over user-defined cycles.
+
+        Parameters
+        ----------
+        plot : bool, optional
+            If True, plot time histories in each particle reservoir and display quality of particle conservation.
+        interval : float
+            Duration of the cycles over which perform the time integration. 
+        axs : 2-tuple or array
+            Array-like structure containing two matplotlib.Axes instances: the first one
+            for the separate particle time variation in each reservoir, the second for
+            the total particle-conservation check. This can be used to plot results
+            from several aurora runs on the same axes.
+
+        Returns
+        -------
+        reservoirs : dict
+            Dictionary containing density of particles in each reservoir time-averaged over cycles
+        axs : matplotlib.Axes instances, only returned if plot=True
+            Array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
+            See optional input argument.
+        """
+        (
+            nz,
+            N_wall,
+            N_div,
+            N_pump,
+            N_out,
+            N_ret,
+            N_tsu,
+            N_dsu,
+            N_dsul,
+            rcld_rate,
+            rclp_rate,
+            rclw_rate,
+        ) = self.res
+        nz = nz.transpose(2, 1, 0)  # time,nZ,space
+
+        # factor to account for cylindrical geometry:
+        circ = 2 * np.pi * self.Raxis_cm  # cm
+
+        # collect all the relevant quantities for particle conservation
+        reservoirs = {}
+
+        # calculate total impurity density (summed over charge states)
+        total_impurity_density = np.nansum(nz, axis=1)  # time, space
+
+        # Compute total number of particles for particle conservation checks:
+        all_particles = grids_utils.vol_int(
+            total_impurity_density, self.rvol_grid, self.pro_grid, self.Raxis_cm,
+            rvol_max = None
+        )
+
+        time_average, reservoirs["total"] = plot_tools.time_average_reservoirs(self.time_out,all_particles + (N_wall + N_div + N_pump + N_out + N_ret) * circ,time_start,time_end,interval)
+
+        # main fluxes
+        time_average, reservoirs["source"] = plot_tools.time_average_reservoirs(self.time_out,self.total_source*circ + reservoirs["total"][0],time_start,time_end,interval)
+        time_average, reservoirs["wall_source"] = plot_tools.time_average_reservoirs(self.time_out,rclw_rate * circ,time_start,time_end,interval)
+        time_average, reservoirs["divertor_recycling"] = plot_tools.time_average_reservoirs(self.time_out,rcld_rate * circ + rclp_rate * circ,time_start,time_end,interval)       
+        time_average, reservoirs["plasma_removal_rate"] = plot_tools.time_average_reservoirs(self.time_out,- N_dsu * circ - N_tsu * circ - N_dsul * circ,time_start,time_end,interval)    
+        reservoirs["net_plasma_flow"] = reservoirs["source"] + reservoirs["wall_source"] + reservoirs["divertor_recycling"] + reservoirs["plasma_removal_rate"]
+
+        # integrated source over time
+        reservoirs["integ_source"] = cumtrapz(reservoirs["source"], time_average, initial=0)
+
+        # main plasma content
+        if self.namelist["phys_volumes"]: 
+            ones = np.ones_like(total_impurity_density)
+            den = grids_utils.vol_int(ones[:,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=self.rvol_lcfs)
+            time_average, reservoirs["particle_density_in_plasma"] = plot_tools.time_average_reservoirs(self.time_out,all_particles/den,time_start,time_end,interval)      
+        time_average, reservoirs["particles_in_plasma"] = plot_tools.time_average_reservoirs(self.time_out,all_particles,time_start,time_end,interval)
+
+        # divertor and pump reservoirs
+        if self.namelist["phys_volumes"]:
+            time_average, reservoirs["particle_density_in_divertor"] = plot_tools.time_average_reservoirs(self.time_out,(N_div * circ)/self.vol_div,time_start,time_end,interval)
+            time_average, reservoirs["particle_density_in_pump"] = plot_tools.time_average_reservoirs(self.time_out,(N_pump * circ)/self.vol_pump,time_start,time_end,interval) 
+        time_average, reservoirs["particles_in_divertor"] = plot_tools.time_average_reservoirs(self.time_out,N_div * circ,time_start,time_end,interval)
+        time_average, reservoirs["particles_in_pump"] = plot_tools.time_average_reservoirs(self.time_out,N_pump * circ,time_start,time_end,interval)
+
+        # fluxes towards main wall
+        time_average, reservoirs["edge_loss"] =    plot_tools.time_average_reservoirs(self.time_out,N_tsu * circ,time_start,time_end,interval)
+        time_average, reservoirs["limiter_loss"] = plot_tools.time_average_reservoirs(self.time_out,N_dsul * circ,time_start,time_end,interval)
+
+        # recycling rates from main wall
+        time_average, reservoirs["wall_recycling"] = plot_tools.time_average_reservoirs(self.time_out,rclw_rate * circ,time_start,time_end,interval)
+
+        # main wall reservoir
+        time_average, reservoirs["particles_stuck_at_wall"] = plot_tools.time_average_reservoirs(self.time_out,N_wall * circ,time_start,time_end,interval)
+        time_average, reservoirs["particles_retained_at_wall"] = plot_tools.time_average_reservoirs(self.time_out,N_ret * circ,time_start,time_end,interval)
+
+        # flux towards divertor
+        time_average, reservoirs["parallel_loss"] = plot_tools.time_average_reservoirs(self.time_out,N_dsu * circ,time_start,time_end,interval)
+
+        # recycling rates from divertor
+        time_average, reservoirs["divertor_backflow"] = plot_tools.time_average_reservoirs(self.time_out,rcld_rate * circ,time_start,time_end,interval)
+        time_average, reservoirs["pump_leakage"] = plot_tools.time_average_reservoirs(self.time_out,rclp_rate * circ,time_start,time_end,interval)
+
+        # particles pumped away
+        time_average, reservoirs["particles_pumped"] = plot_tools.time_average_reservoirs(self.time_out,N_out * circ,time_start,time_end,interval)
+
+        if hasattr(self, "rad"):  # radiation has already been computed
+            reservoirs["impurity_radiation"] = grids_utils.vol_int(
+                self.rad["tot"], self.rvol_grid, self.pro_grid, self.Raxis_cm,
+                rvol_max = self.rvol_lcfs
+            )
+
+        if plot:
+            # -------------------------------------------------
+            # plot time histories for each particle reservoirs:
+            if axs is None:
+                fig, ax1 = plt.subplots(nrows=3, ncols=3, sharex=True, figsize=(15, 10))
+            else:
+                ax1 = axs[0]
+
+            ax1[0, 0].plot(time_average, reservoirs["source"], label="Ext. influx")
+            ax1[0, 0].plot(time_average, reservoirs["wall_source"], label="Wall source")
+            ax1[0, 0].plot(time_average, reservoirs["divertor_recycling"], label="Div.+pump recycling")
+            ax1[0, 0].plot(time_average, reservoirs["plasma_removal_rate"], label="Removal rate")
+            ax1[0, 0].plot(time_average, reservoirs["net_plasma_flow"], label="Net sum")
+            ax1[0, 0].set_ylabel('[$s^{-1}$]')
+
+            if self.namelist["phys_volumes"]:
+                ax1[0, 1].plot(time_average, reservoirs["particle_density_in_plasma"],
+                               label="Plasma")
+                ax1[0, 1].set_ylabel('[$cm^{-3}$]')
+            else:   
+                ax1[0, 1].plot(time_average, reservoirs["particles_in_plasma"],
+                           label="Plasma")
+                [0, 1].set_ylabel('[#]')
+
+            if self.namelist["phys_volumes"]:
+                ax1[0, 2].plot(time_average, reservoirs["particle_density_in_divertor"],
+                               label="Div. reservoir")
+                if self.namelist["pump_chamber"]:
+                    ax1[0, 2].plot(time_average, reservoirs["particle_density_in_pump"],
+                               label="Pump reservoir")
+                ax1[0, 2].set_ylabel('[$cm^{-3}$]')     
+            else:
+                ax1[0, 2].plot(time_average, reservoirs["particles_in_divertor"],
+                           label="Div. reservoir")
+                if self.namelist["pump_chamber"]:
+                    ax1[0, 2].plot(time_average, reservoirs["particles_in_pump"],
+                           label="Pump reservoir")
+                ax1[0, 2].set_ylabel('[#]')
+
+            ax1[1, 0].plot(time_average, reservoirs["edge_loss"], label="Edge loss to wall")
+            ax1[1, 0].plot(time_average, reservoirs["limiter_loss"], label="Limiter loss to wall")
+            ax1[1, 0].set_ylabel('[$s^{-1}$]')  
+
+            ax1[1, 1].plot(time_average, reservoirs["wall_recycling"], label="Wall rec. rate")
+            ax1[1, 1].set_ylabel('[$s^{-1}$]')  
+
+            ax1[1, 2].plot(time_average, reservoirs["particles_stuck_at_wall"], label="Part. stuck at wall")
+            ax1[1, 2].plot(time_average, reservoirs["particles_retained_at_wall"],
+                label="Part. retained at wall")
+            ax1[1, 2].set_ylabel('[#]')
+
+            ax1[2, 0].plot(time_average, reservoirs["parallel_loss"], label="Par. loss to divertor")
+            ax1[2, 0].plot(time_average, reservoirs["divertor_backflow"],
+                           label="Divertor backflow rate")
+            if self.namelist["pump_chamber"]:
+                ax1[2, 0].plot(time_average, reservoirs["pump_leakage"],
+                           label="Pump leakage rate")
+            ax1[2, 0].set_ylabel('[$s^{-1}$]')
+
+            for aa in ax1.flatten()[:7]:
+                aa.legend(loc="best").set_draggable(True)
+
+            for ii in [0, 1, 2]:
+                ax1[2, ii].set_xlabel("Time [s]")
+            ax1[2, 0].set_xlim(time_average[[0, -1]])
+
+            # ----------------------------------------------------------------
+            # plot the impurity radiation, if present:
+            if "impurity_radiation" in reservoirs:
+                if axs is None:
+                    fig, ax2 = plt.subplots()
+                else:
+                    ax2 = axs[1]
+
+                ax2.plot(self.time_out, reservoirs["impurity_radiation"], label="Core radiation")
+                ax2.legend(loc="best").set_draggable(True)
+                ax2.set_xlabel("Time [s]")
+                ax2.set_ylabel('[W]')
+
+            # ----------------------------------------------------------------
+            # now plot all particle reservoirs to check particle conservation:
+            if axs is None:
+                fig, ax3 = plt.subplots()
+            else:
+                ax3 = axs[1]
+
+            ax3.set_xlabel("time [s]")
+
+            ax3.plot(time_average, reservoirs["particles_in_plasma"], label="Particles in the plasma")
+            ax3.plot(time_average, reservoirs["particles_in_divertor"], label="Particles in the divertor chamber")
+            if self.namelist["pump_chamber"]:
+                ax3.plot(time_average, reservoirs["particles_in_pump"], label="Particles in the pump chamber")
+            ax3.plot(time_average, reservoirs["particles_stuck_at_wall"], label="Particle stuck at the main wall")
+            ax3.plot(time_average, reservoirs["particles_retained_at_wall"],
+                     label="Particles retained at the main wall")
+            ax3.plot(time_average, reservoirs["particles_pumped"], label="Particles pumped away")
+            ax3.plot(time_average, reservoirs["total"], label="Total particles in the system")
+            ax3.plot(time_average, reservoirs["integ_source"], label="Integrated source")
+        
+            ax3.set_xlim(self.time_out[[0, -1]])
+            ax3.set_ylim(0, None)
+            ax3.legend(loc="best")
+            plt.tight_layout()
+
+        if plot:
+            if "impurity_radiation" in reservoirs:
+                return reservoirs, (ax1, ax2, ax3)
+            else:
+                return reservoirs, (ax1, ax3)
+        else:
+            return reservoirs                
 
     def centrifugal_asym(self, omega, Zeff, plot=False):
         """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the

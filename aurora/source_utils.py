@@ -340,7 +340,7 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
             E0 = namelist["imp_source_energy_eV"] * np.ones_like(rvol_grid)
         else:
             if Ti_eV is not None:
-                E0 = copy.deepcopy(Ti_eV)
+                E0 = copy.deepcopy(Ti_eV)[0]
             else:
                 raise ValueError("Could not compute a valid energy of injected ions!")
 

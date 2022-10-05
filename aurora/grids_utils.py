@@ -756,7 +756,7 @@ def estimate_boundary_distance(shot, device, time_ms):
 def vol_int(var, rvol_grid, pro_grid, Raxis_cm, rvol_max=None):
     """
     Perform a volume integral of an input variable. If the variable is f(t,x) 
-    then the result is f(t). If the variable is f(t,*,x) then the result is f(t,charge)
+    then the result is f(t). If the variable is f(t,*,x) then the result is f(t,*)
     when "*" represents charge, line index, etc...
 
     Parameters

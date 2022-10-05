@@ -23,11 +23,11 @@
 import numpy as np
 
 
-def load_default_namelist():
+def load_default_namelist(device=None):
     """ Load default namelist. 
     Users should modify and complement this for a successful forward-model run.
     """
-
+    
     namelist = {
         "imp": "Ca",
         "main_element": "D",  # background
@@ -72,14 +72,31 @@ def load_default_namelist():
             "times": [1.0,],
             "crash_width": 1.0,
         },
+        "ELM_model": {
+            "ELM_flag": False,
+            "ELM_time_windows": None,
+            "ELM_frequency": [100], # Hz
+            "crash_duration": [0.5],  # ms
+            "plateau_duration": [1.0],  # ms
+            "recovery_duration": [0.5],  # ms
+        },
         # --------------------
         # edge/recycling
         "recycling_flag": False,
         "wall_recycling": 0.0,
         "tau_div_SOL_ms": 50.0,  # ms
-        "tau_pump_ms": 500.0,  # ms
         "tau_rcl_ret_ms": 50.0,  # ms
         "SOL_mach": 0.1,
+        # --------------------
+        # pumping
+        "phys_volumes": False,
+        "pump_chamber": False,
+        "tau_pump_ms": 500.0,  # ms
+        "S_pump": 5.0e6,  # cm^3/s
+        "vol_div": 1.0e6,  # cm^3
+        "L_divpump": 1.0e7, # cm^3/s
+        "vol_pump": 1.0e6,  # cm^3
+        "L_leak": 0.0,  # cm^3/s
         # --------------------
         # kinetic profiles
         "kin_profs": {
@@ -105,6 +122,31 @@ def load_default_namelist():
         "ccd": None,  # use default
         "superstages": [],
     }
+    
+    if device is None or device=="CMOD": # Default input parameters (CMOD)
+
+        pass
+        
+    else: # Adapt geometry-related input parameters for other devices
+        
+        namelist["device"] = device   
+    
+        if device=="AUG": # Geometry-related input parameters adapted for AUG
+            
+            namelist["vol_div"] = 0.4e6
+            namelist["vol_pump"] = 1.0e6
+            namelist["source_cm_out_lcfs"] = 15.0
+            namelist["bound_sep"] = 8.0
+            namelist["lim_sep"] = 6.0
+            namelist["clen_divertor"] = 50.0 
+            namelist["clen_lim"] = 1.0   
+            namelist["shot"] = 39148    
+            namelist["time"] = 2.7     
+            
+        else:
+           
+            print("Warning: default namelist for device " + device + " not existing. Using default namelist.")
+        
     return namelist
 
 

@@ -33,12 +33,13 @@ subroutine run(  &
         time, saw, &
         it_out, dsaw, &
         rcl, taudiv, taupump, tauwret, &
+        S_pump, voldiv, cond, volpump, leak, &
         rvol_lcfs, dbound, dlim, prox, &
         rn_t0, alg_opt, evolneut, src_div, &   ! OPTIONAL INPUTS:
         rn_out, &  ! OUT
-        N_wall, N_div, N_pump, N_ret, &  ! OUT
+        N_wall, N_div, N_pump, N_out, N_ret, &  ! OUT
         N_tsu, N_dsu, N_dsul,&   !OUT
-        rcld_rate, rclw_rate)   ! OUT
+        rcld_rate, rclp_rate, rclw_rate)   ! OUT
   !
   ! Run forward model of radial impurity transport, returning the density of
   ! each charge state over time and space. 
@@ -111,6 +112,16 @@ subroutine run(  &
   !                    Time scale for impurity elimination through out-pumping [s]
   !     tauwret      real*8
   !                    Time scale of temporary retention at the wall [s]
+  !     S_pump       real*8
+  !                    Pumping speed from the final particle reservoir (divertor or pump chamber) [cm^3/s]
+  !     voldiv       real*8
+  !                    Volume of the divertor reservoir [cm^3]
+  !     cond         real*8
+  !                    Conductance between divertor and pump reservoirs [cm^3/s]
+  !     volpump      real*8
+  !                    Volume of the pumping reservoir [cm^3]
+  !     leak         real*8
+  !                    Leakage conductance between pump reservoir and main chamber [cm^3/s]
   !     rvol_lcfs    real*8
   !                    Radius (in rvol units, cm) at which the LCFS is located
   !     dbound       real*8
@@ -149,22 +160,26 @@ subroutine run(  &
   !     rn_out       real*8 (ir,nion,nt_out)
   !                    Impurity densities (temporarily) in the magnetically-confined plasma at the
   !                    requested times [1/cm^3].
-  !     N_ret        real*8 (nt_out)
-  !                    Impurity densities (permanently) retained at the wall over time [1/cm].
   !     N_wall       real*8 (nt_out)
-  !                    Impurity densities (temporarily) at the wall over time [1/cm].
+  !                    Impurity densities (permanently) at the wall over time [1/cm].
   !     N_div        real*8 (nt_out)
   !                    Impurity densities (temporarily) in the divertor reservoir over time [1/cm].
-  !     N_pump       real*8 (nt_out)
-  !                    Impurity densities (permanently) in the pump [1/cm].
+  !     N_pump        real*8 (nt_out)
+  !                    Impurity densities (temporarily) in the pump reservoir (if present) over time [1/cm].
+  !     N_out        real*8 (nt_out)
+  !                    Impurity densities (permanently) removed through the pump [1/cm].
+  !     N_ret        real*8 (nt_out)
+  !                    Impurity densities (temporarily) retained at the wall over time [1/cm].
   !     N_tsu        real*8 (nt_out)
-  !                    Edge loss [1/cm].
+  !                    Edge loss [1/cm/s].
   !     N_dsu        real*8 (nt_out)
-  !                    Parallel loss [1/cm].
+  !                    Parallel loss [1/cm/s].
   !     N_dsul       real*8 (nt_out)
-  !                    Parallel loss to limiter [1/cm].
+  !                    Parallel loss to limiter [1/cm/s].
   !     rcld_rate    real*8 (nt_out)
-  !                    Recycling from divertor [1/cm/s].
+  !                    Recycling from divertor reservoir [1/cm/s].
+  !     rclp_rate    real*8 (nt_out)
+  !                    Leakage from pump reservoir (if present) [1/cm/s].
   !     rclw_rate    real*8 (nt_out)
   !                    Recycling from wall [1/cm/s].
   ! ---------------------------------------------------------------------------
@@ -202,11 +217,16 @@ subroutine run(  &
 
   REAL*8, INTENT(IN)                   :: dsaw
 
-  ! recycling inputs
+  ! recycling and pumping inputs
   REAL*8, INTENT(IN)                   :: rcl
   REAL*8, INTENT(IN)                   :: taudiv
   REAL*8, INTENT(IN)                   :: taupump
   REAL*8, INTENT(IN)                   :: tauwret
+  REAL*8, INTENT(IN)                   :: S_pump
+  REAL*8, INTENT(IN)                   :: voldiv
+  REAL*8, INTENT(IN)                   :: cond
+  REAL*8, INTENT(IN)                   :: volpump
+  REAL*8, INTENT(IN)                   :: leak
 
   ! edge
   REAL*8, INTENT(IN)                   :: rvol_lcfs
@@ -223,24 +243,26 @@ subroutine run(  &
   ! outputs
   REAL*8, INTENT(OUT)                  :: rn_out(ir,nion,nt_out)
 
-  REAL*8, INTENT(OUT)                  :: N_wall(nt_out)   ! particles at wall
-  REAL*8, INTENT(OUT)                  :: N_div(nt_out)   ! particles in divertor
-  REAL*8, INTENT(OUT)                  :: N_pump(nt_out) ! particles in pump
-  REAL*8, INTENT(OUT)                  :: N_ret(nt_out)   ! particles retained indefinitely at wall
+  REAL*8, INTENT(OUT)                  :: N_wall(nt_out)  ! particles stuck permanently at the wall
+  REAL*8, INTENT(OUT)                  :: N_div(nt_out)   ! particles in the divertor reservoir
+  REAL*8, INTENT(OUT)                  :: N_pump(nt_out)  ! particles in the pump reservoir
+  REAL*8, INTENT(OUT)                  :: N_out(nt_out)   ! particles removed through the pump
+  REAL*8, INTENT(OUT)                  :: N_ret(nt_out)   ! particles retained temporarily at the wall
 
   REAL*8, INTENT(OUT)                  :: N_tsu(nt_out)   ! particles lost at the edge
   REAL*8, INTENT(OUT)                  :: N_dsu(nt_out)   ! parallel loss to divertor
-  REAL*8, INTENT(OUT)                  :: N_dsul(nt_out)   ! parallel loss to limiter
+  REAL*8, INTENT(OUT)                  :: N_dsul(nt_out)  ! parallel loss to limiter
 
   REAL*8, INTENT(OUT)                  :: rcld_rate(nt_out)   ! recycling from divertor
+  REAL*8, INTENT(OUT)                  :: rclp_rate(nt_out)   ! leakage from pump
   REAL*8, INTENT(OUT)                  :: rclw_rate(nt_out)   ! recycling from wall
   
   INTEGER     :: i, it, kt, nz
   REAL*8      :: rn(ir,nion), ra(ir,nion), dt
-  REAL*8      :: Nret, tve, divnew, npump, divold
+  REAL*8      :: Nret, tve, divnew, pumpnew, nout, divold, pumpold
   REAL*8      :: diff(ir, nion), conv(ir, nion)
   REAL*8      :: tsu, dsu, dsul
-  REAL*8      :: rcld, rclw
+  REAL*8      :: rcld, rclp, rclw
   REAL*8      :: rn_t0_in(ir,nion) ! used to support optional argument rn_t0
   REAL*8      :: src_div_in(nt) ! used to support optional argument src_div
   INTEGER     :: sel_alg_opt
@@ -279,7 +301,8 @@ subroutine run(  &
   Nret=0.d0
   tve = 0.d0
   divnew = 0.0d0
-  npump = 0.d0
+  pumpnew = 0.0d0
+  nout = 0.d0
   tsu = 0.0d0
   dsu = 0.0d0
   dsul = 0.0d0
@@ -296,13 +319,15 @@ subroutine run(  &
      rn_out(:,:,kt) = rn ! all nion,ir for the first time point
      N_wall(kt) = tve
      N_div(kt) = divnew
-     N_pump(kt) = npump
+     N_pump(kt) = pumpnew
+     N_out(kt) = nout
      N_tsu(kt) = tsu
      N_dsu(kt) = dsu
      N_dsul(kt) = dsul
 
      N_ret(kt) = Nret
      rcld_rate(kt) = 0.d0
+     rclp_rate(kt) = 0.d0
      rclw_rate(kt) = 0.d0
 
      kt = kt+1
@@ -321,6 +346,7 @@ subroutine run(  &
         call linip_arr(nt_trans, ir, t_trans, V(:,:,nz), time(it), conv(:,nz))
      end do
      divold = divnew 
+     pumpold = pumpnew
 
      ! evolve impurity density with current transport coeffs
      if (sel_alg_opt.eq.0) then
@@ -332,11 +358,11 @@ subroutine run(  &
              rr, pro, qpr, &
              dlen,  &
              dt, &   ! full time step
-             rcl, tsu, dsul, divold, & ! tsu,dsul,divnew from previous recycling step
-             taudiv, tauwret, &
+             rcl, tsu, dsul, divold, pumpold, & ! tsu,dsul,divnew from previous recycling step
+             taudiv, tauwret, leak, volpump,  &
              a, b, c, d1, bet, gam, &  ! re-use memory allocation
              Nret, &         ! INOUT: Nret
-             rcld, rclw )    ! OUT: rcld, rclw
+             rcld, rclp, rclw )    ! OUT: rcld, rclp, rclw
         
      else   ! currently use Linder algorithm for any option other than 0
         ! Linder algorithm
@@ -347,10 +373,10 @@ subroutine run(  &
              rr, &
              dlen, &
              dt,  &    ! renaming dt-->det. In this subroutine, dt is half-step
-             rcl, tsu, dsul, divold, &
-             taudiv, tauwret, &
+             rcl, tsu, dsul, divold, pumpold, &
+             taudiv, tauwret, leak, volpump, &
              evolveneut, &  
-             Nret, rcld, rclw)
+             Nret, rcld, rclp, rclw)
        
      endif
      
@@ -365,10 +391,11 @@ subroutine run(  &
           dbound, dlim, prox, &
           rr, pro,  &
           rcl, taudiv, taupump, &
-          src_div_in(it), divold, &
-          divnew, &        ! OUT: update to divold
-          tve, npump, &     ! INOUT: updated values
-          tsu, dsu, dsul)  ! OUT: updated by edge model
+          S_pump, voldiv, cond, volpump, leak, &
+          src_div_in(it), divold, pumpold, &
+          divnew, pumpnew, &  ! OUT: update to divold and pumpold
+          tve, nout, &        ! INOUT: updated values
+          tsu, dsu, dsul)     ! OUT: updated by edge model
 
 
      ! array time-step saving/output
@@ -382,13 +409,15 @@ subroutine run(  &
 
         N_wall(kt) = tve
         N_div(kt) = divnew
-        N_pump(kt) = npump
+        N_pump(kt) = pumpnew
+        N_out(kt) = nout
         N_tsu(kt) = tsu
         N_dsu(kt) = dsu
         N_dsul(kt) = dsul
 
         N_ret(kt) = Nret
         rcld_rate(kt) = rcld
+        rclp_rate(kt) = rclp
         rclw_rate(kt) = rclw
 
         kt = kt+1
@@ -486,8 +515,9 @@ subroutine edge_model( &
     dbound, dlim, prox, &
     rr, pro,  &
     rcl, taudiv, taupump, &
-    src_div_t, divold, &
-    divnew, tve, npump, tsu, dsu, dsul)
+    S_pump, voldiv, cond, volpump, leak, &
+    src_div_t, divold, pumpold, &
+    divnew, pumpnew, tve, nout, tsu, dsu, dsul)
 
   IMPLICIT NONE
 
@@ -510,21 +540,29 @@ subroutine edge_model( &
   REAL*8, INTENT(IN)                    :: pro(ir)
 
   REAL*8, INTENT(IN)                    :: rcl
-  REAL*8, INTENT(IN)                    :: taudiv  !time scale for divertor
+  REAL*8, INTENT(IN)                    :: taudiv  !time scale for divertor retention
   REAL*8, INTENT(IN)                    :: taupump !time scale for pump
+  
+  REAL*8, INTENT(IN)                    :: S_pump  ! pumping speed
+  REAL*8, INTENT(IN)                    :: voldiv  ! divertor volume
+  REAL*8, INTENT(IN)                    :: cond    ! divertor-pump conductance
+  REAL*8, INTENT(IN)                    :: volpump ! pump volume
+  REAL*8, INTENT(IN)                    :: leak    ! leaking conductance from pump towards main chamber
 
   REAL*8, INTENT(IN)                    :: src_div_t ! injected flux into the divertor 
-  REAL*8, INTENT(IN)                    :: divold !particles initially in divertor (to update)
+  REAL*8, INTENT(IN)                    :: divold  !particles initially in the div. reservoir (to update)
+  REAL*8, INTENT(IN)                    :: pumpold !particles initially in the pump reservoir (to update)
 
-  REAL*8, INTENT(OUT)                   :: divnew !particles in divertor (updated)
+  REAL*8, INTENT(OUT)                   :: divnew  !particles in the div. reservoir (updated)
+  REAL*8, INTENT(OUT)                   :: pumpnew !particles in the pump reservoir (updated)
   REAL*8, INTENT(INOUT)                 :: tve   !particles at wall (updated)
-  REAL*8, INTENT(INOUT)                 :: npump !particles in pump (updated)
+  REAL*8, INTENT(INOUT)                 :: nout  !particles in removed through the pump (updated)
   REAL*8, INTENT(OUT)                   :: tsu   !edge loss
   REAL*8, INTENT(OUT)                   :: dsu   !parallel loss
   REAL*8, INTENT(OUT)                   :: dsul   !parallel loss to limiter
 
   INTEGER :: i, nz, ids, idl, ids1, idl1
-  REAL*8 :: rx, pi, taustar, ff
+  REAL*8 :: rx, pi, taustar_div, taustar_pump, taucond_eff_back, taucond_eff_forw, tauleak, taupump_eff, ff_div, ff_pump
 
   ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Compute edge fluxes given multi-reservoir parameters
@@ -577,20 +615,97 @@ subroutine edge_model( &
      tve = tve + (dsul + tsu) * det  ! no recycling, no divertor return
   endif
 
-  ! particles in divertor
+  ! particles in divertor/pump reservoirs
   ! If recycling is on, particles from limiter and wall come back.
   ! Particles in divertor can only return (with rate given by N_div/taudiv) if rcl>=0
-  if (rcl.ge.0) then  ! activated divertor return (rcl>=0) + recycling mode (if rcl>0)
-     taustar = 1./(1./taudiv+1./taupump)    ! time scale for divertor depletion
-     ff = .5*det/taustar
-     
-     divnew = ( divold*(1.-ff) + (dsu + src_div_t)*det )/(1.+ff)
+  
+  ! activated divertor return (rcl>=0) + recycling mode (if rcl>0)
+  if (rcl.ge.0) then
+     ! adimensional model (pumping done from the divertor and defined by a time taupump)
+     if (voldiv.eq.0) then
+        taustar_div = 1./(1./taudiv+1./taupump)  ! eff. time scale for divertor depletion
+        ff_div = .5*det/taustar_div
+        divnew = ( divold*(1.-ff_div) + (dsu + src_div_t)*det )/(1.+ff_div)
+        pumpnew = pumpold
+     ! physical volumes for the reservoirs
+     else
+        ! pumping done from the divertor and defined by a speed S_pump
+        if (volpump.eq.0) then
+           taupump_eff = voldiv/S_pump
+           taustar_div = 1./(1./taudiv+1./taupump_eff)  ! eff. time scale for divertor depletion
+           ff_div = .5*det/taustar_div
+           divnew = ( divold*(1.-ff_div) + (dsu + src_div_t)*det )/(1.+ff_div)
+           pumpnew = pumpold
+        ! pumping done from a secondary pump chamber via a conductance cond and defined by a speed S_pump
+        else
+           taupump_eff = volpump/S_pump
+           taucond_eff_forw = voldiv/cond
+           taucond_eff_back = volpump/cond
+           taustar_div = 1./(1./taudiv+1./taucond_eff_forw)  ! eff. time scale for flow divertor --> pump
+           ff_div = .5*det/taustar_div
+           divnew = ( divold*(1.-ff_div) + (dsu + src_div_t + (pumpold/taucond_eff_back))*det )/(1.+ff_div)
+           if (leak.eq.0) then
+              taustar_pump = 1./(1./taucond_eff_back+1./taupump_eff)  ! eff. time scale for pump depletion
+           else
+              tauleak = volpump/leak
+              taustar_pump = 1./(1./taucond_eff_back+1./taupump_eff+1./tauleak)  ! eff. time scale for pump depletion
+           endif
+           ff_pump = .5*det/taustar_pump
+           pumpnew = ( pumpold*(1.-ff_pump) + (divold/taucond_eff_forw)*det )/(1.+ff_pump)
+        endif
+     endif
+  
+  ! no backflow from the divertor (taudiv --> inf)
   else
-     divnew = divold + (dsu+src_div_t)*det
+     ! adimensional model (pumping done from the divertor and defined by a time taupump)
+     if (voldiv.eq.0) then
+        taustar_div = taupump  ! eff. time scale for divertor depletion
+        ff_div = .5*det/taustar_div
+        divnew = ( divold*(1.-ff_div) + (dsu + src_div_t)*det )/(1.+ff_div)  
+        pumpnew = pumpold
+     ! physical volumes for the reservoirs
+     else
+        ! pumping done from the divertor and defined by a speed S_pump
+        if (volpump.eq.0) then
+           taupump_eff = voldiv/S_pump
+           taustar_div = taupump_eff  ! eff. time scale for divertor depletion
+           ff_div = .5*det/taustar_div
+           divnew = ( divold*(1.-ff_div) + (dsu + src_div_t)*det )/(1.+ff_div)
+           pumpnew = pumpold
+        ! pumping done from a secondary pump chamber via a conductance cond and defined by a speed S_pump
+        else
+           taupump_eff = volpump/S_pump
+           taucond_eff_forw = voldiv/cond
+           taucond_eff_back = volpump/cond
+           taustar_div = taucond_eff_forw  ! eff. time scale for flow divertor --> pump
+           ff_div = .5*det/taustar_div
+           divnew = ( divold*(1.-ff_div) + (dsu + src_div_t + (pumpold/taucond_eff_back))*det )/(1.+ff_div)
+           if (leak.eq.0) then
+              taustar_pump = 1./(1./taucond_eff_back+1./taupump_eff)  ! eff. time scale for pump depletion
+           else
+              tauleak = volpump/leak
+              taustar_pump = 1./(1./taucond_eff_back+1./taupump_eff+1./tauleak)  ! eff. time scale for pump depletion
+           endif
+           ff_pump = .5*det/taustar_pump
+           pumpnew = ( pumpold*(1.-ff_pump) + (divold/taucond_eff_forw)*det )/(1.+ff_pump)
+        endif
+     endif
+     
   endif
 
-  ! particles in pump
-  npump = npump + .5*(divnew+divold)/taupump*det
+  ! adimensional model (pumping done from the divertor and defined by a time taupump)
+  if (voldiv.eq.0) then
+     nout = nout + .5*(divnew+divold)/taupump*det
+  ! physical volumes for the reservoirs
+  else
+     ! pumping done from the divertor and defined by a speed S_pump
+     if (volpump.eq.0) then
+        nout = nout + .5*(divnew+divold)/taupump_eff*det
+     ! pumping done from a secondary pump chamber via a conductance cond and defined by a speed S_pump
+     else
+        nout = nout + .5*(pumpnew+pumpold)/taupump_eff*det   
+     endif
+  endif
 
   return
 end subroutine edge_model

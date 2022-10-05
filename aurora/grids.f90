@@ -127,19 +127,19 @@ subroutine time_steps(n, t, dtstart, itz, tinc, verbose, t_vals, i_save)
   REAL*8, INTENT(IN)             :: tinc(n)
   LOGICAL, INTENT(IN), OPTIONAL  :: verbose
 
-  REAL*8, INTENT(OUT)            :: t_vals(30000)   ! hard-coded max size! Seg-fault if exceeded
-  INTEGER, INTENT(OUT)           :: i_save(30000)   ! hard-coded max size! Seg-fault if exceeded
+  REAL*8, INTENT(OUT)            :: t_vals(200000)   ! hard-coded max size! Seg-fault if exceeded
+  INTEGER, INTENT(OUT)           :: i_save(200000)   ! hard-coded max size! Seg-fault if exceeded
 
   INTEGER :: nsteps
-  REAL*8 :: dt(250),ncyctot(250)   ! hard-coded max number of changes to 250
+  REAL*8 :: dt(1000),ncyctot(1000)   ! hard-coded max number of changes to 250
 
   REAL*8 ::  f ,wksp_r(n), det, tnew
-  INTEGER :: i, ncyc(250), nevent, wksp_i(n), index(n), m , n_itz, nn
+  INTEGER :: i, ncyc(1000), nevent, wksp_i(n), index(n), m , n_itz, nn
   LOGICAL :: verb
 
   ! arrays wihtout double time points
-  REAL*8 :: t_s(250), dtstart_s(250), tinc_s(250)
-  INTEGER:: itz_s(250)
+  REAL*8 :: t_s(1000), dtstart_s(1000), tinc_s(1000)
+  INTEGER:: itz_s(1000)
 
   if(present(verbose))then
      verb=verbose
