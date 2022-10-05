@@ -1006,7 +1006,7 @@ class aurora_sim:
         }
 
         # prepare radial and temporal grid
-        self.setup_grids()
+        self.setup_grids(plot_time_grid = False, plot_radial_grid = False)
 
         # update kinetic profile dependencies to get everything to the right shape
         self.setup_kin_profs_depts()
@@ -1585,7 +1585,7 @@ class aurora_sim:
             else:   
                 ax1[0, 1].plot(time_average, reservoirs["particles_in_plasma"],
                            label="Plasma")
-                [0, 1].set_ylabel('[#]')
+                ax1[0, 1].set_ylabel('[#]')
 
             if self.namelist["phys_volumes"]:
                 ax1[0, 2].plot(time_average, reservoirs["particle_density_in_divertor"],

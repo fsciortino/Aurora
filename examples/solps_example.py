@@ -13,12 +13,12 @@ import sys, os
 import aurora
 
 # if one wants to load a SOLPS case from MDS+ (defaults for AUG):
-so = aurora.solps_case(solps_id=141349)
+#so = aurora.solps_case(solps_id=141349)
 
 # alternatively, one may want to load SOLPS results from files on disk:
-so2 = aurora.solps_case(
-    b2fstate_path="/afs/ipp/home/s/sciof/SOLPS/141349/b2fstate",
-    b2fgmtry_path="/afs/ipp/home/s/sciof/SOLPS/141349/b2fgmtry",
+so = aurora.solps_case(
+    b2fstate_path="/Users/antonello/Work/Simulations/Simulation_files/AUG_D_N_drifts/runs/base_case/b2fstate",
+    b2fgmtry_path="/Users/antonello/Work/Simulations/Simulation_files/AUG_D_N_drifts/geometry/b2fgmtry",
 )
 
 # plot some important fields

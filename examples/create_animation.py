@@ -71,5 +71,5 @@ aurora.animate.animate_aurora(
     zlabel=r"$n_z$ [$cm^{-3}$]",
     labels=[str(i) for i in np.arange(0, nz.shape[1])],
     plot_sum=True,
-    save_filename="aurora_anim",
+    save_filename="aurora_anim.gif",
 )

@@ -122,7 +122,7 @@ time_decay = 1e10 * np.exp(
 gaussian_rhop = 1e9 * np.exp(
     -((namelist["explicit_source_rhop"] - 0.5) ** 2) / (2 * 0.1 ** 2)
 )
-namelist["explicit_source_vals"] = gaussian_rhop[None, :] * decay[:, None]
+namelist["explicit_source_vals"] = gaussian_rhop[None, :] * time_decay[:, None]
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -171,7 +171,7 @@ for i in np.arange(num_sims):
     asim.namelist["timing"]["times"] = np.array(
         [(i + 1) * n_rep * dt + dt, (i + 2) * n_rep * dt]
     )
-    asim.setup_grids()
+    asim.setup_grids(plot_time_grid = False,plot_radial_grid = False)
 
     # get charge state densities from latest time step
     nz_old = nz_all[:, :, -1 * n_rep]

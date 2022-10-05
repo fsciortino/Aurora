@@ -54,24 +54,10 @@ D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
 V_z = -2e2 * np.ones(len(asim.rvol_grid))  # cm/s
 
 # run Aurora forward model and plot results
-out = asim.run_aurora(D_z, V_z, plot=plot)
+out = asim.run_aurora(D_z, V_z, plot=True)
 
 # extract densities and particle numbers in each simulation reservoir
-nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
-
-if plot:
-    # plot charge state distributions over radius and time
-    aurora.plot_tools.slider_plot(
-        asim.rvol_grid,
-        asim.time_out,
-        nz.transpose(1, 0, 2),
-        xlabel=r"$r_V$ [cm]",
-        ylabel="time [s]",
-        zlabel=r"$n_z$ [$cm^{-3}$]",
-        labels=[str(i) for i in np.arange(0, nz.shape[1])],
-        plot_sum=True,
-        x_line=asim.rvol_lcfs,
-    )
+nz, N_wall, N_div, N_pump, N_out, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclp_rate, rclw_rate = out
 
 # add radiation
 asim.rad = aurora.compute_rad(
@@ -85,16 +71,15 @@ asim.rad = aurora.compute_rad(
     sxr_flag=False,
 )
 
-if plot:
-    # plot radiation profiles over radius and time
-    aurora.slider_plot(
-        asim.rvol_grid,
-        asim.time_out,
-        asim.rad["line_rad"].transpose(1, 2, 0),
-        xlabel=r"$r_V$ [cm]",
-        ylabel="time [s]",
-        zlabel=r"Line radiation [$MW/m^3$]",
-        labels=[str(i) for i in np.arange(0, nz.shape[1])],
-        plot_sum=True,
-        x_line=asim.rvol_lcfs,
-    )
+# plot radiation profiles over radius and time
+aurora.slider_plot(
+    asim.rvol_grid,
+    asim.time_out,
+    asim.rad["line_rad"].transpose(1, 2, 0),
+    xlabel=r"$r_V$ [cm]",
+    ylabel="time [s]",
+    zlabel=r"Line radiation [$MW/m^3$]",
+    labels=[str(i) for i in np.arange(0, nz.shape[1])],
+    plot_sum=True,
+    x_line=asim.rvol_lcfs,
+)
