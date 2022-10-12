@@ -47,13 +47,9 @@ namelist["source_type"] = "const"
 namelist["source_rate"] = 2e20  # particles/s
 
 # explicitly set some parameters for the time grid
-time_start = 0.0 # Start time of the simulation
-time_end = 2.0 # End time of the simulation
-dt_start = 5e-5 # dt values at the beginning of each cycle
-dt_increase = 1.05 # dt multiplier at every time steps (in the inter-ELM cycles)
-namelist['timing']['times'] = [time_start, time_end]
-namelist['timing']['dt_increase'][0] = dt_increase
-namelist['timing']['dt_start'][0] = dt_start
+namelist['timing']['times'] = [0.0, 2.0] # Start and end times of the simulation
+namelist['timing']['dt_increase'][0] = 1.05 # dt multiplier at every time steps
+namelist['timing']['dt_start'][0] = 5e-5 # dt values at the beginning of the simulation
 
 # impose ELM parameters
 namelist['ELM_model']['ELM_flag'] = True
@@ -64,10 +60,13 @@ namelist['ELM_model']['plateau_duration'] = 0.0 # ms
 namelist['ELM_model']['recovery_duration'] = 0.5 # ms
 
 # adapt the time grid for ELMs
-namelist['timing']['times'], namelist['timing']['dt_start'], namelist['timing']['steps_per_cycle'], namelist['timing']['dt_increase'] = aurora.transport_utils.ELM_time_grid(time_start, time_end, dt_start, dt_increase, namelist)
+dt_intra_ELM = 5e-5 # constant dt values during the intra-ELM phases
+dt_increase_inter_ELM = 1.05 # dt multiplier at every time steps in the inter-ELM phases
+namelist['timing'] = aurora.transport_utils.ELM_time_grid(namelist['timing'], namelist['ELM_model'], dt_intra_ELM, dt_increase_inter_ELM)
 
-# Now get aurora setup plotting the resulting time grid
-asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk, plot_time_grid = True)
+# Now get aurora setup plotting the resulting adapted time grid
+asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
+asim.plot_resolutions(plot_radial_grid = False, plot_time_grid = True)
 
 # set transport coefficients profiles at aribrary rho_pol location
 # for both inter-ELM and intra-ELM phases
@@ -102,20 +101,20 @@ v_ELM = v
 
 # now create the time-dependent transport arrays (and the
 # corresponding times) to be used as input for aurora
-times_transport, D_z = aurora.transport_utils.ELM_model(namelist, asim, rhop, D, D_ELM, time_start, time_end, method = 'Pchip_spline')
-times_transport, v_z = aurora.transport_utils.ELM_model(namelist, asim, rhop, v, v_ELM, time_start, time_end, method = 'Pchip_spline')
+times_transport, D_z = aurora.transport_utils.ELM_model(namelist['timing'], namelist['ELM_model'], asim, rhop, D, D_ELM, method = 'Pchip_spline')
+times_transport, v_z = aurora.transport_utils.ELM_model(namelist['timing'], namelist['ELM_model'], asim, rhop, v, v_ELM, method = 'Pchip_spline')
 
 # run Aurora forward model, explicitly referring to the time array
 # corresponding to the input transprot values, and and plot results
 out = asim.run_aurora(D_z, v_z, times_transport, plot=True)
 
 # extract densities and particle numbers in each simulation reservoir
-nz, N_wall, N_div, N_pump, N_out, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclp_rate, rclw_rate = out
+nz, N_mainwall, N_div, N_out, N_mainret, N_tsu, N_dsu, N_dsul, rclb_rate, rclw_rate = out
 
 # finally plot the reservoirs also averaged over ELM cycles, i.e. on
 # intervals of 1/f_ELM = 1/100 = 0.01 s, for ELM-averaged results
 
-time_average, data_average_profiles = aurora.plot_tools.time_average_profiles(asim.time_out,nz,time_start,time_end,0.01)
+time_average, data_average_profiles = aurora.plot_tools.time_average_profiles(namelist['timing'],asim.time_out,nz,interval=0.01)
 
 aurora.slider_plot(asim.rhop_grid, time_average, data_average_profiles.transpose(1,0,2),
                 xlabel=r'$\rho_p$', ylabel='time [s]', zlabel='$n_Z$ [cm$^{-3}$]',
@@ -123,4 +122,4 @@ aurora.slider_plot(asim.rhop_grid, time_average, data_average_profiles.transpose
                 plot_sum=
                 True, x_line=1 ) # Impurity density in the plasma (average over cycles)
 
-reservoirs_average = asim.plot_reservoirs_average(time_start, time_end, 0.01) # Particle conservation (average over cycles)
+reservoirs_average = asim.plot_reservoirs_average(interval=0.01) # Particle conservation (average over cycles)

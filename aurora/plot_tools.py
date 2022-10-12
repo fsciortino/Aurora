@@ -154,19 +154,17 @@ def slider_plot(
     fig.canvas.mpl_connect("key_press_event", lambda evt: arrow_respond(slider, evt))
     
     
-def time_average_profiles(time,data,time_start,time_end,interval):
+def time_average_profiles(timing,time,data,interval):
     """Perform time average over cycles of a time-dependent multidimensional variable.
 
     Parameters
     ----------
+    timing: dict
+        Sub-dict "timing" from the main aurora inputs namelist.
     time : array of float
         Times of the original data.
     data : array of float
         Original data, whose last variable is the time.
-    time_start : float
-        Start time of the simulation.
-    time_end : float
-        End time of the simulation.
     interval : float
         Duration of the cycles over which perform the time integration.      
         
@@ -179,8 +177,8 @@ def time_average_profiles(time,data,time_start,time_end,interval):
     """
     
     dt_start = time[0]
-    res = np.linspace(time_start+dt_start,time_end,int((time_end-time_start)/dt_start)) 
-    times = np.linspace(time_start+interval,time_end,int((time_end-time_start)/interval))
+    res = np.linspace(timing['times'][0]+dt_start,timing['times'][-1],int((timing['times'][-1]-timing['times'][0])/dt_start)) 
+    times = np.linspace(timing['times'][0]+interval,timing['times'][-1],int((timing['times'][-1]-timing['times'][0])/interval))
     temp = np.zeros((data.shape[0],data.shape[1],len(res))) 
     data_average = np.zeros((data.shape[0],data.shape[1],len(times)))
     
@@ -190,26 +188,24 @@ def time_average_profiles(time,data,time_start,time_end,interval):
             temp[i,j,:] = f(res)
     
     for i in range(0,len(times)):
-        idx_lower = find_nearest(res, times[i]-interval)
-        idx_upper = find_nearest(res, times[i])
+        idx_lower = np.argmin(np.abs(np.asarray(res) - (times[i]-interval)))
+        idx_upper = np.argmin(np.abs(np.asarray(res) - times[i]))
         data_average[:,:,i] = np.trapz(temp[:,:,idx_lower:idx_upper],res[idx_lower:idx_upper])/interval
             
     return times, data_average
 
 
-def time_average_reservoirs(time,data,time_start,time_end,interval):
+def time_average_reservoirs(timing,time,data,interval):
     """Perform time average over cycles of a time-dependent variable.
 
     Parameters
     ----------
+    timing: dict
+        Sub-dict "timing" from the main aurora inputs namelist.
     time : array of float
         Times of the original data.
     data : array of float
         Original data, which is a one-dimensional function of the time.
-    time_start : float
-        Start time of the simulation.
-    time_end : float
-        End time of the simulation.
     interval : float
         Duration of the cycles over which perform the time integration.      
         
@@ -222,8 +218,8 @@ def time_average_reservoirs(time,data,time_start,time_end,interval):
     """
     
     dt_start = time[0]
-    res = np.linspace(time_start+dt_start,time_end,int((time_end-time_start)/dt_start)) 
-    times = np.linspace(time_start+interval,time_end,int((time_end-time_start)/interval))
+    res = np.linspace(timing['times'][0]+dt_start,timing['times'][-1],int((timing['times'][-1]-timing['times'][0])/dt_start)) 
+    times = np.linspace(timing['times'][0]+interval,timing['times'][-1],int((timing['times'][-1]-timing['times'][0])/interval))
     temp = np.zeros(len(res))
     data_average = np.zeros(len(times))
     
@@ -231,18 +227,12 @@ def time_average_reservoirs(time,data,time_start,time_end,interval):
     temp = f(res)
     
     for i in range(0,len(times)):
-        idx_lower = find_nearest(res, times[i]-interval)
-        idx_upper = find_nearest(res, times[i])
+        idx_lower = np.argmin(np.abs(np.asarray(res) - (times[i]-interval)))
+        idx_upper = np.argmin(np.abs(np.asarray(res) - times[i]))
         data_average[i] = np.trapz(temp[idx_lower:idx_upper],res[idx_lower:idx_upper])/interval
             
     return times, data_average
 
-
-def find_nearest(array, value):
-    array = np.asarray(array)
-    idx = (np.abs(array - value)).argmin()
-    return idx
-   
 
 def get_ls_cycle():
     color_vals = ["b", "g", "r", "c", "m", "y", "k"]

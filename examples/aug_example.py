@@ -56,7 +56,7 @@ V_z = -2e2 * np.ones(len(asim.rvol_grid))  # cm/s
 out = asim.run_aurora(D_z, V_z, plot=True)
 
 # extract densities and particle numbers in each simulation reservoir
-nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
+nz, N_mainwall, N_div, N_out, N_mainret, N_tsu, N_dsu, N_dsul, rclb_rate, rclw_rate = out
 
 # plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(

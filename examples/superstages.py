@@ -69,7 +69,7 @@ V_z = 0.0 * np.ones(len(asim.rvol_grid))  # cm/s
 out = asim.run_aurora(D_z, V_z, times_DV=[1.0,], unstage=True, plot=plot)
 
 # extract densities and particle numbers in each simulation reservoir
-nz, N_wall, N_div, N_pump, N_out, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclp_rate, rclw_rate = out
+nz, N_mainwall, N_div, N_out, N_mainret, N_tsu, N_dsu, N_dsul, rclb_rate, rclw_rate = out
 
 
 # plot charge state distributions over radius and time
@@ -96,7 +96,7 @@ asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 out = asim.run_aurora(D_z, V_z, times_DV=[1.0,], unstage=True, plot=plot)
 
 # extract densities and particle numbers in each simulation reservoir
-nzs, N_wall, N_div, N_pump, N_out, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclp_rate, rclw_rate = out
+nzs, N_mainwall, N_div, N_out, N_mainret, N_tsu, N_dsu, N_dsul, rclb_rate, rclw_rate = out
 
 # plot charge state distributions over radius and time
 aurora.plot_tools.slider_plot(

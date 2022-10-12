@@ -1,6 +1,7 @@
 !MIT License
 !
 !Copyright (c) 2021 Francesco Sciortino
+!Advanced plasma-wall interaction and recycling model provided by Antonello Zito
 !
 !Permission is hereby granted, free of charge, to any person obtaining a copy
 !of this software and associated documentation files (the "Software"), to deal
@@ -29,12 +30,15 @@
 subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
      src_prof, rcl_rad_prof, s_rates, r_rates,  &
      rr, pro, qpr, dlen, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
-     rcl,tsuold, dsulold, divold, pumpold, taudiv, tauwret, leak, volpump, &
+     rcl,rcmb,tsuold,dsuold,dsulold, divold, pumpold, taudiv, tauwret, leak, volpump, &
      a, b, c, d1, bet, gam, &
-     Nret, rcld, rclp, rclw)
+     Nmainret, Ndivret, rcld, rclb, rclp, rclw)
   !
   !  Impurity transport forward modeling with default STRAHL finite-differences scheme.
-  !  Refer to STRAHL manual 2018 for details.
+  !  Refer to STRAHL manual 2018 for details of the algorithm.
+  !  The recycling/pumping model, including the interaction between plasma and physical walls
+  !  and the transport between the 0D neutrals reservoirs, has been widely extended wrt STRAHL,
+  !  featuring a more realistic plasma-wall interaction model and a larger number of reservoirs.
   !
   ! ----------------------------------------------------------------------|
 
@@ -59,7 +63,9 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
 
   ! recycling parameters
   REAL*8, INTENT(IN)        :: rcl
+  REAL*8, INTENT(IN)        :: rcmb
   REAL*8, INTENT(IN)        :: tsuold   ! tsu from previous recycling step
+  REAL*8, INTENT(IN)        :: dsuold   ! tsu from previous recycling step
   REAL*8, INTENT(IN)        :: dsulold  ! dsul from previous recycling step
   REAL*8, INTENT(IN)        :: divold   ! divnew from previous step (even without backflow)
   REAL*8, INTENT(IN)        :: pumpold  ! pumpnew from previous step (even without leakage)
@@ -72,8 +78,10 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
   ! Re-use memory allocation
   REAL*8, INTENT(INOUT)     :: a(ir,nion), b(ir,nion), c(ir,nion), d1(ir), bet(ir), gam(ir)
 
-  REAL*8, INTENT(INOUT)     :: Nret
+  REAL*8, INTENT(INOUT)     :: Nmainret
+  REAL*8, INTENT(INOUT)     :: Ndivret
   REAL*8, INTENT(OUT)       :: rcld
+  REAL*8, INTENT(OUT)       :: rclb
   REAL*8, INTENT(OUT)       :: rclp
   REAL*8, INTENT(OUT)       :: rclw
   
@@ -93,14 +101,14 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
   !     **************************************************
 
   ! ------ Recycling ------
-  ! Part of the particles that hit the wall are taken to be fully-stuck.
-  ! Another part is only temporarily retained at the wall.
-  ! Particles FULLY STUCK at the wall will never leave, i.e. tve can only increase over time (see above).
-  ! Particles that are only temporarily retained at the wall (given by the recycling fraction) come back
+  ! Part of the particles that hit the walls are taken to be fully-stuck.
+  ! Another part is only temporarily retained at the walls.
+  ! Particles FULLY STUCK at the walls will never leave, i.e. tve can only increase over time (see above).
+  ! Particles that are only temporarily retained at the walls (given by the recycling fraction) come back
   ! (recycle) according to the tauwret time scale.
 
   if (rcl.ge.0) then    ! activated divertor/pump return (R>=0) + recycling mode (if R>0)
-     rcld = divold/taudiv
+     rclb = divold/taudiv
      if (leak.gt.0) then    ! pump reservoir present and activated leakage
         tauleak = volpump/leak
         rclp = pumpold/tauleak
@@ -108,22 +116,26 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
         rclp = 0.d0
      endif
      rclw = rcl*(tsuold+dsulold)
+     rcld = rcl*(1.-rcmb)*(dsuold)
 
      if (tauwret.gt.0.0d0) then
-        ! include flux from particles previously retained at the wall
-        Nret = Nret * (1-det/tauwret) + rclw*det     ! number of particles temporarily retained at wall
-        rclw = Nret/tauwret    ! component that goes back to be a source
+        ! include flux from particles previously retained at the main and divertor walls
+        Nmainret = Nmainret * (1-det/tauwret) + rclw*det    ! number of particles temporarily retained at main wall
+        Ndivret = Ndivret * (1-det/tauwret) + rcld*det     ! number of particles temporarily retained at divertor wall
+        rclw = Nmainret/tauwret   ! component of main wall recycling flux that gives a source for the core plasma
+        rcld = Ndivret/tauwret    ! component of divertor wall recycling flux that gives a source for the divertor neutrals reservoir
      endif
 
   else   ! no divertor/pump return at all
         rcld = 0.d0
+        rclb = 0.d0
         rclp = 0.d0
         rclw = 0.d0
   endif
 
   ! sum radial sources from external source time history and recycling
   ! NB: in STRAHL, recycling is set to have the same radial profile as the external sources!
-  rn(:,1) = src_prof + rcl_rad_prof*(rclw + rcld)
+  rn(:,1) = src_prof + rcl_rad_prof*(rclw + rclb)
 
   dt = det/2.
   !     ********** first half time step direction up ********
@@ -271,11 +283,12 @@ end subroutine impden0
 
 subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_rad_prof, s_rates, r_rates,  &
      rr, fall_outsol, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
-     rcl,tsuold, dsulold, divold, pumpold, taudiv, tauwret, leak, volpump, &
-     evolveneut, Nret, rcld, rclp, rclw)
+     rcl, rcmb, tsuold, dsuold, dsulold, divold, pumpold, taudiv, tauwret, leak, volpump, &
+     evolveneut, Nmainret, Ndivret, rcld, rclb, rclp, rclw)
   !
   !  Impurity transport forward modeling with Linder's finite-volume scheme.
   !  See Linder et al. NF 2020
+  !  The recycling/pumping model is however the same as in impden0.
   !
   ! ----------------------------------------------------------------------|
   implicit none
@@ -297,7 +310,9 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
 
   ! recycling parameters
   REAL*8, INTENT(IN)        :: rcl
+  REAL*8, INTENT(IN)        :: rcmb
   REAL*8, INTENT(IN)        :: tsuold   ! tsu from previous recycling step
+  REAL*8, INTENT(IN)        :: dsuold   ! dsu from previous recycling step
   REAL*8, INTENT(IN)        :: dsulold  ! dsul from previous recycling step
   REAL*8, INTENT(IN)        :: divold   ! divnew from previous step (even without backflow)
   REAL*8, INTENT(IN)        :: pumpold  ! pumpnew from previous step (even without leakage)
@@ -310,8 +325,10 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
   ! Extras
   LOGICAL, INTENT(IN)       :: evolveneut
   
-  REAL*8, INTENT(INOUT)     :: Nret
+  REAL*8, INTENT(INOUT)     :: Nmainret
+  REAL*8, INTENT(INOUT)     :: Ndivret
   REAL*8, INTENT(OUT)       :: rcld
+  REAL*8, INTENT(OUT)       :: rclb
   REAL*8, INTENT(OUT)       :: rclp
   REAL*8, INTENT(OUT)       :: rclw
 
@@ -328,7 +345,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
   
   ! Recycling 
   if (rcl.ge.0) then    ! activated divertor/pump return (R>=0) + recycling mode (if R>0)
-     rcld = divold/taudiv
+     rclb = divold/taudiv
      if (leak.gt.0) then    ! pump reservoir present and activated leakage
         tauleak = volpump/leak
         rclp = pumpold/tauleak
@@ -336,16 +353,21 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
         rclp = 0.d0
      endif
      rclw = rcl*(tsuold+dsulold)
+     rcld = rcl*(1.-rcmb)*(dsuold)
      
      if (tauwret.gt.0.0d0) then
-        ! include flux from particles previously retained at the wall
-        Nret = Nret * (1-det/tauwret) + rclw*det     ! number of particles temporarily retained at wall
-        rclw = Nret/tauwret    ! component that goes back to be a source
+        ! include flux from particles previously retained at the main wall
+        Nmainret = Nmainret * (1-det/tauwret) + rclw*det   ! number of particles temporarily retained at main wall
+        Ndivret = Ndivret * (1-det/tauwret) + rcld*det     ! number of particles temporarily retained at divertor wall
+        rclw = Nmainret/tauwret   ! component of main wall recycling flux that gives a source for the core plasma
+        rcld = Ndivret/tauwret    ! component of divertor wall recycling flux that gives a source for the divertor neutrals reservoir
+        
      endif
      
-     flx_rcl = rclw + rclp + rcld
+     flx_rcl = rclw + rclp + rclb
   else   ! no divertor/pump return at all
      rcld = 0.d0
+     rclb = 0.d0
      rclp = 0.d0
      rclw = 0.d0
      flx_rcl = 0.d0

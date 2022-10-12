@@ -4,6 +4,27 @@ for the anomalous transport coefficient (particle diffusivity and
 radial pinch velocity) and possibly impose other time-dependent models
 (e.g. for ELMs)
 """
+# MIT License
+#
+# Copyright (c) 2022 Antonello Zito
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 import numpy as np
 import scipy
@@ -12,7 +33,7 @@ from scipy.interpolate import CubicSpline
 from scipy.interpolate import PchipInterpolator
 
 
-def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, method = 'interp', kind = 'linear', time_dependency = False, times = None):
+def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, method = 'linear_interp', time_dependency = False, times = None):
     """
     Routine for interpolating a radial transport profile onto the radial grid, at each user-specified time
     The routine may be called for outputting both a diffusion coefficient D_Z
@@ -40,15 +61,12 @@ def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, 
         None by default.
     method: str
         Select the interpolation method. It can be:
-            'interp': simple 1-D interpolation onto the radial grid.
+            'linear_interp': simple 1-D linear interpolation onto the radial grid.
             'cubic_spline': piecewise cubic polynomial and twice continuously differentiable interpolation
                 onto the radial grid.
-            'Pchip_splne': piecewise cubic Hermite and monotonicity-preserving interpolation
+            'Pchip_spline': piecewise cubic Hermite and monotonicity-preserving interpolation
                 onto the radial grid.
         'interp' by default.
-    kind: str
-        Select the kind of the simple interpolation.
-        'linear' by default.
     time_dependency: bool
         Select whether to impose a time dependency (only in case a radial dependency has been imposed as well)
         False by default.
@@ -101,7 +119,7 @@ def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, 
             raise ValueError("rhop must be a list of the same lenght of D_Z or v_Z.")       
             
         # Interpolate the transport coefficient profile onto the radial grid
-        coeffs =  interp_transp(rhop,data,rhop_grid,method,kind)
+        coeffs =  interp_transp(rhop,data,rhop_grid,method)
         return coeffs
         
     # Space- and time-dependent coefficient
@@ -118,7 +136,7 @@ def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, 
         # Interpolate the transport coefficient profile onto the radial grid
         coeffs = np.zeros((len(rhop_grid),len(times)))
         for i in range(0,len(times)):  
-            coeffs[:,i] = interp_transp(rhop,data[:,i],rhop_grid,method,kind)
+            coeffs[:,i] = interp_transp(rhop,data[:,i],rhop_grid,method)
         return coeffs
   
     else:
@@ -126,7 +144,7 @@ def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, 
 
 
 
-def ELM_model(namelist, asim, rhop, data_inter_ELM, data_intra_ELM, time_start, time_end, method = 'interp', kind = 'linear'):
+def ELM_model(timing, ELM_model, asim, rhop, data_inter_ELM, data_intra_ELM, method = 'linear_interp'):
     """
     Routine for creating a 2D grid for the transport coefficients where the space dependence is given
     interpolating a user-imposed transport profile onto the radial grid, and the time dependence is
@@ -136,8 +154,10 @@ def ELM_model(namelist, asim, rhop, data_inter_ELM, data_intra_ELM, time_start, 
 
     Parameters
     ----------
-    namelist: dict
-        Dictionary containing aurora inputs. 
+    timing: dict
+        Sub-dict "timing" from the main aurora inputs namelist.
+    ELM_model: dict
+        Sub-dict "ELM_model" from the main aurora inputs namelist.
     asim: object
         Object containing aurora input methods.
     rhop: list
@@ -152,21 +172,14 @@ def ELM_model(namelist, asim, rhop, data_inter_ELM, data_intra_ELM, time_start, 
         values rhop) in the times within the ELMs.
         If the output is a diffusion coefficient, the values must be in units of :math:`cm^2/s`.
         If the output is a radial pinch velocity, the values must be in units of :math:`cm/s`.
-    time_start: float
-        Start time of the simulation
-    time_end: float
-        End time of the simulation
     method: str
         Select the interpolation method. It can be:
-            'interp': simple 1-D interpolation onto the radial grid.
+            'linear_interp': simple 1-D linear interpolation onto the radial grid.
             'cubic_spline': piecewise cubic polynomial and twice continuously differentiable interpolation
                 onto the radial grid.
-            'Pchip_splne': piecewise cubic Hermite and monotonicity-preserving interpolation
+            'Pchip_spline': piecewise cubic Hermite and monotonicity-preserving interpolation
                 onto the radial grid.
         'interp' by default.
-    kind: str
-        Select the kind of the simple interpolation.
-        'linear' by default.
         
     Returns
     -------
@@ -190,16 +203,16 @@ def ELM_model(namelist, asim, rhop, data_inter_ELM, data_intra_ELM, time_start, 
         raise ValueError("rhop and D_Z / v_Z must have the same length.") 
         
     # Interpolate the transport coefficient profile onto the radial grid
-    coeffs_inter_ELM =  interp_transp(rhop,data_inter_ELM,rhop_grid,method,kind)
-    coeffs_intra_ELM =  interp_transp(rhop,data_intra_ELM,rhop_grid,method,kind)
+    coeffs_inter_ELM =  interp_transp(rhop,data_inter_ELM,rhop_grid,method)
+    coeffs_intra_ELM =  interp_transp(rhop,data_intra_ELM,rhop_grid,method)
         
-    ELM_time_windows = namelist['ELM_model']['ELM_time_windows'] # s
-    ELM_frequency = namelist['ELM_model']['ELM_frequency'] # Hz
-    crash_duration = namelist['ELM_model']['crash_duration'] # ms
-    plateau_duration = namelist['ELM_model']['plateau_duration'] # ms
-    recovery_duration = namelist['ELM_model']['recovery_duration'] # ms
+    ELM_time_windows = ELM_model['ELM_time_windows'] # s
+    ELM_frequency = ELM_model['ELM_frequency'] # Hz
+    crash_duration = ELM_model['crash_duration'] # ms
+    plateau_duration = ELM_model['plateau_duration'] # ms
+    recovery_duration = ELM_model['recovery_duration'] # ms
     
-    times_transport = [time_start]
+    times_transport = [timing['times'][0]]
     coeffs = [coeffs_inter_ELM]
     
     # Assuming that ELMs take place throughout the entire simulation duration
@@ -208,7 +221,7 @@ def ELM_model(namelist, asim, rhop, data_inter_ELM, data_intra_ELM, time_start, 
         ELM_duration = (crash_duration + plateau_duration + recovery_duration)/1000 # s
         ELM_period = 1/ELM_frequency # s
         
-        while times_transport[-1] < time_end:
+        while times_transport[-1] < timing['times'][-1]:
             times_transport.append(times_transport[-1]+(ELM_period-ELM_duration))
             coeffs.append(coeffs_inter_ELM)
             times_transport.append(times_transport[-1]+crash_duration/1000)
@@ -228,7 +241,7 @@ def ELM_model(namelist, asim, rhop, data_inter_ELM, data_intra_ELM, time_start, 
             ELM_duration[i] = (crash_duration[i] + plateau_duration[i] + recovery_duration[i])/1000 # s
             ELM_period[i] = 1/ELM_frequency[i] # s  
             
-        if ELM_time_windows[0][0] > time_start:
+        if ELM_time_windows[0][0] > timing['times'][0]:
             times_transport.append(ELM_time_windows[0][0]) 
             coeffs.append(coeffs_inter_ELM)
 
@@ -250,50 +263,42 @@ def ELM_model(namelist, asim, rhop, data_inter_ELM, data_intra_ELM, time_start, 
                     times_transport.append(ELM_time_windows[i+1][0])
                     coeffs.append(coeffs_inter_ELM)
             else:
-                if ELM_time_windows[i][1]<time_end:
-                    times_transport.append(time_end)
+                if ELM_time_windows[i][1]<timing['times'][-1]:
+                    times_transport.append(timing['times'][-1])
                     coeffs.append(coeffs_inter_ELM)
     
     return np.round(times_transport,6), np.transpose(np.array(coeffs))
      
 
 
-def ELM_time_grid(time_start, time_end, dt_start_value, dt_increase_value, namelist):
+def ELM_time_grid(timing, ELM_model, dt_intra_ELM, dt_increase_inter_ELM):
     """
     Routine for adapting the time grid to imposed ELM time characteristics
 
     Parameters
     ----------
-    time_start: float
-        Start time of the simulation
-    time_end: float
-        End time of the simulation
-    dt_start_value: float
+    timing: dict
+        Sub-dict "timing" from the main aurora inputs namelist (to update).
+    ELM_model: dict
+        Sub-dict "ELM_model" from the main aurora inputs namelist.
+    dt_intra_ELM: float
         dt values during the entire intra-ELM cycles
         and at the beginning of each inter-ELM cycle
-    dt_increase: float
+    dt_increase_inter_ELM: float
         dt multiplier at every time steps in the inter-ELM cycles
-    namelist: dict
-        Dictionary containing aurora inputs. 
         
     Returns
     -------
-    times : list
-        Update to namelist['timing']['times']
-    dt_start : list
-        Update to namelist['timing']['dt_start']
-    steps_per_cycle : list
-        Update to namelist['timing']['steps_per_cycle']
-    dt_increase : list
-        Update to namelist['timing']['dt_increase']
+    timing_update : dict
+        Update to sub-dict "timing" from the main aurora inputs namelist.
     """ 
     
     
-    ELM_time_windows = namelist['ELM_model']['ELM_time_windows'] # s
-    ELM_frequency = namelist['ELM_model']['ELM_frequency'] # Hz
-    crash_duration = namelist['ELM_model']['crash_duration'] # ms
-    plateau_duration = namelist['ELM_model']['plateau_duration'] # ms
-    recovery_duration = namelist['ELM_model']['recovery_duration'] # ms
+    ELM_time_windows = ELM_model['ELM_time_windows'] # s
+    ELM_frequency = ELM_model['ELM_frequency'] # Hz
+    crash_duration = ELM_model['crash_duration'] # ms
+    plateau_duration = ELM_model['plateau_duration'] # ms
+    recovery_duration = ELM_model['recovery_duration'] # ms
     
     # Assuming that ELMs take place throughout the entire simulation duration
     if ELM_time_windows is None:     
@@ -307,20 +312,20 @@ def ELM_time_grid(time_start, time_end, dt_start_value, dt_increase_value, namel
         
         # Create a time grid which allows to distinguish between inter- and intra-ELM time windows   
         
-        times = [time_start] 
-        for i in range(0,round((time_end-time_start)*ELM_frequency)):
+        times = [timing['times'][0]] 
+        for i in range(0,round((timing['times'][-1]-timing['times'][0])*ELM_frequency)):
             times.append(round(times[-1]+(ELM_period-ELM_duration),6))
             times.append(round(times[-1]+ELM_duration,6))
         
-        dt_start = [dt_start_value] * len(times)
+        dt_start = [dt_intra_ELM] * len(times)
     
         steps_per_cycle = [1] * len(times)
  
-        dt_increase = [dt_increase_value]
+        dt_increase = [dt_increase_inter_ELM]
         
         while len(dt_increase)<len(times):
             dt_increase.append(1.000)
-            dt_increase.append(dt_increase_value)  
+            dt_increase.append(dt_increase_inter_ELM)  
        
     # Assuming that ELMs take place only in some reduced time windows 
     else:
@@ -339,9 +344,9 @@ def ELM_time_grid(time_start, time_end, dt_start_value, dt_increase_value, namel
         
         # Create a time grid which allows to distinguish between inter- and intra-ELM time windows
         
-        times = [time_start]
+        times = [timing['times'][0]]
         
-        if ELM_time_windows[0][0] > time_start:
+        if ELM_time_windows[0][0] > timing['times'][0]:
             times.append(ELM_time_windows[0][0]) 
         
         for i in range(0,len(ELM_time_windows)):
@@ -354,43 +359,50 @@ def ELM_time_grid(time_start, time_end, dt_start_value, dt_increase_value, namel
                 if ELM_time_windows[i+1][0]>ELM_time_windows[i][1]:
                     times.append(ELM_time_windows[i+1][0])
             else:
-                if ELM_time_windows[i][1]<time_end:
-                    times.append(time_end)
+                if ELM_time_windows[i][1]<timing['times'][-1]:
+                    times.append(timing['times'][-1])
             
-        dt_start = [dt_start_value] * len(times)
+        dt_start = [dt_intra_ELM] * len(times)
     
         steps_per_cycle = [1] * len(times)
                 
-        dt_increase = [dt_increase_value]  
+        dt_increase = [dt_increase_inter_ELM]  
         
-        if ELM_time_windows[0][0] > time_start:
-            dt_increase.append(dt_increase_value)
+        if ELM_time_windows[0][0] > timing['times'][0]:
+            dt_increase.append(dt_increase_inter_ELM)
         
         for i in range(0,len(ELM_time_windows)):
             
             for j in range(0,round((ELM_time_windows[i][1]-ELM_time_windows[i][0])*ELM_frequency[i])):
                 dt_increase.append(1.000)
-                dt_increase.append(dt_increase_value)
+                dt_increase.append(dt_increase_inter_ELM)
             
             if i<len(ELM_time_windows)-1:
                 if ELM_time_windows[i+1][0]>ELM_time_windows[i][1]:
-                    dt_increase.append(dt_increase_value)
+                    dt_increase.append(dt_increase_inter_ELM)
             else:
-                if ELM_time_windows[i][1]<time_end:
-                    dt_increase.append(dt_increase_value)
+                if ELM_time_windows[i][1]<timing['times'][-1]:
+                    dt_increase.append(dt_increase_inter_ELM)
     
-    return times, dt_start, steps_per_cycle, dt_increase
+    timing_update = {
+        "dt_increase": dt_increase,
+        "dt_start": dt_start,
+        "steps_per_cycle": steps_per_cycle,
+        "times": times,
+    } 
+    
+    return timing_update
 
 
 
-def interp_transp(x, y, grid, method, kind):
+def interp_transp(x, y, grid, method):
     """Function 'interp_transp' used for interpolating the user-defined transport
     coefficients onto the radial grid.
     """
     
-    if method == "interp": 
-        # Simple 1-D interpolation onto the radial grid
-        f = interp1d(x, y, kind=kind, fill_value="extrapolate", assume_sorted=True)
+    if method == "linear_interp": 
+        # Simple 1-D linear interpolation onto the radial grid
+        f = interp1d(x, y, kind="linear", fill_value="extrapolate", assume_sorted=True)
 
     elif method == "cubic_spline":
         # Piecewise cubic polynomial and twice continuously differentiable interpolation onto the radial grid
