@@ -84,6 +84,7 @@ def load_default_namelist(device=None):
         # edge/recycling
         "recycling_flag": False,
         "wall_recycling": 0.0,
+        "screening_eff": 0.0,
         "div_recomb_ratio": 1.0,
         "tau_div_SOL_ms": 50.0,  # ms
         "tau_rcl_ret_ms": 50.0,  # ms

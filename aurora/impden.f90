@@ -30,9 +30,9 @@
 subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
      src_prof, rcl_rad_prof, s_rates, r_rates,  &
      rr, pro, qpr, dlen, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
-     rcl,rcmb,tsuold,dsuold,dsulold, divold, pumpold, taudiv, tauwret, leak, volpump, &
+     rcl,screen,rcmb,tsuold,dsuold,dsulold, divold, pumpold, taudiv, tauwret, leak, volpump, &
      a, b, c, d1, bet, gam, &
-     Nmainret, Ndivret, rcld, rclb, rclp, rclw)
+     Nmainret, Ndivret, rcld, rclb, rcls, rclp, rclw)
   !
   !  Impurity transport forward modeling with default STRAHL finite-differences scheme.
   !  Refer to STRAHL manual 2018 for details of the algorithm.
@@ -63,6 +63,7 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
 
   ! recycling parameters
   REAL*8, INTENT(IN)        :: rcl
+  REAL*8, INTENT(IN)        :: screen
   REAL*8, INTENT(IN)        :: rcmb
   REAL*8, INTENT(IN)        :: tsuold   ! tsu from previous recycling step
   REAL*8, INTENT(IN)        :: dsuold   ! tsu from previous recycling step
@@ -82,6 +83,7 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
   REAL*8, INTENT(INOUT)     :: Ndivret
   REAL*8, INTENT(OUT)       :: rcld
   REAL*8, INTENT(OUT)       :: rclb
+  REAL*8, INTENT(OUT)       :: rcls
   REAL*8, INTENT(OUT)       :: rclp
   REAL*8, INTENT(OUT)       :: rclw
   
@@ -108,7 +110,8 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
   ! (recycle) according to the tauwret time scale.
 
   if (rcl.ge.0) then    ! activated divertor/pump return (R>=0) + recycling mode (if R>0)
-     rclb = divold/taudiv
+     rclb = (divold/taudiv)*(1-screen) ! non-screened backflow from previous time step
+     rcls = (divold/taudiv)*(screen) ! screened backflow from previous time step
      if (leak.gt.0) then    ! pump reservoir present and activated leakage
         tauleak = volpump/leak
         rclp = pumpold/tauleak
@@ -116,7 +119,7 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
         rclp = 0.d0
      endif
      rclw = rcl*(tsuold+dsulold)
-     rcld = rcl*(1.-rcmb)*(dsuold)
+     rcld = rcl*(1.-rcmb)*(dsuold+rcls)
 
      if (tauwret.gt.0.0d0) then
         ! include flux from particles previously retained at the main and divertor walls
@@ -129,6 +132,7 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
   else   ! no divertor/pump return at all
         rcld = 0.d0
         rclb = 0.d0
+        rcls = 0.d0
         rclp = 0.d0
         rclw = 0.d0
   endif
@@ -283,8 +287,8 @@ end subroutine impden0
 
 subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_rad_prof, s_rates, r_rates,  &
      rr, fall_outsol, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
-     rcl, rcmb, tsuold, dsuold, dsulold, divold, pumpold, taudiv, tauwret, leak, volpump, &
-     evolveneut, Nmainret, Ndivret, rcld, rclb, rclp, rclw)
+     rcl, screen, rcmb, tsuold, dsuold, dsulold, divold, pumpold, taudiv, tauwret, leak, volpump, &
+     evolveneut, Nmainret, Ndivret, rcld, rclb, rcls, rclp, rclw)
   !
   !  Impurity transport forward modeling with Linder's finite-volume scheme.
   !  See Linder et al. NF 2020
@@ -310,6 +314,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
 
   ! recycling parameters
   REAL*8, INTENT(IN)        :: rcl
+  REAL*8, INTENT(IN)        :: screen
   REAL*8, INTENT(IN)        :: rcmb
   REAL*8, INTENT(IN)        :: tsuold   ! tsu from previous recycling step
   REAL*8, INTENT(IN)        :: dsuold   ! dsu from previous recycling step
@@ -329,6 +334,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
   REAL*8, INTENT(INOUT)     :: Ndivret
   REAL*8, INTENT(OUT)       :: rcld
   REAL*8, INTENT(OUT)       :: rclb
+  REAL*8, INTENT(OUT)       :: rcls
   REAL*8, INTENT(OUT)       :: rclp
   REAL*8, INTENT(OUT)       :: rclw
 
@@ -345,7 +351,8 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
   
   ! Recycling 
   if (rcl.ge.0) then    ! activated divertor/pump return (R>=0) + recycling mode (if R>0)
-     rclb = divold/taudiv
+     rclb = (divold/taudiv)*(1-screen) ! non-screened backflow from previous time step
+     rcls = (divold/taudiv)*(screen) ! screened backflow from previous time step
      if (leak.gt.0) then    ! pump reservoir present and activated leakage
         tauleak = volpump/leak
         rclp = pumpold/tauleak
@@ -353,7 +360,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
         rclp = 0.d0
      endif
      rclw = rcl*(tsuold+dsulold)
-     rcld = rcl*(1.-rcmb)*(dsuold)
+     rcld = rcl*(1.-rcmb)*(dsuold+rcls)
      
      if (tauwret.gt.0.0d0) then
         ! include flux from particles previously retained at the main wall
@@ -368,6 +375,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
   else   ! no divertor/pump return at all
      rcld = 0.d0
      rclb = 0.d0
+     rcls = 0.d0
      rclp = 0.d0
      rclw = 0.d0
      flx_rcl = 0.d0

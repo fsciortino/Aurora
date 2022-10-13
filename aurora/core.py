@@ -132,7 +132,12 @@ class aurora_sim:
         self.mixing_radius = self.namelist["saw_model"]["rmix"]
         self.decay_length_boundary = self.namelist["SOL_decay"]
         self.wall_recycling = self.namelist["wall_recycling"]
+        self.screening_eff = self.namelist["screening_eff"]
+        if self.screening_eff < 0.0 or self.screening_eff > 1.0:
+            raise ValueError("screening_eff must be between 0.0 and 1.0!") 
         self.div_recomb_ratio = self.namelist["div_recomb_ratio"]
+        if self.div_recomb_ratio < 0.0 or self.div_recomb_ratio > 1.0:
+            raise ValueError("div_recomb_ratio must be between 0.0 and 1.0!") 
         self.tau_div_SOL_ms = self.namelist["tau_div_SOL_ms"]
         self.tau_pump_ms = self.namelist["tau_pump_ms"]
         self.tau_rcl_ret_ms = self.namelist["tau_rcl_ret_ms"]
@@ -873,6 +878,7 @@ class aurora_sim:
                 self.save_time,
                 self.sawtooth_erfc_width,  # dsaw width [cm]
                 self.wall_recycling,
+                self.screening_eff,
                 self.div_recomb_ratio,
                 self.tau_div_SOL_ms * 1e-3,  # [s]
                 self.tau_pump_ms * 1e-3,  # [s]
@@ -941,18 +947,115 @@ class aurora_sim:
             N_dsul,
             rcld_rate,
             rclb_rate,
+            rcls_rate,
             rclp_rate,
             rclw_rate,
         ) = self.res
         
         # Return number of elements in the output of the simulation consistently with
-        #   the number of reservoirs defined in the wall interaction / recycling model
+        #   the number of reservoirs/fluxes defined in the wall interaction / recycling model
         # The differences with respect to the versions before the introduction of the
         #   advanced recycling model are highlighted
         
-        if self.namelist["pump_chamber"] and self.namelist["div_recomb_ratio"] < 1.0:
+        if self.namelist["pump_chamber"] and self.namelist["screening_eff"] > 0.0 and self.namelist["div_recomb_ratio"] < 1.0:
             # advanced recycling model fully activated, in which
             #   a second reservoirs for neutral particles before the pump is defined,
+            #   and the backflow from the divertor can be screened before reaching the core plasma,
+            #   and the ions are allowed to interact with a divertor wall
+
+            return (
+                nz, # same as before
+                N_mainwall, # corresponding to N_wall in the old nomenclature
+                N_divwall, # new field
+                N_div, # same as before
+                N_pump, # new field with different meaning wrt the old N_pump
+                N_out, # corresponding to N_pump in the old nomenclature
+                N_mainret, # corresponding to N_ret in the old nomenclature
+                N_divret, # new field
+                N_tsu, # same as before
+                N_dsu, # same as before
+                N_dsul, # same as before
+                rcld_rate, # new field with different meaning wrt the old rcld_rate
+                rclb_rate, # corresponding to rcld_rate in the old nomenclature
+                rcls_rate, # new field
+                rclp_rate, # new field
+                rclw_rate, # same as before
+            )
+        
+        elif self.namelist["pump_chamber"] and self.namelist["screening_eff"] > 0.0 and self.namelist["div_recomb_ratio"] == 1.0:
+            # advanced recycling model partially activated, in which
+            #   a second reservoirs for neutral particles before the pump is defined,
+            #   and the backflow from the divertor can be screened before reaching the core plasma,
+            #   but the ions are not allowed to interact with a divertor wall
+            #     (therefore the fields N_divwall, N_divret and rcld_rate are not returned)
+
+            return (
+                nz, # same as before
+                N_mainwall, # corresponding to N_wall in the old nomenclature
+                N_div, # same as before
+                N_pump, # new field with different meaning wrt the old N_pump
+                N_out, # corresponding to N_pump in the old nomenclature
+                N_mainret, # corresponding to N_ret in the old nomenclature
+                N_tsu, # same as before
+                N_dsu, # same as before
+                N_dsul, # same as before
+                rclb_rate, # corresponding to rcld_rate in the old nomenclature
+                rcls_rate, # new field
+                rclp_rate, # new field
+                rclw_rate, # same as before
+            )
+        
+        elif not self.namelist["pump_chamber"] and self.namelist["screening_eff"] > 0.0 and self.namelist["div_recomb_ratio"] < 1.0:
+            # advanced recycling model partially activated, in which
+            #   a second reservoirs for neutral particles before the pump is not defined
+            #     (therefore the fields N_pump and rclp_rate are not returned),
+            #   but the backflow from the divertor can be screened before reaching the core plasma,
+            #   and the ions are allowed to interact with a divertor wall
+
+            return (
+                nz, # same as before
+                N_mainwall, # corresponding to N_wall in the old nomenclature
+                N_divwall, # new field
+                N_div, # same as before
+                N_out, # corresponding to N_pump in the old nomenclature
+                N_mainret, # corresponding to N_ret in the old nomenclature
+                N_divret, # new field
+                N_tsu, # same as before
+                N_dsu, # same as before
+                N_dsul, # same as before
+                rcld_rate, # new field with different meaning wrt the old rcld_rate
+                rclb_rate, # corresponding to rcld_rate in the old nomenclature
+                rcls_rate, # new field
+                rclw_rate, # same as before
+            )
+        
+        elif not self.namelist["pump_chamber"] and self.namelist["screening_eff"] > 0.0 and self.namelist["div_recomb_ratio"] == 1.0:
+            # advanced recycling model partially activated, in which
+            #   a second reservoirs for neutral particles before the pump is not defined
+            #     (therefore the fields N_pump and rclp_rate are not returned),
+            #   but the backflow from the divertor can be screened before reaching the core plasma,
+            #   and the ions are not allowed to interact with a divertor wall
+            #     (therefore the fields N_divwall, N_divret and rcld_rate are not returned)
+
+            return (
+                nz, # same as before
+                N_mainwall, # corresponding to N_wall in the old nomenclature
+                N_div, # same as before
+                N_out, # corresponding to N_pump in the old nomenclature
+                N_mainret, # corresponding to N_ret in the old nomenclature
+                N_tsu, # same as before
+                N_dsu, # same as before
+                N_dsul, # same as before
+                rclb_rate, # corresponding to rcld_rate in the old nomenclature
+                rcls_rate, # new field
+                rclw_rate, # same as before
+            )
+        
+        elif self.namelist["pump_chamber"] and self.namelist["screening_eff"] == 0.0 and self.namelist["div_recomb_ratio"] < 1.0:
+            # advanced recycling model fully activated, in which
+            #   a second reservoirs for neutral particles before the pump is defined,
+            #   but the backflow from the divertor is not screened screened before reaching the core plasma,
+            #     (therefore the field rcls_rate is not returned)
             #   and the ions are allowed to interact with a divertor wall
 
             return (
@@ -973,10 +1076,12 @@ class aurora_sim:
                 rclw_rate, # same as before
             )
         
-        elif self.namelist["pump_chamber"] and self.namelist["div_recomb_ratio"] == 1.0:
+        elif self.namelist["pump_chamber"] and self.namelist["screening_eff"] == 0.0 and self.namelist["div_recomb_ratio"] == 1.0:
             # advanced recycling model partially activated, in which
             #   a second reservoirs for neutral particles before the pump is defined,
-            #   but the ions are not allowed to interact with a divertor wall
+            #   but the backflow from the divertor is not screened screened before reaching the core plasma,
+            #     (therefore the field rcls_rate is not returned)
+            #   and the ions are not allowed to interact with a divertor wall
             #     (therefore the fields N_divwall, N_divret and rcld_rate are not returned)
 
             return (
@@ -994,10 +1099,12 @@ class aurora_sim:
                 rclw_rate, # same as before
             )
         
-        elif not self.namelist["pump_chamber"] and self.namelist["div_recomb_ratio"] < 1.0:
+        elif not self.namelist["pump_chamber"] and self.namelist["screening_eff"] == 0.0 and self.namelist["div_recomb_ratio"] < 1.0:
             # advanced recycling model partially activated, in which
             #   a second reservoirs for neutral particles before the pump is not defined
             #     (therefore the fields N_pump and rclp_rate are not returned),
+            #   and the backflow from the divertor is not screened screened before reaching the core plasma,
+            #     (therefore the field rcls_rate is not returned)
             #   but the ions are allowed to interact with a divertor wall
 
             return (
@@ -1016,10 +1123,12 @@ class aurora_sim:
                 rclw_rate, # same as before
             )
         
-        elif not self.namelist["pump_chamber"] and self.namelist["div_recomb_ratio"] == 1.0:
-            # advanced recycling model de-activated, therefore
+        elif not self.namelist["pump_chamber"] and self.namelist["screening_eff"] == 0.0 and self.namelist["div_recomb_ratio"] == 1.0:
+            # advanced recycling model partially activated, in which
             #   a second reservoirs for neutral particles before the pump is not defined
             #     (therefore the fields N_pump and rclp_rate are not returned),
+            #   and the backflow from the divertor is not screened screened before reaching the core plasma,
+            #     (therefore the field rcls_rate is not returned)
             #   and the ions are not allowed to interact with a divertor wall
             #     (therefore the fields N_divwall, N_divret and rcld_rate are not returned)
             # the output is now the same as in the versions before the introduction of the
@@ -1037,6 +1146,7 @@ class aurora_sim:
                 rclb_rate, # corresponding to rcld_rate in the old nomenclature
                 rclw_rate, # same as before
             )
+
 
     def run_aurora_steady(
         self,
@@ -1277,6 +1387,7 @@ class aurora_sim:
             N_dsul,
             rcld_rate,
             rclb_rate,
+            rcls_rate,
             rclp_rate,
             rclw_rate,
         ) = self.res
@@ -1320,6 +1431,7 @@ class aurora_sim:
             N_dsul,
             rcld_rate,
             rclb_rate,
+            rcls_rate,
             rclp_rate,
             rclw_rate,
         ) = self.res
@@ -1385,6 +1497,7 @@ class aurora_sim:
             N_dsul,
             rcld_rate,
             rclb_rate,
+            rcls_rate,
             rclp_rate,
             rclw_rate,
         ) = self.res
@@ -1447,6 +1560,7 @@ class aurora_sim:
 
         # backflow/leakage rates from the neutrals reservoirs
         reservoirs["divertor_backflow"] = rclb_rate * circ
+        reservoirs["screened_divertor_backflow"] = rcls_rate * circ
         reservoirs["pump_leakage"] = rclp_rate * circ
         
         # recycling rates from divertor wall
@@ -1504,8 +1618,8 @@ class aurora_sim:
                            label="Pump reservoir")
                 ax1[0, 2].set_ylabel('[#]')
 
-            ax1[1, 0].plot(self.time_out, reservoirs["edge_loss"], label="Edge loss to wall")
-            ax1[1, 0].plot(self.time_out, reservoirs["limiter_loss"], label="Limiter loss to wall")
+            ax1[1, 0].plot(self.time_out, reservoirs["edge_loss"], label="Edge flux to main wall")
+            ax1[1, 0].plot(self.time_out, reservoirs["limiter_loss"], label="Limiter flux to main wall")
             ax1[1, 0].set_ylabel('[$s^{-1}$]')  
 
             ax1[1, 1].plot(self.time_out, reservoirs["mainwall_recycling"], label="Main wall rec. rate")
@@ -1516,9 +1630,14 @@ class aurora_sim:
                 label="Part. retained at main wall")
             ax1[1, 2].set_ylabel('[#]')
 
-            ax1[2, 0].plot(self.time_out, reservoirs["parallel_loss"], label="Par. loss to divertor")
+            if self.namelist["screening_eff"] > 0.0:
+                ax1[2, 0].plot(self.time_out, reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"],
+                           label="Par. flux to divertor") 
+            elif self.namelist["screening_eff"] == 0.0:
+                ax1[2, 0].plot(self.time_out, reservoirs["parallel_loss"],
+                           label="Par. flux to divertor")    
             ax1[2, 0].plot(self.time_out, reservoirs["divertor_backflow"],
-                           label="Divertor backflow rate")
+                           label="Divertor backflow rate") 
             if self.namelist["pump_chamber"]:
                 ax1[2, 0].plot(self.time_out, reservoirs["pump_leakage"],
                            label="Pump leakage rate")
@@ -1630,6 +1749,7 @@ class aurora_sim:
             N_dsul,
             rcld_rate,
             rclb_rate,
+            rcls_rate,
             rclp_rate,
             rclw_rate,
         ) = self.res
@@ -1692,6 +1812,7 @@ class aurora_sim:
 
         # backflow/leakage rates from the neutrals reservoirs
         time_average, reservoirs["divertor_backflow"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rclb_rate * circ,interval)
+        time_average, reservoirs["screened_divertor_backflow"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rcls_rate * circ,interval)
         time_average, reservoirs["pump_leakage"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rclp_rate * circ,interval)
 
         # recycling rates from divertor wall
@@ -1749,8 +1870,8 @@ class aurora_sim:
                            label="Pump reservoir")
                 ax1[0, 2].set_ylabel('[#]')
 
-            ax1[1, 0].plot(time_average, reservoirs["edge_loss"], label="Edge loss to wall")
-            ax1[1, 0].plot(time_average, reservoirs["limiter_loss"], label="Limiter loss to wall")
+            ax1[1, 0].plot(time_average, reservoirs["edge_loss"], label="Edge flux to main wall")
+            ax1[1, 0].plot(time_average, reservoirs["limiter_loss"], label="Limiter flux to main wall")
             ax1[1, 0].set_ylabel('[$s^{-1}$]')  
 
             ax1[1, 1].plot(time_average, reservoirs["mainwall_recycling"], label="Main wall rec. rate")
@@ -1761,13 +1882,18 @@ class aurora_sim:
                 label="Part. retained at main. wall")
             ax1[1, 2].set_ylabel('[#]')
 
-            ax1[2, 0].plot(time_average, reservoirs["parallel_loss"], label="Par. loss to divertor")
+            if self.namelist["screening_eff"] > 0.0:
+                ax1[2, 0].plot(time_average, reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"],
+                           label="Par. flux to divertor") 
+            elif self.namelist["screening_eff"] == 0.0:
+                ax1[2, 0].plot(time_average, reservoirs["parallel_loss"],
+                           label="Par. flux to divertor")    
             ax1[2, 0].plot(time_average, reservoirs["divertor_backflow"],
-                           label="Divertor backflow rate")
+                           label="Divertor backflow rate") 
             if self.namelist["pump_chamber"]:
                 ax1[2, 0].plot(time_average, reservoirs["pump_leakage"],
                            label="Pump leakage rate")
-            ax1[2, 0].set_ylabel('[$s^{-1}$]')
+            ax1[2, 0].set_ylabel('[$s^{-1}$]')            
             
             ax1[2, 1].plot(time_average, reservoirs["divwall_recycling"], label="Div. wall rec. rate")
             ax1[2, 1].set_ylabel('[$s^{-1}$]')             

@@ -58,6 +58,13 @@ namelist['wall_recycling'] = 0.8
     #   and there can be backflow from the divertor reservoir with time constant 'tau_div_SOL_ms'
     #   and from the pump reservoir (if present) with leakage conductance L_leak
     #   (this works only if 'recycling_flag' is True)
+namelist['screening_eff'] = 0.5
+    # screening efficiency for the backflow from the divertor reservoir, i.e. fraction
+    #   of lost flux from the divertor neutrals reservoir which is screened in the SOL/divertor plasma
+    #   so, if this is > 0.0, a portion of the backflow gets back to be a part of the total parallel
+    #   flux towards the targets, and one new field in the output is triggered:
+    #   - rcls_rate, i.e. portion of the particle loss from the divertor neutrals reservoir which
+    #       is re-directed towards the targets instead of re-entering the main plasma
 namelist['div_recomb_ratio'] = 0.2
     # fraction the impurity ion flow in the SOL which recombines before reaching the divertor target,
     #   i.e. which enters the divertor neutrals reservoir bypassing the divertor wall reservoir
@@ -69,12 +76,11 @@ namelist['div_recomb_ratio'] = 0.2
     #       whose equivalent for the main wall is N_mainret
     #   - rcld_rate, i.e. the recycling rate from the divertor wall reservoir 
     #       whose equivalent for the main wall is rclw_rate
-namelist['tau_div_SOL_ms'] = 5.0
-    # effective divertor retention time,
-    #   i.e. time scale of particle loss from the divertor neutrals reservoir towards the core plasma
-namelist['tau_rcl_ret_ms'] = 5.0
-    # effective wall retention time,
-    #   i.e. time scale of particle release from main and divertor walls
+namelist['tau_div_SOL_ms'] = 2.0
+    # divertor retention time, i.e. time scale of particle loss from the divertor neutrals reservoir,
+    #   of which however only a fraction (1-screening_eff) effectively reaches the main plasma
+namelist['tau_rcl_ret_ms'] = 2.0
+    # effective wall retention time, i.e. time scale of particle release from main and divertor walls
 
 # set the options for the recycling model
 namelist['phys_volumes'] = True
@@ -121,15 +127,16 @@ V_z = -2e2 * np.ones(len(asim.rvol_grid))  # cm/s
 
 # run Aurora forward model and plot results
 # note that, since 'physical_volumes' = True, in the resulting plots
-# the particle content in the plasma, divertor and pump reservoirs is
-# automatically expressed in terms of density (cm^-3) rather than in #
+#   the particle content in the plasma, divertor and pump reservoirs is
+#   automatically expressed in terms of density (cm^-3) rather than in #
 out = asim.run_aurora(D_z, V_z, plot=True)
 
 # extract densities and particle numbers in each simulation reservoir
 # mind that, since 'div_recomb_ratio' < 1.0 and 'pump_chamber' = True, more arrays
-# will be contained in the tuple out, which must be extracted in the correct order
-# see core.py for the order of the fields in the various cases
-nz, N_mainwall, N_divwall, N_div, N_pump, N_out, N_mainret, Ndivret, N_tsu, N_dsu, N_dsul, rcld_rate, rclb_rate, rclp_rate, rclw_rate = out
+#   will be contained in the tuple out, which must be extracted in the correct order!
+# see core.py for the order of the fields in the various cases depending on the values
+#   of "screening_eff", "div_recomb_ratio" and "pump_chamber"
+nz, N_mainwall, N_divwall, N_div, N_pump, N_out, N_mainret, Ndivret, N_tsu, N_dsu, N_dsul, rcld_rate, rcls_rate, rclb_rate, rclp_rate, rclw_rate = out
 
 # add radiation
 asim.rad = aurora.compute_rad(

@@ -33,14 +33,14 @@ subroutine run(  &
         r_saw, dlen,  &
         time, saw, &
         it_out, dsaw, &
-        rcl, rcmb, taudiv, taupump, tauwret, &
+        rcl, screen, rcmb, taudiv, taupump, tauwret, &
         S_pump, voldiv, cond, volpump, leak, &
         rvol_lcfs, dbound, dlim, prox, &
         rn_t0, alg_opt, evolneut, src_div, &   ! OPTIONAL INPUTS:
         rn_out, &  ! OUT
         N_mainwall, N_divwall, N_div, N_pump, N_out, N_mainret, N_divret, &  ! OUT
         N_tsu, N_dsu, N_dsul, &   !OUT
-        rcld_rate, rclb_rate, rclp_rate, rclw_rate)   ! OUT
+        rcld_rate, rclb_rate, rcls_rate, rclp_rate, rclw_rate)   ! OUT
   !
   ! Run forward model of radial impurity transport, returning the density of
   ! each charge state over time and space. 
@@ -107,6 +107,10 @@ subroutine run(  &
   !                    However, if set to a value <0, then this is interpreted as a flag, indicating
   !                    that particles in the divertor should NEVER return to the main plasma.
   !                    This is effectively what the rclswitch flag does in STRAHL (confusingly).
+  !     screen       real*8
+  !                    screening efficiency for the backflow from the divertor reservoir, i.e. fraction
+  !                    of rclb_rate which is screened in the SOL/divertor plasma and, therefore, gets
+  !                    to be a part of the parallel flow dsu before even re-entering the main plasma
   !     rcmb         real*8
   !                    fraction the impurity ion flow in the SOL which recombines before reaching
   !                    the divertor target, i.e. which enters the divertor neutrals reservoir
@@ -189,6 +193,8 @@ subroutine run(  &
   !                    Recycling from divertor wall [1/cm/s].
   !     rclb_rate    real*8 (nt_out)
   !                    Backflow from divertor neutrals reservoir towards the plasma [1/cm/s].
+  !     rcls_rate    real*8 (nt_out)
+  !                    Backflow from divertor neutrals reservoir which is screened from the plasma  [1/cm/s].
   !     rclp_rate    real*8 (nt_out)
   !                    Leakage from pump neutrals reservoir (if present) towards the plasma [1/cm/s].
   !     rclw_rate    real*8 (nt_out)
@@ -230,6 +236,7 @@ subroutine run(  &
 
   ! recycling and pumping inputs
   REAL*8, INTENT(IN)                   :: rcl
+  REAL*8, INTENT(IN)                   :: screen
   REAL*8, INTENT(IN)                   :: rcmb
   REAL*8, INTENT(IN)                   :: taudiv
   REAL*8, INTENT(IN)                   :: taupump
@@ -268,7 +275,8 @@ subroutine run(  &
   REAL*8, INTENT(OUT)                  :: N_dsul(nt_out)  ! parallel loss to limiter
 
   REAL*8, INTENT(OUT)                  :: rcld_rate(nt_out)   ! recycling from divertor wall
-  REAL*8, INTENT(OUT)                  :: rclb_rate(nt_out)   ! backflow from divertor neutrals reservoir
+  REAL*8, INTENT(OUT)                  :: rclb_rate(nt_out)   ! non-screened backflow from divertor neutrals reservoir
+  REAL*8, INTENT(OUT)                  :: rcls_rate(nt_out)   ! screened backflow from divertor neutrals reservoir
   REAL*8, INTENT(OUT)                  :: rclp_rate(nt_out)   ! leakage from pump neutrals reservoir
   REAL*8, INTENT(OUT)                  :: rclw_rate(nt_out)   ! recycling from main wall
   
@@ -277,7 +285,7 @@ subroutine run(  &
   REAL*8      :: Nmainret, Ndivret, Nmainwall, Ndivwall, divnew, pumpnew, nout, divold, pumpold
   REAL*8      :: diff(ir, nion), conv(ir, nion)
   REAL*8      :: tsu, dsu, dsul
-  REAL*8      :: rcld, rclb, rclp, rclw
+  REAL*8      :: rcld, rclb, rcls, rclp, rclw
   REAL*8      :: rn_t0_in(ir,nion) ! used to support optional argument rn_t0
   REAL*8      :: src_div_in(nt) ! used to support optional argument src_div
   INTEGER     :: sel_alg_opt
@@ -347,6 +355,7 @@ subroutine run(  &
      N_divret(kt) = Ndivret
      rcld_rate(kt) = 0.d0
      rclb_rate(kt) = 0.d0
+     rcls_rate(kt) = 0.d0
      rclp_rate(kt) = 0.d0
      rclw_rate(kt) = 0.d0
 
@@ -378,11 +387,11 @@ subroutine run(  &
              rr, pro, qpr, &
              dlen,  &
              dt, &   ! full time step
-             rcl, rcmb, tsu, dsu, dsul, divold, pumpold, & ! tsu,dsu,dsul,divnew from previous recycling step
+             rcl, screen, rcmb, tsu, dsu, dsul, divold, pumpold, & ! tsu,dsu,dsul,divnew,pumpnew from previous recycling step
              taudiv, tauwret, leak, volpump,  &
              a, b, c, d1, bet, gam, &  ! re-use memory allocation
              Nmainret, Ndivret, &         ! INOUT: Nmainret, Ndivret
-             rcld, rclb, rclp, rclw )    ! OUT: rcld, rclp, rclw
+             rcld, rclb, rcls, rclp, rclw )    ! OUT: rcld, rclb, rcls, rclp, rclw
         
      else   ! currently use Linder algorithm for any option other than 0
         ! Linder algorithm
@@ -393,10 +402,10 @@ subroutine run(  &
              rr, &
              dlen, &
              dt,  &    ! renaming dt-->det. In this subroutine, dt is half-step
-             rcl, rcmb, tsu, dsu, dsul, divold, pumpold, &
+             rcl, screen, rcmb, tsu, dsu, dsul, divold, pumpold, &
              taudiv, tauwret, leak, volpump, &
              evolveneut, &  
-             Nmainret, Ndivret, rcld, rclb, rclp, rclw)
+             Nmainret, Ndivret, rcld, rclb, rcls, rclp, rclw)
        
      endif
      
@@ -412,7 +421,7 @@ subroutine run(  &
           rr, pro,  &
           rcl, rcmb, taudiv, taupump, &
           S_pump, voldiv, cond, volpump, leak, &
-          src_div_in(it), rcld, divold, pumpold, &
+          src_div_in(it), rcld, rcls, divold, pumpold, &
           divnew, pumpnew, &              ! OUT: update to divold and pumpold
           Nmainwall, Ndivwall, nout, &    ! INOUT: updated values
           tsu, dsu, dsul)                 ! OUT: updated by edge model
@@ -440,6 +449,7 @@ subroutine run(  &
         N_divret(kt) = Ndivret
         rcld_rate(kt) = rcld
         rclb_rate(kt) = rclb
+        rcls_rate(kt) = rcls
         rclp_rate(kt) = rclp
         rclw_rate(kt) = rclw
 
@@ -539,7 +549,7 @@ subroutine edge_model( &
     rr, pro,  &
     rcl, rcmb, taudiv, taupump, &
     S_pump, voldiv, cond, volpump, leak, &
-    src_div_t, rcld, divold, pumpold, &
+    src_div_t, rcld, rcls, divold, pumpold, &
     divnew, pumpnew, Nmainwall, Ndivwall, nout, tsu, dsu, dsul)
 
   IMPLICIT NONE
@@ -575,6 +585,7 @@ subroutine edge_model( &
 
   REAL*8, INTENT(IN)                    :: src_div_t ! injected flux into the div. reservoir
   REAL*8, INTENT(IN)                    :: rcld      ! recycling flux from the div. wall into the div. reservoir
+  REAL*8, INTENT(IN)                    :: rcls      ! portion of backflow from divertor which is screened
   REAL*8, INTENT(IN)                    :: divold    ! particles initially in the div. reservoir (to update)
   REAL*8, INTENT(IN)                    :: pumpold   ! particles initially in the pump reservoir (to update)
 
@@ -637,10 +648,10 @@ subroutine edge_model( &
   ! time integrated losses at wall/limiters
   if (rcl.ge.0) then
      Nmainwall = Nmainwall + (dsul + tsu) * (1.-rcl)*det      ! rcl=0 or rcl>0, but always w/ divertor return
-     Ndivwall = Ndivwall + (dsu) * (1.-rcmb) * (1.-rcl)*det   ! rcl=0 or rcl>0, but always w/ divertor return
+     Ndivwall = Ndivwall + (dsu+rcls) * (1.-rcmb) * (1.-rcl)*det   ! rcl=0 or rcl>0, but always w/ divertor return
   else
      Nmainwall = Nmainwall + (dsul + tsu) * det      ! no recycling, no divertor return
-     Ndivwall = Ndivwall + (dsu) * (1.-rcmb) * det   ! no recycling, no divertor return
+     Ndivwall = Ndivwall + (dsu+rcls) * (1.-rcmb) * det   ! no recycling, no divertor return
   endif
 
   ! particles in divertor/pump reservoirs
@@ -653,7 +664,7 @@ subroutine edge_model( &
      if (voldiv.eq.0) then
         taustar_div = 1./(1./taudiv+1./taupump)  ! eff. time scale for divertor depletion
         ff_div = .5*det/taustar_div
-        divnew = ( divold*(1.-ff_div) + (dsu*rcmb + rcld + src_div_t)*det )/(1.+ff_div)
+        divnew = ( divold*(1.-ff_div) + ((dsu+rcls)*rcmb + rcld + src_div_t)*det )/(1.+ff_div)
         pumpnew = pumpold
      ! physical volumes for the reservoirs
      else
@@ -662,7 +673,7 @@ subroutine edge_model( &
            taupump_eff = voldiv/S_pump
            taustar_div = 1./(1./taudiv+1./taupump_eff)  ! eff. time scale for divertor depletion
            ff_div = .5*det/taustar_div
-           divnew = ( divold*(1.-ff_div) + (dsu*rcmb + rcld + src_div_t)*det )/(1.+ff_div)
+           divnew = ( divold*(1.-ff_div) + ((dsu+rcls)*rcmb + rcld + src_div_t)*det )/(1.+ff_div)
            pumpnew = pumpold
         ! pumping done from a secondary pump chamber via a conductance cond and defined by a speed S_pump
         else
@@ -671,7 +682,7 @@ subroutine edge_model( &
            taucond_eff_back = volpump/cond
            taustar_div = 1./(1./taudiv+1./taucond_eff_forw)  ! eff. time scale for flow divertor --> pump
            ff_div = .5*det/taustar_div
-           divnew = ( divold*(1.-ff_div) + (dsu*rcmb + rcld + src_div_t + (pumpold/taucond_eff_back))*det )/(1.+ff_div)
+           divnew = ( divold*(1.-ff_div) + ((dsu+rcls)*rcmb + rcld + src_div_t + (pumpold/taucond_eff_back))*det )/(1.+ff_div)
            if (leak.eq.0) then
               taustar_pump = 1./(1./taucond_eff_back+1./taupump_eff)  ! eff. time scale for pump depletion
            else
@@ -689,7 +700,7 @@ subroutine edge_model( &
      if (voldiv.eq.0) then
         taustar_div = taupump  ! eff. time scale for divertor depletion
         ff_div = .5*det/taustar_div
-        divnew = ( divold*(1.-ff_div) + (dsu*rcmb + rcld + src_div_t)*det )/(1.+ff_div)  
+        divnew = ( divold*(1.-ff_div) + ((dsu+rcls)*rcmb + rcld + src_div_t)*det )/(1.+ff_div)  
         pumpnew = pumpold
      ! physical volumes for the reservoirs
      else
@@ -698,7 +709,7 @@ subroutine edge_model( &
            taupump_eff = voldiv/S_pump
            taustar_div = taupump_eff  ! eff. time scale for divertor depletion
            ff_div = .5*det/taustar_div
-           divnew = ( divold*(1.-ff_div) + (dsu*rcmb + rcld + src_div_t)*det )/(1.+ff_div)
+           divnew = ( divold*(1.-ff_div) + ((dsu+rcls)*rcmb + rcld + src_div_t)*det )/(1.+ff_div)
            pumpnew = pumpold
         ! pumping done from a secondary pump chamber via a conductance cond and defined by a speed S_pump
         else
@@ -707,7 +718,7 @@ subroutine edge_model( &
            taucond_eff_back = volpump/cond
            taustar_div = taucond_eff_forw  ! eff. time scale for flow divertor --> pump
            ff_div = .5*det/taustar_div
-           divnew = ( divold*(1.-ff_div) + (dsu*rcmb + rcld + src_div_t + (pumpold/taucond_eff_back))*det )/(1.+ff_div)
+           divnew = ( divold*(1.-ff_div) + ((dsu+rcls)*rcmb + rcld + src_div_t + (pumpold/taucond_eff_back))*det )/(1.+ff_div)
            if (leak.eq.0) then
               taustar_pump = 1./(1./taucond_eff_back+1./taupump_eff)  ! eff. time scale for pump depletion
            else
