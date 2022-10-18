@@ -1,0 +1,61 @@
+Datafiles for sputtering yields of impurity atoms implanted
+into bulk materials as a function of impact energy, angle
+and concentration of impurity atoms into the surface material.    
+
+Available projectiles:
+D, He, B, N
+
+Available implanted impurities:
+He
+
+Available targets:
+W
+
+The tables are calculated with the Monte Carlo program
+trim.sp. The program assumes a nearly flat surface, a
+statistically roughness in the order of a monolayer is
+taken into account. The program assumes the impurity atoms
+being uniformly implanted into a layer of surface material
+until a given depth, which is reported in the tables.
+Additionally the impurity atoms are assumed to have no
+surface binding energy to the bulk material, meaning that
+they are released as thermal particles.
+
+The files named [projectile]_[impurity]_[target].y contain
+the calculated sputtering yield, defined as the mean
+number of sputtered impurity atoms per unity of incident
+projectile ions.
+The tables are arranged in rows providing the sputtering
+yield of the implanted impurity (Y_imp) in function of
+angle of incidence of the projectile, energy of the
+projectile and impurity concentration into the surface
+layer of material (C_imp, defined as N_imp/(N_bulk+N_imp)).
+On top of the tables the values for the  atomic numbers
+(Z) and the masses (m) of the projectile  (index 1) and
+the impurity target atoms (index 2) are given, as well
+as the depth of the assumed implantation profile.
+
+The files named [projectile]_[impurity]_[target]_fit.y
+contain the coefficients derived fitting the calculated
+sputtering yield data with the Bohdansky formula
+Y(E0)/C_imp = Q*Sn*(1-(Eth/E0)^(2/3))*(1-(Eth/E0))^2
+where E0 is the projectile energy, and Q and Eth are
+fitting parameters, contained in the tables for each
+available value of the projectile incidence angle.
+Sn is the nuclear stopping cross section, defined as
+Sn = (0.5*log(1+1.2288*epsilon))/
+     (epsilon+0.1728*sqrt(epsilon)+0.008*epsilon^0.1504)
+epsilon is the reduced energy, defined as epsilon = E0/ETF,
+where ETF = ((Z1*Z2*e^2)/(alpha_L))*((m1+m2)/(m2)) is the
+Thomas-Fermi energy, in which Z1, Z2 are the nuclear charges,
+and m1, m2 are the masses of the projectile and target atoms
+respectively, and e is the electron charge. Finally, alpha_L,
+defined as alpha_L = 0.4685*(Z1^(2/3)+Z2^(2/3))^(-1/2), in
+angstrom, is the Lindhard screening length.
+The increase of the calculated sputtering yield with the
+impurity concentration in the material is roughly linear,
+meaning that one single fit, giving Y(E0)/C_imp, can be
+indeed used.
+
+The original data and the fits are produced by K. Schmid,
+Garching, September 2022.

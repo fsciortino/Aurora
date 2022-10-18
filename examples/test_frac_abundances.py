@@ -63,9 +63,9 @@ _Te, fz = aurora.atomic.get_frac_abundances(
 
 # compare to fractial abundances obtained with ne*tau=1e19 m^-3.s
 # Use the get_atomic_relax_time function to use a finite ne*tau value
-_Te, fz, rate_coeffs = aurora.get_atomic_relax_time(
-    atom_data, ne_cm3, Te_eV, ne_tau=1e19, plot=False
-)
+# _Te, fz, rate_coeffs = aurora.get_atomic_relax_time(
+#     atom_data, ne_cm3, Te_eV, ne_tau=1e19, plot=False
+# )
 
 if plot:
     # overplot using cubic interpolation for smoother visualization:

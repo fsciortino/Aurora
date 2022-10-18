@@ -7,6 +7,8 @@ from .core import *
 from .atomic import *
 from .adas_files import *
 from .amdata import *
+from .surface import *
+from .trim_files import *
 
 from .source_utils import *
 from .transport_utils import *

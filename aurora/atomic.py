@@ -591,6 +591,84 @@ def get_frac_abundances(
     ]
 
 
+def get_Z_mean(
+    atom_data,
+    ne_cm3,
+    Te_eV=None,
+    Ti_eV=None,
+    n0_by_ne=0.0,
+    plot=True,
+    ax=None,
+    rho=None,
+    rho_lbl=None,
+):
+    r"""Calculate mean charge state from ionization and recombination equilibrium.
+    If n0_by_ne is not 0, radiative recombination and thermal charge exchange are summed.
+
+    This method can work with ne,Te and n0_by_ne arrays of arbitrary dimension, but plotting 
+    is only supported in 1D (defaults to flattened arrays).
+
+    Parameters
+    ----------
+    atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
+        necessary only if include_cx=True)
+    ne_cm3 : float or array
+        Electron density in units of :math:`cm^{-3}`
+    Te_eV : float or array, optional
+        Electron temperature in units of eV. If left to None, the Te grid given in the 
+        atomic data is used.
+    Ti_eV : float or array, optional
+        Bulk ion temperature in units of eV. If left to None, Ti is set to be equal to Te
+    n0_by_ne: float or array, optional
+        Ratio of background neutral hydrogen to electron density. If not 0, CX is considered.
+    plot : bool, optional
+        Show fractional abundances as a function of ne,Te profiles parameterization.
+    ax : matplotlib.pyplot Axes instance
+        Axes on which to plot if plot=True. If False, it creates new axes
+    rho : list or array, optional
+        Vector of radial coordinates on which ne,Te (and possibly n0_by_ne) are given. 
+        This is only used for plotting, if given. 
+    rho_lbl: str, optional
+        Label to be used for rho. If left to None, defaults to a general "x".
+
+    Returns
+    -------
+    Te : array
+        Electron temperatures as a function of which the mean charge state is given.
+    Z_mean : array
+        Mean charge state across the same grid used by the input ne,Te values. 
+
+    """    
+    
+    Te, fz = get_frac_abundances(atom_data, ne_cm3, Te_eV=Te_eV, Ti_eV=Ti_eV, n0_by_ne=n0_by_ne, superstages=[], plot=False)
+    Zarr = np.arange(fz.shape[1])
+    Z_mean = np.sum(fz * Zarr[None, :], axis=1)
+    
+    if plot:
+        # plot mean charge states
+        if ax is None:
+            fig, axx = plt.subplots()
+        else:
+            axx = ax
+
+        if rho is None:
+            x = Te
+            axx.set_xlabel("T$_e$ [eV]")
+            axx.set_xscale("log")
+        else:
+            if rho_lbl is None:
+                rho_lbl = "x"
+            x = rho
+            axx.set_xlabel(rho_lbl)
+            
+        axx.grid("on")
+        axx.set_xlim(x[0], x[-1])
+        plt.tight_layout()
+        plt.plot(x, Z_mean)
+        
+    return [Te,] + [Z_mean,]
+
+
 def get_cs_balance_terms(
     atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include_cx=True
 ):
