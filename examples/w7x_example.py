@@ -63,7 +63,7 @@ namelist["source_type"] = "const"
 namelist["source_rate"] = 2e20  # particles/s
 
 # Now get aurora setup
-asim = aurora.core.aurora_sim(namelist, geqdsk = {})
+asim = aurora.core.aurora_sim(namelist)
 
 # set time-independent transport coefficients (flat D=1 m^2/s, V=-2 cm/s)
 D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s

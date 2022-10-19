@@ -49,8 +49,8 @@ class aurora_sim:
         which users should modify for their runs.
     geqdsk : dict, optional
         EFIT gfile as returned after postprocessing by the :py:mod:`omfit_classes.omfit_eqdsk`
-        package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary
-        is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
+        package (OMFITgeqdsk class). If left to None (default), the minor and major radius must be
+        indicated in the namelist in order to create a radial grid.
 
     """
 
@@ -64,6 +64,7 @@ class aurora_sim:
 
         # make sure that any changes in namelist will not propagate back to the calling function
         self.namelist = deepcopy(namelist)
+        self.geqdsk = geqdsk # if None, minor (rvol_lcfs) and major radius (Raxis_cm) must be in namelist
         self.kin_profs = self.namelist["kin_profs"]
         self.imp = namelist["imp"]
 
@@ -78,28 +79,12 @@ class aurora_sim:
 
         self.reload_namelist()
 
-        if geqdsk is None:
-            # import omfit_eqdsk here to avoid issues with docs and packaging
-            from omfit_classes import omfit_eqdsk
-
-            # Fetch geqdsk from MDS+ (using EFIT01) and post-process it using the OMFIT geqdsk format.
-            self.geqdsk = omfit_eqdsk.OMFITgeqdsk("").from_mdsplus(
-                device=namelist["device"],
-                shot=namelist["shot"],
-                time=namelist["time"],
-                SNAPfile="EFIT01",
-                fail_if_out_of_range=False,
-                time_diff_warning_threshold=20,
-            )
-        else:
-            self.geqdsk = geqdsk
-
         if 'Raxis_cm' in self.namelist:
             self.Raxis_cm = self.namelist['Raxis_cm'] # cm
-        elif 'RMAXIS' in self.geqdsk:
+        elif self.geqdsk is not None and 'RMAXIS' in self.geqdsk:
             self.Raxis_cm = self.geqdsk["RMAXIS"] * 100.0  # cm
 
-        if 'BCENTR' in self.geqdsk:
+        if self.geqdsk is not None and 'BCENTR' in self.geqdsk:
             self.namelist['Baxis'] = self.geqdsk["BCENTR"]
         if ('prompt_redep_flag' in self.namelist and self.namelist['prompt_redep_flag'])\
            and not hasattr(self, 'Baxis'):
@@ -182,7 +167,7 @@ class aurora_sim:
             # separatrix location explicitly given by user
             self.rvol_lcfs = self.namelist['rvol_lcfs']
 
-        elif hasattr(self, 'geqdsk'):
+        elif self.geqdsk is not None:
             # Get r_V to rho_pol mapping
             rho_pol, _rvol = grids_utils.get_rhopol_rvol_mapping(self.geqdsk)
             rvol_lcfs = interp1d(rho_pol, _rvol)(1.0)
@@ -197,7 +182,7 @@ class aurora_sim:
         grid_params = grids_utils.create_radial_grid(self.namelist, plot=False)
         self.rvol_grid, self.pro_grid, self.qpr_grid, self.prox_param = grid_params
 
-        if hasattr(self, 'geqdsk') and len(self.geqdsk):
+        if self.geqdsk is not None:
             # get rho_poloidal grid corresponding to aurora internal (rvol) grid
             self.rhop_grid = interp1d(_rvol, rho_pol, fill_value="extrapolate")(
                 self.rvol_grid
