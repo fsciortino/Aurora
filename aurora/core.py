@@ -49,8 +49,8 @@ class aurora_sim:
         which users should modify for their runs.
     geqdsk : dict, optional
         EFIT gfile as returned after postprocessing by the :py:mod:`omfit_classes.omfit_eqdsk`
-        package (OMFITgeqdsk class). If left to None (default), the geqdsk dictionary
-        is constructed starting from the gfile in the MDS+ tree indicated in the namelist.
+        package (OMFITgeqdsk class). If left to None (default), the minor and major radius must be
+        indicated in the namelist in order to create a radial grid.
 
     """
 
@@ -64,6 +64,7 @@ class aurora_sim:
 
         # make sure that any changes in namelist will not propagate back to the calling function
         self.namelist = deepcopy(namelist)
+        self.geqdsk = geqdsk # if None, minor (rvol_lcfs) and major radius (Raxis_cm) must be in namelist
         self.kin_profs = self.namelist["kin_profs"]
         self.imp = namelist["imp"]
 
@@ -78,24 +79,17 @@ class aurora_sim:
 
         self.reload_namelist()
 
-        if geqdsk is None:
-            # import omfit_eqdsk here to avoid issues with docs and packaging
-            from omfit_classes import omfit_eqdsk
+        if 'Raxis_cm' in self.namelist:
+            self.Raxis_cm = self.namelist['Raxis_cm'] # cm
+        elif self.geqdsk is not None and 'RMAXIS' in self.geqdsk:
+            self.Raxis_cm = self.geqdsk["RMAXIS"] * 100.0  # cm
 
-            # Fetch geqdsk from MDS+ (using EFIT01) and post-process it using the OMFIT geqdsk format.
-            self.geqdsk = omfit_eqdsk.OMFITgeqdsk("").from_mdsplus(
-                device=namelist["device"],
-                shot=namelist["shot"],
-                time=namelist["time"],
-                SNAPfile="EFIT01",
-                fail_if_out_of_range=False,
-                time_diff_warning_threshold=20,
-            )
-        else:
-            self.geqdsk = geqdsk
-
-        self.Raxis_cm = self.geqdsk["RMAXIS"] * 100.0  # cm
-        self.namelist["Baxis"] = self.geqdsk["BCENTR"]
+        if self.geqdsk is not None and 'BCENTR' in self.geqdsk:
+            self.namelist['Baxis'] = self.geqdsk["BCENTR"]
+        if ('prompt_redep_flag' in self.namelist and self.namelist['prompt_redep_flag'])\
+           and not hasattr(self, 'Baxis'):
+            # need magnetic field to model prompt redeposition
+            raise ValueError('Missing magnetic field on axis! Please define this in the namelist')
 
         # specify which atomic data files should be used -- use defaults unless user specified in namelist
         atom_files = {}
@@ -169,29 +163,42 @@ class aurora_sim:
     def setup_grids(self):
         """Method to set up radial and temporal grids given namelist inputs.
         """
-        # Get r_V to rho_pol mapping
-        rho_pol, _rvol = grids_utils.get_rhopol_rvol_mapping(self.geqdsk)
+        if 'rvol_lcfs' in self.namelist:
+            # separatrix location explicitly given by user
+            self.rvol_lcfs = self.namelist['rvol_lcfs']
 
-        rvol_lcfs = interp1d(rho_pol, _rvol)(1.0)
-        self.rvol_lcfs = self.namelist["rvol_lcfs"] = np.round(
-            rvol_lcfs, 3
-        )  # set limit on accuracy
+        elif self.geqdsk is not None:
+            # Get r_V to rho_pol mapping
+            rho_pol, _rvol = grids_utils.get_rhopol_rvol_mapping(self.geqdsk)
+            rvol_lcfs = interp1d(rho_pol, _rvol)(1.0)
+            self.rvol_lcfs = self.namelist["rvol_lcfs"] = np.round(
+                rvol_lcfs, 3
+            )  # set limit on accuracy
 
+        else:
+            raise ValueError('Could not identify rvol_lcfs. Either provide this in the namelist or provide a geqdsk equilibrium')
+            
         # create radial grid
         grid_params = grids_utils.create_radial_grid(self.namelist, plot=False)
         self.rvol_grid, self.pro_grid, self.qpr_grid, self.prox_param = grid_params
 
-        # get rho_poloidal grid corresponding to aurora internal (rvol) grid
-        self.rhop_grid = interp1d(_rvol, rho_pol, fill_value="extrapolate")(
-            self.rvol_grid
-        )
-        self.rhop_grid[0] = 0.0  # enforce on axis
+        if self.geqdsk is not None:
+            # get rho_poloidal grid corresponding to aurora internal (rvol) grid
+            self.rhop_grid = interp1d(_rvol, rho_pol, fill_value="extrapolate")(
+                self.rvol_grid
+            )
+            self.rhop_grid[0] = 0.0  # enforce on axis
 
-        # Save R on LFS and HFS
-        self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(
-            self.geqdsk, rho_pol=self.rhop_grid
-        )
+            # Save R on LFS and HFS
+            #self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(
+            #    self.geqdsk, rho_pol=self.rhop_grid
+            #)
+            
+        else:
+            # use rho_vol = rvol/rvol_lcfs
+            self.rhop_grid = self.rvol_grid / self.rvol_lcfs
 
+        # ----------------
         # define time grid ('timing' must be in namelist)
         self.time_grid, self.save_time = grids_utils.create_time_grid(
             timing=self.namelist["timing"], plot=False
@@ -320,10 +327,14 @@ class aurora_sim:
                         "source_cm_out_lcfs",
                         "imp",
                         "prompt_redep_flag",
-                        "Baxis",
                         "main_ion_A",
                     ]
                 }
+                if 'prompt_redep_flag' in self.namelist and\
+                   self.namelist['prompt_redep_flag']:
+                    # only need Baxis for prompt redeposition model
+                    nml_rcl_prof['Baxis'] = self.namelist['Baxis']
+                    
                 nml_rcl_prof["source_width_in"] = 0
                 nml_rcl_prof["source_width_out"] = 0
 
