@@ -57,21 +57,24 @@ def load_default_namelist(device=None):
         },
         # --------------------
         # radial grid
-        "bound_sep": 2.0,
-        "lim_sep": 1.0,
-        "clen_divertor": 17.0,
-        "clen_limiter": 0.5,
+        "bound_sep": 2.0, # cm
+        "lim_sep": 1.0, # cm
+        "clen_divertor": 17.0, # m
+        "clen_limiter": 0.5, # m
         "dr_0": 0.3,
         "dr_1": 0.05,
         "K": 6.0,
         "SOL_decay": 0.05,
         # -------------------
+        # sawteeth model
         "saw_model": {
             "saw_flag": False,
             "rmix": 1000.0,
             "times": [1.0,],
             "crash_width": 1.0,
         },
+        # -------------------
+        # ELM model
         "ELM_model": {
             "ELM_flag": False,
             "ELM_time_windows": None,
@@ -81,23 +84,40 @@ def load_default_namelist(device=None):
             "recovery_duration": [0.5],  # ms
         },
         # --------------------
-        # edge/recycling
+        # edge
         "recycling_flag": False,
-        "wall_recycling": 0.0,
         "screening_eff": 0.0,
         "div_recomb_ratio": 1.0,
         "tau_div_SOL_ms": 50.0,  # ms
-        "tau_rcl_ret_ms": 50.0,  # ms
         "SOL_mach": 0.1,
+        "SOL_mach_ELM": 0.5,
+        # --------------------
+        # plasma-wall interaction
+        #"advanced_PWI": False,
+        "phys_surfaces": False,
+        "surf_mainwall": 1.0e5,  # cm^2
+        "surf_divwall": 1.0e4,  # cm^2
+        "mainwall_roughness": 1.0,
+        "divwall_roughness": 1.0,
+        "wall_recycling": 0.0,
+        "tau_rcl_ret_ms": 50.0, # ms
+        "Te_ped_intra_ELM": 400.0, # eV
+        "Te_div_inter_ELM": 30.0, # eV
+        "Te_lim_intra_ELM": 20.0, # eV
+        "Te_lim_inter_ELM": 10.0, # eV
+        "Ti_over_Te": 1.0,
+        "gammai": 2.0,
+        "ELM_energy_decay_param": 2000, # s^-1
+        "ELM_energy_delay_param": 0.001, # s
         # --------------------
         # pumping
         "phys_volumes": False,
+        "vol_div": 1.0e6,  # cm^3
         "pump_chamber": False,
+        "vol_pump": 1.0e6,  # cm^3
         "tau_pump_ms": 500.0,  # ms
         "S_pump": 5.0e6,  # cm^3/s
-        "vol_div": 1.0e6,  # cm^3
         "L_divpump": 1.0e7, # cm^3/s
-        "vol_pump": 1.0e6,  # cm^3
         "L_leak": 0.0,  # cm^3/s
         # --------------------
         # kinetic profiles
@@ -135,13 +155,15 @@ def load_default_namelist(device=None):
     
         if device=="AUG": # Geometry-related input parameters adapted for AUG
             
-            namelist["vol_div"] = 0.4e6
-            namelist["vol_pump"] = 1.0e6
-            namelist["source_cm_out_lcfs"] = 15.0
-            namelist["bound_sep"] = 8.0
-            namelist["lim_sep"] = 6.0
-            namelist["clen_divertor"] = 50.0 
-            namelist["clen_lim"] = 1.0   
+            namelist["vol_div"] = 0.4e6 # cm^3
+            namelist["vol_pump"] = 1.0e6 # cm^3
+            namelist["surf_mainwall"] = 1.0e5 # cm^2
+            namelist["surf_divwall"] = 1.0e4 # cm^2            
+            namelist["source_cm_out_lcfs"] = 15.0 # cm
+            namelist["bound_sep"] = 8.0 # cm
+            namelist["lim_sep"] = 5.0 # cm
+            namelist["clen_divertor"] = 50.0 # m
+            namelist["clen_lim"] = 1.0 # m
             namelist["shot"] = 39148    
             namelist["time"] = 2.7     
             

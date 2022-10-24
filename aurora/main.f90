@@ -36,7 +36,7 @@ subroutine run(  &
         rcl, screen, rcmb, taudiv, taupump, tauwret, &
         S_pump, voldiv, cond, volpump, leak, &
         rvol_lcfs, dbound, dlim, prox, &
-        rn_t0, alg_opt, evolneut, src_div, &   ! OPTIONAL INPUTS:
+        rn_t0, ndiv_t0, npump_t0, nmainwall_t0, ndivwall_t0, alg_opt, evolneut, src_div, &   ! OPTIONAL INPUTS:
         rn_out, &  ! OUT
         N_mainwall, N_divwall, N_div, N_pump, N_out, N_mainret, N_divret, &  ! OUT
         N_tsu, N_dsu, N_dsul, &   !OUT
@@ -152,6 +152,18 @@ subroutine run(  &
   !     rn_t0        real*8 (ir,nion), optional
   !                    Impurity densities at the start time [1/cm^3].
   !                    If not provided, all elements are set to 0.
+  !     ndiv_t0      real*8, optional
+  !                    Impurity density in the divertor reservoir at the start time [1/cm].
+  !                    If not provided, this is set to 0.
+  !     npump_t0     real*8, optional
+  !                    Impurity density in the pump reservoir at the start time [1/cm].
+  !                    If not provided, this is set to 0.
+  !     nmainwall_t0 real*8, optional
+  !                    Impurity density retained at the main wall at the start time [1/cm].
+  !                    If not provided, this is set to 0.
+  !     ndivwall_t0  real*8, optional
+  !                    Impurity density retained at the divertor wall at the start time [1/cm].
+  !                    If not provided, this is set to 0.
   !     alg_opt      integer, optional
   !                    Integer to indicate algorithm to be used.
   !                    If set to 0, use the finite-differences algorithm used in the 2018 version of STRAHL.
@@ -255,6 +267,10 @@ subroutine run(  &
 
   ! OPTIONAL ARGUMENTS
   REAL*8, INTENT(IN), OPTIONAL         :: rn_t0(ir,nion)
+  REAL*8, INTENT(IN), OPTIONAL         :: ndiv_t0
+  REAL*8, INTENT(IN), OPTIONAL         :: npump_t0
+  REAL*8, INTENT(IN), OPTIONAL         :: nmainwall_t0
+  REAL*8, INTENT(IN), OPTIONAL         :: ndivwall_t0
   INTEGER, INTENT(IN), OPTIONAL        :: alg_opt
   LOGICAL, INTENT(IN), OPTIONAL        :: evolneut
   REAL*8, INTENT(IN), OPTIONAL         :: src_div(nt)
@@ -287,6 +303,10 @@ subroutine run(  &
   REAL*8      :: tsu, dsu, dsul
   REAL*8      :: rcld, rclb, rcls, rclp, rclw
   REAL*8      :: rn_t0_in(ir,nion) ! used to support optional argument rn_t0
+  REAL*8      :: ndiv_t0_in ! used to support optional argument ndiv_t0
+  REAL*8      :: npump_t0_in ! used to support optional argument npump_t0
+  REAL*8      :: nmainwall_t0_in ! used to support optional argument nmainwall_t0
+  REAL*8      :: ndivwall_t0_in ! used to support optional argument ndivwall_t0
   REAL*8      :: src_div_in(nt) ! used to support optional argument src_div
   INTEGER     :: sel_alg_opt
   
@@ -295,13 +315,35 @@ subroutine run(  &
 
   LOGICAL :: evolveneut
     
-  ! rn_time0 is an optional argument. if user does not provide it, set all array elements to 0
+  ! rn_t0 is an optional argument. if user does not provide it, set all array elements to 0
   if(present(rn_t0))then
      rn_t0_in=rn_t0
   else
      rn_t0_in=0.0d0 ! all elements set to 0
   endif
-
+  
+  ! ndiv_t0, npump_t0, nmainwall_t0, ndivwall_t0 are optional arguments. if user does not provide them, set them to 0
+  if(present(ndiv_t0))then
+     ndiv_t0_in=ndiv_t0
+  else
+     ndiv_t0_in=0.0d0
+  endif
+  if(present(npump_t0))then
+     npump_t0_in=npump_t0
+  else
+     npump_t0_in=0.0d0
+  endif
+  if(present(nmainwall_t0))then
+     nmainwall_t0_in=nmainwall_t0
+  else
+     nmainwall_t0_in=0.0d0
+  endif
+  if(present(ndivwall_t0))then
+     ndivwall_t0_in=ndivwall_t0
+  else
+     ndivwall_t0_in=0.0d0
+  endif
+  
   if(present(alg_opt))then
      sel_alg_opt=alg_opt
   else
@@ -319,21 +361,25 @@ subroutine run(  &
   else
      src_div_in = 0.0d0 ! all elements set to 0
   endif
-  
-  ! initialize edge quantities
-  Nmainret=0.d0
-  Ndivret=0.d0
-  Nmainwall = 0.d0
-  Ndivwall = 0.d0
-  divnew = 0.0d0
-  pumpnew = 0.0d0
-  nout = 0.d0
-  tsu = 0.0d0
-  dsu = 0.0d0
-  dsul = 0.0d0
 
   ! set start densities
   rn = rn_t0_in  ! all ir, nion points
+  
+  ! set start contents in the dynamic reservoirs
+  divnew = ndiv_t0_in
+  pumpnew = npump_t0_in
+  Nmainret = nmainwall_t0_in
+  Ndivret = ndivwall_t0_in
+  
+  ! initialize permanent reservoirs
+  Nmainwall = 0.d0
+  Ndivwall = 0.d0
+  nout = 0.d0
+  
+  ! initialize fluxes
+  tsu = 0.0d0
+  dsu = 0.0d0
+  dsul = 0.0d0
 
   ! Set starting values in final output arrays
   it = 1

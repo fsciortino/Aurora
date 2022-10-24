@@ -40,7 +40,7 @@ def get_trim_file_loc(filename, filetype):
         Name of the TRIM file of interest, e.g. 'Ar_W.rn'.
     filetype : str
         TRIM file type. Options:
-        "bulk_sputter", "imp_sputter", "refl"
+        "bulk_sputter", "depth", "imp_sputter", "refl"
     Returns
     -------
     file_loc : str
@@ -67,13 +67,16 @@ def trim_files_dict():
         interest in fusion research. For each ion, a sub-dictionary contains the the type of
         interaction, with subkeys equal atomic symbols of the most common wall materials.
         Not all files types are available for all ions.
-        Reflection data (of the type rn,re) are referred to the plasma species
+        Reflection data (of the type rn,re) are referred to the species
         which is reflected from the surface, i.e. the projectile, with logic
         [{projectile}]["Reflection"][{target_material}].
-        Bulk sputtering data (of the type y, ye) are referred to the plasma species
+        Bulk sputtering data (of the type y, ye) are referred to the species
         which is sputtered from the surface, i.e. the bulk target, with logic
         [{target_material}]["Bulk_sputtering"][{projectile}].
-        Impurity sputtering data (of the type y) are referred to the plasma species
+        Implantation depth data (of the type d) are referred to the species
+        which is implanted in the surface, i.e. the implanted impurity, with logic
+        [{implanted_impurity}]["Implantation_depth"][target_material].
+        Impurity sputtering data (of the type y, ye) are referred to the species
         which is sputtered from the surface, i.e. the implanted impurity, with logic
         [{implanted_impurity}]["Impurity_sputtering"][target_material][projectile].
         
@@ -173,23 +176,40 @@ def trim_files_dict():
     files["He"]["Reflection"]["W"]["re"] = "He_W.re"
     files["He"]["Reflection"]["W"]["re_fit"] = "He_W_fit.re"
     
-    # Helium sputtering (implanted in different wall materials), from different plasma species
+    # Helium implantation depth in different wall materials
+    files["He"]["Implantation_depth"] = {}
+    
+    files["He"]["Implantation_depth"]["Be"] = {}
+    files["He"]["Implantation_depth"]["Be"]["d"] = "He_Be.d"
+    files["He"]["Implantation_depth"]["C"] = {}
+    files["He"]["Implantation_depth"]["C"]["d"] = "He_C.d"   
+    files["He"]["Implantation_depth"]["W"] = {}
+    files["He"]["Implantation_depth"]["W"]["d"] = "He_W.d"
+    
+    # Helium sputtering, implanted in different wall materials, from different plasma species
     files["He"]["Impurity_sputtering"] = {} 
     
     files["He"]["Impurity_sputtering"]["W"] = {}
     files["He"]["Impurity_sputtering"]["W"]["D"] = {}
     files["He"]["Impurity_sputtering"]["W"]["D"]["y"] = "D_He_W.y"
     files["He"]["Impurity_sputtering"]["W"]["D"]["y_fit"] = "D_He_W_fit.y"
+    files["He"]["Impurity_sputtering"]["W"]["D"]["ye"] = "D_He_W.ye"
+    #files["He"]["Impurity_sputtering"]["W"]["D"]["ye_fit"] = "D_He_W_fit.ye"
     files["He"]["Impurity_sputtering"]["W"]["He"] = {}
     files["He"]["Impurity_sputtering"]["W"]["He"]["y"] = "He_He_W.y"
-    files["He"]["Impurity_sputtering"]["W"]["He"]["y_fit"] = "He_He_W_fit.y"    
+    files["He"]["Impurity_sputtering"]["W"]["He"]["y_fit"] = "He_He_W_fit.y" 
+    files["He"]["Impurity_sputtering"]["W"]["He"]["ye"] = "He_He_W.ye"
+    #files["He"]["Impurity_sputtering"]["W"]["He"]["ye_fit"] = "He_He_W_fit.ye"
     files["He"]["Impurity_sputtering"]["W"]["B"] = {}
     files["He"]["Impurity_sputtering"]["W"]["B"]["y"] = "B_He_W.y"
-    files["He"]["Impurity_sputtering"]["W"]["B"]["y_fit"] = "B_He_W_fit.y"    
+    files["He"]["Impurity_sputtering"]["W"]["B"]["y_fit"] = "B_He_W_fit.y"   
+    files["He"]["Impurity_sputtering"]["W"]["B"]["ye"] = "B_He_W.ye"
+    #files["He"]["Impurity_sputtering"]["W"]["B"]["ye_fit"] = "B_He_W_fit.ye"
     files["He"]["Impurity_sputtering"]["W"]["N"] = {}
     files["He"]["Impurity_sputtering"]["W"]["N"]["y"] = "N_He_W.y"
     files["He"]["Impurity_sputtering"]["W"]["N"]["y_fit"] = "N_He_W_fit.y"  
-
+    files["He"]["Impurity_sputtering"]["W"]["N"]["ye"] = "N_He_W.ye"
+    #files["He"]["Impurity_sputtering"]["W"]["N"]["ye_fit"] = "N_He_W_fit.ye"
 
     # Data regarding beryllium as impurity species
     files["Be"] = {}

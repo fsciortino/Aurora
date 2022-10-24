@@ -55,11 +55,13 @@ namelist['timing']['dt_start'][0] = 5e-5 # dt values at the beginning of the sim
 namelist['ELM_model']['ELM_flag'] = True
 namelist['ELM_model']['ELM_time_windows'] = None # ELMs for the entire duration of the simulation
 namelist['ELM_model']['ELM_frequency'] = 100 # Hz
-namelist['ELM_model']['crash_duration'] = 0.5 # ms
+namelist['ELM_model']['crash_duration'] = 0.05 # ms
 namelist['ELM_model']['plateau_duration'] = 0.0 # ms
 namelist['ELM_model']['recovery_duration'] = 0.5 # ms
 
 # adapt the time grid for ELMs
+#   in order to simulate an instantaneous ELM crash, one should set the
+#   'crash_duration' parameter equal to the intra-ELM time step defined here below
 dt_intra_ELM = 5e-5 # constant dt values during the intra-ELM phases
 dt_increase_inter_ELM = 1.05 # dt multiplier at every time steps in the inter-ELM phases
 namelist['timing'] = aurora.transport_utils.ELM_time_grid(namelist['timing'], namelist['ELM_model'], dt_intra_ELM, dt_increase_inter_ELM)
