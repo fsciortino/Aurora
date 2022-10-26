@@ -163,17 +163,17 @@ class aurora_sim:
     def setup_grids(self):
         """Method to set up radial and temporal grids given namelist inputs.
         """
-        if 'rvol_lcfs' in self.namelist:
-            # separatrix location explicitly given by user
-            self.rvol_lcfs = self.namelist['rvol_lcfs']
-
-        elif self.geqdsk is not None:
+        if self.geqdsk is not None:
             # Get r_V to rho_pol mapping
             rho_pol, _rvol = grids_utils.get_rhopol_rvol_mapping(self.geqdsk)
             rvol_lcfs = interp1d(rho_pol, _rvol)(1.0)
             self.rvol_lcfs = self.namelist["rvol_lcfs"] = np.round(
                 rvol_lcfs, 3
             )  # set limit on accuracy
+        
+        elif 'rvol_lcfs' in self.namelist:
+            # separatrix location explicitly given by user
+            self.rvol_lcfs = self.namelist['rvol_lcfs']
 
         else:
             raise ValueError('Could not identify rvol_lcfs. Either provide this in the namelist or provide a geqdsk equilibrium')
