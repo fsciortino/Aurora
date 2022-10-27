@@ -995,10 +995,12 @@ class aurora_sim:
         time_out = self.time_out.copy()
         save_time = self.save_time.copy()
         par_loss_rate = self.par_loss_rate.copy()
+        rcl_rad_prof = self.rcl_rad_prof.copy()
         src_core = self.src_core.copy()
         Sne_rates = self.Sne_rates.copy()
         Rne_rates = self.Rne_rates.copy()
         saw_on = self.saw_on.copy()
+        src_div = self.src_div.copy()
         nz_all = None if nz_init is None else nz_init
 
         while sim_steps < len(time_grid):
@@ -1006,11 +1008,13 @@ class aurora_sim:
             self.time_grid = self.time_out = time_grid[sim_steps : sim_steps + n_steps]
             self.save_time = save_time[sim_steps : sim_steps + n_steps]
             self.par_loss_rate = par_loss_rate[:, sim_steps : sim_steps + n_steps]
+            self.rcl_rad_prof = rcl_rad_prof[:, sim_steps  : sim_steps + n_steps]
             self.src_core = src_core[:, sim_steps : sim_steps + n_steps]
             self.Sne_rates = Sne_rates[:, :, sim_steps : sim_steps + n_steps]
             self.Rne_rates = Rne_rates[:, :, sim_steps : sim_steps + n_steps]
             self.saw_on = saw_on[sim_steps : sim_steps + n_steps]
-
+            self.src_div = self.src_div[sim_steps : sim_steps + n_steps]
+            
             sim_steps += n_steps
 
             # get charge state densities from latest time step
