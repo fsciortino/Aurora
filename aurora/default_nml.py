@@ -90,10 +90,21 @@ def load_default_namelist(device=None):
         "div_recomb_ratio": 1.0,
         "tau_div_SOL_ms": 50.0,  # ms
         "SOL_mach": 0.1,
-        "SOL_mach_ELM": 0.5,
+        "SOL_mach_ELM": 0.1,
         # --------------------
         # plasma-wall interaction
-        #"advanced_PWI": False,
+        "advanced_PWI": {
+            "advanced_PWI_flag": False,
+            "main_wall_material": 'W',
+            "div_wall_material": 'W',
+            "mode": 'const',
+            "species": [''],
+            "main_wall_fluxes": [0], # s^-1
+            "div_wall_fluxes": [0], # s^-1
+            "files": [''],
+            "characteristic_impact_energy_main_wall": 200, # eV
+            "characteristic_impact_energy_div_wall": 500, # eV
+        },
         "phys_surfaces": False,
         "surf_mainwall": 1.0e5,  # cm^2
         "surf_divwall": 1.0e4,  # cm^2

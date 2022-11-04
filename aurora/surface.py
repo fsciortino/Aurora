@@ -1242,6 +1242,8 @@ def get_impact_energy(Te, projectile, mode = 'sheath' ,Ti_over_Te = 1.0, gammai 
     elif projectile == 'W':
         mi = 183.85*mp
         z = 74
+    else:
+        raise ValueError(f"Calculation of impact energy not available for impurity {projectile}!")
 
     if mode == 'sheath':
 
@@ -1297,12 +1299,12 @@ def get_impact_energy(Te, projectile, mode = 'sheath' ,Ti_over_Te = 1.0, gammai 
         
         # find the time at which there is the peak value, in normalized units of x/cs
         #   (i.e. the time, along the parallel coordinate x from the midplane, at which
-        #    the maximum in Q occurs will t_max = t_max_norm * (x/cs))
+        #   the maximum in Q occurs will t_max = t_max_norm * (x/cs))
         max_index = np.nanargmax(Q)
         t_max_norm = t[max_index]
         
         # now t_max_norm will be a parameter in the equation giving alpha, i.e. the factor
-        #   which will multiply T_e_ped to give the maximum impact energy
+        #   which will multiply Te_ped to give the maximum impact energy
         alpha = (Z_mean+1)/(2*t_max_norm**2)+1
         
         # peak impact energy
@@ -1356,7 +1358,9 @@ def incidence_angle(projectile):
     elif projectile == 'Ar':
         angle = 55        
     elif projectile == 'W':
-        angle = 45        
+        angle = 45
+    else:
+        raise ValueError(f"Mean incidence angle not available for impurity {projectile}!") 
         
     return angle
 
@@ -1376,9 +1380,7 @@ def calc_implanted_impurity_concentration(sigma_imp, imp, bulk_target, implantat
     imp : str
         Atomic symbol of the impurity.
     bulk_target : str
-        Atomic symbol of the bulk taget material.
-    wall_type : str
-        Type of considered wall ("main_wall" or "divertor_wall").
+        Atomic symbol of the bulk target material.
     implantation_depth : float
         Assumed depth of a uniform implantation profile of the impurity
         in the material, in angstrom.
@@ -1394,7 +1396,7 @@ def calc_implanted_impurity_concentration(sigma_imp, imp, bulk_target, implantat
     # density and molar mass of the bulk material
     if bulk_target == 'Be':
         rho = 1.80 # g/cm^3
-        M = 183.85 # g/mol
+        M = 9.01 # g/mol
     elif bulk_target == 'C':
         rho = 1.85 # g/cm^3
         M = 12.01 # g/mol
@@ -1423,7 +1425,7 @@ def calc_implanted_impurity_concentration(sigma_imp, imp, bulk_target, implantat
 
 def calc_implanted_impurity_density(C_imp, imp, bulk_target, implantation_depth):
     """
-    Calculate the surface of the implanted impurity into a bulk material
+    Calculate the surface density of the implanted impurity into a bulk material
     starting from a given value of implantation concentration.
     The conversion will of course depend on the implantation depth.
 
@@ -1436,9 +1438,7 @@ def calc_implanted_impurity_density(C_imp, imp, bulk_target, implantation_depth)
     imp : str
         Atomic symbol of the impurity.
     bulk_target : str
-        Atomic symbol of the bulk taget material.
-    wall_type : str
-        Type of considered wall ("main_wall" or "divertor_wall").
+        Atomic symbol of the bulk target material.
     implantation_depth : float
         Assumed depth of a uniform implantation profile of the impurity
         in the material, in angstrom.
@@ -1454,7 +1454,7 @@ def calc_implanted_impurity_density(C_imp, imp, bulk_target, implantation_depth)
     # density and molar mass of the bulk material
     if bulk_target == 'Be':
         rho = 1.80 # g/cm^3
-        M = 183.85 # g/mol
+        M = 9.01 # g/mol
     elif bulk_target == 'C':
         rho = 1.85 # g/cm^3
         M = 12.01 # g/mol
@@ -1527,6 +1527,8 @@ def calc_impurity_saturation_density(imp, bulk_target, E0):
             # Estimated values of the saturation density of He implanted in W
             #   in function of a characterstic He impact energy E0
             sigma_imp_sat = fun(E0)
+    else:
+        raise ValueError(f"Implanted impurity saturation density not available for impurity {imp} into material {bulk_target}!")   
             
     return sigma_imp_sat
     

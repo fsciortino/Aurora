@@ -26,6 +26,7 @@ import os, sys
 import numpy as np
 from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.constants import e as q_electron, m_p
+import pandas as pd
 import pickle as pkl
 from copy import deepcopy
 from scipy.integrate import cumtrapz
@@ -122,6 +123,9 @@ class aurora_sim:
 
         # set up kinetic profiles and atomic rates
         self.setup_kin_profs_depts()
+        
+        # set up parameters for plasma-wall interaction model
+        self.setup_PWI_model()
 
     def reload_namelist(self, namelist=None):
         """(Re-)load namelist to update scalar variables.
@@ -130,9 +134,12 @@ class aurora_sim:
             self.namelist = namelist
 
         # Extract other inputs from namelist:
+            
         self.mixing_radius = self.namelist["saw_model"]["rmix"]
         self.decay_length_boundary = self.namelist["SOL_decay"]
-        self.wall_recycling = self.namelist["wall_recycling"]
+        
+        # Edge parameters
+        
         self.screening_eff = self.namelist["screening_eff"]
         if self.screening_eff < 0.0 or self.screening_eff > 1.0:
             raise ValueError("screening_eff must be between 0.0 and 1.0!") 
@@ -140,12 +147,34 @@ class aurora_sim:
         if self.div_recomb_ratio < 0.0 or self.div_recomb_ratio > 1.0:
             raise ValueError("div_recomb_ratio must be between 0.0 and 1.0!") 
         self.tau_div_SOL_ms = self.namelist["tau_div_SOL_ms"]
-        self.tau_pump_ms = self.namelist["tau_pump_ms"]
+        
+        # Plasma-wall interaction parameters
+        
+        self.wall_recycling = self.namelist["wall_recycling"]
         self.tau_rcl_ret_ms = self.namelist["tau_rcl_ret_ms"]
         self.surf_mainwall = self.namelist["surf_mainwall"]
         self.surf_divwall = self.namelist["surf_divwall"]
         self.mainwall_roughness = self.namelist["mainwall_roughness"]
-        self.divwall_roughness = self.namelist["divwall_roughness"]        
+        self.divwall_roughness = self.namelist["divwall_roughness"] 
+        self.advanced_PWI_flag = self.namelist['advanced_PWI']['advanced_PWI_flag']
+        self.main_wall_material = self.namelist['advanced_PWI']['main_wall_material']
+        self.div_wall_material = self.namelist['advanced_PWI']['div_wall_material']
+        self.advanced_PWI_species = self.namelist['advanced_PWI']['species']
+        self.advanced_PWI_mode = self.namelist['advanced_PWI']['mode']
+        self.advanced_PWI_main_wall_fluxes = self.namelist['advanced_PWI']['main_wall_fluxes']
+        self.advanced_PWI_div_wall_fluxes = self.namelist['advanced_PWI']['div_wall_fluxes']       
+        self.advanced_PWI_files = self.namelist['advanced_PWI']['files']
+        self.characteristic_impact_energy_main_wall = self.namelist['advanced_PWI']['characteristic_impact_energy_main_wall']
+        self.characteristic_impact_energy_div_wall = self.namelist['advanced_PWI']['characteristic_impact_energy_div_wall']
+        
+        # if the advanced plasma-wall interaction model is to be employed, physical
+        #   surfaces of main and divertor walls must be considered
+        if self.advanced_PWI_flag and not self.namelist["phys_surfaces"]:
+            raise ValueError("Implementing the advanced PWI model requires defining the physical wall surface areas!") 
+         
+        # Pumping parameters
+        
+        self.tau_pump_ms = self.namelist["tau_pump_ms"]
         self.S_pump = self.namelist["S_pump"]
         self.vol_div = self.namelist["vol_div"]
         self.L_divpump = self.namelist["L_divpump"]
@@ -184,6 +213,8 @@ class aurora_sim:
         # To include divertor/pump return flows but no recycling, set wall_recycling=0
         if not self.namelist["recycling_flag"]:
             self.wall_recycling = -1.0  # no divertor/pump return flows
+            
+        # Others
 
         self.bound_sep = self.namelist["bound_sep"]
         self.lim_sep = self.namelist["lim_sep"]
@@ -387,6 +418,124 @@ class aurora_sim:
         else:
             # dummy profile -- recycling is turned off
             self.rcl_rad_prof = np.zeros((len(self.rhop_grid), len(self.time_grid)))
+
+    def setup_PWI_model(self):
+        """Method to set up Aurora inputs related to the advanced plasma-wall interaction model.
+        """
+        
+        # effective wall surfaces, accounting for roughness
+        self.surf_mainwall_eff = self.surf_mainwall*self.mainwall_roughness #cm^2
+        self.surf_divwall_eff = self.surf_divwall*self.divwall_roughness #cm^2
+
+        if self.advanced_PWI_flag: # advanced PWI model used: calculate parameters for fortran routine
+        
+            # Data for advanced PWI model for now available only for He
+            if self.imp != 'He':
+                raise ValueError(f"Advanced PWI model not available for impurity {self.imp}!")
+            
+            # keys for fortran routine
+            if self.main_wall_material == 'Be':
+                self.Z_main_wall = 4
+            elif self.main_wall_material == 'C':
+                self.Z_main_wall = 6
+            elif self.main_wall_material == 'W':
+                self.Z_main_wall = 74
+            else:
+                raise ValueError(f"Advanced PWI model not available for main wall material {self.main_wall_material}!")
+            if self.div_wall_material == 'Be':
+                self.Z_div_wall = 4
+            elif self.div_wall_material == 'C':
+                self.Z_div_wall = 6
+            elif self.div_wall_material == 'W':
+                self.Z_div_wall = 74
+            else:
+                raise ValueError(f"Advanced PWI model not available for divertor wall material {self.div_wall_material}!")
+                
+            # List of background species
+            background_species = self.advanced_PWI_species
+            self.num_background_species = len(background_species)
+            
+            # calculate impact energies for simulated impurity and background species
+            #   onto main and divertor walls at each time step
+            self.energies_main_wall, self.energies_div_wall = self.get_impact_energy()
+            self.E0_main_wall_imp = self.energies_main_wall[0,:] # Index 0 --> simulated species
+            self.E0_div_wall_imp = self.energies_div_wall[0,:] # Index 0 --> simulated species
+            self.E0_main_wall_background = self.energies_main_wall[1:,:] # Indeces > 1 --> background species
+            self.E0_div_wall_background = self.energies_div_wall[1:,:] # Indeces > 1 --> background species
+            
+            # get angles of incidence
+            angle_imp = surface.incidence_angle(self.imp)
+            angle_background = np.zeros(len(background_species))
+            for i in range(0,len(background_species)):
+                angle_background[i] = surface.incidence_angle(background_species[i])
+            
+            # extract values for reflection coefficient of the simulated impurity at each time step
+            refl_data_main_wall = surface.reflection_coeff_fit(self.imp, self.main_wall_material, angle_imp, kind='rn', energies = self.E0_main_wall_imp)
+            self.rn_main_wall = refl_data_main_wall["data"]
+            refl_data_div_wall = surface.reflection_coeff_fit(self.imp, self.div_wall_material, angle_imp, kind='rn', energies = self.E0_div_wall_imp)
+            self.rn_div_wall = refl_data_div_wall["data"]
+            
+            # extract values for fluxes of background species onto main and divertor walls
+            #   at each time step
+            self.fluxes_main_wall_background, self.fluxes_div_wall_background = self.get_background_fluxes()
+            
+            # extract values for impurity sputtering coefficient for the wall retention of the
+            #   simulate impurity at each time step
+            self.y_main_wall = np.zeros((len(background_species)+1,len(self.time_out)))
+            self.y_div_wall = np.zeros((len(background_species)+1,len(self.time_out)))
+            imp_sputter_data_main_wall = surface.impurity_sputtering_coeff_fit(self.imp, self.imp, self.main_wall_material, angle_imp, energies = self.E0_main_wall_imp) # same impurity as projectile
+            imp_sputter_data_div_wall = surface.impurity_sputtering_coeff_fit(self.imp, self.imp, self.div_wall_material, angle_imp, energies = self.E0_div_wall_imp) # same impurity as projectile
+            self.y_main_wall[0,:] = imp_sputter_data_main_wall["normalized_data"] # Index 0 --> simulated species
+            self.y_div_wall[0,:] = imp_sputter_data_div_wall["normalized_data"] # Index 0 --> simulated species
+            for i in range(0,len(background_species)):
+                imp_sputter_data_main_wall = surface.impurity_sputtering_coeff_fit(self.imp, background_species[i], self.main_wall_material, angle_background[i], energies = self.E0_main_wall_background[i,:]) # same impurity as projectile
+                imp_sputter_data_div_wall = surface.impurity_sputtering_coeff_fit(self.imp, background_species[i], self.div_wall_material, angle_background[i], energies = self.E0_div_wall_background[i,:]) # same impurity as projectile
+                self.y_main_wall[i+1,:] = imp_sputter_data_main_wall["normalized_data"] # Indeces > 1 --> background species
+                self.y_div_wall[i+1,:] = imp_sputter_data_div_wall["normalized_data"] # Indeces > 1 --> background species
+            
+            # extract the depth of the impurity implantation profile into main and divertor walls
+            depth_data_main_wall = surface.implantation_depth_fit(self.imp, self.main_wall_material, angle_imp, energies = self.characteristic_impact_energy_main_wall)
+            depth_data_div_wall = surface.implantation_depth_fit(self.imp, self.div_wall_material, angle_imp, energies = self.characteristic_impact_energy_div_wall)  
+            self.implantation_depth_main_wall = depth_data_main_wall["data"]
+            self.implantation_depth_div_wall = depth_data_div_wall["data"]
+            
+            # extract saturation value of the density of the implanted impurity into main and divertor walls 
+            self.n_main_wall_sat = surface.calc_impurity_saturation_density(self.imp, self.main_wall_material, self.characteristic_impact_energy_main_wall) # m^-2
+            self.n_div_wall_sat = surface.calc_impurity_saturation_density(self.imp, self.div_wall_material, self.characteristic_impact_energy_div_wall) # m^-2       
+            
+            # convert impurity saturation density into impurity concentration density
+            # self.C_main_wall_sat = surface.calc_implanted_impurity_concentration(self.n_main_wall_sat, self.imp, self.main_wall_material, self.implantation_depth_main_wall)
+            # self.C_div_wall_sat = surface.calc_implanted_impurity_concentration(self.n_div_wall_sat, self.imp, self.div_wall_material, self.implantation_depth_div_wall)   
+            
+        else:  # advanced PWI model not used: dummy input parameters for fortran routine
+            
+            # keys for fortran routine
+            self.Z_main_wall = 0
+            self.Z_div_wall = 0
+            
+            # List of background species
+            background_species = self.advanced_PWI_species
+            self.num_background_species = len(background_species)
+            
+            # dummy values for reflection coefficients at each time step
+            self.rn_main_wall = np.asfortranarray(np.zeros(len(self.time_out)))
+            self.rn_div_wall = np.zeros(len(self.time_out))
+            
+            # dummy values for background fluxes onto the walls at each time step
+            self.fluxes_main_wall_background = np.zeros((len(background_species),len(self.time_out)))
+            self.fluxes_div_wall_background = np.zeros((len(background_species),len(self.time_out)))
+            
+            # dummy values for impurity sputtering coefficients at each time step
+            self.y_main_wall = np.zeros((len(background_species)+1,len(self.time_out)))
+            self.y_div_wall = np.zeros((len(background_species)+1,len(self.time_out)))
+            
+            # dummy values for impurity implantation depths into the walls
+            self.implantation_depth_main_wall = 0.0
+            self.implantation_depth_div_wall = 0.0
+            
+            # dummy values for impurity saturation densities into the walls
+            self.n_main_wall_sat = 0.0
+            self.n_div_wall_sat = 0.0
 
     def interp_kin_prof(self, prof):
         """ Interpolate the given kinetic profile on the radial and temporal grids [units of s].
@@ -614,6 +763,132 @@ class aurora_sim:
         else:
             
             return np.asfortranarray(dv)
+        
+    def get_background_fluxes(self):
+        """Get the fluxes hitting main and divertor walls (for the background species), at all time
+        steps, for a simulation run, in the framework of the advanced PWI model.
+
+        Returns
+        -------
+        fluxes_main_wall : array (number of background species,time)
+                                  Particle fluxes of the background species onto the
+                                  main wall at each time of the simulation, in s^-1
+        fluxes_div_wall :  array (number of background species,time)
+                                  Particle fluxes of the background species onto the
+                                  divertor wall at each time of the simulation, in s^-1
+        
+        """
+        
+        # List of background species
+        background_species = self.advanced_PWI_species
+        
+        mode = self.advanced_PWI_mode
+        
+        fluxes_main_wall = np.zeros((len(background_species),len(self.time_out)))
+        fluxes_div_wall = np.zeros((len(background_species),len(self.time_out)))
+        
+        if mode == 'const':
+        # constant fluxes of all the background species over the entire time grid
+        
+            main_wall_fluxes = self.advanced_PWI_main_wall_fluxes
+            div_wall_fluxes = self.advanced_PWI_div_wall_fluxes
+            
+            if len(background_species) != len(main_wall_fluxes) or len(background_species) != len(div_wall_fluxes):
+                raise ValueError("Declared number of background species for advanced PWI model not consistent with declared number of background fluxes!")       
+            
+            # Wall fluxes for the background species
+            for i in range(0,len(background_species)):
+                fluxes_main_wall[i,:] = np.full(len(self.time_out),main_wall_fluxes[i])
+                fluxes_div_wall[i,:] = np.full(len(self.time_out),div_wall_fluxes[i])
+
+        elif mode == 'files':
+        # fluxes of all the background species taken from aurora simulations performed
+        #   in advance, one for each background species, on the same time grid of the
+        #   current simulation
+            
+            # list of file paths
+            files = self.advanced_PWI_files
+            
+            if len(background_species) != len(files):
+                raise ValueError("Declared number of background species for advanced PWI model not consistent with declared number of background simulation files!")       
+            
+            # Wall fluxes for the background species
+            for i in range(0,len(background_species)):
+                
+                # Load background simulation data
+                reservoirs_background = pd.read_pickle(files[i])
+                
+                if len(reservoirs_background['total_flux_mainwall']) != len(self.time_out):
+                    raise ValueError("Time grids of current simulation and background simulations do not match!")       
+                
+                # Extract the fluxes
+                fluxes_main_wall[i,:] = reservoirs_background['total_flux_mainwall']
+                fluxes_div_wall[i,:] = reservoirs_background['total_flux_divwall']
+                
+        return fluxes_main_wall, fluxes_div_wall     
+        
+    def get_impact_energy(self):
+        """Calculate the impact energy of ion projectile (both simulated and background species)
+        hitting main and divertor wall, at all time steps, for a simulation run, in the framework
+        of the advanced PWI model.
+
+        Returns
+        -------
+        impact_energy_main_wall : array (1+number of background species,time)
+                                  Impact energy of the ion projectiles of each species onto the
+                                  main wall at each time of the simulation, in eV
+        impact_energy_div_wall :  array (1+number of background species of species,time)
+                                  Impact energy of the ion projectiles of each species onto the
+                                  divertor wall at each time of the simulation, in eV
+        
+        """
+        
+        # List of background species
+        background_species = self.advanced_PWI_species
+        
+        impact_energy_main_wall = np.zeros((len(background_species)+1,len(self.time_out)))
+        impact_energy_div_wall = np.zeros((len(background_species)+1,len(self.time_out)))
+        
+        if self.namelist['ELM_model']['ELM_flag']:
+        # ELMs activated --> Time-dependent impact energy which peaks during the ELM crash
+        #   whose time dependency is generated using the free streaming model
+        
+            # Impact energies for the simulated species itself (index 0)
+            impact_energy_main_wall[0,:] = self.ELM_cycle_impact_energy_main_wall(self.imp)
+            impact_energy_div_wall[0,:] = self.ELM_cycle_impact_energy_div_wall(self.imp)       
+            
+            # Impact energies for the background species (indeces 1+)
+            for i in range(1,len(background_species)+1):
+                impact_energy_main_wall[i,:] = self.ELM_cycle_impact_energy_main_wall(background_species[i-1])
+                impact_energy_div_wall[i,:] = self.ELM_cycle_impact_energy_div_wall(background_species[i-1])    
+                
+        else:
+        # No ELMs --> Constant impact energy over the entire time grid
+
+            # electron temperatures at the plasma-wall interface + sheath parameters
+            Te_lim_inter_ELM = self.namelist["Te_lim_inter_ELM"]
+            Te_div_inter_ELM = self.namelist["Te_div_inter_ELM"]
+            Ti_over_Te = self.namelist["Ti_over_Te"]
+            gammai = self.namelist["gammai"]
+        
+            # Impact energy for the simulated species itself (index 0)
+            # Single values
+            E0_main_wall = surface.get_impact_energy(Te_lim_inter_ELM, self.imp, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
+            E0_div_wall = surface.get_impact_energy(Te_div_inter_ELM, self.imp, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
+            # Same values over entire time grid
+            impact_energy_main_wall[0,:] = np.full(len(self.time_out),E0_main_wall)
+            impact_energy_div_wall[0,:] = np.full(len(self.time_out),E0_div_wall)
+    
+            # Impact energies for the background species (indeces 1+)
+            for i in range(1,len(background_species)+1):
+                # Single values
+                E0_main_wall_temp = surface.get_impact_energy(Te_lim_inter_ELM, background_species[i-1], mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
+                E0_div_wall_temp = surface.get_impact_energy(Te_div_inter_ELM, background_species[i-1], mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)                
+                # Same values over entire time grid 
+                impact_energy_main_wall[i,:] = np.full(len(self.time_out),E0_main_wall_temp)
+                impact_energy_div_wall[i,:] = np.full(len(self.time_out),E0_div_wall_temp)
+        
+        return impact_energy_main_wall, impact_energy_div_wall
     
     def ELM_cycle_parallel_flux_shape(self):
         """
@@ -654,9 +929,10 @@ class aurora_sim:
         shape_new[indeces_to_move:num_time_steps] = shape[0:num_time_steps-indeces_to_move]
         shape_new[0:indeces_to_move] = shape[num_time_steps-indeces_to_move:num_time_steps]
             
-        num_periods = int(self.namelist['timing']['times'][-1]/ELM_period)
+        num_periods = int((self.namelist['timing']['times'][-1]-self.namelist['timing']['times'][0])/ELM_period)
         
         shape_new = np.tile(shape_new,num_periods)
+        # make sure that the generated shape has the same length of the time grid
         if len(shape_new)>len(self.time_grid):      
             shape_new = shape_new[:-1]
      
@@ -692,12 +968,49 @@ class aurora_sim:
         #   but peaks at M_peak_intra_ELM in the moment of maximum ELM-carried parallel flux
         mach = M_inter_ELM + shape_norm
         
-        return mach    
+        return mach   
     
-    def ELM_cycle_impact_energy(self):
+    def ELM_cycle_impact_energy_main_wall(self,species):
+        """
+        Generate a time-dependent shape of the impact energy of impurity ions on the main
+        wall over an ELM cycle.
+        For now this works only if the time grid has constant time steps and for ELMs
+        present for the entire duration of the simulation.
+        """
+
+        # intra- and inter-ELM limiter electron temperatures + sheath parameters
+        Te_lim_intra_ELM = self.namelist["Te_lim_intra_ELM"]
+        Te_lim_inter_ELM = self.namelist["Te_lim_inter_ELM"]
+        Ti_over_Te = self.namelist["Ti_over_Te"]
+        gammai = self.namelist["gammai"]
+        
+        # Calculate the inter-ELM impact energy
+        E0_inter_ELM = surface.get_impact_energy(Te_lim_inter_ELM, species, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
+    
+        # Calculate the peak intra-ELM impact energy
+        E0_peak_intra_ELM = surface.get_impact_energy(Te_lim_intra_ELM, species, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
+        
+        # general time-dependent shape following the ELMS onto the entire time grid
+        shape = self.ELM_cycle_parallel_flux_shape()
+        
+        # normalize the time-dependent shape so that its peaks value equates
+        #   the difference between E0_peak_intra_ELM and E0_inter_ELM
+        diff = E0_peak_intra_ELM - E0_inter_ELM
+        max_shape = np.max(shape)
+        ratio = max_shape / diff
+        shape_norm = shape/ratio
+
+        # now add this normalized shape to the inter-ELM value in order to achieve
+        #   an impact energy which flattens on its intra-ELM value during inter-ELM phases
+        #   but peaks at E0_peak_intra_ELM in the moment of maximum ELM-carried flux
+        E0 = E0_inter_ELM + shape_norm
+        
+        return E0   
+    
+    def ELM_cycle_impact_energy_div_wall(self,species):
         """
         Generate a time-dependent shape of the impact energy of impurity ions on the divertor
-        target an ELM cycle, assigning a peak value with a time dependence which follows the
+        target over an ELM cycle, assigning a peak value with a time dependence which follows the
         parallel ELM flux following the free streaming model.
         For now this works only if the time grid has constant time steps and for ELMs
         present for the entire duration of the simulation.
@@ -712,10 +1025,10 @@ class aurora_sim:
         gammai = self.namelist["gammai"]
         
         # Calculate the inter-ELM impact energy
-        E0_inter_ELM = surface.get_impact_energy(Te_div_inter_ELM, self.imp, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
+        E0_inter_ELM = surface.get_impact_energy(Te_div_inter_ELM, species, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
     
         # Calculate the peak intra-ELM impact energy
-        E0_peak_intra_ELM = surface.get_impact_energy(Te_ped_intra_ELM, self.imp, mode = 'FSM')
+        E0_peak_intra_ELM = surface.get_impact_energy(Te_ped_intra_ELM, species, mode = 'FSM')
         
         # general time-dependent shape following the ELMS onto the entire time grid
         shape = self.ELM_cycle_parallel_flux_shape()
@@ -828,9 +1141,17 @@ class aurora_sim:
         evolneut=False,
         use_julia=False,
         plot=False,
+        plot_average = False,
+        interval = 0.01,
+        radial_coordinate = 'rho_vol',
+        plot_PWI = False,
     ):
         """Run a simulation using the provided diffusion and convection profiles as a function of space, time
         and potentially also ionization state. Users can give an initial state of each ion charge state as an input.
+        While the output impurity density in the plasma (in function of radial location, charge state and time)
+        is given in [cm^-3], all the other outputs are given per unit of toroidal length, i.e. the absolute number of
+        particles in reservoirs in [cm^-1] and fluxes from/to/between the reservoirs in [cm^-1 s^-1], so that
+        effective numbers are achieved multiplying these by circ = 2 * np.pi * self.Raxis_cm.
 
         Results can be conveniently visualized with time-slider using
 
@@ -909,41 +1230,52 @@ class aurora_sim:
         plot : bool, optional
             If True, plot density for each charge state using a convenient slides over time and check
             particle conservation in each particle reservoir.
+        plot_average : bool, optional
+            If True, plot density for each charge state averaged over ELM cycles using a convenient slide
+            over time and check particle conservation in each particle reservoir averaged over ELM cycles.
+        interval : float, optional
+            Duration of time cycles to plot if plot_average is True, in s
+        radial_coordinate : string, optional
+            Radial coordinate shown in the plot. Options: 'rho_vol' (default) or 'rho_pol'
+        plot_PWI : bool, optional
+            If True, plot time traces regarding the plasma-wall interaction model
 
         Returns
         -------
         nz : array, (nr,nZ,nt)
-            Charge state densities [:math:`cm^{-3}`] over the space and time grids.
+            Charge state densities over the space and time grids [:math:`cm^{-3}`]
             If a number of superstages are indicated in the input, only charge state densities for
             these are returned.
         N_mainwall : array (nt,)
-            Number of particles at the main wall reservoir over time.
+            Number of particles at the main wall reservoir over time [:math:`cm^{-1}`]
         N_divwall : array (nt,)
-            Number of particles at the divertor wall reservoir over time.
+            Number of particles at the divertor wall reservoir over time [:math:`cm^{-1}`]
         N_div : array (nt,)
-            Number of particles in the divertor reservoir over time.
+            Number of particles in the divertor reservoir over time [:math:`cm^{-1}`]
         N_pump : array (nt,)
-            Number of particles in the pump reservoir over time.
+            Number of particles in the pump reservoir over time [:math:`cm^{-1}`]
         N_out : array (nt,)
-            Number of particles permanently removed through the pump over time.
+            Number of particles permanently removed through the pump over time [:math:`cm^{-1}`]
         N_mainret : array (nt,)
-             Number of particles temporarily held in the main wall reservoir.
+             Number of particles temporarily held in the main wall reservoir [:math:`cm^{-1}`]
         N_divret : array (nt,)
-             Number of particles temporarily held in the divertor wall reservoir.  
+             Number of particles temporarily held in the divertor wall reservoir [:math:`cm^{-1}`]
         N_tsu : array (nt,)
-             Edge particle loss [:math:`cm^{-3}`]
+             Edge particle loss [:math:`cm^{-1} s^{-1}`]
         N_dsu : array (nt,)
-             Parallel particle loss [:math:`cm^{-3}`]
+             Parallel particle loss [:math:`cm^{-1} s^{-1}`]
         N_dsul : array (nt,)
-             Parallel particle loss at the limiter [:math:`cm^{-3}`]
+             Parallel particle loss at the limiter [:math:`cm^{-1} s^{-1}`]
         rcld_rate : array (nt,)
-             Recycling from the divertor wall reservoir [:math:`s^{-1} cm^{-3}`]
+             Recycling from the divertor wall reservoir [:math:`cm^{-1} s^{-1}`]
         rclb_rate : array (nt,)
-             Backflow from the divertor neutrals reservoir [:math:`s^{-1} cm^{-3}`]
+             Backflow from the divertor neutrals reservoir reaching the plasma [:math:`cm^{-1} s^{-1}`]
+        rcls_rate : array (nt,)
+             Screened backflow from the divertor neutrals reservoir [:math:`cm^{-1} s^{-1}`]
         rclp_rate : array (nt,)
-             Leakage from the pump neutrals reservoir [:math:`s^{-1} cm^{-3}`]
+             Leakage from the pump neutrals reservoir [:math:`cm^{-1} s^{-1}`]
         rclw_rate : array (nt,)
-             Recycling from the main wall reservoir [:math:`s^{-1} cm^{-3}`]
+             Recycling from the main wall reservoir [:math:`cm^{-1} s^{-1}`]
         """
         D_z, V_z = np.asarray(D_z), np.asarray(V_z)
 
@@ -1093,34 +1425,51 @@ class aurora_sim:
             from ._aurora import run as fortran_run
             self.res = fortran_run(
                 nt,  # number of times at which simulation outputs results
-                times_DV,
-                D_z,
-                V_z,  # cm^2/s & cm/s    #(ir,nt_trans,nion)
-                self.par_loss_rate,  # time dependent
-                self.src_core,  # source profile in radius and time
-                self.rcl_rad_prof,  # recycling radial profile
-                self.Sne_rates,  # ioniz_rate
-                self.Rne_rates,  # recomb_rate
-                self.rvol_grid,
+                times_DV, # Times at which transport coefficients change [s]
+                D_z, # diffusion coefficient on radial and time grids for each charge state [cm^2/s]
+                V_z, # radial pinch veocity on radial and time grids for each charge state [cm^2/s]
+                self.par_loss_rate, # parallel loss rate values in the SOL on the time grid
+                self.src_core, # source profile in radius and time
+                self.rcl_rad_prof, # recycling radial profile in the plasma
+                self.Sne_rates, # ionization rates in the plasma
+                self.Rne_rates, # recombination rates in the plasma
+                self.Raxis_cm, # major radius at the magnetic axis [cm]
+                self.rvol_grid, # radial grid values of rho_vol
                 self.pro_grid,
                 self.qpr_grid,
                 self.mixing_radius,
                 self.decay_length_boundary,
-                self.time_grid,
-                self.saw_on,
+                self.time_grid, # time grid values
+                self.saw_on, # logic key for sawteeth model
                 self.save_time,
                 self.sawtooth_erfc_width,  # dsaw width [cm]
-                self.wall_recycling,
-                self.screening_eff,
-                self.div_recomb_ratio,
-                self.tau_div_SOL_ms * 1e-3,  # [s]
-                self.tau_pump_ms * 1e-3,  # [s]
-                self.tau_rcl_ret_ms * 1e-3,  # [s]
-                self.S_pump, # [cm^3/s]
-                self.vol_div, # [cm^3]
-                self.L_divpump, # [cm^3/s]
-                self.vol_pump, # [cm^3]
-                self.L_leak, # [cm^3/s]
+                self.wall_recycling, # recycling key
+                self.screening_eff, # screening coefficient
+                self.div_recomb_ratio, # divertor recombination coefficient
+                self.tau_div_SOL_ms * 1e-3, # divertor retention time [s]
+                self.tau_pump_ms * 1e-3, # pumping time in the adimensional pumping model [s]
+                self.tau_rcl_ret_ms * 1e-3, # wall release time in the simple PWI model [s]
+                self.S_pump, # pumping speed in the dimensional pumping model [cm^3/s]
+                self.vol_div, # volume of the divertor neutrals reservoir [cm^3]
+                self.L_divpump, # conductance between divertor and pump neutrals reservoirs [cm^3/s]
+                self.vol_pump, # volume of the pump neutrals reservoirs[cm^3]
+                self.L_leak, # leakage conductance from pump neutrals reservoir towards plasma [cm^3/s]
+                self.surf_mainwall_eff, # effective main wall surface area [cm^2]
+                self.surf_divwall_eff, # effective divertor wall surface area [cm^2]
+                self.advanced_PWI_flag, # logic key for PWI model
+                self.Z_main_wall, # atomic number of the main wall material
+                self.Z_div_wall, # atomic number of the divertor wall material
+                self.num_background_species, # number of background species considered
+                self.rn_main_wall, # reflection coefficients for the simulated impurity at the main wall on the time grid
+                self.rn_div_wall, # reflection coefficients for the simulated impurity at the divertor wall on the time grid
+                self.fluxes_main_wall_background, # fluxes for each background species onto the main wall on the time grid [s^-1]
+                self.fluxes_div_wall_background, # fluxes for each background species onto the divertor wall on the time grid [s^-1]
+                self.y_main_wall, # sputtering yields from simulated impurity + background species from the main wall on the time grid
+                self.y_div_wall, # sputtering yields from simulated impurity + background species from the divertor wall on the time grid
+                self.implantation_depth_main_wall, # considered impurity implantation depth in the main wall [A]
+                self.implantation_depth_div_wall, # considered impurity implantation depth in the divertor wall [A]
+                self.n_main_wall_sat, # considered saturation value of the impurity implantation density into the main wall [m^-2]
+                self.n_div_wall_sat, # considered saturation value of the impurity implantation density into the divertor wall [m^-2]
                 self.rvol_lcfs,
                 self.bound_sep,
                 self.lim_sep,
@@ -1136,22 +1485,57 @@ class aurora_sim:
             )
 
         if plot:
+            
+            if radial_coordinate == 'rho_vol':
+                x = self.rvol_grid
+                xlabel = r"$r_V$ [cm]"
+                x_line=self.rvol_lcfs
+            elif radial_coordinate == 'rho_pol':
+                x = self.rhop_grid
+                xlabel=r'$\rho_p$'
+                x_line = 1
 
             # plot charge state density distributions over radius and time
             plot_tools.slider_plot(
-                self.rvol_grid,
+                x,
                 self.time_out,
                 self.res[0].transpose(1, 0, 2),
-                xlabel=r"$r_V$ [cm]",
+                xlabel=xlabel,
                 ylabel="time [s]",
-                zlabel=r"$n_z$ [$cm^{-3}$]",
+                zlabel=f'$n_{{{self.imp}}}$ [cm$^{{-3}}$]',
+                plot_title = f'{self.imp} density profiles',
                 labels=[str(i) for i in np.arange(0, self.res[0].shape[1])],
                 plot_sum=True,
-                x_line=self.rvol_lcfs,
+                x_line=x_line,
             )
 
-            # check particle conservation by summing over simulation reservoirs
+            # Plot reservoirs and particle conservation
             _ = self.plot_reservoirs(plot=True)
+            
+            if self.namelist['ELM_model']['ELM_flag'] and plot_average:
+                
+                time_average, data_average_profiles = plot_tools.time_average_profiles(self.namelist['timing'], self.time_out, self.res[0], interval = interval)
+                
+                # plot charge state density distributions over radius and time, averaged over cycles
+                plot_tools.slider_plot(
+                    x,
+                    time_average,
+                    data_average_profiles.transpose(1, 0, 2),
+                    xlabel=xlabel,
+                    ylabel="time [s]",
+                    zlabel=f'$n_{{{self.imp}}}$ [cm$^{{-3}}$]',
+                    plot_title = f'{self.imp} density profiles (averaged over ELM cycles)',
+                    labels=[str(i) for i in np.arange(0, self.res[0].shape[1])],
+                    plot_sum=True,
+                    x_line=x_line,
+                )
+                
+                # Plot reservoirs and particle conservation, averaged over cycles
+                _ = self.plot_reservoirs_average(interval = interval,plot = True)
+
+        # Plot PWI model
+        if plot_PWI and self.advanced_PWI_flag:
+            _ = self.plot_PWI_model(interval = interval,plot = True)
 
         if len(self.superstages) and unstage:
             # "unstage" superstages to recover estimates for density of all charge states
@@ -1183,10 +1567,18 @@ class aurora_sim:
             N_dsu,
             N_dsul,
             rcld_rate,
+            rcld_refl_rate,
+            rcld_recl_rate,
+            rcld_impl_rate,
+            rcld_sput_rate,
             rclb_rate,
             rcls_rate,
             rclp_rate,
             rclw_rate,
+            rclw_refl_rate,
+            rclw_recl_rate,
+            rclw_impl_rate,
+            rclw_sput_rate
         ) = self.res
         
         # Return number of elements in the output of the simulation consistently with
@@ -1225,6 +1617,9 @@ class aurora_sim:
         if self.namelist["div_recomb_ratio"] < 1.0: # ions allowed to interact with a divertor wall
             out = out + (rcld_rate,) # new field with different meaning wrt the old rcld_rate
             
+            if self.advanced_PWI_flag:
+                out = out + (rcld_refl_rate,rcld_recl_rate,rcld_impl_rate,rcld_sput_rate,)
+            
         out = out + (rclb_rate,) # corresponding to rcld_rate in the old nomenclature
 
         if self.namelist["screening_eff"] > 0.0: # the backflow from the divertor can be screened before reaching the core plasma
@@ -1233,7 +1628,12 @@ class aurora_sim:
         if self.namelist["pump_chamber"]: # a second reservoirs for neutral particles before the pump is defined
             out = out + (rclp_rate,) # new field
 
-        out = out + (rclw_rate,) # same as before
+        out = out + (rclw_rate,) # same as before  
+                    
+        if self.advanced_PWI_flag:
+            out = out + (rclw_refl_rate,rclw_recl_rate,rclw_impl_rate,rclw_sput_rate,)
+        
+        # return
 
         return out
 
@@ -1253,6 +1653,7 @@ class aurora_sim:
         dt_increase=1.05,
         n_steps=100,
         plot=False,
+        radial_coordinate = 'rho_vol',
     ):
         """Run an AURORA simulation until reaching steady state profiles. This method calls :py:meth:`~aurora.core.run_aurora`
         checking at every iteration whether profile shapes are still changing within a given fractional tolerance.
@@ -1294,6 +1695,8 @@ class aurora_sim:
             Number of time steps (>2) before convergence is checked.
         plot : bool
             If True, plot time evolution of charge state density profiles to show convergence.
+        radial_coordinate : string, optional
+            Radial coordinate shown in the plot. Options: 'rho_vol' (default) or 'rho_pol'
         """
 
         if n_steps < 2:
@@ -1322,7 +1725,7 @@ class aurora_sim:
         }
 
         # prepare radial and temporal grid
-        self.setup_grids(plot_time_grid = False, plot_radial_grid = False)
+        self.setup_grids()
 
         # update kinetic profile dependencies to get everything to the right shape
         self.setup_kin_profs_depts()
@@ -1342,10 +1745,12 @@ class aurora_sim:
         time_out = self.time_out.copy()
         save_time = self.save_time.copy()
         par_loss_rate = self.par_loss_rate.copy()
+        rcl_rad_prof = self.rcl_rad_prof.copy()
         src_core = self.src_core.copy()
         Sne_rates = self.Sne_rates.copy()
         Rne_rates = self.Rne_rates.copy()
         saw_on = self.saw_on.copy()
+        src_div = self.src_div.copy()
         nz_all = None if nz_init is None else nz_init
 
         while sim_steps < len(time_grid):
@@ -1353,10 +1758,12 @@ class aurora_sim:
             self.time_grid = self.time_out = time_grid[sim_steps : sim_steps + n_steps]
             self.save_time = save_time[sim_steps : sim_steps + n_steps]
             self.par_loss_rate = par_loss_rate[:, sim_steps : sim_steps + n_steps]
+            self.rcl_rad_prof = rcl_rad_prof[:, sim_steps : sim_steps + n_steps]
             self.src_core = src_core[:, sim_steps : sim_steps + n_steps]
             self.Sne_rates = Sne_rates[:, :, sim_steps : sim_steps + n_steps]
             self.Rne_rates = Rne_rates[:, :, sim_steps : sim_steps + n_steps]
             self.saw_on = saw_on[sim_steps : sim_steps + n_steps]
+            self.src_div = src_div[sim_steps : sim_steps + n_steps]
 
             sim_steps += n_steps
 
@@ -1400,16 +1807,28 @@ class aurora_sim:
         self.save_time = save_time[:sim_steps]
 
         if plot:
+            
+            if radial_coordinate == 'rho_vol':
+                x = self.rvol_grid
+                xlabel = r"$r_V$ [cm]"
+                x_line=self.rvol_lcfs
+            elif radial_coordinate == 'rho_pol':
+                x = self.rhop_grid
+                xlabel=r'$\rho_p$'
+                x_line = 1
+                
             # plot charge state distributions over radius and time
             plot_tools.slider_plot(
-                self.rhop_grid,
+                x,
                 self.time_grid,
                 nz_all.transpose(1, 0, 2),
-                xlabel=r"$\rho_p$",
+                xlabel=xlabel,
                 ylabel="time [s]",
-                zlabel=r"$n_z$ [$cm^{-3}$]",
+                zlabel=f'$n_{{{self.imp}}}$ [cm$^{{-3}}$]',
+                plot_title = f'{self.imp} density profiles',
                 labels=[str(i) for i in np.arange(0, nz_all.shape[1])],
                 plot_sum=True,
+                x_line=x_line,
             )
 
         if sim_steps >= len(time_grid):
@@ -1476,10 +1895,18 @@ class aurora_sim:
             N_dsu,
             N_dsul,
             rcld_rate,
+            rcld_refl_rate,
+            rcld_recl_rate,
+            rcld_impl_rate,
+            rcld_sput_rate,
             rclb_rate,
             rcls_rate,
             rclp_rate,
             rclw_rate,
+            rclw_refl_rate,
+            rclw_recl_rate,
+            rclw_impl_rate,
+            rclw_sput_rate
         ) = self.res
         nz = nz.transpose(2, 1, 0)  # time,nZ,space
         
@@ -1520,10 +1947,18 @@ class aurora_sim:
             N_dsu,
             N_dsul,
             rcld_rate,
+            rcld_refl_rate,
+            rcld_recl_rate,
+            rcld_impl_rate,
+            rcld_sput_rate,
             rclb_rate,
             rcls_rate,
             rclp_rate,
             rclw_rate,
+            rclw_refl_rate,
+            rclw_recl_rate,
+            rclw_impl_rate,
+            rclw_sput_rate
         ) = self.res
         nz = nz.transpose(2, 1, 0)  # time,nZ,space
         
@@ -1559,20 +1994,24 @@ class aurora_sim:
         ----------
         plot : bool, optional
             If True, plot time histories in each particle reservoir and display quality of particle conservation.
-        axs : 3-tuple or array
-            Array-like structure containing three matplotlib.Axes instances: the first one
+        axs : 2-tuple or array
+            Array-like structure containing two matplotlib.Axes instances: the first one
             for the separate particle time variation in each reservoir and the main fluxes,
-            the second optional one for the radiation, if it has been computed, and the third
-            one for the total particle-conservation check.
+            and the second one for the total particle-conservation check.
 
         Returns
         -------
         reservoirs : dict
             Dictionary containing density of particles in each reservoir.
         axs : matplotlib.Axes instances, only returned if plot=True
-            Array-like structure containing three matplotlib.Axes instances, (ax1,ax2,ax3).
+            Array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
             See optional input argument.
         """
+        
+        # get colors for plots
+        colors = plot_tools.load_color_codes_reservoirs()
+        blue,light_blue,green,light_green,grey,light_grey,red,light_red = colors
+        
         (
             nz,
             N_mainwall,
@@ -1586,10 +2025,18 @@ class aurora_sim:
             N_dsu,
             N_dsul,
             rcld_rate,
+            rcld_refl_rate,
+            rcld_recl_rate,
+            rcld_impl_rate,
+            rcld_sput_rate,
             rclb_rate,
             rcls_rate,
             rclp_rate,
             rclw_rate,
+            rclw_refl_rate,
+            rclw_recl_rate,
+            rclw_impl_rate,
+            rclw_sput_rate
         ) = self.res
         nz = nz.transpose(2, 1, 0)  # time,nZ,space
 
@@ -1637,6 +2084,7 @@ class aurora_sim:
         # fluxes towards main wall
         reservoirs["edge_loss"] = N_tsu * circ
         reservoirs["limiter_loss"] = N_dsul * circ
+        reservoirs["total_flux_mainwall"] = reservoirs["edge_loss"] + reservoirs["limiter_loss"]
         
         # recycling rates from main wall
         reservoirs["mainwall_recycling"] = rclw_rate * circ
@@ -1648,13 +2096,12 @@ class aurora_sim:
         reservoirs["particles_stuck_at_main_wall"] = N_mainwall * circ
         reservoirs["particles_retained_at_main_wall"] = N_mainret * circ
 
-        # flux towards divertor targets
+        # flux towards divertor targets and backflow/leakage rates
         reservoirs["parallel_loss"] = N_dsu * circ
-
-        # backflow/leakage rates from the neutrals reservoirs
         reservoirs["divertor_backflow"] = rclb_rate * circ
         reservoirs["screened_divertor_backflow"] = rcls_rate * circ
         reservoirs["pump_leakage"] = rclp_rate * circ
+        reservoirs["total_flux_divwall"] = (reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*(1-self.div_recomb_ratio)
         
         # recycling rates from divertor wall
         reservoirs["divwall_recycling"] = rcld_rate * circ    
@@ -1679,116 +2126,128 @@ class aurora_sim:
             # -------------------------------------------------
             # plot time histories for each particle reservoirs:
             if axs is None:
-                fig, ax1 = plt.subplots(nrows=4, ncols=3, sharex=True, figsize=(16, 12))
+                fig, ax1 = plt.subplots(nrows=4, ncols=3, sharex=True, figsize=(18, 12))
             else:
                 ax1 = axs[0]
+                
+            fig.suptitle('Time traces',fontsize=18)
 
-            ax1[0, 0].plot(self.time_out, reservoirs["source"], label="Ext. influx")
-            ax1[0, 0].plot(self.time_out, reservoirs["wall_source"], label="Wall rec. source")
-            ax1[0, 0].plot(self.time_out, reservoirs["divertor_source"], label="Div. rec. source")
-            ax1[0, 0].plot(self.time_out, reservoirs["plasma_removal_rate"], label="Removal rate")
-            ax1[0, 0].plot(self.time_out, reservoirs["net_plasma_flow"], label="Net sum")
+            ax1[0, 0].plot(self.time_out, reservoirs["source"], label="Ext. source", color = red, linestyle = 'dotted')
+            ax1[0, 0].plot(self.time_out, reservoirs["wall_source"], label="Wall source", color = light_green)
+            ax1[0, 0].plot(self.time_out, reservoirs["divertor_source"], label="Div. source", color = green)
+            ax1[0, 0].plot(self.time_out, reservoirs["plasma_removal_rate"], label="Removal rate", color = red, linestyle = 'dashed')
+            ax1[0, 0].plot(self.time_out, reservoirs["net_plasma_flow"], label="Net sum", color = 'black', linestyle = 'dashed')
+            ax1[0, 0].set_title('Plasma particles balance', loc='right', fontsize = 11)
             ax1[0, 0].set_ylabel('[$s^{-1}$]')
+            ax1[0, 0].legend(loc="best", fontsize = 9).set_draggable(True)
 
             if self.namelist["phys_volumes"]:
                 ax1[0, 1].plot(self.time_out, reservoirs["particle_density_in_plasma"],
-                               label="Plasma")
+                               color = blue)
                 ax1[0, 1].set_ylabel('[$cm^{-3}$]')
             else:
                 ax1[0, 1].plot(self.time_out, reservoirs["particles_in_plasma"],
-                           label="Plasma")
+                               color = blue)
                 ax1[0, 1].set_ylabel('[#]')
+            ax1[0, 1].set_title('Plasma', loc='right', fontsize = 11)
 
             if "impurity_radiation" in reservoirs:
-                ax1[0, 2].plot(self.time_out, reservoirs["impurity_radiation"], label="Core radiation")
+                ax1[0, 2].plot(self.time_out, reservoirs["impurity_radiation"], color = 'red')
                 ax1[0, 2].set_ylabel('[W]')
+                ax1[0, 2].set_title('Core radiation', loc='right', fontsize = 11) 
+                ax1[0, 2].legend(loc="best", fontsize = 9).set_draggable(True)
 
-            ax1[1, 0].plot(self.time_out, reservoirs["edge_loss"]+reservoirs["limiter_loss"], label="Total flux to main wall")
-            ax1[1, 0].plot(self.time_out, reservoirs["edge_loss"], label="Radial edge loss")
-            ax1[1, 0].plot(self.time_out, reservoirs["limiter_loss"], label="Par. loss to limiter")
-            ax1[1, 0].set_ylabel('[$s^{-1}$]')  
+            ax1[1, 0].plot(self.time_out, reservoirs["total_flux_mainwall"], label="Tot. flux to main wall", color = blue)
+            ax1[1, 0].plot(self.time_out, reservoirs["edge_loss"], label="Radial edge loss", color = light_blue, linestyle = 'dashed')
+            ax1[1, 0].plot(self.time_out, reservoirs["limiter_loss"], label="Parallel limiter loss", color = light_blue, linestyle = 'dotted')
+            ax1[1, 0].set_ylabel('[$s^{-1}$]')
+            ax1[1, 0].set_title('Main wall fluxes', loc='right', fontsize = 11)
+            ax1[1, 0].legend(loc="best", fontsize = 9).set_draggable(True)
 
-            ax1[1, 1].plot(self.time_out, reservoirs["mainwall_recycling"], label="Main wall rec. rate")
-            ax1[1, 1].set_ylabel('[$s^{-1}$]')  
+            ax1[1, 1].plot(self.time_out, reservoirs["mainwall_recycling"], color = light_green)
+            ax1[1, 1].set_ylabel('[$s^{-1}$]')
+            ax1[1, 1].set_title('Main wall recycling rate', loc='right', fontsize = 11)
 
             if self.namelist["phys_surfaces"]:
-                ax1[1, 2].plot(self.time_out, reservoirs["particle_density_stuck_at_main_wall"], label="Part. stuck at main wall")
+                ax1[1, 2].plot(self.time_out, reservoirs["particle_density_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
                 ax1[1, 2].plot(self.time_out, reservoirs["particle_density_retained_at_main_wall"],
-                    label="Part. retained at main wall")
+                    label="Particles retained", color = light_grey)
                 ax1[1, 2].set_ylabel('[$cm^{-2}$]')              
             else:
-                ax1[1, 2].plot(self.time_out, reservoirs["particles_stuck_at_main_wall"], label="Part. stuck at main wall")
+                ax1[1, 2].plot(self.time_out, reservoirs["particles_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
                 ax1[1, 2].plot(self.time_out, reservoirs["particles_retained_at_main_wall"],
-                    label="Part. retained at main wall")
-                ax1[1, 2].set_ylabel('[#]')    
+                    label="Particles retained", color = light_grey)
+                ax1[1, 2].set_ylabel('[#]')  
+            ax1[1, 2].set_title('Main wall reservoir', loc='right', fontsize = 11)
+            ax1[1, 2].legend(loc="best", fontsize = 9).set_draggable(True)
 
             if self.div_recomb_ratio < 1.0:               
                 ax1[2, 0].plot(self.time_out, reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"],
-                           label="Par. loss to divertor") 
+                           label="Tot. parallel loss", color = light_blue) 
                 ax1[2, 0].plot(self.time_out, (reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*(1-self.div_recomb_ratio),
-                           label="Par. flux to div. wall")
+                           label="Tot. flux to div. wall", color = blue)
                 ax1[2, 0].plot(self.time_out, (reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*(self.div_recomb_ratio),
-                               label="Recomb. flux to div. reservoir")
+                               label="Recomb. flux to div. reservoir", color = green)
             elif self.div_recomb_ratio == 1.0:
                 ax1[2, 0].plot(self.time_out, reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"],
-                           label="Par. loss to div. reservoir") 
-                ax1[2, 0].plot(self.time_out, (reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*(1-self.div_recomb_ratio),
-                           label="Par. flux to div. wall")
+                           label="Parallel loss", color = blue) 
             ax1[2, 0].set_ylabel('[$s^{-1}$]') 
+            ax1[2, 0].set_title('Divertor fluxes', loc='right', fontsize = 11)
+            ax1[2, 0].legend(loc="best", fontsize = 9).set_draggable(True)
 
-            ax1[2, 1].plot(self.time_out, reservoirs["divwall_recycling"], label="Div. wall rec. rate")
-            ax1[2, 1].set_ylabel('[$s^{-1}$]')  
+            ax1[2, 1].plot(self.time_out, reservoirs["divwall_recycling"], color = green)
+            ax1[2, 1].set_ylabel('[$s^{-1}$]') 
+            ax1[2, 1].set_title('Divertor wall recycling rate', loc='right', fontsize = 11)
             
             if self.namelist["phys_surfaces"]:
-                ax1[2, 2].plot(self.time_out, reservoirs["particle_density_stuck_at_div_wall"], label="Part. stuck at div. wall")
+                ax1[2, 2].plot(self.time_out, reservoirs["particle_density_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
                 ax1[2, 2].plot(self.time_out, reservoirs["particle_density_retained_at_div_wall"],
-                    label="Part. retained at div. wall")
+                    label="Particles retained", color = grey)
                 ax1[2, 2].set_ylabel('[$cm^{-2}$]')              
             else:
-                ax1[2, 2].plot(self.time_out, reservoirs["particles_stuck_at_div_wall"], label="Part. stuck at div. wall")
+                ax1[2, 2].plot(self.time_out, reservoirs["particles_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
                 ax1[2, 2].plot(self.time_out, reservoirs["particles_retained_at_div_wall"],
-                    label="Part. retained at div. wall")
-                ax1[2, 2].set_ylabel('[#]')    
+                    label="Particles retained", color = grey)
+                ax1[2, 2].set_ylabel('[#]')   
+            ax1[2, 2].set_title('Divertor wall reservoir', loc='right', fontsize = 11)
+            ax1[2, 2].legend(loc="best", fontsize = 9).set_draggable(True)
             
             if self.screening_eff > 0.0:
                 ax1[3, 0].plot(self.time_out, reservoirs["divertor_backflow"]+reservoirs["screened_divertor_backflow"],
-                           label="Tot. div. backflow rate") 
+                           label="Tot. backflow rate", color = green) 
                 ax1[3, 0].plot(self.time_out, reservoirs["divertor_backflow"],
-                           label="Div. backflow to core") 
+                           label="Backflow to core", color = blue) 
                 ax1[3, 0].plot(self.time_out, reservoirs["screened_divertor_backflow"],
-                           label="Screened div. backflow") 
+                           label="Screened backflow", color = light_blue) 
             elif self.screening_eff == 0.0:
                 ax1[3, 0].plot(self.time_out, reservoirs["divertor_backflow"]+reservoirs["screened_divertor_backflow"],
-                           label="Divertor backflow rate")
-            ax1[3, 0].set_ylabel('[$s^{-1}$]') 
+                           label="Backflow rate", color = green)
+            ax1[3, 0].set_ylabel('[$s^{-1}$]')
+            ax1[3, 0].set_title('Divertor backflow rates', loc='right', fontsize = 11)
+            ax1[3, 0].legend(loc="best", fontsize = 9).set_draggable(True)
 
             ax1[3, 1].plot(self.time_out, reservoirs["pump_leakage"],
-                           label="Pump leakage rate")
+                           label="Leakage to core", color = light_green)
             ax1[3, 1].set_ylabel('[$s^{-1}$]')
+            ax1[3, 1].set_title('Pump leakage rates', loc='right', fontsize = 11)
+            ax1[3, 1].legend(loc="best", fontsize = 9).set_draggable(True)
             
             if self.namelist["phys_volumes"]:
                 ax1[3, 2].plot(self.time_out, reservoirs["particle_density_in_divertor"],
-                           label="Div. reservoir")
+                           label="Div. reservoir", color = green)
                 if self.namelist["pump_chamber"]:
                     ax1[3, 2].plot(self.time_out, reservoirs["particle_density_in_pump"],
-                           label="Pump reservoir")
+                           label="Pump reservoir", color = light_green)
                 ax1[3, 2].set_ylabel('[$cm^{-3}$]')
             else:
                 ax1[3, 2].plot(self.time_out, reservoirs["particles_in_divertor"],
-                           label="Div. reservoir")
+                           label="Div. reservoir", color = green)
                 if self.namelist["pump_chamber"]:
                     ax1[3, 2].plot(self.time_out, reservoirs["particles_in_pump"],
-                           label="Pump reservoir")
+                           label="Pump reservoir", color = light_green)
                 ax1[3, 2].set_ylabel('[#]')
-
-            if "impurity_radiation" in reservoirs:
-                for aa in ax1.flatten()[:12]:
-                    aa.legend(loc="best").set_draggable(True)
-            else:
-                for aa in ax1.flatten()[:2]:
-                    aa.legend(loc="best").set_draggable(True)    
-                for aa in ax1.flatten()[3:12]:
-                    aa.legend(loc="best").set_draggable(True)   
+            ax1[3, 2].set_title('Neutrals reservoirs', loc='right', fontsize = 11)
+            ax1[3, 2].legend(loc="best", fontsize = 9).set_draggable(True)
 
             for ii in [0, 1, 2]:
                 ax1[3, ii].set_xlabel("Time [s]")
@@ -1797,21 +2256,23 @@ class aurora_sim:
             # ----------------------------------------------------------------
             # now plot all particle reservoirs to check particle conservation:
             if axs is None:
-                fig, ax2 = plt.subplots()
+                fig, ax2 = plt.subplots(figsize=(12,7))
             else:
                 ax2 = axs[1]
+            
+            fig.suptitle('Particle conservation',fontsize=14)
 
             ax2.set_xlabel("time [s]")
 
-            ax2.plot(self.time_out, all_particles, label="Particles in the plasma")
-            ax2.plot(self.time_out, reservoirs["particles_in_divertor"], label="Particles in the divertor chamber")
+            ax2.plot(self.time_out, all_particles, label="Particles in the plasma", color = blue)
+            ax2.plot(self.time_out, reservoirs["particles_in_divertor"], label="Particles in the divertor chamber", color = green)
             if self.namelist["pump_chamber"]:
-                ax2.plot(self.time_out, reservoirs["particles_in_pump"], label="Particles in the pump chamber")
-            ax2.plot(self.time_out, reservoirs["particles_stuck_at_main_wall"]+reservoirs["particles_retained_at_main_wall"], label="Particle stored at the main wall")
-            ax2.plot(self.time_out, reservoirs["particles_stuck_at_div_wall"]+reservoirs["particles_retained_at_div_wall"], label="Particle stored at the divertor wall")
-            ax2.plot(self.time_out, reservoirs["particles_pumped"], label="Particles pumped away")
-            ax2.plot(self.time_out, reservoirs["total"], label="Total particles in the system")
-            ax2.plot(self.time_out, reservoirs["integ_source"], label="Integrated source")
+                ax2.plot(self.time_out, reservoirs["particles_in_pump"], label="Particles in the pump chamber", color = light_green)
+            ax2.plot(self.time_out, reservoirs["particles_stuck_at_main_wall"]+reservoirs["particles_retained_at_main_wall"], label="Particles stored at the main wall", color = light_grey)
+            ax2.plot(self.time_out, reservoirs["particles_stuck_at_div_wall"]+reservoirs["particles_retained_at_div_wall"], label="Particles stored at the divertor wall", color = grey)
+            ax2.plot(self.time_out, reservoirs["particles_pumped"], label="Particles pumped away", color = red, linestyle = 'dashed')
+            ax2.plot(self.time_out, reservoirs["integ_source"], label="Integrated source", color = red, linestyle = 'dotted')
+            ax2.plot(self.time_out, reservoirs["total"], label="Total particles in the system", color = 'black')
 
             if (abs((reservoirs["total"][-1] - reservoirs["integ_source"][-1]) / reservoirs["integ_source"][-1]) > 0.1):
                 print("Warning: significant error in particle conservation!")
@@ -1823,7 +2284,7 @@ class aurora_sim:
         
             ax2.set_xlim(self.time_out[[0, -1]])
             ax2.set_ylim(0, None)
-            ax2.legend(loc="best")
+            ax2.legend(loc="center left", bbox_to_anchor=(1, 0.5))
             plt.tight_layout()
 
         if plot:
@@ -1841,20 +2302,24 @@ class aurora_sim:
             Duration of the cycles over which perform the time integration.
         plot : bool, optional
             If True, plot time histories in each particle reservoir and display quality of particle conservation.
-        axs : 3-tuple or array
-            Array-like structure containing three matplotlib.Axes instances: the first one
+        axs : 2-tuple or array
+            Array-like structure containing two matplotlib.Axes instances: the first one
             for the separate particle time variation in each reservoir and the main fluxes,
-            the second optional one for the radiation, if it has been computed, and the third
-            one for the total particle-conservation check.
+            and the second one for the total particle-conservation check.
 
         Returns
         -------
         reservoirs : dict
             Dictionary containing density of particles in each reservoir.
         axs : matplotlib.Axes instances, only returned if plot=True
-            Array-like structure containing three matplotlib.Axes instances, (ax1,ax2,ax3).
+            Array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
             See optional input argument.
         """
+        
+        # get colors for plots
+        colors = plot_tools.load_color_codes_reservoirs()
+        blue,light_blue,green,light_green,grey,light_grey,red,light_red = colors
+        
         (
             nz,
             N_mainwall,
@@ -1868,10 +2333,18 @@ class aurora_sim:
             N_dsu,
             N_dsul,
             rcld_rate,
+            rcld_refl_rate,
+            rcld_recl_rate,
+            rcld_impl_rate,
+            rcld_sput_rate,
             rclb_rate,
             rcls_rate,
             rclp_rate,
             rclw_rate,
+            rclw_refl_rate,
+            rclw_recl_rate,
+            rclw_impl_rate,
+            rclw_sput_rate
         ) = self.res
         nz = nz.transpose(2, 1, 0)  # time,nZ,space
 
@@ -1893,10 +2366,10 @@ class aurora_sim:
         time_average, reservoirs["total"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,all_particles + (N_mainwall + N_divwall + N_div + N_pump + N_out + N_mainret + N_divret) * circ,interval)
 
         # main fluxes
-        time_average, reservoirs["source"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.total_source*circ,interval)
-        time_average, reservoirs["wall_source"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rclw_rate * circ,interval)
-        time_average, reservoirs["divertor_source"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rclb_rate * circ + rclp_rate * circ,interval)       
-        time_average, reservoirs["plasma_removal_rate"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,- N_dsu * circ - N_tsu * circ - N_dsul * circ,interval)    
+        _, reservoirs["source"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.total_source*circ,interval)
+        _, reservoirs["wall_source"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rclw_rate * circ,interval)
+        _, reservoirs["divertor_source"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rclb_rate * circ + rclp_rate * circ,interval)       
+        _, reservoirs["plasma_removal_rate"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,- N_dsu * circ - N_tsu * circ - N_dsul * circ,interval)    
         reservoirs["net_plasma_flow"] = reservoirs["source"] + reservoirs["wall_source"] + reservoirs["divertor_source"] + reservoirs["plasma_removal_rate"]
 
         # integrated source over time
@@ -1906,50 +2379,50 @@ class aurora_sim:
         if self.namelist["phys_volumes"]: 
             ones = np.ones_like(total_impurity_density)
             vol_plasma = grids_utils.vol_int(ones[:,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=self.rvol_lcfs)
-            time_average, reservoirs["particle_density_in_plasma"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,all_particles/vol_plasma,interval)      
-        time_average, reservoirs["particles_in_plasma"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,all_particles,interval)
+            _, reservoirs["particle_density_in_plasma"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,all_particles/vol_plasma,interval)      
+        _, reservoirs["particles_in_plasma"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,all_particles,interval)
 
         # divertor and pump neutrals reservoirs
         if self.namelist["phys_volumes"]:
-            time_average, reservoirs["particle_density_in_divertor"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(N_div * circ)/self.vol_div,interval)
-            time_average, reservoirs["particle_density_in_pump"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(N_pump * circ)/self.vol_pump,interval) 
-        time_average, reservoirs["particles_in_divertor"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_div * circ,interval)
-        time_average, reservoirs["particles_in_pump"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_pump * circ,interval)
+            _, reservoirs["particle_density_in_divertor"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(N_div * circ)/self.vol_div,interval)
+            _, reservoirs["particle_density_in_pump"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(N_pump * circ)/self.vol_pump,interval) 
+        _, reservoirs["particles_in_divertor"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_div * circ,interval)
+        _, reservoirs["particles_in_pump"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_pump * circ,interval)
 
         # fluxes towards main wall
-        time_average, reservoirs["edge_loss"] =    plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_tsu * circ,interval)
-        time_average, reservoirs["limiter_loss"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_dsul * circ,interval)
+        _, reservoirs["edge_loss"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_tsu * circ,interval)
+        _, reservoirs["limiter_loss"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_dsul * circ,interval)
+        reservoirs["total_flux_mainwall"] = reservoirs["edge_loss"] + reservoirs["limiter_loss"]
 
         # recycling rates from main wall
-        time_average, reservoirs["mainwall_recycling"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rclw_rate * circ,interval)
+        _, reservoirs["mainwall_recycling"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rclw_rate * circ,interval)
 
         # main wall reservoir
         if self.namelist["phys_surfaces"]:
-            time_average, reservoirs["particle_density_stuck_at_main_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(N_mainwall * circ)/(self.surf_mainwall*self.mainwall_roughness),interval)
-            time_average, reservoirs["particle_density_retained_at_main_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(N_mainret * circ)/(self.surf_mainwall*self.mainwall_roughness),interval)
-        time_average, reservoirs["particles_stuck_at_main_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_mainwall * circ,interval)
-        time_average, reservoirs["particles_retained_at_main_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_mainret * circ,interval)
+            _, reservoirs["particle_density_stuck_at_main_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(N_mainwall * circ)/(self.surf_mainwall*self.mainwall_roughness),interval)
+            _, reservoirs["particle_density_retained_at_main_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(N_mainret * circ)/(self.surf_mainwall*self.mainwall_roughness),interval)
+        _, reservoirs["particles_stuck_at_main_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_mainwall * circ,interval)
+        _, reservoirs["particles_retained_at_main_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_mainret * circ,interval)
 
-        # flux towards divertor targets
-        time_average, reservoirs["parallel_loss"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_dsu * circ,interval)
-
-        # backflow/leakage rates from the neutrals reservoirs
-        time_average, reservoirs["divertor_backflow"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rclb_rate * circ,interval)
-        time_average, reservoirs["screened_divertor_backflow"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rcls_rate * circ,interval)
-        time_average, reservoirs["pump_leakage"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rclp_rate * circ,interval)
-
+        # flux towards divertor targets and backflow/leakage rates
+        _, reservoirs["parallel_loss"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_dsu * circ,interval)
+        _, reservoirs["divertor_backflow"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rclb_rate * circ,interval)
+        _, reservoirs["screened_divertor_backflow"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rcls_rate * circ,interval)
+        _, reservoirs["pump_leakage"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rclp_rate * circ,interval)
+        reservoirs["total_flux_divwall"] = (reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*(1-self.div_recomb_ratio)       
+        
         # recycling rates from divertor wall
-        time_average, reservoirs["divwall_recycling"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rcld_rate * circ,interval)
+        _, reservoirs["divwall_recycling"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,rcld_rate * circ,interval)
         
         # divertor wall reservoir
         if self.namelist["phys_surfaces"]:
-            time_average, reservoirs["particle_density_stuck_at_div_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(N_divwall * circ)/(self.surf_divwall*self.divwall_roughness),interval)
-            time_average, reservoirs["particle_density_retained_at_div_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(N_divret * circ)/(self.surf_divwall*self.divwall_roughness),interval)
-        time_average, reservoirs["particles_stuck_at_div_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_divwall * circ,interval)
-        time_average, reservoirs["particles_retained_at_div_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_divret * circ,interval)        
+            _, reservoirs["particle_density_stuck_at_div_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(N_divwall * circ)/(self.surf_divwall*self.divwall_roughness),interval)
+            _, reservoirs["particle_density_retained_at_div_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(N_divret * circ)/(self.surf_divwall*self.divwall_roughness),interval)
+        _, reservoirs["particles_stuck_at_div_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_divwall * circ,interval)
+        _, reservoirs["particles_retained_at_div_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_divret * circ,interval)        
 
         # particles pumped away
-        time_average, reservoirs["particles_pumped"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_out * circ,interval)
+        _, reservoirs["particles_pumped"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,N_out * circ,interval)
 
         if hasattr(self, "rad"):  # radiation has already been computed
             reservoirs["impurity_radiation"] = grids_utils.vol_int(
@@ -1961,116 +2434,128 @@ class aurora_sim:
             # -------------------------------------------------
             # plot time histories for each particle reservoirs:
             if axs is None:
-                fig, ax1 = plt.subplots(nrows=4, ncols=3, sharex=True, figsize=(15, 10))
+                fig, ax1 = plt.subplots(nrows=4, ncols=3, sharex=True, figsize=(18, 12))
             else:
                 ax1 = axs[0]
+            
+            fig.suptitle('Time traces (averaged over ELM cycles)',fontsize=18)
 
-            ax1[0, 0].plot(time_average, reservoirs["source"], label="Ext. influx")
-            ax1[0, 0].plot(time_average, reservoirs["wall_source"], label="Wall rec. source")
-            ax1[0, 0].plot(time_average, reservoirs["divertor_source"], label="Div. rec. source")
-            ax1[0, 0].plot(time_average, reservoirs["plasma_removal_rate"], label="Removal rate")
-            ax1[0, 0].plot(time_average, reservoirs["net_plasma_flow"], label="Net sum")
+            ax1[0, 0].plot(time_average, reservoirs["source"], label="Ext. source", color = red, linestyle = 'dotted')
+            ax1[0, 0].plot(time_average, reservoirs["wall_source"], label="Wall source", color = light_green)
+            ax1[0, 0].plot(time_average, reservoirs["divertor_source"], label="Div. source", color = green)
+            ax1[0, 0].plot(time_average, reservoirs["plasma_removal_rate"], label="Removal rate", color = red, linestyle = 'dashed')
+            ax1[0, 0].plot(time_average, reservoirs["net_plasma_flow"], label="Net sum", color = 'black', linestyle = 'dashed')
+            ax1[0, 0].set_title('Plasma particles balance', loc='right', fontsize = 11)
             ax1[0, 0].set_ylabel('[$s^{-1}$]')
+            ax1[0, 0].legend(loc="best", fontsize = 9).set_draggable(True)
 
             if self.namelist["phys_volumes"]:
                 ax1[0, 1].plot(time_average, reservoirs["particle_density_in_plasma"],
-                               label="Plasma")
+                               color = blue)
                 ax1[0, 1].set_ylabel('[$cm^{-3}$]')
             else:   
                 ax1[0, 1].plot(time_average, reservoirs["particles_in_plasma"],
-                           label="Plasma")
+                           color = blue)
                 ax1[0, 1].set_ylabel('[#]')
+            ax1[0, 1].set_title('Plasma', loc='right', fontsize = 11)
                 
             if "impurity_radiation" in reservoirs:
-                ax1[0, 2].plot(self.time_out, reservoirs["impurity_radiation"], label="Core radiation")
+                ax1[0, 2].plot(self.time_out, reservoirs["impurity_radiation"], color = 'red')
                 ax1[0, 2].set_ylabel('[W]')
+                ax1[0, 2].set_title('Core radiation', loc='right', fontsize = 11) 
+                ax1[0, 2].legend(loc="best", fontsize = 9).set_draggable(True)
                 
-            ax1[1, 0].plot(time_average, reservoirs["edge_loss"]+reservoirs["limiter_loss"], label="Total flux to main wall")
-            ax1[1, 0].plot(time_average, reservoirs["edge_loss"], label="Radial edge loss")
-            ax1[1, 0].plot(time_average, reservoirs["limiter_loss"], label="Par. loss to limiter")
-            ax1[1, 0].set_ylabel('[$s^{-1}$]')  
+            ax1[1, 0].plot(time_average, reservoirs["total_flux_mainwall"], label="Tot. flux to main wall", color = blue)
+            ax1[1, 0].plot(time_average, reservoirs["edge_loss"], label="Radial edge loss", color = light_blue, linestyle = 'dashed')
+            ax1[1, 0].plot(time_average, reservoirs["limiter_loss"], label="Parallel limiter loss", color = light_blue, linestyle = 'dotted')
+            ax1[1, 0].set_ylabel('[$s^{-1}$]')
+            ax1[1, 0].set_title('Main wall fluxes', loc='right', fontsize = 11)
+            ax1[1, 0].legend(loc="best", fontsize = 9).set_draggable(True)
 
-            ax1[1, 1].plot(time_average, reservoirs["mainwall_recycling"], label="Main wall rec. rate")
+            ax1[1, 1].plot(time_average, reservoirs["mainwall_recycling"], color = light_green)
             ax1[1, 1].set_ylabel('[$s^{-1}$]')  
+            ax1[1, 1].set_title('Main wall recycling rate', loc='right', fontsize = 11)
 
             if self.namelist["phys_surfaces"]:
-                ax1[1, 2].plot(time_average, reservoirs["particle_density_stuck_at_main_wall"], label="Part. stuck at main wall")
+                ax1[1, 2].plot(time_average, reservoirs["particle_density_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
                 ax1[1, 2].plot(time_average, reservoirs["particle_density_retained_at_main_wall"],
-                    label="Part. retained at main wall")
+                    label="Particles retained", color = light_grey)
                 ax1[1, 2].set_ylabel('[$cm^{-2}$]')            
             else:
-                ax1[1, 2].plot(time_average, reservoirs["particles_stuck_at_main_wall"], label="Part. stuck at main wall")
+                ax1[1, 2].plot(time_average, reservoirs["particles_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
                 ax1[1, 2].plot(time_average, reservoirs["particles_retained_at_main_wall"],
-                    label="Part. retained at main wall")
-                ax1[1, 2].set_ylabel('[#]')   
+                    label="Particles retained", color = light_grey)
+                ax1[1, 2].set_ylabel('[#]')
+            ax1[1, 2].set_title('Main wall reservoir', loc='right', fontsize = 11)
+            ax1[1, 2].legend(loc="best", fontsize = 9).set_draggable(True)
                 
             if self.div_recomb_ratio < 1.0:               
                 ax1[2, 0].plot(time_average, reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"],
-                           label="Par. loss to divertor") 
+                           label="Tot. parallel loss", color = light_blue) 
                 ax1[2, 0].plot(time_average, (reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*(1-self.div_recomb_ratio),
-                           label="Par. flux to div. wall")
+                           label="Tot. flux to div. wall", color = blue)
                 ax1[2, 0].plot(time_average, (reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*(self.div_recomb_ratio),
-                               label="Recomb. flux to div. reservoir")
+                               label="Recomb. flux to div. reservoir", color = green)
             elif self.div_recomb_ratio == 1.0:
                 ax1[2, 0].plot(time_average, reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"],
-                           label="Par. loss to div. reservoir") 
-                ax1[2, 0].plot(time_average, (reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*(1-self.div_recomb_ratio),
-                           label="Par. flux to div. wall")
+                           label="Parallel loss", color = blue) 
             ax1[2, 0].set_ylabel('[$s^{-1}$]') 
+            ax1[2, 0].set_title('Divertor fluxes', loc='right', fontsize = 11)
+            ax1[2, 0].legend(loc="best", fontsize = 9).set_draggable(True)
                 
-            ax1[2, 1].plot(time_average, reservoirs["divwall_recycling"], label="Div. wall rec. rate")
-            ax1[2, 1].set_ylabel('[$s^{-1}$]')          
+            ax1[2, 1].plot(time_average, reservoirs["divwall_recycling"], color = green)
+            ax1[2, 1].set_ylabel('[$s^{-1}$]')
+            ax1[2, 1].set_title('Divertor wall recycling rate', loc='right', fontsize = 11)
             
             if self.namelist["phys_surfaces"]:
-                ax1[2, 2].plot(time_average, reservoirs["particle_density_stuck_at_div_wall"], label="Part. stuck at div. wall")
+                ax1[2, 2].plot(time_average, reservoirs["particle_density_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
                 ax1[2, 2].plot(time_average, reservoirs["particle_density_retained_at_div_wall"],
-                    label="Part. retained at div. wall")
+                    label="Particles retained", color = grey)
                 ax1[2, 2].set_ylabel('[$cm^{-2}$]')            
             else:
-                ax1[2, 2].plot(time_average, reservoirs["particles_stuck_at_div_wall"], label="Part. stuck at div. wall")
+                ax1[2, 2].plot(time_average, reservoirs["particles_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
                 ax1[2, 2].plot(time_average, reservoirs["particles_retained_at_div_wall"],
-                    label="Part. retained at div. wall")
-                ax1[2, 2].set_ylabel('[#]')             
+                    label="Particles retained", color = grey)
+                ax1[2, 2].set_ylabel('[#]') 
+            ax1[2, 2].set_title('Divertor wall reservoir', loc='right', fontsize = 11)
+            ax1[2, 2].legend(loc="best", fontsize = 9).set_draggable(True)
 
             if self.screening_eff > 0.0:
                 ax1[3, 0].plot(time_average, reservoirs["divertor_backflow"]+reservoirs["screened_divertor_backflow"],
-                           label="Tot. div. backflow rate") 
+                           label="Tot. backflow rate", color = green) 
                 ax1[3, 0].plot(time_average, reservoirs["divertor_backflow"],
-                           label="Div. backflow to core") 
+                           label="Backflow to core", color = blue) 
                 ax1[3, 0].plot(time_average, reservoirs["screened_divertor_backflow"],
-                           label="Screened div. backflow") 
+                           label="Screened backflow", color = light_blue) 
             elif self.screening_eff == 0.0:
                 ax1[3, 0].plot(time_average, reservoirs["divertor_backflow"]+reservoirs["screened_divertor_backflow"],
-                           label="Divertor backflow rate")
+                           label="Backflow rate", color = green)
             ax1[3, 0].set_ylabel('[$s^{-1}$]') 
+            ax1[3, 0].set_title('Divertor backflow rates', loc='right', fontsize = 11)
+            ax1[3, 0].legend(loc="best", fontsize = 9).set_draggable(True)
 
             ax1[3, 1].plot(time_average, reservoirs["pump_leakage"],
-                           label="Pump leakage rate")
+                           label="Leakage to core", color = light_green)
             ax1[3, 1].set_ylabel('[$s^{-1}$]')
+            ax1[3, 1].set_title('Pump leakage rates', loc='right', fontsize = 11)
+            ax1[3, 1].legend(loc="best", fontsize = 9).set_draggable(True)
 
             if self.namelist["phys_volumes"]:
                 ax1[3, 2].plot(time_average, reservoirs["particle_density_in_divertor"],
-                               label="Div. reservoir")
+                               label="Div. reservoir", color = green)
                 if self.namelist["pump_chamber"]:
                     ax1[3, 2].plot(time_average, reservoirs["particle_density_in_pump"],
-                               label="Pump reservoir")
+                               label="Pump reservoir", color = light_green)
                 ax1[3, 2].set_ylabel('[$cm^{-3}$]')     
             else:
                 ax1[3, 2].plot(time_average, reservoirs["particles_in_divertor"],
-                           label="Div. reservoir")
+                           label="Div. reservoir", color = green)
                 if self.namelist["pump_chamber"]:
                     ax1[3, 2].plot(time_average, reservoirs["particles_in_pump"],
-                           label="Pump reservoir")
+                           label="Pump reservoir", color = light_green)
                 ax1[3, 2].set_ylabel('[#]')
-
-            if "impurity_radiation" in reservoirs:
-                for aa in ax1.flatten()[:12]:
-                    aa.legend(loc="best").set_draggable(True)
-            else:
-                for aa in ax1.flatten()[:2]:
-                    aa.legend(loc="best").set_draggable(True)    
-                for aa in ax1.flatten()[3:12]:
-                    aa.legend(loc="best").set_draggable(True)   
+            ax1[3, 2].set_title('Neutrals reservoirs', loc='right', fontsize = 11)
+            ax1[3, 2].legend(loc="best", fontsize = 9).set_draggable(True)
 
             for ii in [0, 1, 2]:
                 ax1[3, ii].set_xlabel("Time [s]")
@@ -2079,31 +2564,353 @@ class aurora_sim:
             # ----------------------------------------------------------------
             # now plot all particle reservoirs to check particle conservation:
             if axs is None:
-                fig, ax2 = plt.subplots()
+                fig, ax2 = plt.subplots(figsize=(12, 7))
             else:
                 ax2 = axs[1]
+                
+            fig.suptitle('Particle conservation (averaged over ELM cycles)',fontsize=14)
 
             ax2.set_xlabel("time [s]")
 
-            ax2.plot(time_average, reservoirs["particles_in_plasma"], label="Particles in the plasma")
-            ax2.plot(time_average, reservoirs["particles_in_divertor"], label="Particles in the divertor chamber")
+            ax2.plot(time_average, reservoirs["particles_in_plasma"], label="Particles in the plasma", color = blue)
+            ax2.plot(time_average, reservoirs["particles_in_divertor"], label="Particles in the divertor chamber", color = green)
             if self.namelist["pump_chamber"]:
-                ax2.plot(time_average, reservoirs["particles_in_pump"], label="Particles in the pump chamber")
-            ax2.plot(time_average, reservoirs["particles_stuck_at_main_wall"]+reservoirs["particles_retained_at_main_wall"], label="Particle stored at the main wall")
-            ax2.plot(time_average, reservoirs["particles_stuck_at_div_wall"]+reservoirs["particles_retained_at_div_wall"], label="Particle stored at the divertor wall")
-            ax2.plot(time_average, reservoirs["particles_pumped"], label="Particles pumped away")
-            ax2.plot(time_average, reservoirs["total"], label="Total particles in the system")
-            ax2.plot(time_average, reservoirs["integ_source"], label="Integrated source")
+                ax2.plot(time_average, reservoirs["particles_in_pump"], label="Particles in the pump chamber", color = light_green)
+            ax2.plot(time_average, reservoirs["particles_stuck_at_main_wall"]+reservoirs["particles_retained_at_main_wall"], label="Particles stored at the main wall", color = light_grey)
+            ax2.plot(time_average, reservoirs["particles_stuck_at_div_wall"]+reservoirs["particles_retained_at_div_wall"], label="Particles stored at the divertor wall", color = grey)
+            ax2.plot(time_average, reservoirs["particles_pumped"], label="Particles pumped away", color = red, linestyle = 'dashed')
+            ax2.plot(time_average, reservoirs["integ_source"], label="Integrated source", color = red, linestyle = 'dotted')
+            ax2.plot(time_average, reservoirs["total"], label="Total particles in the system", color = 'black')
         
             ax2.set_xlim(self.time_out[[0, -1]])
             ax2.set_ylim(0, None)
-            ax2.legend(loc="best")
+            ax2.legend(loc="center left", bbox_to_anchor=(1, 0.5))
             plt.tight_layout()
 
         if plot:
             return reservoirs, (ax1, ax2)
         else:
-            return reservoirs                
+            return reservoirs 
+
+    def plot_PWI_model(self, interval, plot=True, axs=None):
+        """Return and plot data regarding the plasma-wall interaction in the simulation.
+
+        Parameters
+        ----------
+        plot : bool, optional
+            If True, plot time traces of various quantities related to the plasma-wall interaction.
+        axs : 2-tuple or array
+            Array-like structure containing two matplotlib.Axes instances: the first one
+            for the time traces referred to the main wall, the second one for the time traces
+            referred to the divertor wall
+
+        Returns
+        -------
+        PWI_traces : dict
+            Dictionary containing various quantities related to the plasma-wall interaction.
+        axs : matplotlib.Axes instances, only returned if plot=True
+            Array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
+            See optional input argument.
+        """
+        
+        # get colors for plots
+        colors = plot_tools.load_color_codes_reservoirs()
+        blue,light_blue,green,light_green,grey,light_grey,red,light_red = colors
+        colors_PWI = plot_tools.load_color_codes_PWI()
+        reds, blues, light_blues, greens = colors_PWI
+        
+        (
+            nz,
+            N_mainwall,
+            N_divwall,
+            N_div,
+            N_pump,
+            N_out,
+            N_mainret,
+            N_divret,
+            N_tsu,
+            N_dsu,
+            N_dsul,
+            rcld_rate,
+            rcld_refl_rate,
+            rcld_recl_rate,
+            rcld_impl_rate,
+            rcld_sput_rate,
+            rclb_rate,
+            rcls_rate,
+            rclp_rate,
+            rclw_rate,
+            rclw_refl_rate,
+            rclw_recl_rate,
+            rclw_impl_rate,
+            rclw_sput_rate
+        ) = self.res
+        nz = nz.transpose(2, 1, 0)  # time,nZ,space
+
+        # factor to account for cylindrical geometry:
+        circ = 2 * np.pi * self.Raxis_cm  # cm
+        
+        # list of background species
+        background_species = self.advanced_PWI_species
+        
+        # saturation densities in cm^-2
+        n_main_wall_sat = self.n_main_wall_sat/1e4
+        n_div_wall_sat = self.n_div_wall_sat/1e4
+
+        # collect all the relevant quantities for the PWI model
+        PWI_traces = {}
+        
+        # main wall
+        
+        # main wall impurity content
+        PWI_traces["impurity_content_mainwall"] = ((N_mainret * circ)/(self.surf_mainwall*self.mainwall_roughness))/n_main_wall_sat
+        time_average, PWI_traces["impurity_content_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_content_mainwall"],interval)
+        # impurity flux towards main wall
+        PWI_traces["impurity_flux_mainwall"] = N_tsu * circ + N_dsul * circ
+        _, PWI_traces["impurity_flux_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_flux_mainwall"],interval)
+        # impurity impact energy at main wall
+        PWI_traces["impurity_impact_energy_mainwall"] = self.E0_main_wall_imp.T
+        _, PWI_traces["impurity_impact_energy_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_impact_energy_mainwall"],interval)
+        # impurity reflection coefficient at main wall
+        PWI_traces["impurity_reflection_coeff_mainwall"] = self.rn_main_wall
+        _, PWI_traces["impurity_reflection_coeff_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_reflection_coeff_mainwall"],interval)
+        # fluxes of background species
+        PWI_traces["background_fluxes_mainwall"] = self.fluxes_main_wall_background.T
+        PWI_traces["background_fluxes_mainwall_av"] = np.zeros((len(time_average),len(background_species)))
+        for i in range(0,len(background_species)):
+            _, PWI_traces["background_fluxes_mainwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["background_fluxes_mainwall"][:,i],interval)
+        # impact energies of background species at main wall
+        PWI_traces["background_impact_energies_mainwall"] = self.E0_main_wall_background.T
+        PWI_traces["background_impact_energies_mainwall_av"] = np.zeros((len(time_average),len(background_species)))
+        for i in range(0,len(background_species)):
+            _, PWI_traces["background_impact_energies_mainwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["background_impact_energies_mainwall"][:,i],interval)
+        # impurity sputtering yields at main wall
+        PWI_traces["impurity_sputtering_yields_mainwall"] = self.y_main_wall.T
+        PWI_traces["impurity_sputtering_yields_mainwall_av"] = np.zeros((len(time_average),len(background_species)+1))
+        for i in range(0,len(background_species)+1):
+            _, PWI_traces["impurity_sputtering_yields_mainwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_yields_mainwall"][:,i],interval)
+        # impurity reflection rate from main wall
+        PWI_traces["impurity_reflection_rate_mainwall"] = rclw_refl_rate * circ
+        _, PWI_traces["impurity_reflection_rate_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_reflection_rate_mainwall"],interval) 
+        # impurity prompt recycling rate from main wall
+        PWI_traces["impurity_prompt_recycling_rate_mainwall"] = rclw_recl_rate * circ
+        _, PWI_traces["impurity_prompt_recycling_rate_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_prompt_recycling_rate_mainwall"],interval) 
+        # impurity implantation rate into main wall
+        PWI_traces["impurity_implantation_rate_mainwall"] = rclw_impl_rate * circ
+        _, PWI_traces["impurity_implantation_rate_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_implantation_rate_mainwall"],interval) 
+        # impurity release rate from main wall
+        PWI_traces["impurity_sputtering_rates_mainwall"] = np.zeros((len(self.time_out),len(background_species)+1))
+        PWI_traces["impurity_sputtering_rates_mainwall_av"] = np.zeros((len(time_average),len(background_species)+1))
+        for i in range(0,len(background_species)+1):
+            PWI_traces["impurity_sputtering_rates_mainwall"][:,i] = rclw_sput_rate[i,:] * circ
+            _, PWI_traces["impurity_sputtering_rates_mainwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_rates_mainwall"][:,i],interval) 
+        PWI_traces["impurity_sputtering_rate_total_mainwall"] = PWI_traces["impurity_sputtering_rates_mainwall"].sum(axis=1)
+        _, PWI_traces["impurity_sputtering_rate_total_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_rate_total_mainwall"],interval) 
+
+        # divertor wall
+        
+        # divertor wall impurity content
+        PWI_traces["impurity_content_divwall"] = ((N_divret * circ)/(self.surf_divwall*self.divwall_roughness))/n_div_wall_sat
+        _, PWI_traces["impurity_content_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_content_divwall"],interval) 
+        # impurity flux towards divertor wall
+        PWI_traces["impurity_flux_divwall"] = (N_dsu * circ + rcls_rate * circ)*(1-self.div_recomb_ratio)
+        _, PWI_traces["impurity_flux_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_flux_divwall"],interval) 
+        # impurity impact energy at divertor wall
+        PWI_traces["impurity_impact_energy_divwall"] = self.E0_div_wall_imp.T
+        _, PWI_traces["impurity_impact_energy_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_impact_energy_divwall"],interval) 
+        # impurity reflection coefficient at divertor wall
+        PWI_traces["impurity_reflection_coeff_divwall"] = self.rn_div_wall
+        _, PWI_traces["impurity_reflection_coeff_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_reflection_coeff_divwall"],interval)
+        # fluxes of background species
+        PWI_traces["background_fluxes_divwall"] = self.fluxes_div_wall_background.T
+        PWI_traces["background_fluxes_divwall_av"] = np.zeros((len(time_average),len(background_species)))
+        for i in range(0,len(background_species)):
+            _, PWI_traces["background_fluxes_divwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["background_fluxes_divwall"][:,i],interval)
+        # impact energies of background species at divertor wall
+        PWI_traces["background_impact_energies_divwall"] = self.E0_div_wall_background.T
+        PWI_traces["background_impact_energies_divwall_av"] = np.zeros((len(time_average),len(background_species)))
+        for i in range(0,len(background_species)):
+            _, PWI_traces["background_impact_energies_divwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["background_impact_energies_divwall"][:,i],interval)
+        # impurity sputtering yields at divertor wall
+        PWI_traces["impurity_sputtering_yields_divwall"] = self.y_div_wall.T
+        PWI_traces["impurity_sputtering_yields_divwall_av"] = np.zeros((len(time_average),len(background_species)+1))
+        for i in range(0,len(background_species)+1):
+            _, PWI_traces["impurity_sputtering_yields_divwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_yields_divwall"][:,i],interval)
+        # impurity reflection rate from divertor wall
+        PWI_traces["impurity_reflection_rate_divwall"] = rcld_refl_rate * circ
+        _, PWI_traces["impurity_reflection_rate_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_reflection_rate_divwall"],interval) 
+        # impurity prompt recycling rate from divertor wall
+        PWI_traces["impurity_prompt_recycling_rate_divwall"] = rcld_recl_rate * circ
+        _, PWI_traces["impurity_prompt_recycling_rate_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_prompt_recycling_rate_divwall"],interval) 
+        # impurity implantation rate into divertor wall
+        PWI_traces["impurity_implantation_rate_divwall"] = rcld_impl_rate * circ
+        _, PWI_traces["impurity_implantation_rate_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_implantation_rate_divwall"],interval) 
+        # impurity release rate from divertor wall
+        PWI_traces["impurity_sputtering_rates_divwall"] = np.zeros((len(self.time_out),len(background_species)+1))
+        PWI_traces["impurity_sputtering_rates_divwall_av"] = np.zeros((len(time_average),len(background_species)+1))
+        for i in range(0,len(background_species)+1):
+            PWI_traces["impurity_sputtering_rates_divwall"][:,i] = rcld_sput_rate[i,:] * circ
+            _, PWI_traces["impurity_sputtering_rates_divwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_rates_divwall"][:,i],interval) 
+        PWI_traces["impurity_sputtering_rate_total_divwall"] = PWI_traces["impurity_sputtering_rates_divwall"].sum(axis=1)
+        _, PWI_traces["impurity_sputtering_rate_total_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_rate_total_divwall"],interval) 
+
+        if plot:
+            # -------------------------------------------------
+            # plot time histories for the main wall:
+            if axs is None:
+                fig, ax1 = plt.subplots(nrows=3, ncols=4, sharex=True, figsize=(18, 12))
+            else:
+                ax1 = axs[0]
+                
+            fig.suptitle('Plasma - main wall interaction time traces',fontsize=18)
+
+            ax1[0, 0].plot(self.time_out, PWI_traces["impurity_content_mainwall"], color = grey)
+            ax1[0, 0].set_ylabel(f'$C_{{{self.imp}}}$/$C_{{{self.imp},sat}}$')
+            ax1[0, 0].set_title(f"Retained {self.imp} content into wall", loc='right', fontsize = 11)
+
+            ax1[0, 1].plot(self.time_out, PWI_traces["impurity_flux_mainwall"], color = light_blues[0])
+            ax1[0, 1].set_ylabel('[$s^{-1}$]')
+            ax1[0, 1].set_title(f"{self.imp} flux towards wall", loc='right', fontsize = 11)
+
+            ax1[0, 2].plot(self.time_out, PWI_traces["impurity_impact_energy_mainwall"], color = reds[0])
+            ax1[0, 2].set_ylabel('[eV]') 
+            ax1[0, 2].set_title(f"Mean {self.imp} impact energy", loc='right', fontsize = 11)
+
+            ax1[0, 3].plot(self.time_out, PWI_traces["impurity_reflection_coeff_mainwall"], color = blues[0])
+            ax1[0, 3].set_ylabel('$R_N$')  
+            ax1[0, 3].set_title(f"Mean {self.imp} reflection coeff.", loc='right', fontsize = 11)
+            
+            ax1[1, 0].plot(self.time_out, PWI_traces["impurity_implantation_rate_mainwall"], label="Total absorption rate", color = greens[0])
+            ax1[1, 0].plot(self.time_out, PWI_traces["impurity_sputtering_rate_total_mainwall"], label="Total release rate", color = blues[0])
+            ax1[1, 0].plot(self.time_out, PWI_traces["impurity_implantation_rate_mainwall"]-PWI_traces["impurity_sputtering_rate_total_mainwall"], label="Balance", color = 'black')
+            ax1[1, 0].set_ylabel('[$s^{-1}$]')
+            ax1[1, 0].set_title(f"{self.imp} wall balance", loc='right', fontsize = 11)
+            ax1[1, 0].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            for i in range(0,len(background_species)):
+                ax1[1, 1].plot(self.time_out, PWI_traces["background_fluxes_mainwall"][:,i], label=f"{background_species[i]} flux", color = light_blues[i+1])
+            ax1[1, 1].set_ylabel('[$s^{-1}$]')
+            ax1[1, 1].set_title("Background fluxes towards wall", loc='right', fontsize = 11)
+            ax1[1, 1].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            for i in range(0,len(background_species)):
+                ax1[1, 2].plot(self.time_out, PWI_traces["background_impact_energies_mainwall"][:,i], label=f"{background_species[i]}", color = reds[i+1])
+            ax1[1, 2].set_ylabel('[eV]')
+            ax1[1, 2].set_title("Mean background fluxes impact energy", loc='right', fontsize = 11)
+            ax1[1, 2].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            ax1[1, 3].plot(self.time_out, PWI_traces["impurity_sputtering_yields_mainwall"][:,0], label=f"from {self.imp}", color = blues[0])
+            # if self.namelist['ELM_model']['ELM_flag']:
+            #     ax1[1, 3].plot(time_average, PWI_traces["impurity_sputtering_yields_mainwall_av"][:,0], linestyle = 'dashed', color = 'white')
+            for i in range(0,len(background_species)):
+                ax1[1, 3].plot(self.time_out, PWI_traces["impurity_sputtering_yields_mainwall"][:,i+1], label=f"from {background_species[i]}", color = blues[i+1])
+                # if self.namelist['ELM_model']['ELM_flag']:
+                #     ax1[1, 3].plot(time_average, PWI_traces["impurity_sputtering_yields_mainwall_av"][:,i+1], linestyle = 'dashed', color = 'white')
+            ax1[1, 3].set_ylabel(f'$Y_{{{self.imp}}}$/$C_{{{self.imp},wall}}$')
+            ax1[1, 3].set_title(f"Mean {self.imp} sputtering yields from {self.main_wall_material}", loc='right', fontsize = 11)
+            ax1[1, 3].legend(loc="best", fontsize = 9).set_draggable(True)
+            
+            ax1[2, 0].plot(self.time_out, PWI_traces["impurity_reflection_rate_mainwall"], color = blues[0])
+            ax1[2, 0].set_ylabel('[$s^{-1}$]')
+            ax1[2, 0].set_title(f"{self.imp} reflection rate from wall", loc='right', fontsize = 11)
+
+            ax1[2, 1].plot(self.time_out, PWI_traces["impurity_prompt_recycling_rate_mainwall"], color = blues[0])
+            ax1[2, 1].set_ylabel('[$s^{-1}$]')
+            ax1[2, 1].set_title(f"{self.imp} prompt recycling rate from wall", loc='right', fontsize = 11)
+            
+            ax1[2, 2].plot(self.time_out, PWI_traces["impurity_implantation_rate_mainwall"], color = blues[0])
+            ax1[2, 2].set_ylabel('[$s^{-1}$]')
+            ax1[2, 2].set_title(f"{self.imp} implantation rate into wall", loc='right', fontsize = 11)
+            
+            ax1[2, 3].plot(self.time_out, PWI_traces["impurity_sputtering_rates_mainwall"][:,0], label=f"from {self.imp}", color = blues[0])
+            for i in range(0,len(background_species)):
+                ax1[2, 3].plot(self.time_out, PWI_traces["impurity_sputtering_rates_mainwall"][:,i+1], label=f"from {background_species[i]}", color = blues[i+1])
+            ax1[2, 3].set_ylabel('[$s^{-1}$]')
+            ax1[2, 3].set_title(f"{self.imp} sputtering rates from wall", loc='right', fontsize = 11)
+            ax1[2, 3].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            for ii in [0, 1, 2, 3]:
+                ax1[2, ii].set_xlabel("Time [s]")
+            ax1[2, 0].set_xlim(self.time_out[[0, -1]])
+            
+            # -------------------------------------------------
+            # plot time histories for the divertor wall:
+            if axs is None:
+                fig, ax2 = plt.subplots(nrows=3, ncols=4, sharex=True, figsize=(18, 12))
+            else:
+                ax2 = axs[0]
+                
+            fig.suptitle('Plasma - divertor wall interaction time traces',fontsize=18)
+
+            ax2[0, 0].plot(self.time_out, PWI_traces["impurity_content_divwall"], color = grey)
+            ax2[0, 0].set_ylabel(f'$C_{{{self.imp}}}$/$C_{{{self.imp},sat}}$')
+            ax2[0, 0].set_title(f"Retained {self.imp} content into wall", loc='right', fontsize = 11)
+
+            ax2[0, 1].plot(self.time_out, PWI_traces["impurity_flux_divwall"], color = light_blues[0])
+            ax2[0, 1].set_ylabel('[$s^{-1}$]')
+            ax2[0, 1].set_title(f"{self.imp} flux towards wall", loc='right', fontsize = 11)
+
+            ax2[0, 2].plot(self.time_out, PWI_traces["impurity_impact_energy_divwall"], color = reds[0])
+            ax2[0, 2].set_ylabel('[eV]')
+            ax2[0, 2].set_title(f"Mean {self.imp} impact energy", loc='right', fontsize = 11)
+
+            ax2[0, 3].plot(self.time_out, PWI_traces["impurity_reflection_coeff_divwall"], color = blues[0])
+            ax2[0, 3].set_ylabel('$R_N$')  
+            ax2[0, 3].set_title(f"Mean {self.imp} reflection coeff.", loc='right', fontsize = 11)
+
+            ax2[1, 0].plot(self.time_out, PWI_traces["impurity_implantation_rate_divwall"], label="Total absorption rate", color = greens[0])
+            ax2[1, 0].plot(self.time_out, PWI_traces["impurity_sputtering_rate_total_divwall"], label="Total release rate", color = blues[0])
+            ax2[1, 0].plot(self.time_out, PWI_traces["impurity_implantation_rate_divwall"]-PWI_traces["impurity_sputtering_rate_total_divwall"], label="Balance", color = 'black')
+            ax2[1, 0].set_ylabel('[$s^{-1}$]')
+            ax2[1, 0].set_title(f"{self.imp} wall balance", loc='right', fontsize = 11)
+            ax2[1, 0].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            for i in range(0,len(background_species)):
+                ax2[1, 1].plot(self.time_out, PWI_traces["background_fluxes_divwall"][:,i], label=f"{background_species[i]} flux", color = light_blues[i+1])
+            ax2[1, 1].set_ylabel('[$s^{-1}$]')
+            ax2[1, 1].set_title("Background fluxes towards wall", loc='right', fontsize = 11)
+            ax2[1, 1].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            for i in range(0,len(background_species)):
+                ax2[1, 2].plot(self.time_out, PWI_traces["background_impact_energies_divwall"][:,i], label=f"{background_species[i]}", color = reds[i+1])
+            ax2[1, 2].set_ylabel('[eV]')
+            ax2[1, 2].set_title("Mean background fluxes impact energy", loc='right', fontsize = 11)
+            ax2[1, 2].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            ax2[1, 3].plot(self.time_out, PWI_traces["impurity_sputtering_yields_divwall"][:,0], label=f"from {self.imp}", color = blues[0])
+            for i in range(0,len(background_species)):
+                ax2[1, 3].plot(self.time_out, PWI_traces["impurity_sputtering_yields_divwall"][:,i+1], label=f"from {background_species[i]}", color = blues[i+1])
+            ax2[1, 3].set_ylabel(f'$Y_{{{self.imp}}}$/$C_{{{self.imp},wall}}$')
+            ax2[1, 3].set_title(f"Mean {self.imp} sputtering yields from {self.div_wall_material}", loc='right', fontsize = 11)
+            ax2[1, 3].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            ax2[2, 0].plot(self.time_out, PWI_traces["impurity_reflection_rate_divwall"], color = blues[0])
+            ax2[2, 0].set_ylabel('[$s^{-1}$]')
+            ax2[2, 0].set_title(f"{self.imp} reflection rate from wall", loc='right', fontsize = 11)
+
+            ax2[2, 1].plot(self.time_out, PWI_traces["impurity_prompt_recycling_rate_divwall"], color = blues[0])
+            ax2[2, 1].set_ylabel('[$s^{-1}$]')
+            ax2[2, 1].set_title(f"{self.imp} prompt recycling rate from wall", loc='right', fontsize = 11)
+            
+            ax2[2, 2].plot(self.time_out, PWI_traces["impurity_implantation_rate_divwall"], color = blues[0])
+            ax2[2, 2].set_ylabel('[$s^{-1}$]')
+            ax2[2, 2].set_title(f"{self.imp} implantation rate into wall", loc='right', fontsize = 11)
+            
+            ax2[2, 3].plot(self.time_out, PWI_traces["impurity_sputtering_rates_divwall"][:,0], label=f"from {self.imp}", color = blues[0])
+            for i in range(0,len(background_species)):
+                ax2[2, 3].plot(self.time_out, PWI_traces["impurity_sputtering_rates_divwall"][:,i+1], label=f"from {background_species[i]}", color = blues[i+1])
+            ax2[2, 3].set_ylabel('[$s^{-1}$]')
+            ax2[2, 3].set_title(f"{self.imp} sputtering rates from wall", loc='right', fontsize = 11)
+            ax2[2, 3].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            for ii in [0, 1, 2, 3]:
+                ax2[2, ii].set_xlabel("Time [s]")
+            ax2[2, 0].set_xlim(self.time_out[[0, -1]])      
+
+        if plot:
+            return PWI_traces, (ax1, ax2)
+        else:
+            return PWI_traces             
 
     def centrifugal_asym(self, omega, Zeff, plot=False):
         """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the
