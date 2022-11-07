@@ -1204,7 +1204,7 @@ class oedge_output:
             label = self.name_maps[field]['label']
             units = self.name_maps[field]['units']
             
-            self.plot_2d(var, charge=charge, ax=ax, label=label+' '+units)
+            self.plot_2d(var, charge=charge, ax=ax, cbar_label=label+' '+units)
 
         plt.tight_layout()
 
