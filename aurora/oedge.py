@@ -973,7 +973,7 @@ class oedge_output:
             return ff + feg + fig + fe
 
     def plot_2d(self, data, charge=None, scaling=None,
-                normtype='linear', cmap='plasma',
+                normtype='linear', norm=None, cmap='plasma',
                 levels=None, cbar_label=None, lut=21,
                 smooth_cmap=False, vmin=None, vmax=None,
                 no_core=False, vz_mult=0.0, wall_data=None, show_grid=True,
@@ -996,6 +996,8 @@ class oedge_output:
             If no such default scaling factor is indicated there, no scaling is applied.
         normtype: str
             One of 'linear', 'log', ... of how to normalize the data on the plot.
+        norm : Normalize obj
+            When the normtype is 'passed' this normalisation will be used
         cmap: str
             The colormap to apply to the plot. Uses standard matplotlib names.
         levels: 1D array or None
@@ -1121,6 +1123,15 @@ class oedge_output:
             if vmax is None: vmax = -vmin
             norm = mpl.colors.SymLogNorm(linthresh=0.01 * vmax, vmin=vmin, vmax=vmax, base=10)
             cmap = 'coolwarm'
+        
+        elif normtype == "passed":
+            if not isinstance(norm, mpl.colors.Normalize):
+                raise TypeError(
+                    "The normtype is 'passed' but a Normalize object wasn't passed for 'norm'"
+                )
+        else:
+            raise ValueError(f"The normalisation type '{normtype}' is not recognised")
+
 
         # The end of nipy_spectral is grey, which makes it look like there's a
         # hole in the largest data. Fix this by just grabbing a subset of the
