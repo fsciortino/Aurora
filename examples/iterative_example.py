@@ -91,7 +91,7 @@ nd_cm3 = copy.deepcopy(ne_cm3)
 #
 # Update background every n_rep iterations, each of dt [s] length
 n_rep = 5
-dt = 1e-4
+dt = 1e-6 #1e-4
 
 # Total time to run [s] -- will be approximated by nearest multiplier of n_rep*dt
 sim_time = 5e-3
@@ -149,7 +149,11 @@ rad = aurora.compute_rad(
 )
 tot_rad_dens = rad["tot"]  # W/cm^3
 line_rad_all = rad["line_rad"].T  # W/cm^3
+
+# start building up arrays
 time_grid = copy.deepcopy(asim.time_grid)
+Te_all = []
+Te_all.append(Te_eV)
 
 # modify background temperature and density profiles based on tot_rad_dens
 rhop_grid = asim.rhop_grid
@@ -164,7 +168,6 @@ kp["ne"]["vals"] = ne_cm3
 # update kinetic profile dependencies:
 asim.setup_kin_profs_depts()
 
-Te_all = []
 Te_all.append(Te_eV)
 for i in np.arange(num_sims):
     # Update time array
@@ -227,8 +230,9 @@ aurora.slider_plot(
 )
 
 
+# show evolution of Te, including starting condition
 _Te_all = np.array(Te_all).T
-Te_arr = np.reshape(_Te_all, (1, len(rhop), len(time_grid[::5])))
+Te_arr = np.reshape(_Te_all, (1, len(rhop), len(time_grid[::5])+1))
 aurora.slider_plot(
     rhop,
     time_grid[::5],
@@ -237,5 +241,3 @@ aurora.slider_plot(
     ylabel="time [s]",
     zlabel=r"Te [eV]",
 )
-
-# plt.show(block=True)

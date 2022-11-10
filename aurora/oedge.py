@@ -1,5 +1,5 @@
-'''Post-processing tools for OEDGE.
-Adapted and extended based on original work by S.Zamperini, J.Nichols and D.Elder.
+'''Post-processing tools for OEDGE, including EIRENE results.
+Part of this script is adapted and extended based on original work by S.Zamperini, J.Nichols and D.Elder.
 '''
 import sys, re, os
 import copy
@@ -11,6 +11,10 @@ import pandas as pd
 import shutil
 from collections import OrderedDict
 from scipy import constants
+
+from matplotlib.patches import Polygon
+from matplotlib.collections import PatchCollection
+from matplotlib.colors import LogNorm
 
 from scipy.interpolate import griddata, interp1d
 
@@ -78,7 +82,7 @@ class oedge_input(dict):
 
             # new entry with Z'{ style
             elif not inhibit and line.startswith("'{"):
-                item = re.sub(r'.*(\{.*\}).*', r'\1', line.split("'")[1])
+                item = re.sub(r'.*(\{.*\}).*', r'\1', line.split("'")[1]) # FS
                 self[item] = OrderedDict()
                 self[item]['__raw__'] = [line]
                 
@@ -98,7 +102,6 @@ class oedge_input(dict):
             elif not inhibit and re.match(r'^ *[\'0-9\.\-].*', line):
                 # Think this is where the other mislabeled lines go
                 # Kludgy fix to a bug in older input files
-                #
                 if 'Ring Range :-' in line:
                     # insert tag at beginning of line
                     item = '+F07'
@@ -117,6 +120,7 @@ class oedge_input(dict):
                     self[item]['__raw__'] = [line]
                 else:
                     self[item]['__raw__'].append(line)
+    
             # comment
             else:
                 self['__comment_%06d__' % c] = line0
@@ -132,7 +136,8 @@ class oedge_input(dict):
 
             raw = self[item]['__raw__']
             raw0 = raw[0].strip().split('\'')
-            # special {...}
+            
+            # special {...} - EIRENE settings
             if '{' in item:
                 self[item]['comment'] = raw0[1].split('}')[1].strip()
                 self[item]['data'] = []
@@ -148,9 +153,16 @@ class oedge_input(dict):
 
                 except Exception:
                     # array
-                    for line in raw[1:]:
-                        data, inline_comment = interpret(line)
+                    if 'EIR TRACKS' in item:
+                        # input data on a single line
+                        data, inline_comment = interpret(raw[0][1:].split('\'')[1], item)
                         self[item]['data'].append(data)
+                    else:
+                        # input data on multiple lines
+                        for line in raw[1:]:
+                            data, inline_comment = interpret(line, item)
+                            self[item]['data'].append(data)
+                            
             # standard
             else:
                 self[item]['comment'] = raw0[1][5:].strip()
@@ -223,16 +235,23 @@ class oedge_input(dict):
         for item in self:
             if item.startswith('__comment_'):
                 out.append(self[item].strip().ljust(comment_width))  #FS
-                #pass
 
             elif '{' in item:
                 out.append('\'%s %s\'' % (item.ljust(tag_width), self[item]['comment'].strip().ljust(comment_width))) #FS
                 #out.append('\'%s \'' %item.ljust(tag_width))
-                if isinstance(self[item]['data'], list):
+                if 'EIR VOID' in item:
+                    # exclude all quotes symbols ('')
                     for line in self[item]['data']:
-                        out.append(' '.join(item.rjust(data_width) for item in map(repr, line)))
+                        out.append('  '.join(_item.strip("'").replace(' ','').rjust(data_width) for _item in map(repr, line)))
+                elif 'EIR TRACKS' in item:
+                    # FS: special case for EIR TRACKS: 1 or 2 values on the same line
+                    for val in self[item]['data'][0]:
+                        out[-1] += '  ' + str(val)
+                elif isinstance(self[item]['data'], list):
+                    for line in self[item]['data']:
+                        out.append('  '.join(_item.rjust(data_width) for _item in map(repr, line)))
                 else:
-                    out[-1] += ' ' + str(self[item]['data']).strip().rjust(data_width)
+                    out[-1] += '  ' + str(self[item]['data']).strip().rjust(data_width)
 
             elif 'header_comment' in self[item]:
                 if self[item]['comment'] == '':
@@ -954,7 +973,7 @@ class oedge_output:
             return ff + feg + fig + fe
 
     def plot_2d(self, data, charge=None, scaling=None,
-                normtype='linear', cmap='plasma',
+                norm="linear", cmap='plasma',
                 levels=None, cbar_label=None, lut=21,
                 smooth_cmap=False, vmin=None, vmax=None,
                 no_core=False, vz_mult=0.0, wall_data=None, show_grid=True,
@@ -975,8 +994,9 @@ class oedge_output:
             Scaling factor to apply to the data, if applicable.
             If not given, the routine looks for a scaling factor from :py:meth:`~aurora.oedge.oedge_output.name_maps`.
             If no such default scaling factor is indicated there, no scaling is applied.
-        normtype: str
-            One of 'linear', 'log', ... of how to normalize the data on the plot.
+        norm: str or Normalize
+            One of 'linear', 'log', ... of how to normalize the data on the plot,
+            or a mpl.colors.Normalize instance.
         cmap: str
             The colormap to apply to the plot. Uses standard matplotlib names.
         levels: 1D array or None
@@ -1079,29 +1099,38 @@ class oedge_output:
             fig = plt.figure(figsize=(7, 9))
             ax  = fig.add_subplot(111)
 
-        if normtype == 'linear':
-            if vmin is None: vmin = data.min()
-            if vmax is None: vmax = data.max()
-            norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+        if isinstance(norm, str):
+            if norm == 'linear':
+                if vmin is None: vmin = data.min()
+                if vmax is None: vmax = data.max()
+                norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
 
-        elif normtype == 'log':
-            data[data == 0.0] = sys.float_info.epsilon 
-            if vmin is None: vmin = data.min()
-            if vmax is None: vmax = data.max()
-            norm = mpl.colors.LogNorm(vmin=vmin, vmax=vmax)
+            elif norm == 'log':
+                data[data == 0.0] = sys.float_info.epsilon 
+                if vmin is None: vmin = data.min()
+                if vmax is None: vmax = data.max()
+                norm = mpl.colors.LogNorm(vmin=vmin, vmax=vmax)
 
-        elif normtype == 'symlin':
-            if vmin is None: vmin = -np.abs(data).max()
-            if vmax is None: vmax = -vmin
-            norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-            cmap = 'coolwarm'
+            elif norm == 'symlin':
+                if vmin is None: vmin = -np.abs(data).max()
+                if vmax is None: vmax = -vmin
+                norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+                # If cmap is still default change to a diverging colourmap
+                if cmap == 'plasma': cmap = 'coolwarm'
 
-        elif normtype == 'symlog':
-            data[data == 0.0] = sys.float_info.epsilon
-            if vmin is None: vmin = -np.abs(data[~np.isnan(data)]).max()
-            if vmax is None: vmax = -vmin
-            norm = mpl.colors.SymLogNorm(linthresh=0.01 * vmax, vmin=vmin, vmax=vmax, base=10)
-            cmap = 'coolwarm'
+            elif norm == 'symlog':
+                data[data == 0.0] = sys.float_info.epsilon
+                if vmin is None: vmin = -np.abs(data[~np.isnan(data)]).max()
+                if vmax is None: vmax = -vmin
+                norm = mpl.colors.SymLogNorm(linthresh=0.01 * vmax, vmin=vmin, vmax=vmax, base=10)
+                # If cmap is still default change to a diverging colourmap
+                if cmap == 'plasma': cmap = 'coolwarm'
+            
+            else:
+                raise ValueError(f"Unrecognized 'norm' string option, '{norm}'")
+
+        elif not isinstance(norm, mpl.colors.Normalize):
+            raise TypeError("Unrecognized 'norm' type: must be either a mpl.colors.Normlize instance or a string.")
 
         # The end of nipy_spectral is grey, which makes it look like there's a
         # hole in the largest data. Fix this by just grabbing a subset of the
@@ -1185,7 +1214,7 @@ class oedge_output:
             label = self.name_maps[field]['label']
             units = self.name_maps[field]['units']
             
-            self.plot_2d(var, charge=charge, ax=ax, label=label+' '+units)
+            self.plot_2d(var, charge=charge, ax=ax, cbar_label=label+' '+units)
 
         plt.tight_layout()
 
@@ -2158,11 +2187,38 @@ class oedge_output:
 
 
 
-def interpret(x):
+def interpret(x, item=None):
 
     # import here to avoid issues during regression tests
     from omfit_classes.omfit_namelist import namelist
-        
+
+    # condition to deal with some EIRENE settings
+    if item is not None and ('{' in item and '}' in item):
+        xx = []
+        xmod = [el.strip().strip('\'') for el in x.split('  ') if len(el)]
+        for xi in xmod:
+            if ',' in xi:
+                xx.append(xi) # append as string
+            elif '.txt' in xi:
+                xx.append(xi) # definitely a string, name of text file
+            elif xi.startswith('-'):
+                # negative  number
+                if '.'  in xi:
+                    xx.append(float(xi))
+                else:
+                    xx.append(int(xi))
+            elif '-' in xi:
+                xx.append(xi) # treat as string; this is a range of numbers, e.g. 1-10                
+            elif '.' in xi:
+                xx.append(float(xi)) # append as float
+            else:
+                try:
+                    xx.append(int(xi)) # try to append as int\
+                except:
+                    xx.append(xi) # string
+        return xx, ''
+
+    # more standard interpretation
     x = x.split('\'')
     for k in range(1, len(x), 1)[::2]:
         x[k] = '\'' + x[k] + '\''
@@ -2190,3 +2246,445 @@ def interpret(x):
     return data, inline_comment
 
 
+############################################
+#
+#
+# Routines related to EIRENE
+#
+#
+############################################
+
+
+def LoadTriangleData(flag1, flag2, flag3, normalize, path='.'):
+    '''Recursive function to load data from eirene.transfer file.
+    '''
+    with open(path+'/eirene.transfer') as f:
+        lines = f.readlines()
+
+    iblk = 0; iatm = 0; imol = 0; ipho = 0; ilin = 0        
+    tdata = {}
+    while len(lines):
+        line = lines.pop(0)
+
+        if line[:22]=='* BULK PARTICLES - VOL':
+            iblk = iblk + 1
+            
+            ntally = int(lines.pop(0))
+            ndata = int(lines.pop(0))
+            index = np.array([int(val) for val in lines.pop(0).split()])
+
+            icount = 0
+            while icount < ndata:
+                line = lines.pop(0)
+                if line[0]=='*': # 'cycle'
+                    line = lines.pop(0)
+                icount = int(line.split()[0])
+                rdum = np.array([float(val) for val in line.split()[1:]])
+                if flag1==1 and flag2==iblk:  # careful with python indexing
+                    tdata[icount-1] = rdum[flag3-1]
+                
+            if flag1==1:
+                #print('leaving LoadTriangleData very early')
+                return tdata
+            
+        elif line[:22] == '* BULK PARTICLES - SUR':
+            pass
+
+        elif line[:18]=='* TEST ATOMS - VOL':
+            iatm = iatm + 1
+
+            ntally = int(lines.pop(0))
+            ndata = int(lines.pop(0))
+            index = np.array([int(val) for val in lines.pop(0).split()])
+
+            icount = 0
+            while icount < ndata:
+                line = lines.pop(0)
+                if line[0]=='*': # 'cycle'
+                    line = lines.pop(0)
+                icount = int(line.split()[0])
+                rdum = np.array([float(val) for val in line.split()[1:]])
+                if flag1==2 and flag2==iatm:  # careful with python indexing
+                    tdata[icount-1] = rdum[flag3-1]
+
+        elif line[:18] == '* TEST ATOMS - SUR':
+            pass
+        
+        elif line[:22] == '* TEST MOLECULES - VOL':
+            imol = imol + 1
+
+            ntally = int(lines.pop(0))
+            ndata = int(lines.pop(0))
+            index = np.array([int(val) for val in lines.pop(0).split()])
+
+            icount = 0
+            while icount < ndata:
+                line = lines.pop(0)
+                if line[0]=='*': # 'cycle'
+                    line = lines.pop(0)
+                icount = int(line.split()[0])
+                rdum = np.array([float(val) for val in line.split()[1:]]) 
+                if flag1==3 and flag2==imol:  # careful with python indexing
+                    tdata[icount-1] = rdum[flag3-1]
+
+        elif line[:17] == '* TEST IONS - VOL':
+            if flag1 == 1 or flag1 == 2 or flag1 == 3:
+                #print('leaving LoadTriangleData early')
+                pass
+
+        elif line[:17] == '* TEST IONS - SUR':
+            pass
+
+        elif line[:20] == '* TEST PHOTONS - VOL':
+            ipho = ipho + 1
+
+            ntally = int(lines.pop(0))
+            ndata = int(lines.pop(0))
+            index = np.array([int(val) for val in lines.pop(0).split()])
+
+            icount = 0
+            while icount < ndata:
+                line = lines.pop(0)
+                if line[0]=='*': # 'cycle'
+                    line = lines.pop(0)
+                icount = int(line.split()[0])
+                rdum = np.array([float(val) for val in line.split()[1:]])
+                if flag1==5 and flag2==ipho:  # careful with python indexing
+                    tdata[icount-1] = rdum[flag3-1]
+
+        elif line[:14] == '* LINE EMISSIO':
+            ilin = ilin + 1
+
+            ntally = int(lines.pop(0))
+            ndata = int(lines.pop(0))
+            index = np.array([int(val) for val in lines.pop(0).split()])
+
+            icount = 0
+            while icount < ndata:
+                line = lines.pop(0)
+                if line[0]=='*': # 'cycle'
+                    line = lines.pop(0)
+                icount = int(line.split()[0])
+                rdum = np.array([float(val) for val in line.split()[1:]])
+                if flag1==6 and flag2==ilin:  # careful with python indexing
+                    tdata[icount-1] = rdum[flag3-1]
+          
+        elif line[:6] == '* MISC':
+            # Check volumes:            
+            ntally = int(lines.pop(0))
+            ndata = int(lines.pop(0))
+            # keep -1 as in sol28_utility.f:
+            index = np.array([int(val) for val in lines.pop(0).split()])[:-1]
+
+            icount = 0
+            while icount < ndata:
+                line = lines.pop(0)
+                if line[0]=='*': # 'cycle'
+                    line = lines.pop(0)
+                icount = int(line.split()[0])
+                rdum = np.array([float(val) for val in line.split()[1:]])
+                if flag1==7: tdata[icount-1] = rdum[flag3-1]
+                if flag1 ==7 and flag3 == 4 and rdum[flag3] == 0.0:
+                    print('Null triangle volume: ', icount)
+                    print('Halting code')
+                    return
+
+        elif line[0] == '*':
+            pass
+        
+        else:
+            pass
+
+    if normalize:
+        # Load volumes:
+        volmin = 1.0e+20
+        tvol = LoadTriangleData(7,0,4,0, path=path)
+        ntri = len(tvol)
+        for i1 in np.arange(ntri):
+            volmin = np.min([volmin, tvol[i1]])
+            tdata[i1] = tdata[i1] / tvol[i1] *1e6 # conversion to m^-3
+
+    # convert tdata from dictionary to 1D array
+    tdata = np.array(list(tdata.values()))
+    return tdata
+
+
+def eirene_indices(quant='n_H'):
+    '''Identify indices for quantities of interest from eirene.transfer file.
+    '''
+    eirene_quants = {'n_H': {'idxs': [2,1,1,1], 'label': r'$n_H$ [m$^{-3}$]', 'scaling': 1.},
+                     'n_H2': {'idxs': [3,1,1,1], 'label': r'$n_{H2}$ [m$^{-3}$]', 'scaling': 1.},
+                     'T_H': {'idxs': [2,1,7,0], 'label': r'$T_H$ [eV]', 'scaling': 1.},
+                     'T_H2': {'idxs': [3,1,7,0], 'label': r'$T_{H2}$ [eV]', 'scaling': 1.},
+                     'PINION': {'idxs': [1,1,5,1], 'label': r'$S_{ion} [$1/m^3/s$]', 'scaling': 1.},
+                     'H_alpha': {'idxs':[5,1,1,1], 'label': r'$ph/m^3/s$', 'scaling': 1.},  #  out987.f:  [6,1,7,1] for Dalpha, [5,1,1,1] for  Balmer alpha??
+                     'H_alpha2': {'idxs':[6,1,7,1], 'label': r'$ph/m^3/s$', 'scaling': 1.},   
+                     #'H_beta': {'idxs':,
+                     'H_gamma': {'idxs': [6,2,6,1], 'label': r'$ph/m^3/s$', 'scaling': 1.},
+                     'Ly_alpha': {'idxs': [5,2,1,1], 'label': r'$ph/m^3/s$', 'scaling': 1.},
+                     'Ly_beta': {'idxs': [5,3,1,1], 'label': r'$ph/m^3/s$', 'scaling': 1.},
+                     'Ly_gamma': {'idxs': [5,3,1,1], 'label': r'$ph/m^3/s$', 'scaling': 1.},
+                     'Ly_delta': {'idxs': [5,5,1,1], 'label': r'$ph/m^3/s$', 'scaling': 1.},
+                     'Ly_epsilon': {'idxs': [5,6,1,1], 'label': r'$ph/m^3/s$', 'scaling': 1.},
+                     'n_H+': {'idxs': [1,1,10,0], 'label': r'$n_{H+}$ [m$^{-3}$]', 'scaling': 1.},
+                     'T_H+': {'idxs': [1,1,15,0], 'label': r'$T_{H+}$ [eV]', 'scaling': 1.},
+                     'p_H': {'idxs': [2,1,6,1], 'label': r'$p_H$ [mbar]', 'scaling': constants.e*0.667*100.},  # multiply by q_e*0.667 to get Pa, then x100 for mbar
+                     'p_H2': {'idxs':[3,1,6,1], 'label': r'$p_{H2}$ [mbar]', 'scaling': constants.e*0.667*100.}  # multiply by q_e*0.667 to get Pa
+                     }
+    if quant not in eirene_quants.keys():
+        raise ValueError(f'Indices to load {quant} from eirene.transfer are not yet known!')
+    else:
+        return eirene_quants[quant]
+
+def read_vessel_geom(vessel_file, plot=False):
+    '''Parse vessel geometry, including divertor components, from a file in the form expected by OEDGE.
+    Such file is, for example, written for AUG by `aug_vessel_geom.py`.
+    '''
+    with open(vessel_file, 'r') as f:
+        lines = f.readlines()
+
+    # headers
+    h0 = lines.pop(0)
+    h1 = lines.pop(0)
+
+    # begin reading
+    elems = {}
+    while len(lines):
+        line = lines.pop(0)
+        if line.startswith('{'):
+            # get element label
+            label = line.strip().strip('{').strip('}')
+            elems[label] = []
+            continue
+        data = line.split()
+        elems[label].append([float(data[0]), float(data[1])])
+
+    for el in elems:
+        elems[el] = np.array(elems[el])
+        # add first point again to close structure in plotting
+        elems[el] = np.concatenate((np.array(elems[el]), np.atleast_2d(elems[el][0])))
+
+    if plot:
+        fig,ax = plt.subplots()
+        for el in elems:
+            if 'HOLE' not in el:
+                l = ax.plot(elems[el][:,0], elems[el][:,1])
+
+    return elems
+
+def plot_eirene(quant='n_H', path='.', ax=None, RZ_points=None, vessel_file=None):
+    '''Read eirene.transfer data for the chosen variable, defined in :py:fun:`eirene_indices`.
+    
+    Parameters
+    ----------
+    quant : str
+        Name of variable of interest. This must be present within the dictionary in :py:fun:`eirene_indices`.
+    path : str
+        Path to location of eirene.transfer file to load.
+    ax : matplotlib.Axes instance
+        Axes to use for plotting. If not provided, a new figure is created.
+    RZ_points : None or 2D array (num_extract, 2)
+        (R,Z) coordinates of locations that should be identified/displayed on the figure.
+    vessel_file : str or None
+        Path to a file containing details of all vessel structures used in EIRENE.
+        See `read_vessel_geom` for an illustration of the expected format.
+        If provided, the vessel geometry is plotted together with the EIRENE results.
+    '''
+    # load data for requested quantity
+    Rs, Zs, data, vals = get_eirene_data(quant, path)
+
+    # sort polygons/patches for plotting
+    patches = []
+    for i in np.arange(Rs.shape[1]):
+        patches.append(
+            Polygon(np.vstack((Rs[:,i], Zs[:,i])).T, True, linewidth=3)
+        )
+
+    p = PatchCollection(
+        patches, False, fc="w", edgecolor="k", linewidth=0.1,
+        norm = LogNorm()
+    )
+    p.set_array(data)
+
+    # now plot data
+    if ax is None:
+        fig, ax = plt.subplots(1, figsize=(6, 8))
+
+    if vessel_file is not None:
+        elems = read_vessel_geom(vessel_file, plot=False)
+        for el in elems:
+            if 'HOLE' not in el:
+                l = ax.plot(elems[el][:,0], elems[el][:,1], 'k')
+        if '{PUMP}' in elems:
+            # plot pumping surfaces
+            ax.plot(elems['PUMP'][:,0], elems['PUMP'][:,1], 'r')
+
+    ax.set_xlabel('R [m]')
+    ax.set_ylabel('Z [m]')
+
+    # add patches to figure
+    ax.add_collection(p)
+    cbar = plt.colorbar(p, ax=ax, pad=0.01)
+    ax.set_aspect('equal')
+    cbar.set_label(eirene_indices(quant)['label'])
+    ax.set_xlabel('R [m]')
+    ax.set_ylabel('Z [m]')
+
+    if RZ_points is not None:
+        # show requested locations on figure            
+        for g in np.arange(len(RZ_points)):
+            ax.plot(RZ_points[g][0], RZ_points[g][1], '*', label=str(g))
+        ax.legend(loc='best').set_draggable(True)
+
+
+def get_eirene_data(quant='n_H', path='.', RZ_points=None):
+    '''Load data for a specified quantity from the EIRENE output.
+
+    Parameters
+    ----------
+    quant : str
+        Name of variable of interest. This must be present within the dictionary in :py:fun:`eirene_indices`.
+    path : str
+        Path to location of eirene.transfer file to load.
+    RZ_points : None or 2D array (num_extract, 2)
+        (R,Z) coordinates of locations (within the grid) at which values of the chosen quantity should
+        be extracted. If left to None, this option is ignored.
+
+    Returns
+    -------
+    Rs,Zs : 2D arrays (3, num vertices)
+        R,Z coordinates of all vertices of EIRENE triangles.
+    data : 1D array (num vertices)
+        Values of the selected quantity in each triangle.
+    vals : None or 1D array (num_extract) - only returned if `RZ_points` is not None
+        If `RZ_points` is provided, listing a number of R,Z pairs, then this array provides
+        the values of the chosen quantity at those locations.
+
+    MWE
+    ---
+    gauge_pos = np.array([[1.5,-1.3],[1.4,-1.1],[1.75,-0.9]])
+    vessel_file = './aug_vessel.txt' # location of the vessel description given to OEDGE
+    path = '/mypath/oedge_AUG_38996_5250_osm_513/results' 
+    Rs, Zs, pH, pH_points = aurora.oedge.get_eirene_data('p_H', path, gauge_pos)
+
+    '''
+    # load triangular mesh
+    triangles = np.loadtxt(path+'/triangles.dat',
+                           skiprows=1, usecols=(1,2,3,4,5,6))
+
+    # fetch data on triangles
+    code = eirene_indices(quant)['idxs']
+    data = LoadTriangleData(*code, path=path)
+    
+    # rescale as apppropriate:
+    data *= eirene_indices(quant)['scaling'] 
+
+    # sort data in patches
+    R0,Z0,R1,Z1,R2,Z2=triangles.T
+    Rs = np.vstack((R0,R1,R2))
+    Zs = np.vstack((Z0,Z1,Z2))
+
+    if RZ_points is not None:
+        # extract quantities at provided (R,Z) locations
+        
+        vals = np.zeros(RZ_points.shape[0])
+        for i in np.arange(Rs.shape[1]): # for each triangle
+            pol = np.vstack((Rs[:,i], Zs[:,i])).T
+            path = mpl.path.Path(pol)
+            inside = path.contains_points(RZ_points)
+            for g in np.arange(RZ_points.shape[0]): # for each requested point
+                if inside[g]:
+                    vals[g] = data[i]
+    else:
+        vals = None
+
+    return Rs, Zs, data, vals
+
+def plot_eirene_tracks(
+        triangles_filepath='./triangles.dat',
+        eirtrc_filepath='./casename.eirtrc',
+        vessel_file=None):
+    '''Plot tracks of EIRENE particles from an *eirtrc file.
+
+    NB: The data file could be missing because either the EIRENE run script
+    needs to be updated, or there were not enough particle tracks followed
+    in EIRENE to reach the track number range set for output in the 
+    EIRENE input file (this is set in block 11 in the template file at the moment).
+
+    Parameters
+    ----------
+    triangles_filepath : str
+        Path of text file containing the R,Z locations of all vertices of
+        triangles used by EIRENE. Normally, this file is named "triangles.dat".
+    eirtrc_filepath : str
+        Path of text file containing sample EIRENE particle tracks.
+    '''
+    # load triangular mesh
+    triangles = np.loadtxt(triangles_filepath,
+                           skiprows=1, usecols=(1,2,3,4,5,6))
+
+    # sort data in patches
+    R0,Z0,R1,Z1,R2,Z2=triangles.T
+    Rs = np.vstack((R0,R1,R2))
+    Zs = np.vstack((Z0,Z1,Z2))
+    
+    # sort polygons/patches for plotting
+    patches = []
+    for i in np.arange(Rs.shape[1]):
+        patches.append(
+            Polygon(np.vstack((Rs[:,i], Zs[:,i])).T, True, linewidth=3)
+        )
+
+    p = PatchCollection(
+        patches, False, fc="w", edgecolor="k", linewidth=0.1,
+        norm = LogNorm()
+    )
+
+    fig, ax = plt.subplots(1, figsize=(6, 8))
+    ax.add_collection(p)
+    ax.set_xlabel('R [m]')
+    ax.set_ylabel('Z [m]')
+    
+    ## load EIRENE tracks
+    with open(eirtrc_filepath, 'r') as f:
+        lines = f.readlines()
+
+    data = {'count':[],'xplo':[],'yplo':[],'zplo':[],'iflag':[],'isym':[],
+            'istra':[],'0':[],
+            'npanu':[],'e0':[],'weight':[],'nacell':[],'ifpath':[],'iupdte':[],
+            'ityp':[],'nblock':[],'masurf':[],'msurf':[],'mtsurf':[],
+            'nrcell':[],'npcell':[],'nblock':[],'nntcll':[],'ntcell':[],
+            'time':[]
+    }
+
+    for line in lines:
+        for i,elem in enumerate(data.keys()):
+            num = line.split()[i]
+            data[elem].append(int(num) if '.' not in num else float(num))
+
+    for key in data:
+        data[key] = np.array(data[key])
+
+    for count in np.unique(data['count']):
+        # ITYP is atom (1) or molecule (2)
+        mask_at = (data['count']==count)*(data['ityp']==1)
+        mask_mol = (data['count']==count)*(data['ityp']==2)
+        
+        ax.plot(data['xplo'][mask_at]/1e2, data['yplo'][mask_at]/1e2,
+                '.-', c='b')
+        ax.plot(data['xplo'][mask_mol]/1e2, data['yplo'][mask_mol]/1e2,
+                '.-', c='m')
+
+    if vessel_file is not None:
+        elems = read_vessel_geom(vessel_file, plot=False)
+        for el in elems:
+            if 'HOLE' not in el:
+                l = ax.plot(elems[el][:,0], elems[el][:,1], 'k')
+        if '{PUMP}' in elems:
+            # plot pumping surfaces
+            ax.plot(elems['PUMP'][:,0], elems['PUMP'][:,1], 'r')
+            
+    ax.plot([],[], '.-', c='b', label='atoms')
+    ax.plot([],[], '.-', c='m', label='molecules')
+    ax.legend(loc='best').set_draggable(True)
+    ax.set_aspect('equal')
