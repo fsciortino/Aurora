@@ -79,7 +79,7 @@ class solps_case:
     Minimal Working Example
     -----------------------
     import aurora
-    so = aurora.solps_case(141349) # load case 141349 from AUG MDS+; must have access to the server!
+    so = aurora.solps_case(solps_id=141349) # load case 141349 from AUG MDS+; must have access to the server!
     so.plot2d_b2(so.data('ne'))
 
     """
