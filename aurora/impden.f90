@@ -27,10 +27,10 @@
 ! impden1 uses the finite-volumes scheme described in Linder NF 2020. 
 !
 
-subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
-     src_prof, rcl_rad_prof, s_rates, r_rates,  &
+subroutine impden0(nion, ir, species, ra, rn, diff, conv, par_loss_rate, &
+     src_prof, rcl_rad_prof, rfl_rad_prof, spt_rad_prof, en_rec_neut, s_rates, r_rates,  &
      Raxis, rr, pro, qpr, dlen, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
-     surfmain, surfdiv, PWI, Zmain, Zdiv, species, &
+     surfmain, surfdiv, PWI, Zmain, Zdiv, &
      rnmain, rndiv, fluxmain, fluxdiv, ymain, ydiv, depthmain, depthdiv, nmainsat, ndivsat, & 
      rcl,screen,rcmb,tsuold,dsuold,dsulold, divold, pumpold, taudiv, tauwret, leak, volpump, &
      a, b, c, d1, bet, gam, &
@@ -50,6 +50,7 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
 
   INTEGER, INTENT(IN)       :: nion
   INTEGER, INTENT(IN)       :: ir
+  INTEGER, INTENT(IN)       :: species
   REAL*8, INTENT(IN)        :: ra(ir,nion)   ! alt = old
   REAL*8, INTENT(OUT)       :: rn(ir,nion)   ! neu = new
   REAL*8, INTENT(IN)        :: diff(ir, nion)
@@ -57,6 +58,9 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
   REAL*8, INTENT(IN)        :: par_loss_rate(ir)
   REAL*8, INTENT(IN)        :: src_prof(ir)
   REAL*8, INTENT(IN)        :: rcl_rad_prof(ir)
+  REAL*8, INTENT(IN)        :: rfl_rad_prof(ir)
+  REAL*8, INTENT(IN)        :: spt_rad_prof(ir,1+species)
+  LOGICAL, INTENT(IN)       :: en_rec_neut
   REAL*8, INTENT(IN)        :: s_rates(ir,nion)
   REAL*8, INTENT(IN)        :: r_rates(ir,nion)
   REAL*8, INTENT(IN)        :: Raxis
@@ -72,7 +76,6 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
   LOGICAL, INTENT(IN)       :: PWI
   INTEGER, INTENT(IN)       :: Zmain
   INTEGER, INTENT(IN)       :: Zdiv
-  INTEGER, INTENT(IN)       :: species
   REAL*8, INTENT(IN)        :: rnmain
   REAL*8, INTENT(IN)        :: rndiv
   REAL*8, INTENT(IN)        :: fluxmain(species)
@@ -208,9 +211,32 @@ subroutine impden0(nion, ir, ra, rn, diff, conv, par_loss_rate, &
   endif
 
   ! sum radial sources from external source time history and recycling
-  ! NB: in STRAHL, recycling is set to have the same radial profile as the external sources!
-  rn(:,1) = src_prof + rcl_rad_prof*(rclw + rclp + rclb)
+  ! The radial profile of externally injected neutrals and recycled neutrals can be different,
+  !   depending on the energy set to the recycling neutrals (and to the calculated reflection
+  !   and sputtering energies, if the advanced PWI model is used)
+  
+  if (en_rec_neut) then
+     
+     if (PWI) then   ! Advanced PWI model used --> reflected and sputtered neutrals are energetic
+        rn(:,1) = src_prof   ! Add contribute of externally injected neutrals
+        rn(:,1) = rn(:,1) + rfl_rad_prof*(rclw_refl)   ! Add contribute of energetic reflected neutrals
+        rn(:,1) = rn(:,1) + rcl_rad_prof*(rclw_recl)   ! Add contribute of thermally recycled neutrals
+        do s = 1,1+species
+           rn(:,1) = rn(:,1) + spt_rad_prof(:,s)*(main_fluxes_sput(s))   ! Add contribute of energetic sputtered neutrals
+        enddo
+        rn(:,1) = rn(:,1) + rcl_rad_prof*(rclp + rclb)   ! Add contribute of thermal neutrals returned/leaked from divertor
 
+     else   ! Simple PWI model used --> recycled neutrals will be thermal regardless of en_rec_neut
+        rn(:,1) = src_prof + rcl_rad_prof*(rclw + rclp + rclb)
+
+     endif
+  
+  else   ! Recycled neutrals (also the reflected and sputtered ones) are always thermal regardless of the used PWI model
+  
+     rn(:,1) = src_prof + rcl_rad_prof*(rclw + rclp + rclb)
+  
+  endif
+  
   dt = det/2.
   !     ********** first half time step direction up ********
 
@@ -355,9 +381,10 @@ end subroutine impden0
 
 
 
-subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_rad_prof, s_rates, r_rates,  &
+subroutine impden1(nion, ir, species, ra, rn, diff, conv, par_loss_rate, &
+     src_prof, rcl_rad_prof, rfl_rad_prof, spt_rad_prof, en_rec_neut, s_rates, r_rates,  &
      Raxis, rr, fall_outsol, det,  &    ! renaming dt-->det. In this subroutine, dt is half-step
-     surfmain, surfdiv, PWI, Zmain, Zdiv, species, &
+     surfmain, surfdiv, PWI, Zmain, Zdiv, &
      rnmain, rndiv, fluxmain, fluxdiv, ymain, ydiv, depthmain, depthdiv, nmainsat, ndivsat, & 
      rcl, screen, rcmb, tsuold, dsuold, dsulold, divold, pumpold, taudiv, tauwret, leak, volpump, &
      evolveneut, Nmainret, Ndivret, rcld, rcld_refl, rcld_recl, div_flux_impl, div_fluxes_sput, &
@@ -372,6 +399,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
     
   INTEGER, INTENT(IN)       :: nion
   INTEGER, INTENT(IN)       :: ir
+  INTEGER, INTENT(IN)       :: species
   REAL*8, INTENT(IN)        :: ra(ir,nion)   ! old imp density
   REAL*8, INTENT(OUT)       :: rn(ir,nion)   ! new imp density
   REAL*8, INTENT(IN)        :: diff(ir, nion)
@@ -379,6 +407,9 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
   REAL*8, INTENT(IN)        :: par_loss_rate(ir)
   REAL*8, INTENT(IN)        :: src_prof(ir)
   REAL*8, INTENT(IN)        :: rcl_rad_prof(ir)
+  REAL*8, INTENT(IN)        :: rfl_rad_prof(ir)
+  REAL*8, INTENT(IN)        :: spt_rad_prof(ir,1+species)
+  LOGICAL, INTENT(IN)       :: en_rec_neut
   REAL*8, INTENT(IN)        :: s_rates(ir,nion)    ! ionization
   REAL*8, INTENT(IN)        :: r_rates(ir,nion)   ! recombination
   REAL*8, INTENT(IN)        :: Raxis
@@ -392,7 +423,6 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
   LOGICAL, INTENT(IN)       :: PWI
   INTEGER, INTENT(IN)       :: Zmain
   INTEGER, INTENT(IN)       :: Zdiv
-  INTEGER, INTENT(IN)       :: species
   REAL*8, INTENT(IN)        :: rnmain
   REAL*8, INTENT(IN)        :: rndiv
   REAL*8, INTENT(IN)        :: fluxmain(species)
@@ -438,7 +468,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
   REAL*8, INTENT(OUT)       :: main_flux_impl
   REAL*8, INTENT(OUT)       :: main_fluxes_sput(1+species)
 
-  REAL*8 :: flx_rcl, tauleak
+  REAL*8 :: src(ir), tauleak
   INTEGER :: i, nz, ns, s
 
   REAL*8 :: dt
@@ -523,8 +553,32 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
  
   endif
   
-  ! Total recycled flux which will be a NEW source for the core plasma
-  flx_rcl = rclw + rclp + rclb
+  ! sum radial sources from external source time history and recycling
+  ! The radial profile of externally injected neutrals and recycled neutrals can be different,
+  !   depending on the energy set to the recycling neutrals (and to the calculated reflection
+  !   and sputtering energies, if the advanced PWI model is used)
+
+  if (en_rec_neut) then
+     
+     if (PWI) then   ! Advanced PWI model used --> reflected and sputtered neutrals are energetic
+        src = src_prof   ! Add contribute of externally injected neutrals
+        src = src + rfl_rad_prof*(rclw_refl)   ! Add contribute of energetic reflected neutrals
+        src = src + rcl_rad_prof*(rclw_recl)   ! Add contribute of thermally recycled neutrals
+        do s = 1,1+species
+           src = src + spt_rad_prof(:,s)*(main_fluxes_sput(s))   ! Add contribute of energetic sputtered neutrals
+        enddo
+        src = src + rcl_rad_prof*(rclp + rclb)   ! Add contribute of thermal neutrals returned/leaked from divertor
+
+     else   ! Simple PWI model used --> recycled neutrals will be thermal regardless of en_rec_neut
+        src = src_prof + rcl_rad_prof*(rclw + rclp + rclb)
+
+     endif
+
+  else   ! Recycled neutrals (also the reflected and sputtered ones) are always thermal regardless of the used PWI model
+
+     src = src_prof + rcl_rad_prof*(rclw + rclp + rclb)
+
+  endif 
   
   ! select whether neutrals should be evolved
   ns = 2
@@ -539,14 +593,14 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
 
      do i=1,ir
         b(i)    = b(i) + dt*s_rates(i,1)
-        d(i)    = d(i) + dt*(src_prof(i) + flx_rcl*rcl_rad_prof(i)) 
+        d(i)    = d(i) + dt*src(i)
      enddo
      call TDMA(a, b, c, d, ir, nt)
   else
      nt = 0.d0
      ! radial profile of neutrals (given as input)
      do i=1,ir
-        rn(i,1) = src_prof(i) + flx_rcl* rcl_rad_prof(i)
+        rn(i,1) = src(i)
      end do
   endif
   
@@ -601,7 +655,7 @@ subroutine impden1(nion, ir, ra, rn, diff, conv, par_loss_rate, src_prof, rcl_ra
           dt, fall_outsol, par_loss_rate, rr, a, b, c, d)
           
      do i=1,ir
-        d(i)    = d(i) - dt*nt(i)*s_rates(i,1) + dt*(src_prof(i) + flx_rcl* rcl_rad_prof(i))
+        d(i)    = d(i) - dt*nt(i)*s_rates(i,1) + dt*src(i)
      enddo
      call TDMA(a, b, c, d, ir, rn(:,1))
   endif
@@ -869,13 +923,6 @@ subroutine advanced_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species
   ! -----------------------------------------------------------------------------------------|
   !  Apply the advanced plasma-wall interaction model for the calculation of
   !    reflected, recycled and sputtered fluxes at the walls
-  !
-  !       Input:
-  !       ----------
-  !           
-  !       Output:
-  !       -------
-  !
   ! -----------------------------------------------------------------------------------------|
   implicit none
   
@@ -922,10 +969,9 @@ subroutine advanced_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species
   real*8,  intent(inout)  :: div_fluxes_sput(1+species)
   
   ! ----- Local variables -------------------------------------------------------------------|
+  real*8     :: circ
   real*8     :: sigmamainret
   real*8     :: sigmadivret
-  real*8     :: sigmamainret_m
-  real*8     :: sigmadivret_m
   real*8     :: mainsatlevel
   real*8     :: divsatlevel
   real*8     :: rclw_sput
@@ -933,26 +979,25 @@ subroutine advanced_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species
   real*8     :: Cmain
   real*8     :: Cdiv
   integer    :: s
+  
+  circ = 2.0 * 3.14159 * Raxis
     
   ! convert old fluxes and content into absolute quantities
-  tsuold = tsuold * 2.0 * 3.14159 * Raxis   ! OLD radial edge flux to main wall in s^-1
-  dsulold = dsulold * 2.0 * 3.14159 * Raxis   ! OLD parallel limiter flux to main wall in s^-1
-  dsuold = dsuold * 2.0 * 3.14159 * Raxis   ! OLD parallel loss to divertor wall in s^-1
-  rcls = rcls * 2.0 * 3.14159 * Raxis   ! OLD screened divertor backflow from divertor wall in s^-1
-  Nmainret = Nmainret * 2.0 * 3.14159 * Raxis   ! OLD absolute number of particles retained at the main wall
-  Ndivret = Ndivret * 2.0 * 3.14159 * Raxis   ! OLD absolute number of particles retained at the main wall
+  tsuold = tsuold * circ   ! OLD radial edge flux to main wall in s^-1
+  dsulold = dsulold * circ   ! OLD parallel limiter flux to main wall in s^-1
+  dsuold = dsuold * circ   ! OLD parallel loss to divertor wall in s^-1
+  rcls = rcls * circ   ! OLD screened divertor backflow from divertor wall in s^-1
+  Nmainret = Nmainret * circ   ! OLD absolute number of particles retained at the main wall
+  Ndivret = Ndivret * circ   ! OLD absolute number of particles retained at the main wall
 
   rclw_refl = (tsuold+dsulold) * rnmain   ! reflected impurity flux from main wall in s^-1 (NEW source for core plasma)
   rcld_refl = (1.-rcmb)*(dsuold+rcls) * rndiv   ! reflected impurity flux from divertor wall in s^-1 (NEW source for core plasma)
-
-  sigmamainret = Nmainret / surfmain   ! OLD surface implantation density at the main wall in cm^-2
-  sigmadivret = Ndivret / surfdiv   ! OLD surface implantation density at the divertor wall in cm^-2
  
-  sigmamainret_m = sigmamainret * 1.0E4   ! OLD surface implantation density at the main wall in m^-2
-  sigmadivret_m = sigmadivret * 1.0E4   ! OLD surface implantation density at the divertor wall in m^-2
+  sigmamainret = (Nmainret / surfmain) * 1.0E4   ! OLD surface implantation density at the main wall in m^-2
+  sigmadivret = (Ndivret / surfdiv) * 1.0E4   ! OLD surface implantation density at the divertor wall in m^-2
  
-  mainsatlevel = sigmamainret_m / nmainsat   ! OLD saturation level of the main wall
-  divsatlevel = sigmadivret_m / ndivsat   ! OLD saturation level of the main wall
+  mainsatlevel = sigmamainret / nmainsat   ! OLD saturation level of the main wall
+  divsatlevel = sigmadivret / ndivsat   ! OLD saturation level of the main wall
  
   rclw_recl = (tsuold+dsulold) * (1.0 - rnmain) * mainsatlevel   ! promptly recycled flux into the main wall in s^-1 (NEW source for core plasma)
   rcld_recl = (1.-rcmb)*(dsuold+rcls) * (1.0 - rndiv) * divsatlevel   ! promptly recycled flux into the divertor wall in s^-1 (NEW source for core plasma)
@@ -961,8 +1006,8 @@ subroutine advanced_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species
   div_flux_impl = (1.-rcmb)*(dsuold+rcls) * (1.0 - rndiv) * (1.0 - divsatlevel)   ! implanted flux into the divertor wall in s^-1
  
   ! Convert OLD surface implantation densities, in m^-2, into concentrations
-  call wall_density_to_concentration(sigmamainret_m, Zmain, depthmain, Cmain)   ! OLD impurity concentration at the main wall
-  call wall_density_to_concentration(sigmadivret_m, Zdiv, depthdiv, Cdiv)   ! OLD impurity concentration at the divertor wall
+  call wall_density_to_concentration(sigmamainret, Zmain, depthmain, Cmain)   ! OLD impurity concentration at the main wall
+  call wall_density_to_concentration(sigmadivret, Zdiv, depthdiv, Cdiv)   ! OLD impurity concentration at the divertor wall
 
   do s = 1,1
      main_fluxes_sput(s) = (tsuold+dsulold) * (ymain(s)*Cmain)   ! sputtered flux from main wall due to impurity self-bombardment in s^-1
@@ -985,22 +1030,22 @@ subroutine advanced_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species
   rcld = rcld_refl + rcld_recl + rcld_sput   ! total recycled flux from main wall which will be a NEW source for the core plasma in s^-1
 
   ! convert again contents into cm^-1
-  Nmainret = Nmainret / (2.0 * 3.14159 * Raxis)
-  Ndivret = Ndivret / (2.0 * 3.14159 * Raxis)
+  Nmainret = Nmainret / circ
+  Ndivret = Ndivret / circ
 
   ! convert again fluxes into cm^-1 s^-1
-  rclw_refl = rclw_refl / (2.0 * 3.14159 * Raxis)
-  rcld_refl = rcld_refl / (2.0 * 3.14159 * Raxis)
-  rclw_recl = rclw_recl / (2.0 * 3.14159 * Raxis)
-  rcld_recl = rcld_recl / (2.0 * 3.14159 * Raxis)
-   main_flux_impl = main_flux_impl / (2.0 * 3.14159 * Raxis)
-  div_flux_impl = div_flux_impl / (2.0 * 3.14159 * Raxis)
+  rclw_refl = rclw_refl / circ
+  rcld_refl = rcld_refl / circ
+  rclw_recl = rclw_recl / circ
+  rcld_recl = rcld_recl / circ
+  main_flux_impl = main_flux_impl / circ
+  div_flux_impl = div_flux_impl / circ
   do s = 1,1+species
-     main_fluxes_sput(s) = main_fluxes_sput(s) / (2.0 * 3.14159 * Raxis)
-     div_fluxes_sput(s) = div_fluxes_sput(s) / (2.0 * 3.14159 * Raxis)
+     main_fluxes_sput(s) = main_fluxes_sput(s) / circ
+     div_fluxes_sput(s) = div_fluxes_sput(s) / circ
   enddo
-  rclw = rclw / (2.0 * 3.14159 * Raxis)
-  rcld = rcld / (2.0 * 3.14159 * Raxis)
+  rclw = rclw / circ
+  rcld = rcld / circ
   
   return
   
@@ -1087,86 +1132,3 @@ subroutine wall_density_to_concentration(sigma, Z_wall, depth, C)
   return
   
 end subroutine wall_density_to_concentration
-
-
-
-
-
-
-!============================================================================================|
-subroutine wall_concentration_to_density(C, Z_wall, depth, sigma)
-  ! -----------------------------------------------------------------------------------------|
-  !  Calculate the surface density of the implanted impurity into a bulk material
-  !  starting from a given value of implantation concentration.
-  !  The conversion will of course depend on the implantation depth.
-  !
-  !       Input:
-  !       ----------
-  !       C :
-  !           Concentration of the impurity in the bulk material,
-  !           in number of impurity atoms / total number of material atoms (bulk+imp)
-  !       Z_wall : 
-  !           Atomic number of the wall material.
-  !       depth : 
-  !           Depth of a uniform implantation profile of the impurity in the material, in A.
-  !           
-  !       Output:
-  !       -------
-  !       sigma: 
-  !           Surface implantation density of the impurity in the bulk material, in m^-2.
-  !
-  ! -----------------------------------------------------------------------------------------|
-  implicit none
-  
-  ! ----- I/O variables ---------------------------------------------------------------------|
-  
-  real*8,  intent(in)  :: C
-  integer, intent(in)  :: Z_wall
-  real*8,  intent(in)  :: depth
-  
-  real*8,  intent(out) :: sigma 
-  
-  ! ----- Local variables -------------------------------------------------------------------|
-  real*8     :: rho
-  real*8     :: M  
-  real*8     :: avogadro  
-  real*8     :: mol_density
-  real*8     :: n_bulk
-  real*8     :: depth_m
-  real*8     :: n_imp
-    
-  
-  ! density and molar mass of the bulk material
-  
-  if (Z_wall == 4) then   ! beryllium
-     rho = 1.80   ! g/cm^3
-     M = 9.01     ! g/mol
-  endif
-  if (Z_wall == 6) then   ! carbon
-     rho = 1.85   ! g/cm^3
-     M = 12.01    ! g/mol
-  endif
-  if (Z_wall == 74) then   ! tungsten
-     rho = 19.29  ! g/cm^3
-     M = 183.85   ! g/mol
-  endif
-        
-  avogadro = 6.022E23   ! mol^-1
-    
-  ! calculate the molar density
-  mol_density = rho / M   ! mol/cm^3
-    
-  ! calculate the bulk atom density
-  n_bulk = avogadro * mol_density * 1.0E6   ! atoms/m^-3
-  
-  ! calculate the volumetric impurity atom density
-  n_imp = n_bulk * (C/(1.0-C))
-  
-  ! convert the volumetric impurity atom density into surface implantation density
-  depth_m = depth * 1.0E-10   ! m
-  sigma = n_imp * depth_m
-  
-  return
-  
-end subroutine wall_concentration_to_density
- 

@@ -16,7 +16,7 @@ import aurora
 
 # Select two different projectiles and wall material
 projectile_1 = 'He'
-projectile_2 = 'N'
+projectile_2 = 'Ar'
 target = 'W'
 
 # Select angle of incidence
@@ -27,46 +27,36 @@ angle = 65 # degrees
 #   the surface, in function of the impact energy, specifying
 #   the incidence angle of the projectile onto the surface
 # He as projectile
-refl_data_rn_1 = aurora.surface.get_reflection_data(projectile_1, target, angle, 'rn') # particle reflection coeff.
-energies_rn_1 = refl_data_rn_1["energies"]
-data_rn_1 = refl_data_rn_1["data"]
-refl_data_re_1 = aurora.surface.get_reflection_data(projectile_1, target, angle, 're') # energy reflection coeff.
-energies_re_1 = refl_data_re_1["energies"]
-data_re_1 = refl_data_re_1["data"]
+energies_rn_1 = aurora.surface.get_reflection_data(projectile_1, target, angle, 'rn')["energies"] # energy values of the particle refl. coeff.
+data_rn_1 = aurora.surface.get_reflection_data(projectile_1, target, angle, 'rn')["data"] # particle reflection coeff.
+energies_re_1 = aurora.surface.get_reflection_data(projectile_1, target, angle, 're')["energies"] # energy values of the energy refl. coeff.
+data_re_1 = aurora.surface.get_reflection_data(projectile_1, target, angle, 're')["data"] # energy refl. coeff.
 # N as projectile
-refl_data_rn_2 = aurora.surface.get_reflection_data(projectile_2, target, angle, 'rn') # particle reflection coeff.
-energies_rn_2 = refl_data_rn_2["energies"]
-data_rn_2 = refl_data_rn_2["data"]
-refl_data_re_2 = aurora.surface.get_reflection_data(projectile_2, target, angle, 're') # energy reflection coeff.
-energies_re_2 = refl_data_re_2["energies"]
-data_re_2 = refl_data_re_2["data"]
+energies_rn_2 = aurora.surface.get_reflection_data(projectile_2, target, angle, 'rn')["energies"] # energy values of the particle refl. coeff
+data_rn_2 = aurora.surface.get_reflection_data(projectile_2, target, angle, 'rn')["data"] # particle refl. coeff.
+energies_re_2 = aurora.surface.get_reflection_data(projectile_2, target, angle, 're')["energies"] # energy values of the energy refl. coeff.
+data_re_2 = aurora.surface.get_reflection_data(projectile_2, target, angle, 're')["data"] # energy refl. coeff.
 
 # Extract the Eckstein fits for both the coefficients at the
 #   same incidence angle of the projectile onto the surface
 # He as projectile
-refl_data_rn_fit_1 = aurora.surface.reflection_coeff_fit(projectile_1, target, angle, 'rn') # particle reflection coeff.
-energies_rn_fit_1 = refl_data_rn_fit_1["energies"]
-data_rn_fit_1 = refl_data_rn_fit_1["data"]
-refl_data_re_fit_1 = aurora.surface.reflection_coeff_fit(projectile_1, target, angle, 're') # energy reflection coeff.
-energies_re_fit_1 = refl_data_re_fit_1["energies"]
-data_re_fit_1 = refl_data_re_fit_1["data"]
+energies_rn_fit_1 = aurora.surface.reflection_coeff_fit(projectile_1, target, angle, 'rn')["energies"] # energy values of the particle refl. coeff.
+data_rn_fit_1 = aurora.surface.reflection_coeff_fit(projectile_1, target, angle, 'rn')["data"] # particle refl. coeff.
+energies_re_fit_1 = aurora.surface.reflection_coeff_fit(projectile_1, target, angle, 're')["energies"] # energy values of the energy refl. coeff.
+data_re_fit_1 = aurora.surface.reflection_coeff_fit(projectile_1, target, angle, 're')["data"] # energy refl. coeff.
 # N as projectile
-refl_data_rn_fit_2 = aurora.surface.reflection_coeff_fit(projectile_2, target, angle, 'rn') # particle reflection coeff.
-energies_rn_fit_2 = refl_data_rn_fit_2["energies"]
-data_rn_fit_2 = refl_data_rn_fit_2["data"]
-refl_data_re_fit_2 = aurora.surface.reflection_coeff_fit(projectile_2, target, angle, 're') # energy reflection coeff.
-energies_re_fit_2 = refl_data_re_fit_2["energies"]
-data_re_fit_2 = refl_data_re_fit_2["data"]
+energies_rn_fit_2 = aurora.surface.reflection_coeff_fit(projectile_2, target, angle, 'rn')["energies"] # energy values of the particle refl. coeff.
+data_rn_fit_2 = aurora.surface.reflection_coeff_fit(projectile_2, target, angle, 'rn')["data"] # particle refl. coeff.
+energies_re_fit_2 = aurora.surface.reflection_coeff_fit(projectile_2, target, angle, 're')["energies"] # energy values of the energy refl. coeff.
+data_re_fit_2 = aurora.surface.reflection_coeff_fit(projectile_2, target, angle, 're')["data"] # energy refl. coeff.
 
 # Calculate the mean reflection energy
 # He as projectile
-refl_energy_fit_1 = aurora.surface.calc_reflected_energy(projectile_1, target, angle)
-impact_energies_1 = refl_energy_fit_1["energies"]
-refl_energies_1 = refl_energy_fit_1["data"]
+impact_energies_1 = aurora.surface.calc_reflected_energy(projectile_1, target, angle)["energies"]
+refl_energies_1 = aurora.surface.calc_reflected_energy(projectile_1, target, angle)["data"]
 # N as projectile
-refl_energy_fit_2 = aurora.surface.calc_reflected_energy(projectile_2, target, angle)
-impact_energies_2 = refl_energy_fit_2["energies"]
-refl_energies_2 = refl_energy_fit_2["data"]
+impact_energies_2 = aurora.surface.calc_reflected_energy(projectile_2, target, angle)["energies"]
+refl_energies_2 = aurora.surface.calc_reflected_energy(projectile_2, target, angle)["data"]
 
 # Plot together the TRIM-generated data and the Eckstein fit
 #   for particle and energy reflection coefficients,
@@ -93,10 +83,14 @@ for aa in ax.flatten()[:2]:
 for aa in ax.flatten()[3:5]:
     aa.legend(loc="best").set_draggable(True)
 for ii in [0,1,2]:
-    ax[0, ii].set_xlabel("$E_0$ [eV]")
+    ax[0, ii].set_xlabel(f"$E_{{0,{projectile_1}}}$ [eV]")
     ax[0, ii].set_xlim([0,1000])
 for ii in [0,1,2]:
-    ax[1, ii].set_xlabel("$E_0$ [eV]")
+    ax[1, ii].set_xlabel(f"$E_{{0,{projectile_2}}}$ [eV]")
     ax[1, ii].set_xlim([0,1000])
-ax[0,2].set_ylim([0,1000])
-ax[1,2].set_ylim([0,1000])
+for ii in [0,1]:
+    ax[0, ii].set_ylim([0.3,1])
+    ax[1, ii].set_ylim([0.3,1])
+for ii in [2]:
+    ax[0, ii].set_ylim([0,1000])
+    ax[1, ii].set_ylim([0,1000])

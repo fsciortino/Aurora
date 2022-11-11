@@ -137,28 +137,3 @@ out = asim.run_aurora(D_z, V_z, plot=True)
 # see core.py for the order of the fields in the various cases depending on the values
 #   of "screening_eff", "div_recomb_ratio" and "pump_chamber"
 nz, N_mainwall, N_divwall, N_div, N_pump, N_out, N_mainret, Ndivret, N_tsu, N_dsu, N_dsul, rcld_rate, rcls_rate, rclb_rate, rclp_rate, rclw_rate = out
-
-# add radiation
-asim.rad = aurora.compute_rad(
-    imp,
-    nz.transpose(2, 1, 0),
-    asim.ne,
-    asim.Te,
-    prad_flag=True,
-    thermal_cx_rad_flag=False,
-    spectral_brem_flag=False,
-    sxr_flag=False,
-)
-
-# plot radiation profiles over radius and time
-aurora.slider_plot(
-    asim.rvol_grid,
-    asim.time_out,
-    asim.rad["line_rad"].transpose(1, 2, 0),
-    xlabel=r"$r_V$ [cm]",
-    ylabel="time [s]",
-    zlabel=r"Line radiation [$MW/m^3$]",
-    labels=[str(i) for i in np.arange(0, nz.shape[1])],
-    plot_sum=True,
-    x_line=asim.rvol_lcfs,
-)

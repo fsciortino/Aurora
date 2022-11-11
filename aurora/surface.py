@@ -959,15 +959,11 @@ def read_trim_table(filename):
     data : 2-dimensional array
         Requested coefficient in function of (energies,angles)
     """
-    #TODO: Correct the bug which does not allow to read correctly
-    #      values > 1.0 (try e.g. N_C.y)
     
     file = open(filename, "r")
     lines = file.readlines()
     
-    temp = lines[2].strip("c ")
-    temp = temp.strip("\n")
-    temp = temp.split(", ")
+    temp = lines[2].strip("c ").strip("\n").split(", ")
     ne_temp = temp[0].split("=")
     na_temp = temp[1].split("=")
     ne = int(ne_temp[1])
@@ -976,16 +972,13 @@ def read_trim_table(filename):
     angles = np.zeros(na)
     data = np.zeros((ne,na))
     
-    temp = lines[4]
-    temp = temp.strip("\n")
-    temp = temp.split("      ")
+    temp = lines[4].strip("\n").split("      ")
     for j in range(0,na):
         angles[j] = float(temp[j+1])
     
     for i in range(6,6+ne):
-        temp = lines[i]
-        temp = temp.strip("\n")
-        temp = temp.split("  ")
+        temp = lines[i].strip("\n").split(" ")
+        temp = [j for j in temp if len(j)]
         if not temp[0]:
             energies[i-6] = float(temp[1])
             for j in range(0,na):

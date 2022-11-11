@@ -44,6 +44,7 @@ def slider_plot(
     plot_sum=False,
     x_line=None,
     y_line=None,
+    zlim = False,
     **kwargs
 ):
     """Make a plot to explore multidimensional data.
@@ -122,6 +123,14 @@ def slider_plot(
             label="total",
             **kwargs
         )
+    
+    if zlim:
+        if plot_sum:
+            lim_min = np.min(zz.sum(axis=0))
+            lim_max = np.max(zz.sum(axis=0))*1.15
+        else:
+            lim_min = np.min(zz)
+            lim_max = np.max(zz)*1.15
 
     leg = a_legend.legend(loc="best", fontsize=12).set_draggable(True)
     title = fig.suptitle("")
@@ -140,6 +149,11 @@ def slider_plot(
 
         a_plot.relim()
         a_plot.autoscale()
+        
+        a_plot.set_xlim(x[0],x[-1]*1.05)
+        
+        if zlim:
+            a_plot.set_ylim(lim_min,lim_max)
 
         if plot_title is not None:
             title.set_text(f"{plot_title}, %s = %.5f" % (ylabel, y[i]) if ylabel else f"{plot_title}, %.5f" % (y[i],))

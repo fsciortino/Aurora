@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2021 Francesco Sciortino
+# Copyright (c) 2021 Francesco Sciortino and 2022 Antonello Zito
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,8 @@ def load_default_namelist(device=None):
         # other options to specify source:
         "source_width_in": 0.0,  # exponential ionization decay from wall boundary if widths both = 0
         "source_width_out": 0.0,
-        "imp_source_energy_eV": 3.0,  # only needed if source_width_in=source_width_out=0.0
+        "imp_source_energy_eV": 3.0,  # energy of externally injected impurity neutrals, only needed if source_width_in=source_width_out=0.0
+        "imp_recycling_energy_eV": 3.0,  # energy of recycled impurity neutrals, only needed if source_width_in=source_width_out=0.0
         "prompt_redep_flag": False,
         "source_file": None,  # required if source_type='file'
         "source_cm_out_lcfs": 1.0,  # source distance in cm from LCFS
@@ -54,6 +55,7 @@ def load_default_namelist(device=None):
             "dt_start": np.array([1e-5, 0.001]),
             "steps_per_cycle": np.array([1, 1]),
             "times": np.array([0.0, 0.1]),
+            "time_start_plot": 0.0,
         },
         # --------------------
         # radial grid
@@ -82,6 +84,12 @@ def load_default_namelist(device=None):
             "crash_duration": [0.5],  # ms
             "plateau_duration": [1.0],  # ms
             "recovery_duration": [0.5],  # ms
+            "ELM_shape_decay_param": 2000, # s^-1
+            "ELM_shape_delay_param": 0.001, # s
+            "adapt_time_grid": False,
+            "dt_intra_ELM": 5e-5, # s
+            "dt_increase_inter_ELM": 1.05,
+            
         },
         # --------------------
         # edge
@@ -93,18 +101,6 @@ def load_default_namelist(device=None):
         "SOL_mach_ELM": 0.1,
         # --------------------
         # plasma-wall interaction
-        "advanced_PWI": {
-            "advanced_PWI_flag": False,
-            "main_wall_material": 'W',
-            "div_wall_material": 'W',
-            "mode": 'const',
-            "species": [''],
-            "main_wall_fluxes": [0], # s^-1
-            "div_wall_fluxes": [0], # s^-1
-            "files": [''],
-            "characteristic_impact_energy_main_wall": 200, # eV
-            "characteristic_impact_energy_div_wall": 500, # eV
-        },
         "phys_surfaces": False,
         "surf_mainwall": 1.0e5,  # cm^2
         "surf_divwall": 1.0e4,  # cm^2
@@ -112,14 +108,27 @@ def load_default_namelist(device=None):
         "divwall_roughness": 1.0,
         "wall_recycling": 0.0,
         "tau_rcl_ret_ms": 50.0, # ms
-        "Te_ped_intra_ELM": 400.0, # eV
-        "Te_div_inter_ELM": 30.0, # eV
-        "Te_lim_intra_ELM": 20.0, # eV
-        "Te_lim_inter_ELM": 10.0, # eV
-        "Ti_over_Te": 1.0,
-        "gammai": 2.0,
-        "ELM_energy_decay_param": 2000, # s^-1
-        "ELM_energy_delay_param": 0.001, # s
+        "advanced_PWI": {
+            "advanced_PWI_flag": False,
+            "main_wall_material": 'W',
+            "div_wall_material": 'W',
+            "mode": 'manual',
+            "background_species": ['D'],
+            "main_wall_fluxes": [0], # s^-1
+            "main_wall_fluxes_ELM": [0], # s^-1
+            "div_wall_fluxes": [0], # s^-1
+            "div_wall_fluxes_ELM": [0], # s^-1
+            "files": ['file/location'],
+            "characteristic_impact_energy_main_wall": 200, # eV
+            "characteristic_impact_energy_div_wall": 500, # eV
+            "energetic_recycled_neutrals": False,
+            "Te_ped_intra_ELM": 400.0, # eV
+            "Te_div_inter_ELM": 30.0, # eV
+            "Te_lim_intra_ELM": 20.0, # eV
+            "Te_lim_inter_ELM": 10.0, # eV
+            "Ti_over_Te": 1.0,
+            "gammai": 2.0,
+        },
         # --------------------
         # pumping
         "phys_volumes": False,
@@ -166,13 +175,13 @@ def load_default_namelist(device=None):
     
         if device=="AUG": # Geometry-related input parameters adapted for AUG
             
-            namelist["vol_div"] = 0.4e6 # cm^3
-            namelist["vol_pump"] = 1.0e6 # cm^3
+            namelist["vol_div"] = 0.8e6 # cm^3
+            namelist["vol_pump"] = 1.7e6 # cm^3
             namelist["surf_mainwall"] = 1.0e5 # cm^2
             namelist["surf_divwall"] = 1.0e4 # cm^2            
             namelist["source_cm_out_lcfs"] = 15.0 # cm
-            namelist["bound_sep"] = 8.0 # cm
-            namelist["lim_sep"] = 5.0 # cm
+            namelist["bound_sep"] = 10.0 # cm
+            namelist["lim_sep"] = 6.0 # cm
             namelist["clen_divertor"] = 50.0 # m
             namelist["clen_lim"] = 1.0 # m
             namelist["shot"] = 39148    

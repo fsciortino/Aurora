@@ -27,13 +27,16 @@ radial pinch velocity) and possibly impose other time-dependent models
 # SOFTWARE.
 
 import numpy as np
+import matplotlib.pyplot as plt
 import scipy
 from scipy.interpolate import interp1d
 from scipy.interpolate import CubicSpline
 from scipy.interpolate import PchipInterpolator
+from . import plot_tools
+from . import surface
 
 
-def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, method = 'linear_interp', time_dependency = False, times = None):
+def interp_coeffs(namelist, rhop_grid, data, radial_dependency = False, rhop = None, method = 'linear_interp', time_dependency = False, times = None, plot = False, name = None):
     """
     Routine for interpolating a radial transport profile onto the radial grid, at each user-specified time
     The routine may be called for outputting both a diffusion coefficient D_Z
@@ -43,8 +46,8 @@ def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, 
     ----------
     namelist: dict
         Dictionary containing aurora inputs. 
-    asim: object
-        Object containing aurora input methods.
+    rhop_grid: array
+        Values of rho_poloidal on the aurora radial grid.
     data: list
         List containing the user-specified values for the transport coefficient. It can be:
             0-dimensional: constant and uniform transport coefficient.
@@ -73,6 +76,10 @@ def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, 
     times: list
         List containing the user-specified times at which the transport profiles are imposed.
         None by default.
+    plot: bool
+        Select whether to produce plots with the resulting transport profiles imposed in the simulation.
+    name: str
+        Select the name ('D' or 'v') of the used coefficient, for the plot labels.
         
     Returns
     -------
@@ -93,9 +100,6 @@ def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, 
     out = atomic_element(symbol=imp)
     spec = list(out.keys())[0]
     Z_imp = int(out[spec]["Z"])
-    
-    # Extract the radial grid
-    rhop_grid = asim.rhop_grid
     
     # Convert input list into array
     data = np.array(data)
@@ -120,6 +124,16 @@ def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, 
             
         # Interpolate the transport coefficient profile onto the radial grid
         coeffs =  interp_transp(rhop,data,rhop_grid,method)
+    
+        if plot:
+            fig, ax = plt.subplots()
+            ax.plot(rhop_grid, coeffs)
+            ax.set_xlabel(r'$\rho_p$')
+            if name == 'D':
+                ax.set_ylabel('$D_Z$ [$cm^{2}/s$]')
+            elif name == 'v':
+                ax.set_ylabel('$v_Z$ [$cm/s$]')   
+                
         return coeffs
         
     # Space- and time-dependent coefficient
@@ -137,6 +151,23 @@ def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, 
         coeffs = np.zeros((len(rhop_grid),len(times)))
         for i in range(0,len(times)):  
             coeffs[:,i] = interp_transp(rhop,data[:,i],rhop_grid,method)
+        
+        if plot:
+            if name == 'D':
+                zlabel = '$D_Z$ [$cm^{2}/s$]'
+            elif name == 'v':
+                zlabel = '$v_Z$ [$cm/s$]'
+            plot_tools.slider_plot(
+                rhop_grid,
+                times + namelist["timing"]["time_start_plot"],
+                np.reshape(coeffs,(1,coeffs.shape[0],coeffs.shape[1])),
+                xlabel=r'$\rho_p$',
+                ylabel="time [s]",
+                zlabel = zlabel,
+                labels = name,
+                zlim = True,
+            )
+            
         return coeffs
   
     else:
@@ -144,7 +175,28 @@ def interp_coeffs(namelist, asim, data, radial_dependency = False, rhop = None, 
 
 
 
-def ELM_model(timing, ELM_model, asim, rhop, data_inter_ELM, data_intra_ELM, method = 'linear_interp'):
+def interp_transp(x, y, grid, method):
+    """Function 'interp_transp' used for interpolating the user-defined transport
+    coefficients onto the radial grid.
+    """
+    
+    if method == "linear_interp": 
+        # Simple 1-D linear interpolation onto the radial grid
+        f = interp1d(x, y, kind="linear", fill_value="extrapolate", assume_sorted=True)
+
+    elif method == "cubic_spline":
+        # Piecewise cubic polynomial and twice continuously differentiable interpolation onto the radial grid
+        f = CubicSpline(x, y)
+
+    elif method == "Pchip_spline":
+        # Piecewise cubic Hermite and monotonicity-preserving interpolation onto the radial grid
+        f = PchipInterpolator(x, y)
+    
+    return f(grid) 
+
+
+
+def ELM_model(timing, ELM_model, rhop_grid, rhop, data_inter_ELM, data_intra_ELM, method = 'linear_interp', plot = False, name = None):
     """
     Routine for creating a 2D grid for the transport coefficients where the space dependence is given
     interpolating a user-imposed transport profile onto the radial grid, and the time dependence is
@@ -158,8 +210,8 @@ def ELM_model(timing, ELM_model, asim, rhop, data_inter_ELM, data_intra_ELM, met
         Sub-dict "timing" from the main aurora inputs namelist.
     ELM_model: dict
         Sub-dict "ELM_model" from the main aurora inputs namelist.
-    asim: object
-        Object containing aurora input methods.
+    rhop_grid: array
+        Values of rho_poloidal on the aurora radial grid.
     rhop: list
         List containing the user-specified values of rhop at which the transport coefficients are imposed.    
     data_inter_ELM: list
@@ -180,6 +232,10 @@ def ELM_model(timing, ELM_model, asim, rhop, data_inter_ELM, data_intra_ELM, met
             'Pchip_spline': piecewise cubic Hermite and monotonicity-preserving interpolation
                 onto the radial grid.
         'interp' by default.
+    plot: bool
+        Select whether to produce plots with the resulting transport profiles imposed in the simulation.
+    name: str
+        Select the name ('D' or 'v') of the used coefficient, for the plot labels.
         
     Returns
     -------
@@ -191,9 +247,6 @@ def ELM_model(timing, ELM_model, asim, rhop, data_inter_ELM, data_intra_ELM, met
         i.e. in function of (space,time).
         This is to be used as input of the main aurora routine.
     """
-    
-    # Extract the radial grid
-    rhop_grid = asim.rhop_grid
     
     # Convert input list into array
     data_inter_ELM = np.array(data_inter_ELM)
@@ -266,150 +319,176 @@ def ELM_model(timing, ELM_model, asim, rhop, data_inter_ELM, data_intra_ELM, met
                 if ELM_time_windows[i][1]<timing['times'][-1]:
                     times_transport.append(timing['times'][-1])
                     coeffs.append(coeffs_inter_ELM)
-    
+
+    if plot:
+        if name == 'D':
+            zlabel = '$D_Z$ [$cm^{2}/s$]'
+        elif name == 'v':
+            zlabel = '$v_Z$ [$cm/s$]'
+        times = np.round(times_transport,6)
+        coeff = np.transpose(np.array(coeffs))
+        plot_tools.slider_plot(
+            rhop_grid,
+            times + timing["time_start_plot"],
+            np.reshape(coeff,(1,coeff.shape[0],coeff.shape[1])),
+            xlabel=r'$\rho_p$',
+            ylabel="time [s]",
+            zlabel = zlabel,
+            labels = name,
+            zlim = True,
+        )
+        
     return np.round(times_transport,6), np.transpose(np.array(coeffs))
-     
 
+    
 
-def ELM_time_grid(timing, ELM_model, dt_intra_ELM, dt_increase_inter_ELM):
+def ELM_cycle_SOL_mach(SOL_mach,SOL_mach_ELM,time_grid,ELM_model,timing):
     """
-    Routine for adapting the time grid to imposed ELM time characteristics
+    Generate a time-dependent shape of the Mach number in the SOL during an ELM
+    cycle, assigning a peak value with a time dependence which follows the parallel
+    ELM flux following the free streaming model.
+    For now this works only if the time grid has constant time steps and for ELMs
+    present for the entire duration of the simulation.
+    """    
+    
+    # general time-dependent shape following the ELMS onto the entire time grid
+    shape = ELM_cycle_shape(time_grid,ELM_model,timing)
+    max_shape = np.max(shape)
+    
+    # normalize the time-dependent shape so that its peaks value equates
+    #   the difference between SOL_mach_ELM and SOL_mach
+    SOL_mach_shape_ELM = shape / (max_shape / (SOL_mach_ELM - SOL_mach))
 
-    Parameters
-    ----------
-    timing: dict
-        Sub-dict "timing" from the main aurora inputs namelist (to update).
-    ELM_model: dict
-        Sub-dict "ELM_model" from the main aurora inputs namelist.
-    dt_intra_ELM: float
-        dt values during the entire intra-ELM cycles
-        and at the beginning of each inter-ELM cycle
-    dt_increase_inter_ELM: float
-        dt multiplier at every time steps in the inter-ELM cycles
-        
-    Returns
-    -------
-    timing_update : dict
-        Update to sub-dict "timing" from the main aurora inputs namelist.
-    """ 
+    # now add this normalized shape to the inter-ELM value in order to achieve
+    #   a Mach number which flattens on its intra-ELM value during inter-ELM phases
+    #   but peaks at SOL_mach_ELM in the moment of maximum ELM-carried parallel flux
+    mach = SOL_mach + SOL_mach_shape_ELM
     
+    return mach   
+
+
+
+def ELM_cycle_impact_energy_main_wall(species,time_grid,advanced_PWI,ELM_model,timing):
+    """
+    Generate a time-dependent shape of the impact energy of impurity ions on the main
+    wall over an ELM cycle.
+    For now this works only if the time grid has constant time steps and for ELMs
+    present for the entire duration of the simulation.
+    """
+
+    # intra- and inter-ELM limiter electron temperatures + sheath parameters
+    Te_lim_intra_ELM = advanced_PWI["Te_lim_intra_ELM"]
+    Te_lim_inter_ELM = advanced_PWI["Te_lim_inter_ELM"]
+    Ti_over_Te = advanced_PWI["Ti_over_Te"]
+    gammai = advanced_PWI["gammai"]
     
-    ELM_time_windows = ELM_model['ELM_time_windows'] # s
-    ELM_frequency = ELM_model['ELM_frequency'] # Hz
-    crash_duration = ELM_model['crash_duration'] # ms
-    plateau_duration = ELM_model['plateau_duration'] # ms
-    recovery_duration = ELM_model['recovery_duration'] # ms
+    # Calculate the inter-ELM impact energy
+    E0_inter_ELM = surface.get_impact_energy(Te_lim_inter_ELM, species, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
+
+    # Calculate the peak intra-ELM impact energy
+    E0_peak_intra_ELM = surface.get_impact_energy(Te_lim_intra_ELM, species, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
     
-    # Assuming that ELMs take place throughout the entire simulation duration
-    if ELM_time_windows is None:     
-        
-        ELM_duration = (crash_duration + plateau_duration + recovery_duration)/1000 # s
-        ELM_period = 1/ELM_frequency # s
-        
-        # Check consistency of time windows with imposed ELM frequency
-        if ELM_duration > ELM_period:
-            raise ValueError("ELM duration not consistent with imposed ELM frequency.") 
-        
-        # Create a time grid which allows to distinguish between inter- and intra-ELM time windows   
-        
-        times = [timing['times'][0]] 
-        for i in range(0,round((timing['times'][-1]-timing['times'][0])*ELM_frequency)):
-            times.append(round(times[-1]+(ELM_period-ELM_duration),6))
-            times.append(round(times[-1]+ELM_duration,6))
-        
-        dt_start = [dt_intra_ELM] * len(times)
+    # general time-dependent shape following the ELMS onto the entire time grid
+    shape = ELM_cycle_shape(time_grid,ELM_model,timing)
+    max_shape = np.max(shape)
     
-        steps_per_cycle = [1] * len(times)
+    # normalize the time-dependent shape so that its peaks value equates
+    #   the difference between E0_peak_intra_ELM and E0_inter_ELM
+    E0_shape_ELM = shape / (max_shape / (E0_peak_intra_ELM - E0_inter_ELM))
+
+    # now add this normalized shape to the inter-ELM value in order to achieve
+    #   an impact energy which flattens on its intra-ELM value during inter-ELM phases
+    #   but peaks at E0_peak_intra_ELM in the moment of maximum ELM-carried flux
+    E0 = E0_inter_ELM + E0_shape_ELM
+    
+    return E0   
+
+
+
+def ELM_cycle_impact_energy_div_wall(species,time_grid,advanced_PWI,ELM_model,timing):
+    """
+    Generate a time-dependent shape of the impact energy of impurity ions on the divertor
+    target over an ELM cycle, assigning a peak value with a time dependence which follows the
+    parallel ELM flux following the free streaming model.
+    For now this works only if the time grid has constant time steps and for ELMs
+    present for the entire duration of the simulation.
+    """
+
+    # intra-ELM pedestal electron temperature
+    Te_ped_intra_ELM = advanced_PWI["Te_ped_intra_ELM"]
+    
+    # inter-ELM electron temperature on the divertor target + sheath parameters
+    Te_div_inter_ELM = advanced_PWI["Te_div_inter_ELM"]
+    Ti_over_Te = advanced_PWI["Ti_over_Te"]
+    gammai = advanced_PWI["gammai"]
+    
+    # Calculate the inter-ELM impact energy
+    E0_inter_ELM = surface.get_impact_energy(Te_div_inter_ELM, species, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
+
+    # Calculate the peak intra-ELM impact energy
+    E0_peak_intra_ELM = surface.get_impact_energy(Te_ped_intra_ELM, species, mode = 'FSM')
+    
+    # general time-dependent shape following the ELMS onto the entire time grid
+    shape = ELM_cycle_shape(time_grid,ELM_model,timing)
+    max_shape = np.max(shape)
+    
+    # normalize the time-dependent shape so that its peaks value equates
+    #   the difference between E0_peak_intra_ELM and E0_inter_ELM
+    E0_shape_ELM = shape / (max_shape / (E0_peak_intra_ELM - E0_inter_ELM))
+
+    # now add this normalized shape to the inter-ELM value in order to achieve
+    #   an impact energy which flattens on its intra-ELM value during inter-ELM phases
+    #   but peaks at E0_peak_intra_ELM in the moment of maximum ELM-carried parallel flux
+    E0 = E0_inter_ELM + E0_shape_ELM
+    
+    return E0
+
+
+
+def ELM_cycle_shape(time_grid,ELM_model,timing):
+    """
+    Generate a time-dependent shape resembling the ion parallel flux onto the divertor
+    target during an ELM cycle following the free streaming model, using empirical
+    input parameters.
+    For now this works only if the time grid has constant time steps and for ELMs
+    present for the entire duration of the simulation.
+    """    
+    #TODO: adapt for variable time steps during inter-ELM phases
+    #      and in case of ELM_time_window not None
+    
+    # Empiric parameters regulating the shape
+    ELM_shape_decay_param = ELM_model["ELM_shape_decay_param"]
+    ELM_shape_delay_param = ELM_model["ELM_shape_delay_param"]
+
+    # ELM parameters
+    ELM_frequency = ELM_model["ELM_frequency"]
+    ELM_period = 1/ELM_frequency
+    
+    if ELM_shape_delay_param < 0.0:
+        ELM_shape_delay_param = ELM_period + ELM_shape_delay_param       
+    
+    # Number of time steps during an ELM period
+    time_step = timing['dt_start'][0]
+    num_time_steps = round(ELM_period/time_step)
+    
+    # build a time-dependent parallel ion flow during an ELM cycle, in a.u.,
+    #    (assuming the ELM crash at t = 0) according to the free streaming model
+    t = np.linspace(time_step,ELM_period,num_time_steps)
+    shape = np.zeros(len(t))
+    for j in range(1,len(t)):
+        shape[j] = (1/((t[j])**2)) * np.exp(-((1/ELM_shape_decay_param)**2)/(2*((t[j])**2)))
+        
+    fraction_to_move = ELM_shape_delay_param/ELM_period
+    indeces_to_move = round(num_time_steps*fraction_to_move)
+    shape_new = np.zeros(len(t))
+    shape_new[indeces_to_move:num_time_steps] = shape[0:num_time_steps-indeces_to_move]
+    shape_new[0:indeces_to_move] = shape[num_time_steps-indeces_to_move:num_time_steps]
+        
+    num_periods = int((timing['times'][-1]-timing['times'][0])/ELM_period)
+    
+    shape_new = np.tile(shape_new,num_periods)
+    # make sure that the generated shape has the same length of the time grid
+    if len(shape_new)>len(time_grid):      
+        shape_new = shape_new[:-1]
  
-        dt_increase = [dt_increase_inter_ELM]
-        
-        while len(dt_increase)<len(times):
-            dt_increase.append(1.000)
-            dt_increase.append(dt_increase_inter_ELM)  
-       
-    # Assuming that ELMs take place only in some reduced time windows 
-    else:
-        
-        if len(ELM_time_windows) != len(ELM_frequency):
-            raise ValueError("Number of ELM time windows inconsistent with specification of ELM characteristics")
-        ELM_duration = np.zeros(len(ELM_frequency))
-        ELM_period = np.zeros(len(ELM_frequency))
-        for i in range(0,len(ELM_time_windows)):
-            ELM_duration[i] = (crash_duration[i] + plateau_duration[i] + recovery_duration[i])/1000 # s
-            ELM_period[i] = 1/ELM_frequency[i] # s  
-            
-            # Check consistency of time windows with imposed ELM frequency
-            if ELM_duration[i] > ELM_period[i]:
-                raise ValueError("ELM duration not consistent with imposed ELM frequency.") 
-        
-        # Create a time grid which allows to distinguish between inter- and intra-ELM time windows
-        
-        times = [timing['times'][0]]
-        
-        if ELM_time_windows[0][0] > timing['times'][0]:
-            times.append(ELM_time_windows[0][0]) 
-        
-        for i in range(0,len(ELM_time_windows)):
-            
-            for j in range(0,round((ELM_time_windows[i][1]-ELM_time_windows[i][0])*ELM_frequency[i])):
-                times.append(round(times[-1]+(ELM_period[i]-ELM_duration[i]),6))
-                times.append(round(times[-1]+ELM_duration[i],6))
-            
-            if i<len(ELM_time_windows)-1:
-                if ELM_time_windows[i+1][0]>ELM_time_windows[i][1]:
-                    times.append(ELM_time_windows[i+1][0])
-            else:
-                if ELM_time_windows[i][1]<timing['times'][-1]:
-                    times.append(timing['times'][-1])
-            
-        dt_start = [dt_intra_ELM] * len(times)
-    
-        steps_per_cycle = [1] * len(times)
-                
-        dt_increase = [dt_increase_inter_ELM]  
-        
-        if ELM_time_windows[0][0] > timing['times'][0]:
-            dt_increase.append(dt_increase_inter_ELM)
-        
-        for i in range(0,len(ELM_time_windows)):
-            
-            for j in range(0,round((ELM_time_windows[i][1]-ELM_time_windows[i][0])*ELM_frequency[i])):
-                dt_increase.append(1.000)
-                dt_increase.append(dt_increase_inter_ELM)
-            
-            if i<len(ELM_time_windows)-1:
-                if ELM_time_windows[i+1][0]>ELM_time_windows[i][1]:
-                    dt_increase.append(dt_increase_inter_ELM)
-            else:
-                if ELM_time_windows[i][1]<timing['times'][-1]:
-                    dt_increase.append(dt_increase_inter_ELM)
-    
-    timing_update = {
-        "dt_increase": dt_increase,
-        "dt_start": dt_start,
-        "steps_per_cycle": steps_per_cycle,
-        "times": times,
-    } 
-    
-    return timing_update
-
-
-
-def interp_transp(x, y, grid, method):
-    """Function 'interp_transp' used for interpolating the user-defined transport
-    coefficients onto the radial grid.
-    """
-    
-    if method == "linear_interp": 
-        # Simple 1-D linear interpolation onto the radial grid
-        f = interp1d(x, y, kind="linear", fill_value="extrapolate", assume_sorted=True)
-
-    elif method == "cubic_spline":
-        # Piecewise cubic polynomial and twice continuously differentiable interpolation onto the radial grid
-        f = CubicSpline(x, y)
-
-    elif method == "Pchip_spline":
-        # Piecewise cubic Hermite and monotonicity-preserving interpolation onto the radial grid
-        f = PchipInterpolator(x, y)
-    
-    return f(grid) 
+    return shape_new   

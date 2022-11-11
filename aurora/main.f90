@@ -23,11 +23,11 @@
 
 
 subroutine run(  &
-        nion, ir, nt, &
+        nion, ir, nt, species, &
         nt_out,  nt_trans, &
         t_trans, D, V, &
         par_loss_rates, &
-        src_core, rcl_rad_prof, &
+        src_core, rcl_rad_prof, rfl_rad_prof, spt_rad_prof, en_rec_neut, &
         S_rates, R_rates,  &
         Raxis, rr, pro, qpr, &
         r_saw, dlen,  &
@@ -35,7 +35,7 @@ subroutine run(  &
         it_out, dsaw, &
         rcl, screen, rcmb, taudiv, taupump, tauwret, &
         S_pump, voldiv, cond, volpump, leak, &
-        surfmain, surfdiv, PWI, Zmain, Zdiv, species, &
+        surfmain, surfdiv, PWI, Zmain, Zdiv, &
         rnmain, rndiv, fluxmain, fluxdiv, ymain, ydiv, depthmain, depthdiv, nmainsat, ndivsat, &
         rvol_lcfs, dbound, dlim, prox, &
         rn_t0, ndiv_t0, npump_t0, nmainwall_t0, ndivwall_t0, alg_opt, evolneut, src_div, &   ! OPTIONAL INPUTS:
@@ -60,7 +60,9 @@ subroutine run(  &
   !     ir           integer
   !                    Number of radial grid points. Not needed for Python calls.
   !     nt           integer
-  !                    Number of time steps for the solution. Not needed for Python calls
+  !                    Number of time steps for the solution. Not needed for Python calls.
+  !     species      integer
+  !                    Number of considered background species for the advanced PWI. Not needed for Python calls.
   !     nt_out       integer
   !                    Number of times at which the impurity densities shall be saved
   !     nt_trans     integer
@@ -73,14 +75,21 @@ subroutine run(  &
   !     V            real*8 (ir,nt_trans,nion)
   !                    Drift velocity on time and radial grids [cm/s]
   !                    This must be given for each charge state and time
-  !     par_loss_rates  real*8 (ir,nt)
+  !     par_loss_rates real*8 (ir,nt)
   !                    Frequency for parallel loss on radial and time grids [1/s]
-  !     src_core real*8 (ir,nt)
-  !                    Radial profile of neutrals over time [1/cm^3]
+  !     src_core     real*8 (ir,nt)
+  !                    Radial source profile of externally injected neutrals neutrals over time [1/cm^3]
   !     rcl_rad_prof real*8 (ir, nt)
-  !                    Radial distribution of impurities re-entering the core reservoir after recycling,
-  !                    given as a function of time.
-  !                    NB: this should be a normalized profile!
+  !                    Normalized radial distribution of impurities re-entering the plasma after recycling
+  !                    (or prompt recycling, if the advanced PWI model is used) over time.
+  !     rfl_rad_prof real*8 (ir, nt)
+  !                    Normalized radial distribution of impurities re-entering the plasma after reflection
+  !                    (if the advanced PWI model is used) over time.
+  !     spt_rad_prof real*8 (ir, 1+species, nt)
+  !                    Normalized radial distribution of impurities re-entering the plasma after sputtering
+  !                    (if the advanced PWI model is used) over time.
+  !     en_rec_neut  logical
+  !                    Logic key for setting energetic reflected/sputtered neutrals 
   !     S_rates      real*8 (ir,nion,nt)
   !                    Ionisation rates (nz=nion must be filled with zeros). Units of [1/s].
   !     R_rates      real*8 (ir,nion,nt)
@@ -147,8 +156,6 @@ subroutine run(  &
   !                    Atomic number of the main wall material
   !     Zdiv         integer
   !                    Atomic number of the divertor wall material 
-  !     species      integer
-  !                    Number of considered background species for the advanced PWI
   !     rnmain       real*8 (nt)
   !                    Reflection coefficients for the simulated impurity at the main wall on the time grid
   !     rndiv        real*8 (nt)
@@ -272,6 +279,7 @@ subroutine run(  &
   INTEGER, INTENT(IN)                  :: nion
   INTEGER, INTENT(IN)                  :: ir
   INTEGER, INTENT(IN)                  :: nt
+  INTEGER, INTENT(IN)                  :: species
   INTEGER, INTENT(IN)                  :: nt_out   ! required as input
   INTEGER, INTENT(IN)                  :: nt_trans
 
@@ -281,6 +289,9 @@ subroutine run(  &
   REAL*8, INTENT(IN)                   :: par_loss_rates(ir,nt)
   REAL*8, INTENT(IN)                   :: src_core(ir,nt)
   REAL*8, INTENT(IN)                   :: rcl_rad_prof(ir,nt)  
+  REAL*8, INTENT(IN)                   :: rfl_rad_prof(ir,nt)
+  REAL*8, INTENT(IN)                   :: spt_rad_prof(ir,1+species,nt) 
+  LOGICAL, INTENT(IN)                  :: en_rec_neut
 
   REAL*8, INTENT(IN)                   :: S_rates(ir,nion,nt)
   REAL*8, INTENT(IN)                   :: R_rates(ir,nion,nt)
@@ -320,20 +331,12 @@ subroutine run(  &
   LOGICAL, INTENT(IN)                  :: PWI
   INTEGER, INTENT(IN)                  :: Zmain
   INTEGER, INTENT(IN)                  :: Zdiv
-  INTEGER, INTENT(IN)                  :: species
   REAL*8, INTENT(IN)                   :: rnmain(nt)
   REAL*8, INTENT(IN)                   :: rndiv(nt)
-  ! TODO: FOR SOME REASON ERROR WHILE PASSING THE VARIABLE species FROM PYTHON TO FORTRAN.
-  !       TEMPORARILY SOLVABLE BY HARD-CODING THE NUMBER OF BACKGROUND SPECIES HERE IN THE
-  !       SIZE OF THE VARIABLES, BUT THE NEXT 4 LINES SHOULD BE
-  !   REAL*8, INTENT(IN)                   :: fluxmain(species,nt)
-  !   REAL*8, INTENT(IN)                   :: fluxdiv(species,nt)
-  !   REAL*8, INTENT(IN)                   :: ymain(1+species,nt)
-  !   REAL*8, INTENT(IN)                   :: ydiv(1+species,nt)
-  REAL*8, INTENT(IN)                   :: fluxmain(1,nt)
-  REAL*8, INTENT(IN)                   :: fluxdiv(1,nt)
-  REAL*8, INTENT(IN)                   :: ymain(1+1,nt)
-  REAL*8, INTENT(IN)                   :: ydiv(1+1,nt)
+  REAL*8, INTENT(IN)                   :: fluxmain(species,nt)
+  REAL*8, INTENT(IN)                   :: fluxdiv(species,nt)
+  REAL*8, INTENT(IN)                   :: ymain(1+species,nt)
+  REAL*8, INTENT(IN)                   :: ydiv(1+species,nt)
   REAL*8, INTENT(IN)                   :: depthmain
   REAL*8, INTENT(IN)                   :: depthdiv
   REAL*8, INTENT(IN)                   :: nmainsat
@@ -531,16 +534,16 @@ subroutine run(  &
      
      if (sel_alg_opt.eq.0) then
         ! Use old algorithm, just for benchmarking
-        call impden0( nion, ir, ra, rn,  &   ! IN: old impurity density, OUT: new impurity density
+        call impden0(nion, ir, species, ra, rn,  &   ! IN: old impurity density, OUT: new impurity density
              diff, conv, & 
              par_loss_rates(:,it), &   ! Parallel loss rates for the current time step
              src_core(:,it), &   ! Radial source profile for the current time step
-             rcl_rad_prof(:,it), &   ! Radial recycling profile for the current time step
+             rcl_rad_prof(:,it), rfl_rad_prof(:,it), spt_rad_prof(:,:,it), en_rec_neut, &   ! Radial recycling profiles for the current time step
              S_rates(:,:,it), R_rates(:,:,it), &   ! Ioniz. and recomb. rates for the current time step
              Raxis, rr, pro, qpr, dlen, &   ! Radial grid parameters
              dt, &   ! full time step
              surfmain, surfdiv, PWI, Zmain, Zdiv, &   ! PWI parameters - surfaces characteristics
-             species, rnmain(it), rndiv(it), &   ! PWI parameters - reflection coeffs. for the current time step
+             rnmain(it), rndiv(it), &   ! PWI parameters - reflection coeffs. for the current time step
              fluxmain(:,it), fluxdiv(:,it), ymain(:,it), ydiv(:,it), &   ! PWI parameters - background fluxes and sputt. yeilds for the current time step
              depthmain, depthdiv, nmainsat, ndivsat, &   ! PWI parameters - implantation parameters
              rcl, screen, rcmb, &   ! edge parameters
@@ -554,16 +557,16 @@ subroutine run(  &
         
      else
         ! Currently use Linder algorithm for any option other than 0
-        call impden1(nion, ir, ra, rn,&   ! IN: old impurity density, OUT: new impurity density
+        call impden1(nion, ir, species, ra, rn,&   ! IN: old impurity density, OUT: new impurity density
              diff, conv, &
              par_loss_rates(:,it), &   ! Parallel loss rates for the current time step
              src_core(:,it), &   ! Radial source profile for the current time step
-             rcl_rad_prof(:,it), &   ! Radial recycling profile for the current time step
+             rcl_rad_prof(:,it), rfl_rad_prof(:,it), spt_rad_prof(:,:,it), en_rec_neut, &   ! Radial recycling profiles for the current time step
              S_rates(:,:,it), R_rates(:,:,it), &   ! Ioniz. and recomb. rates for the current time step
              Raxis, rr, dlen, &   ! Radial grid parameters
              dt, &   ! renaming dt-->det. In this subroutine, dt is half-step
              surfmain, surfdiv, PWI, Zmain, Zdiv, &   ! PWI parameters - surfaces characteristics
-             species, rnmain(it), rndiv(it), &   ! PWI parameters - reflection coeffs. for the current time step
+             rnmain(it), rndiv(it), &   ! PWI parameters - reflection coeffs. for the current time step
              fluxmain(:,it), fluxdiv(:,it), ymain(:,it), ydiv(:,it), &   ! PWI parameters - background fluxes and sputt. yeilds for the current time step
              depthmain, depthdiv, nmainsat, ndivsat, &   ! PWI parameters - implantation parameters
              rcl, screen, rcmb, &    ! edge parameters

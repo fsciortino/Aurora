@@ -30,37 +30,31 @@ angle = 65 # degrees
 #   Note: such data are for now available only for He implanted in W
 
 # D as projectile
-imp_sputter_data_1 = aurora.surface.get_impurity_sputtering_data(imp, projectile_1, target, angle)
-energies_1 = imp_sputter_data_1["energies"]
-concentrations_1 = imp_sputter_data_1["impurity_concentrations"]
-data_1 = imp_sputter_data_1["data"]
+energies_1 = aurora.surface.get_impurity_sputtering_data(imp, projectile_1, target, angle)["energies"]
+concentrations_1 = aurora.surface.get_impurity_sputtering_data(imp, projectile_1, target, angle)["impurity_concentrations"]
+data_1 = aurora.surface.get_impurity_sputtering_data(imp, projectile_1, target, angle)["data"]
 # N as projectile
-imp_sputter_data_2 = aurora.surface.get_impurity_sputtering_data(imp, projectile_2, target, angle)
-energies_2 = imp_sputter_data_2["energies"]
-concentrations_2 = imp_sputter_data_2["impurity_concentrations"]
-data_2 = imp_sputter_data_2["data"]
+energies_2 = aurora.surface.get_impurity_sputtering_data(imp, projectile_2, target, angle)["energies"]
+concentrations_2 = aurora.surface.get_impurity_sputtering_data(imp, projectile_2, target, angle)["impurity_concentrations"]
+data_2 = aurora.surface.get_impurity_sputtering_data(imp, projectile_2, target, angle)["data"]
 
 # Extract the Bohdansky fit for the sputtering yield (normalized)
 #   to the impurity concentration into the bulk material) at the
 #   same incidence angle of the projectile onto the surface
 # D as projectile
-imp_sputter_data_fit_1 = aurora.surface.impurity_sputtering_coeff_fit(imp, projectile_1, target, angle)
-energies_1_fit = imp_sputter_data_fit_1["energies"]
-data_1_fit = imp_sputter_data_fit_1["normalized_data"]
+energies_1_fit = aurora.surface.impurity_sputtering_coeff_fit(imp, projectile_1, target, angle)["energies"]
+data_1_fit = aurora.surface.impurity_sputtering_coeff_fit(imp, projectile_1, target, angle)["normalized_data"]
 # N as projectile
-imp_sputter_data_fit_2 = aurora.surface.impurity_sputtering_coeff_fit(imp, projectile_2, target, angle)
-energies_2_fit = imp_sputter_data_fit_2["energies"]
-data_2_fit = imp_sputter_data_fit_2["normalized_data"]
+energies_2_fit = aurora.surface.impurity_sputtering_coeff_fit(imp, projectile_2, target, angle)["energies"]
+data_2_fit = aurora.surface.impurity_sputtering_coeff_fit(imp, projectile_2, target, angle)["normalized_data"]
 
 # Extract the mean sputtered energy
 # D as projectile
-imp_sputter_energy_data_fit_1 = aurora.surface.calc_imp_sputtered_energy(imp, projectile_1, target)
-impact_energies_1 = imp_sputter_energy_data_fit_1["energies"]
-sputtered_energies_1_fit = imp_sputter_energy_data_fit_1["data"]
+impact_energies_1 = aurora.surface.calc_imp_sputtered_energy(imp, projectile_1, target)["energies"]
+sputtered_energies_1_fit = aurora.surface.calc_imp_sputtered_energy(imp, projectile_1, target)["data"]
 # N as projectile
-imp_sputter_energy_data_fit_1 = aurora.surface.calc_imp_sputtered_energy(imp, projectile_2, target)
-impact_energies_2 = imp_sputter_energy_data_fit_1["energies"]
-sputtered_energies_2_fit = imp_sputter_energy_data_fit_1["data"]
+impact_energies_2 = aurora.surface.calc_imp_sputtered_energy(imp, projectile_2, target)["energies"]
+sputtered_energies_2_fit = aurora.surface.calc_imp_sputtered_energy(imp, projectile_2, target)["data"]
 
 # Make the plots
 fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(12, 10), squeeze=False)
@@ -72,14 +66,16 @@ for i in range(1,len(concentrations_2)):
     ax[0,1].scatter(energies_2, data_2[:,i]/concentrations_2[i], label=f"TRIM data, $f_{{{imp}}}$ = {concentrations_1[i]}")
 ax[0,1].plot(energies_2_fit, data_2_fit, c='k', label="Bohdansky fit")
 ax[0,1].set_ylabel(f'$Y_{{He}}/f_{{He}}$ ({projectile_2}-->{target}, angle={angle}°)')
-ax[1,0].plot(impact_energies_1, sputtered_energies_1_fit, c='k')
+ax[1,0].plot(impact_energies_1, sputtered_energies_1_fit, c='k', label="TRIM data, linear fit")
 ax[1,0].set_ylabel(f'<$E_{{sput,He}}$> ({projectile_1}-->{target}, angle={angle}°)')
-ax[1,1].plot(impact_energies_2, sputtered_energies_2_fit, c='k')
+ax[1,1].plot(impact_energies_2, sputtered_energies_2_fit, c='k', label="TRIM data, linear fit")
 ax[1,1].set_ylabel(f'<$E_{{sput,He}}$> ({projectile_2}-->{target}, angle={angle}°)')
-for aa in ax.flatten()[:2]:
-     aa.legend(loc="best").set_draggable(True)
 for ii in [0,1]:
-    ax[0, ii].set_xlabel("$E_0$ [eV]")
+    ax[ii, 0].set_xlabel(f"$E_{{0,{projectile_1}}}$ [eV]")
     ax[0, ii].set_xlim([0,5000])
     ax[0, ii].set_ylim([0,5])
-    ax[1, ii].set_xlabel("$E_0$ [eV]")
+    ax[0, ii].legend(loc="best").set_draggable(True)
+    ax[ii, 1].set_xlabel(f"$E_{{0,{projectile_2}}}$ [eV]")
+    ax[1, ii].set_xlim([0,5000])
+    ax[1, ii].set_ylim([0,150])
+    ax[1, ii].legend(loc="best").set_draggable(True)

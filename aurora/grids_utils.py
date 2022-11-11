@@ -401,6 +401,127 @@ def create_time_grid_new(timing, verbose=False, plot=False):
     return time, save
 
 
+def ELM_time_grid(timing, ELM_model):
+    """
+    Routine for amending the namelist "timing" in order to adapt
+    the time grid to imposed ELM time characteristics
+
+    Parameters
+    ----------
+    timing: dict
+        Original version of the sub-dict "timing" from the main aurora inputs namelist (to update).
+    ELM_model: dict
+        Sub-dict "ELM_model" from the main aurora inputs namelist.
+        
+    Returns
+    -------
+    timing_update : dict
+        Update to sub-dict "timing" from the main aurora inputs namelist.
+    """ 
+    
+    ELM_time_windows = ELM_model['ELM_time_windows'] # s
+    ELM_frequency = ELM_model['ELM_frequency'] # Hz
+    crash_duration = ELM_model['crash_duration'] # ms
+    plateau_duration = ELM_model['plateau_duration'] # ms
+    recovery_duration = ELM_model['recovery_duration'] # ms
+    dt_intra_ELM = ELM_model['dt_intra_ELM'] # s
+    dt_increase_inter_ELM = ELM_model['dt_increase_inter_ELM'] # ms
+    
+    # Assuming that ELMs take place throughout the entire simulation duration
+    if ELM_time_windows is None:     
+        
+        ELM_duration = (crash_duration + plateau_duration + recovery_duration)/1000 # s
+        ELM_period = 1/ELM_frequency # s
+        
+        # Check consistency of time windows with imposed ELM frequency
+        if ELM_duration > ELM_period:
+            raise ValueError("ELM duration not consistent with imposed ELM frequency.") 
+        
+        # Create a time grid which allows to distinguish between inter- and intra-ELM time windows   
+        
+        times = [timing['times'][0]] 
+        for i in range(0,round((timing['times'][-1]-timing['times'][0])*ELM_frequency)):
+            times.append(round(times[-1]+(ELM_period-ELM_duration),6))
+            times.append(round(times[-1]+ELM_duration,6))
+        
+        dt_start = [dt_intra_ELM] * len(times)
+    
+        steps_per_cycle = [1] * len(times)
+ 
+        dt_increase = [dt_increase_inter_ELM]
+        
+        while len(dt_increase)<len(times):
+            dt_increase.append(1.000)
+            dt_increase.append(dt_increase_inter_ELM)  
+       
+    # Assuming that ELMs take place only in some reduced time windows 
+    else:
+        
+        if len(ELM_time_windows) != len(ELM_frequency):
+            raise ValueError("Number of ELM time windows inconsistent with specification of ELM characteristics")
+        ELM_duration = np.zeros(len(ELM_frequency))
+        ELM_period = np.zeros(len(ELM_frequency))
+        for i in range(0,len(ELM_time_windows)):
+            ELM_duration[i] = (crash_duration[i] + plateau_duration[i] + recovery_duration[i])/1000 # s
+            ELM_period[i] = 1/ELM_frequency[i] # s  
+            
+            # Check consistency of time windows with imposed ELM frequency
+            if ELM_duration[i] > ELM_period[i]:
+                raise ValueError("ELM duration not consistent with imposed ELM frequency.") 
+        
+        # Create a time grid which allows to distinguish between inter- and intra-ELM time windows
+        
+        times = [timing['times'][0]]
+        
+        if ELM_time_windows[0][0] > timing['times'][0]:
+            times.append(ELM_time_windows[0][0]) 
+        
+        for i in range(0,len(ELM_time_windows)):
+            
+            for j in range(0,round((ELM_time_windows[i][1]-ELM_time_windows[i][0])*ELM_frequency[i])):
+                times.append(round(times[-1]+(ELM_period[i]-ELM_duration[i]),6))
+                times.append(round(times[-1]+ELM_duration[i],6))
+            
+            if i<len(ELM_time_windows)-1:
+                if ELM_time_windows[i+1][0]>ELM_time_windows[i][1]:
+                    times.append(ELM_time_windows[i+1][0])
+            else:
+                if ELM_time_windows[i][1]<timing['times'][-1]:
+                    times.append(timing['times'][-1])
+            
+        dt_start = [dt_intra_ELM] * len(times)
+    
+        steps_per_cycle = [1] * len(times)
+                
+        dt_increase = [dt_increase_inter_ELM]  
+        
+        if ELM_time_windows[0][0] > timing['times'][0]:
+            dt_increase.append(dt_increase_inter_ELM)
+        
+        for i in range(0,len(ELM_time_windows)):
+            
+            for j in range(0,round((ELM_time_windows[i][1]-ELM_time_windows[i][0])*ELM_frequency[i])):
+                dt_increase.append(1.000)
+                dt_increase.append(dt_increase_inter_ELM)
+            
+            if i<len(ELM_time_windows)-1:
+                if ELM_time_windows[i+1][0]>ELM_time_windows[i][1]:
+                    dt_increase.append(dt_increase_inter_ELM)
+            else:
+                if ELM_time_windows[i][1]<timing['times'][-1]:
+                    dt_increase.append(dt_increase_inter_ELM)
+    
+    timing_update = {
+        "dt_increase": dt_increase,
+        "dt_start": dt_start,
+        "steps_per_cycle": steps_per_cycle,
+        "times": times,
+        "time_start_plot": timing["time_start_plot"]
+    } 
+    
+    return timing_update
+
+
 def get_HFS_LFS(geqdsk, rho_pol=None):
     """Get high-field-side (HFS) and low-field-side (LFS) major radii from the g-EQDSK data. 
     This is useful to define the rvol grid outside of the LCFS. 

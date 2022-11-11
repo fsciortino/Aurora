@@ -53,18 +53,40 @@ namelist['timing']['dt_start'][0] = 5e-5 # dt values at the beginning of the sim
 
 # impose ELM parameters
 namelist['ELM_model']['ELM_flag'] = True
-namelist['ELM_model']['ELM_time_windows'] = None # ELMs for the entire duration of the simulation
+    # Convenience flag for the ELM model
+namelist['ELM_model']['ELM_time_windows'] = None
+    # List of lists, which defines one or more time windows within the entire simulation times in which ELMs are desired
+    # If None, then the ELMs take place for the entire duration of the simulation
 namelist['ELM_model']['ELM_frequency'] = 100 # Hz
+    # Frequency at which ELM cycles take place
 namelist['ELM_model']['crash_duration'] = 0.05 # ms
+    # Duration of the time windows, within an ELM, during which the transport coefficients
+    #   (at each radial location) are ramped up linearly from their inter-ELM values to their intra-ELM values
 namelist['ELM_model']['plateau_duration'] = 0.0 # ms
+    # Duration of the time windows, within an ELM, during which the transport coefficients
+    #   (at each radial location) stays constantly at their intra-ELM values
 namelist['ELM_model']['recovery_duration'] = 0.5 # ms
+    # Duration of the time windows, within an ELM, during which the transport coefficients
+    #   (at each radial location) are ramped down linearly from their intra-ELM values to their inter-ELM values
 
-# adapt the time grid for ELMs
-#   in order to simulate an instantaneous ELM crash, one should set the
-#   'crash_duration' parameter equal to the intra-ELM time step defined here below
-dt_intra_ELM = 5e-5 # constant dt values during the intra-ELM phases
-dt_increase_inter_ELM = 1.05 # dt multiplier at every time steps in the inter-ELM phases
-namelist['timing'] = aurora.transport_utils.ELM_time_grid(namelist['timing'], namelist['ELM_model'], dt_intra_ELM, dt_increase_inter_ELM)
+# adapt the time grid for ELMs, in order to save computational time
+namelist['ELM_model']['adapt_time_grid'] = True
+    # Flag for adapting the time grid to the ELM characteristics, in order to get time steps which are
+    #   small during ELMs and which start to gradually increase again in duration when the ELM is over
+namelist['ELM_model']['dt_intra_ELM'] = 5e-5 # s
+    # Constant dt values applied on the time grid during the intra-ELM phases if adapt_time_grid is True
+namelist['ELM_model']['dt_increase_inter_ELM'] = 1.05 
+    # dt multiplier applied on the time grid at every time steps in the inter-ELM phases if adapt_time_grid is True  
+    
+# Note: there is the possibility of also increasing the Mach number in the SOL during ELMs,
+#   with the inputs SOL_mach (inter-ELM value) and SOL_mach_ELM (intra-ELM value) in the input namelist,
+#   with a user-defined temporal shape which resembles the temporal ion parallel flux shape
+#   onto the divertor (i.e. sharp peak, in which Mach abruptly increases from its inter-ELM value to its
+#   intra-ELM value and then exponentially decays again to its inter-ELM value).
+#   However, for now this only works when the time grid is build with a constant time step, e.g.
+#   namelist['timing']['dt_increase'][0] = 1.05 and namelist['timing']['dt_start'][0] = 5e-5, and
+#   the CPU-time-saving adaptation of the time grid for ELMs is not performed, i.e. 
+#   namelist['ELM_model']['adapt_time_grid'] = False.
 
 # Now get aurora setup plotting the resulting adapted time grid
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
@@ -75,53 +97,49 @@ asim.plot_resolutions(plot_radial_grid = False, plot_time_grid = True)
 
 # arbitrary rho_pol locations:
     
-rhop = [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 
+rhop = [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.85,
         0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96,
         0.97, 0.98, 0.99, 1.00, 1.01, 1.02, 1.03,
         1.04, 1.05, 1.06, 1.07, 1.08, 1.09, 1.10]
 
 # desired values of D_Z (in cm^2/s) corresponding to each radial location in rhop:
     
-D = [4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 
-     4.00e4, 4.00e4, 4.00e4, 1.00e4, 0.80e4, 0.60e4, 0.40e4,
-     0.20e4, 0.20e4, 0.20e4, 0.40e4, 0.60e4, 0.80e4, 1.20e4, 
-     1.60e4, 2.00e4, 4.00e4, 8.00e4, 8.00e4, 8.00e4, 8.00e4]
+D = [2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4,
+     1.20e4, 1.00e4, 0.75e4, 0.75e4, 0.75e4, 0.75e4, 0.75e4,
+     0.50e4, 0.50e4, 0.50e4, 0.50e4, 0.75e4, 1.00e4, 1.50e4, 
+     2.00e4, 2.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4]
 
-D_ELM = [4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 5.00e4, 
-         6.00e4, 7.00e4, 8.00e4, 8.00e4, 8.00e4, 8.00e4, 8.00e4,
-         8.00e4, 8.00e4, 8.00e4, 8.00e4, 8.00e4, 8.00e4, 8.00e4, 
-         8.00e4, 8.00e4, 8.00e4, 8.00e4, 8.00e4, 8.00e4, 8.00e4]
+D_ELM = [2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 
+         2.00e4, 1.50e4, 1.00e4, 1.50e4, 2.00e4, 3.00e4, 4.00e4,
+         8.00e4, 16.00e4, 16.00e4, 12.00e4, 8.00e4, 6.00e4, 4.00e4, 
+         4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4]
 
 # desired values of v_Z (in cm/s) corresponding to each radial location in rhop:
     
-v = [-1.20e2, -1.20e2, -1.20e2, -1.20e2, -1.20e2, -1.20e2, -1.20e2, -1.50e2, -1.50e2, 
-     -1.80e2, -2.00e2, -2.00e2, -2.00e2, -2.00e2, -2.00e2, -2.00e2,
-     -2.00e2, -4.00e2, -6.00e2, -10.00e2, -10.00e2, -10.00e2, -6.00e2,
-     -4.00e2, 0, 0, 0, 0, 0, 0]
+v = [-0.5e2, -0.5e2, -1e2, -3e2, -4e2, -3.5e2, -3.0e2, -1.0e2, -1.5e2, -2.5e2,
+     -5e2, -5e2, -5e2, -5e2, -6e2, -6e2, -6e2,
+     -8e2, -12e2, -15e2, -20e2, -15e2, -12e2, -10e2,
+     -8e2, -6e2, -4e2, -2e2, -2e2, -2e2, -2e2]
 
-v_ELM = v
+v_ELM = [-0.5e2, -0.5e2, -1e2, -3e2, -4e2, -3.5e2, -3.0e2, -1.0e2, -1.5e2, -2.5e2,
+     -5e2, -5e2, -5e2, -5e2, -6e2, -6e2, -6e2,
+     -8e2, -12e2, -15e2, -20e2, -15e2, -12e2, -10e2,
+     -8e2, -6e2, -4e2, -2e2, -2e2, -2e2, -2e2]
 
 # now create the time-dependent transport arrays (and the
 # corresponding times) to be used as input for aurora
-times_transport, D_z = aurora.transport_utils.ELM_model(namelist['timing'], namelist['ELM_model'], asim, rhop, D, D_ELM, method = 'Pchip_spline')
-times_transport, v_z = aurora.transport_utils.ELM_model(namelist['timing'], namelist['ELM_model'], asim, rhop, v, v_ELM, method = 'Pchip_spline')
+# and plot them
+times_transport, D_z = aurora.transport_utils.ELM_model(namelist['timing'], namelist['ELM_model'], asim.rhop_grid, rhop, D, D_ELM, method = 'Pchip_spline', plot = True, name = 'D')
+times_transport, v_z = aurora.transport_utils.ELM_model(namelist['timing'], namelist['ELM_model'], asim.rhop_grid, rhop, v, v_ELM, method = 'Pchip_spline', plot = True, name = 'v')
 
 # run Aurora forward model, explicitly referring to the time array
-# corresponding to the input transprot values, and and plot results
-out = asim.run_aurora(D_z, v_z, times_transport, plot=True)
+#   corresponding to the input transport values, and and plot the results
+#   (i.e. particle conservation and reservoirs plots)
+# if plot_average is True, then the particle conservation and reservoirs plots
+#   will be produced also with ELM-averaged values of the time traces, i.e.
+#   showing their average values over the time interval 'interval' which
+#   should be equal to the ELM period, i.e. 1/ELM_frequency
+out = asim.run_aurora(D_z, v_z, times_transport, plot=True, plot_average = True, interval = 0.01)
 
 # extract densities and particle numbers in each simulation reservoir
 nz, N_mainwall, N_div, N_out, N_mainret, N_tsu, N_dsu, N_dsul, rclb_rate, rclw_rate = out
-
-# finally plot the reservoirs also averaged over ELM cycles, i.e. on
-# intervals of 1/f_ELM = 1/100 = 0.01 s, for ELM-averaged results
-
-time_average, data_average_profiles = aurora.plot_tools.time_average_profiles(namelist['timing'],asim.time_out,nz,interval=0.01)
-
-aurora.slider_plot(asim.rhop_grid, time_average, data_average_profiles.transpose(1,0,2),
-                xlabel=r'$\rho_p$', ylabel='time [s]', zlabel='$n_Z$ [cm$^{-3}$]',
-                labels=[str(i) for i in np.arange(0,nz.shape[1])],
-                plot_sum=
-                True, x_line=1 ) # Impurity density in the plasma (average over cycles)
-
-reservoirs_average = asim.plot_reservoirs_average(interval=0.01) # Particle conservation (average over cycles)

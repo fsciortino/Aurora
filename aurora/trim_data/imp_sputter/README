@@ -1,6 +1,10 @@
 Datafiles for sputtering yields of impurity atoms implanted
 into bulk materials as a function of impact energy, angle
-and concentration of impurity atoms into the surface material.    
+and concentration of impurity atoms into the surface material.
+Please note that these data are pure result of Monte Carlo
+calculation, and they have not been benchmarked yet against
+experimental sputtering yields of impurities implanted in
+different bulk materials by different projectiles.    
 
 Available projectiles:
 D, He, B, N

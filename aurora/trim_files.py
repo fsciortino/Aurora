@@ -63,19 +63,24 @@ def trim_files_dict():
     Returns
     -------
     files : dict
+    
         Dictionary with keys equal to the atomic symbols of many of the most common ions of
         interest in fusion research. For each ion, a sub-dictionary contains the the type of
         interaction, with subkeys equal atomic symbols of the most common wall materials.
         Not all files types are available for all ions.
+        
         Reflection data (of the type rn,re) are referred to the species
         which is reflected from the surface, i.e. the projectile, with logic
         [{projectile}]["Reflection"][{target_material}].
+        
         Bulk sputtering data (of the type y, ye) are referred to the species
         which is sputtered from the surface, i.e. the bulk target, with logic
         [{target_material}]["Bulk_sputtering"][{projectile}].
+        
         Implantation depth data (of the type d) are referred to the species
         which is implanted in the surface, i.e. the implanted impurity, with logic
         [{implanted_impurity}]["Implantation_depth"][target_material].
+        
         Impurity sputtering data (of the type y, ye) are referred to the species
         which is sputtered from the surface, i.e. the implanted impurity, with logic
         [{implanted_impurity}]["Impurity_sputtering"][target_material][projectile].

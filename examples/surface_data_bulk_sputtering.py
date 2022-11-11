@@ -15,42 +15,36 @@ sys.path.append("../")
 import aurora
 
 # Select two different projectiles and wall material
-projectile_1 = 'D'
-projectile_2 = 'He'
+projectile_1 = 'He'
+projectile_2 = 'Ar'
 target = 'W'
 
 # Select angle of incidence
-angle = 65 # degrees
+angle = 55 # degrees
 
 # Extract the TRIM-generated data for the bulk sputtering yield and
 #   the energy sputtering yield for the selected impurity hitting
 #   the surface, in function of the impact energy, specifying
 #   the incidence angle of the projectile onto the surface
 # D as projectile
-bulk_sputter_data_y_1 = aurora.surface.get_bulk_sputtering_data(projectile_1, target, angle, 'y') # sputtering yield
-energies_y_1 = bulk_sputter_data_y_1["energies"]
-data_y_1 = bulk_sputter_data_y_1["data"]
-bulk_sputter_data_ye_1 = aurora.surface.get_bulk_sputtering_data(projectile_1, target, angle, 'ye') # energy sputtering yield
-energies_ye_1 = bulk_sputter_data_ye_1["energies"]
-data_ye_1 = bulk_sputter_data_ye_1["data"]
-# He as projectile
-bulk_sputter_data_y_2 = aurora.surface.get_bulk_sputtering_data(projectile_2, target, angle, 'y') # sputtering yield
-energies_y_2 = bulk_sputter_data_y_2["energies"]
-data_y_2 = bulk_sputter_data_y_2["data"]
-bulk_sputter_data_ye_2 = aurora.surface.get_bulk_sputtering_data(projectile_2, target, angle, 'ye') # energy sputtering yield
-energies_ye_2 = bulk_sputter_data_ye_2["energies"]
-data_ye_2 = bulk_sputter_data_ye_2["data"]
+energies_y_1 = aurora.surface.get_bulk_sputtering_data(projectile_1, target, angle, 'y')["energies"] # energy values of the sputtering yields
+data_y_1 = aurora.surface.get_bulk_sputtering_data(projectile_1, target, angle, 'y')["data"] # sputtering yields
+energies_ye_1 = aurora.surface.get_bulk_sputtering_data(projectile_1, target, angle, 'ye')["energies"] # energy values of the energy sputtering yields
+data_ye_1 = aurora.surface.get_bulk_sputtering_data(projectile_1, target, angle, 'ye')["data"] # energy sputtering yields
+# Ar as projectile
+energies_y_2 = aurora.surface.get_bulk_sputtering_data(projectile_2, target, angle, 'y')["energies"] # energy values of the sputtering yields
+data_y_2 = aurora.surface.get_bulk_sputtering_data(projectile_2, target, angle, 'y')["data"] # sputtering yields
+energies_ye_2 = aurora.surface.get_bulk_sputtering_data(projectile_2, target, angle, 'ye')["energies"] # energy values of the energy sputtering yields
+data_ye_2 = aurora.surface.get_bulk_sputtering_data(projectile_2, target, angle, 'ye')["data"] # energy sputtering yields
 
 # Extract the Bohdansky fit for the sputtering yield at the
 #   same incidence angle of the projectile onto the surface
 # D as projectile
-bulk_sputter_data_y_fit_1 = aurora.surface.bulk_sputtering_coeff_fit(projectile_1, target, angle, 'y') # sputtering yield
-energies_y_fit_1 = bulk_sputter_data_y_fit_1["energies"]
-data_y_fit_1 = bulk_sputter_data_y_fit_1["data"]
-# He as projectile
-bulk_sputter_data_y_fit_2 = aurora.surface.bulk_sputtering_coeff_fit(projectile_2, target, angle, 'y') # sputtering yield
-energies_y_fit_2 = bulk_sputter_data_y_fit_2["energies"]
-data_y_fit_2 = bulk_sputter_data_y_fit_2["data"]
+energies_y_fit_1 = aurora.surface.bulk_sputtering_coeff_fit(projectile_1, target, angle, 'y')["energies"] # energy values of the sputtering yields
+data_y_fit_1 = aurora.surface.bulk_sputtering_coeff_fit(projectile_1, target, angle, 'y')["data"] # sputtering yields
+# Ar as projectile
+energies_y_fit_2 = aurora.surface.bulk_sputtering_coeff_fit(projectile_2, target, angle, 'y')["energies"] # energy values of the sputtering yields
+data_y_fit_2 = aurora.surface.bulk_sputtering_coeff_fit(projectile_2, target, angle, 'y')["data"] # sputtering yields
 
 # Plot together the TRIM-generated data and the Bohdansky fit
 #   for the sputtering yields
@@ -76,9 +70,9 @@ ax[1,1].set_yscale('log')
 for aa in ax.flatten()[:4]:
      aa.legend(loc="best").set_draggable(True)
 for ii in [0,1]:
-    ax[0, ii].set_xlabel("$E_0$ [eV]")
+    ax[0, ii].set_xlabel(f"$E_{{0,{projectile_1}}}$ [eV]")
     ax[0, ii].set_xlim([10,10000])
     ax[0, ii].set_ylim([0.00001,10])
-    ax[1, ii].set_xlabel("$E_0$ [eV]")
+    ax[1, ii].set_xlabel(f"$E_{{0,{projectile_2}}}$ [eV]")
     ax[1, ii].set_xlim([10,10000])
     ax[1, ii].set_ylim([0.00001,10])
