@@ -622,7 +622,7 @@ subroutine run(  &
         rcld_refl_rate(kt) = rcld_refl
         rcld_recl_rate(kt) = rcld_recl
         rcld_impl_rate(kt) = div_flux_impl
-        do s = 1,1+1
+        do s = 1,1+species
             rcld_sput_rate(s,kt) = div_fluxes_sput(s)
         end do
         rclb_rate(kt) = rclb
@@ -632,7 +632,7 @@ subroutine run(  &
         rclw_refl_rate(kt) = rclw_refl
         rclw_recl_rate(kt) = rclw_recl
         rclw_impl_rate(kt) = main_flux_impl
-        do s = 1,1+1
+        do s = 1,1+species
             rclw_sput_rate(s,kt) = main_fluxes_sput(s)
         end do
 

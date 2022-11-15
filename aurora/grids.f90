@@ -131,7 +131,7 @@ subroutine time_steps(n, t, dtstart, itz, tinc, verbose, t_vals, i_save)
   INTEGER, INTENT(OUT)           :: i_save(30000)   ! hard-coded max size! Seg-fault if exceeded
 
   INTEGER :: nsteps
-  REAL*8 :: dt(250),ncyctot(250)   ! hard-coded max number of changes to 250
+  REAL*8 :: dt(250),ncyctot(250)   ! hard-coded max number of changes
 
   REAL*8 ::  f ,wksp_r(n), det, tnew
   INTEGER :: i, ncyc(250), nevent, wksp_i(n), index(n), m , n_itz, nn

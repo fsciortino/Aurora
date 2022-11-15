@@ -121,6 +121,8 @@ def load_default_namelist(device=None):
             "files": ['file/location'],
             "characteristic_impact_energy_main_wall": 200, # eV
             "characteristic_impact_energy_div_wall": 500, # eV
+            "n_main_wall_sat": 1e20, # m^-2
+            "n_div_wall_sat": 1e20, # m^-2
             "energetic_recycled_neutrals": False,
             "Te_ped_intra_ELM": 400.0, # eV
             "Te_div_inter_ELM": 30.0, # eV
@@ -175,10 +177,12 @@ def load_default_namelist(device=None):
     
         if device=="AUG": # Geometry-related input parameters adapted for AUG
             
+            namelist["advanced_PWI"]["main_wall_material"] = 'W'
+            namelist["advanced_PWI"]["div_wall_material"] = 'W'
             namelist["vol_div"] = 0.8e6 # cm^3
             namelist["vol_pump"] = 1.7e6 # cm^3
-            namelist["surf_mainwall"] = 1.0e5 # cm^2
-            namelist["surf_divwall"] = 1.0e4 # cm^2            
+            namelist["surf_mainwall"] = 5.0e4 # cm^2
+            namelist["surf_divwall"] = 0.5e4 # cm^2            
             namelist["source_cm_out_lcfs"] = 15.0 # cm
             namelist["bound_sep"] = 10.0 # cm
             namelist["lim_sep"] = 6.0 # cm

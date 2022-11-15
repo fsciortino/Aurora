@@ -441,12 +441,8 @@ class aurora_sim:
                                                                  energies = self.characteristic_impact_energy_div_wall)["data"]
             
             # extract saturation value of the density of the implanted impurity into main and divertor walls 
-            self.n_main_wall_sat = surface.calc_impurity_saturation_density(self.imp,
-                                                                            self.main_wall_material,
-                                                                            self.characteristic_impact_energy_main_wall) # m^-2
-            self.n_div_wall_sat = surface.calc_impurity_saturation_density(self.imp,
-                                                                           self.div_wall_material,
-                                                                           self.characteristic_impact_energy_div_wall) # m^-2       
+            self.n_main_wall_sat = self.namelist['advanced_PWI']['n_main_wall_sat'] # m^-2
+            self.n_div_wall_sat = self.namelist['advanced_PWI']['n_div_wall_sat'] # m^-2       
             
         else:  # advanced PWI model not used: dummy input parameters for fortran routine
             

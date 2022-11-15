@@ -105,6 +105,26 @@ Use the slider to go over time, as you look at the distributions over radius of 
 After running this, a .mp4 file with the name "aurora_anim.mp4" will be saved locally.
 
 
+Imposing transport coefficient profiles
+---------------------------------------
+
+
+
+Including ELM transport in the simulation
+-----------------------------------------
+
+
+
+Using the extended recycling/pumping model
+------------------------------------------
+
+
+
+Using the advanced plasma-wall interaction model
+------------------------------------------------
+
+
+
 
 Radiation predictions
 ---------------------
@@ -362,6 +382,9 @@ Neutral densities for each fast ion population (full-,half- and third-energy), m
 :py:func:`~aurora.nbi_neutrals.bt_rate_maxwell_average` shows how beam-thermal Maxwell-averaged rates can be obtained; :py:func:`~aurora.nbi_neutrals.tt_rate_maxwell_average` shows the equivalent for thermal-thermal Maxwell-averaged rates.
 
 Finally, :py:func:`~aurora.nbi_neutrals.get_NBI_imp_cxr_q` shows how flux-surface-averaged charge exchnage recombination rates between an impurity ion of charge `q` with NBI neutrals (all populations, fast and thermal) can be computed for use in Aurora forward modeling. For more details, feel free to contact Francesco Sciortino (sciortino-at-psfc.mit.edu).
+
+Plotting surface data
+---------------------
 
 
 
