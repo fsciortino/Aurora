@@ -1,5 +1,6 @@
 '''Post-processing tools for OEDGE, including EIRENE results.
 Part of this script is adapted and extended based on original work by S.Zamperini, J.Nichols and D.Elder.
+EIRENE-related functionality was implemented with extensive support by S. Lisgo.
 '''
 import sys, re, os
 import copy
@@ -2247,6 +2248,8 @@ def interpret(x, item=None):
 
 def LoadTriangleData(flag1, flag2, flag3, normalize, path='.'):
     '''Recursive function to load data from eirene.transfer file.
+
+    Translated from original OEDGE code by S. Lisgo.
     '''
     with open(path+'/eirene.transfer') as f:
         lines = f.readlines()
@@ -2462,7 +2465,7 @@ def read_vessel_geom(vessel_file, plot=False):
 
     return elems
 
-def plot_eirene(quant='n_H', path='.', ax=None, RZ_points=None, vessel_file=None):
+def plot_eirene(quant='n_H', path='.', ax=None, vessel_file=None):
     '''Read eirene.transfer data for the chosen variable, defined in :py:fun:`eirene_indices`.
     
     Parameters
@@ -2473,8 +2476,6 @@ def plot_eirene(quant='n_H', path='.', ax=None, RZ_points=None, vessel_file=None
         Path to location of eirene.transfer file to load.
     ax : matplotlib.Axes instance
         Axes to use for plotting. If not provided, a new figure is created.
-    RZ_points : None or 2D array (num_extract, 2)
-        (R,Z) coordinates of locations that should be identified/displayed on the figure.
     vessel_file : str or None
         Path to a file containing details of all vessel structures used in EIRENE.
         See `read_vessel_geom` for an illustration of the expected format.
@@ -2519,12 +2520,6 @@ def plot_eirene(quant='n_H', path='.', ax=None, RZ_points=None, vessel_file=None
     cbar.set_label(eirene_indices(quant)['label'])
     ax.set_xlabel('R [m]')
     ax.set_ylabel('Z [m]')
-
-    if RZ_points is not None:
-        # show requested locations on figure            
-        for g in np.arange(len(RZ_points)):
-            ax.plot(RZ_points[g][0], RZ_points[g][1], '*', label=str(g))
-        ax.legend(loc='best').set_draggable(True)
 
 
 def get_eirene_data(quant='n_H', path='.', RZ_points=None):
@@ -2635,7 +2630,7 @@ def plot_eirene_tracks(
     ax.set_xlabel('R [m]')
     ax.set_ylabel('Z [m]')
     
-    ## load EIRENE tracks
+    # load EIRENE tracks
     with open(eirtrc_filepath, 'r') as f:
         lines = f.readlines()
 
