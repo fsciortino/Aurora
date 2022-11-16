@@ -974,7 +974,7 @@ class oedge_output:
             return ff + feg + fig + fe
 
     def plot_2d(self, data, charge=None, scaling=None,
-                normtype='linear', cmap='plasma',
+                norm="linear", cmap='plasma',
                 levels=None, cbar_label=None, lut=21,
                 smooth_cmap=False, vmin=None, vmax=None,
                 no_core=False, vz_mult=0.0, wall_data=None, show_grid=True,
@@ -995,8 +995,9 @@ class oedge_output:
             Scaling factor to apply to the data, if applicable.
             If not given, the routine looks for a scaling factor from :py:meth:`~aurora.oedge.oedge_output.name_maps`.
             If no such default scaling factor is indicated there, no scaling is applied.
-        normtype: str
-            One of 'linear', 'log', ... of how to normalize the data on the plot.
+        norm: str or Normalize
+            One of 'linear', 'log', ... of how to normalize the data on the plot,
+            or a mpl.colors.Normalize instance.
         cmap: str
             The colormap to apply to the plot. Uses standard matplotlib names.
         levels: 1D array or None
@@ -1099,29 +1100,38 @@ class oedge_output:
             fig = plt.figure(figsize=(7, 9))
             ax  = fig.add_subplot(111)
 
-        if normtype == 'linear':
-            if vmin is None: vmin = data.min()
-            if vmax is None: vmax = data.max()
-            norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+        if isinstance(norm, str):
+            if norm == 'linear':
+                if vmin is None: vmin = data.min()
+                if vmax is None: vmax = data.max()
+                norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
 
-        elif normtype == 'log':
-            data[data == 0.0] = sys.float_info.epsilon 
-            if vmin is None: vmin = data.min()
-            if vmax is None: vmax = data.max()
-            norm = mpl.colors.LogNorm(vmin=vmin, vmax=vmax)
+            elif norm == 'log':
+                data[data == 0.0] = sys.float_info.epsilon 
+                if vmin is None: vmin = data.min()
+                if vmax is None: vmax = data.max()
+                norm = mpl.colors.LogNorm(vmin=vmin, vmax=vmax)
 
-        elif normtype == 'symlin':
-            if vmin is None: vmin = -np.abs(data).max()
-            if vmax is None: vmax = -vmin
-            norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-            cmap = 'coolwarm'
+            elif norm == 'symlin':
+                if vmin is None: vmin = -np.abs(data).max()
+                if vmax is None: vmax = -vmin
+                norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+                # If cmap is still default change to a diverging colourmap
+                if cmap == 'plasma': cmap = 'coolwarm'
 
-        elif normtype == 'symlog':
-            data[data == 0.0] = sys.float_info.epsilon
-            if vmin is None: vmin = -np.abs(data[~np.isnan(data)]).max()
-            if vmax is None: vmax = -vmin
-            norm = mpl.colors.SymLogNorm(linthresh=0.01 * vmax, vmin=vmin, vmax=vmax, base=10)
-            cmap = 'coolwarm'
+            elif norm == 'symlog':
+                data[data == 0.0] = sys.float_info.epsilon
+                if vmin is None: vmin = -np.abs(data[~np.isnan(data)]).max()
+                if vmax is None: vmax = -vmin
+                norm = mpl.colors.SymLogNorm(linthresh=0.01 * vmax, vmin=vmin, vmax=vmax, base=10)
+                # If cmap is still default change to a diverging colourmap
+                if cmap == 'plasma': cmap = 'coolwarm'
+            
+            else:
+                raise ValueError(f"Unrecognized 'norm' string option, '{norm}'")
+
+        elif not isinstance(norm, mpl.colors.Normalize):
+            raise TypeError("Unrecognized 'norm' type: must be either a mpl.colors.Normlize instance or a string.")
 
         # The end of nipy_spectral is grey, which makes it look like there's a
         # hole in the largest data. Fix this by just grabbing a subset of the
@@ -1205,7 +1215,7 @@ class oedge_output:
             label = self.name_maps[field]['label']
             units = self.name_maps[field]['units']
             
-            self.plot_2d(var, charge=charge, ax=ax, label=label+' '+units)
+            self.plot_2d(var, charge=charge, ax=ax, cbar_label=label+' '+units)
 
         plt.tight_layout()
 
