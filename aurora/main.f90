@@ -576,18 +576,17 @@ subroutine edge_model( &
   else
      tve = tve + (dsul + tsu) * det  ! no recycling, no divertor return
   endif
-
+  
   ! particles in divertor
   ! If recycling is on, particles from limiter and wall come back.
   ! Particles in divertor can only return (with rate given by N_div/taudiv) if rcl>=0
   if (rcl.ge.0) then  ! activated divertor return (rcl>=0) + recycling mode (if rcl>0)
      taustar = 1./(1./taudiv+1./taupump)    ! time scale for divertor depletion
      ff = .5*det/taustar
-     
-     divnew = ( divold*(1.-ff) + (dsu + src_div_t)*det )/(1.+ff)
   else
-     divnew = divold + (dsu+src_div_t)*det
+     ff = .5*det/taupump
   endif
+  divnew = ( divold*(1.-ff) + (dsu + src_div_t)*det )/(1.+ff)
 
   ! particles in pump
   npump = npump + .5*(divnew+divold)/taupump*det
