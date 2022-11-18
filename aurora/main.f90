@@ -945,7 +945,6 @@ subroutine edge_model( &
   endif
   
   ! Evolution of particles permanently pumped
-
   ! Adimensional model (pumping done from the divertor and defined by a time taupump)
   if (voldiv.eq.0) then
      nout = nout + .5*(divnew+divold)/taupump*det
