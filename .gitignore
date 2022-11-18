@@ -36,3 +36,14 @@ aurora/KN1D
 
 # temporary g-files
 g123456.12345
+
+# various bits and pieces related to functionality and coverage tests
+coverage.xml
+junit
+.coverage
+
+# tex files for amjuel and hydhel
+*.tex
+
+# json databases should not bee shared publicly
+*.json

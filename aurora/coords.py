@@ -246,8 +246,11 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
     # Interpolate to transform coordiantes
     if name_in == "rhon":
         coord_in = rhon_ref
+<<<<<<< HEAD
     if name_in == "psin":
         coord_in = psin_ref
+=======
+>>>>>>> master
     elif name_in == "rhop":
         coord_in = rhop_ref
     elif name_in == "rvol":
@@ -299,7 +302,6 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
         out += R0
 
     return out
-
 
 
 
@@ -358,6 +360,3 @@ def rhoTheta2RZ(geqdsk, rho, theta, coord_in='rhop', n_line=201):
         Z[k] = InterpolatedUnivariateSpline(rho_line[k, :imax], line_z[k, :imax], k=2)(rho)
 
     return R,Z
-
-
-

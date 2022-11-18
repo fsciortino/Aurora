@@ -1,6 +1,28 @@
-'''Collection of classes and functions for loading, interpolation and processing of atomic data. 
+"""Collection of classes and functions for loading, interpolation and processing of atomic data. 
 Refer also to the adas_files.py script. 
-'''
+"""
+# MIT License
+#
+# Copyright (c) 2021 Francesco Sciortino
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import RectBivariateSpline, interp1d, RegularGridInterpolator
@@ -9,12 +31,12 @@ import os, sys, copy
 import scipy.ndimage
 from scipy.linalg import svd
 from scipy import constants
-
+from scipy.integrate import simps
 from . import adas_files
 
 
 def get_adas_file_types():
-    '''Obtain a description of each ADAS file type and its meaning in the context of Aurora.
+    """Obtain a description of each ADAS file type and its meaning in the context of Aurora.
 
     Returns
     ------------
@@ -33,24 +55,25 @@ def get_adas_file_types():
        in dynamic finite density plasmas: I. The generalized collisional-radiative model for 
        light elements", Plasma Physics and Controlled Fusion, 48:2, 2006
 
-    '''
-    
-    return {'acd':'effective recombination',
-            'scd':'effective ionization',
-            'prb':'continuum radiation',
-            'plt':'line radiation',
-            'ccd':'thermal charge exchange',
-            'prc':'thermal charge exchange continuum radiation',
-            'pls':'line radiation in the SXR range',
-            'prs':'continuum radiation in the SXR range',
-            'brs':'continuum spectral bremstrahlung',
-            'fis':'sensitivity in the SXR range',
-            'pbs':'impurity bremsstrahlung in SXR range, also included in prs files'
+    """
+
+    return {
+        "acd": "effective recombination",
+        "scd": "effective ionization",
+        "prb": "continuum radiation",
+        "plt": "line radiation",
+        "ccd": "thermal charge exchange",
+        "prc": "thermal charge exchange continuum radiation",
+        "pls": "line radiation in the SXR range",
+        "prs": "continuum radiation in the SXR range",
+        "brs": "continuum spectral bremstrahlung",
+        "fis": "sensitivity in the SXR range",
+        "pbs": "impurity bremsstrahlung in SXR range, also included in prs files",
     }
 
 
 class adas_file:
-    '''Read ADAS file in ADF11 format over the given density and temperature grids. 
+    """Read ADAS file in ADF11 format over the given density and temperature grids. 
     Note that such grids vary between files, and the species they refer to may too.
 
     Refer to ADAS documentation for details on each file.
@@ -59,43 +82,43 @@ class adas_file:
     ----------
     filepath : str
         Path to location where ADAS file is located.
-    '''
+    """
+
     def __init__(self, filepath):
-        
+
         self.filepath = filepath
-        self.filename=filepath.split('/')[-1]
+        self.filename = filepath.split("/")[-1]
         self.file_type = self.filename[:3]
 
-        if self.file_type not in ['brs','sxr']:
-            self.imp = self.filename.split('_')[1].split('.')[0]
+        if self.file_type not in ["brs", "sxr"]:
+            self.imp = self.filename.split("_")[1].split(".")[0]
 
         # get data
         self.load()
 
         # settings for plotting
-        self.n_ion  = self.data.shape[0]
+        self.n_ion = self.data.shape[0]
         self.ncol = np.ceil(np.sqrt(self.n_ion))
-        self.nrow = np.ceil(self.n_ion/self.ncol)
-
+        self.nrow = np.ceil(self.n_ion / self.ncol)
 
     def load(self):
 
         with open(self.filepath) as f:
             header = f.readline()
             n_ions, n_ne, n_T = header.split()[:3]
-            details = ' '.join(header.split()[3:])
+            details = " ".join(header.split()[3:])
 
             f.readline()
 
-            n_ions,n_ne,n_T = int(n_ions),int(n_ne),int(n_T)
+            n_ions, n_ne, n_T = int(n_ions), int(n_ne), int(n_T)
             logT = []
             logNe = []
-            while len(logNe)< n_ne:
+            while len(logNe) < n_ne:
                 line = f.readline()
-                logNe = logNe+[float(n) for n in line.split()]
-            while len(logT)< n_T:
+                logNe = logNe + [float(n) for n in line.split()]
+            while len(logT) < n_T:
                 line = f.readline()
-                logT = logT+[float(t) for t in line.split()]
+                logT = logT + [float(t) for t in line.split()]
 
             logT = np.array(logT)
             logNe = np.array(logNe)
@@ -104,17 +127,18 @@ class adas_file:
             for i_ion in range(n_ions):
                 f.readline()
                 plsx = []
-                while len(plsx)< n_ne*n_T:
+                while len(plsx) < n_ne * n_T:
                     line = f.readline()
-                    plsx = plsx+[float(L) for L in line.split()]
+                    plsx = plsx + [float(L) for L in line.split()]
                 plsx = np.array(plsx).reshape(n_T, n_ne)
                 data.append(np.array(plsx))
 
-        self.logNe = logNe; self.logT = logT; self.data = np.array(data)
-
+        self.logNe = logNe
+        self.logT = logT
+        self.data = np.array(data)
 
     def plot(self, fig=None, axes=None):
-        '''Plot data from input ADAS file. If provided, the arguments allow users to overplot
+        """Plot data from input ADAS file. If provided, the arguments allow users to overplot
         and compare data from multiple files. 
 
         Parameters
@@ -125,40 +149,51 @@ class adas_file:
             If provided, plot on these axes. Note that this typically needs to be a set of axes
             for each plotted charge state. Users may want to call this function once first to get
             some axes, and then pass those same axes to a second call for another file to compare with.
-        '''
+        """
         if fig is None or axes is None:
-            fig,axes = plt.subplots(int(self.ncol),int(self.nrow), sharex=True, sharey=True)
+            fig, axes = plt.subplots(
+                int(self.ncol), int(self.nrow), sharex=True, sharey=True
+            )
 
         axes = np.atleast_2d(axes)
         colormap = cm.rainbow
         if fig is not None:
-            fig.suptitle(self.filename+'  '+ get_adas_file_types()[self.file_type])
+            fig.suptitle(self.filename + "  " + get_adas_file_types()[self.file_type])
 
-        for i,ax in enumerate(axes.flatten()):
-            if i >= self.n_ion: break
-            if all(self.data[i,:,:].std(axis=1)==0): #independent of density
-                ax.plot(self.logT, self.data[i,:,0])
+        for i, ax in enumerate(axes.flatten()):
+            if i >= self.n_ion:
+                break
+            if all(self.data[i, :, :].std(axis=1) == 0):  # independent of density
+                ax.plot(self.logT, self.data[i, :, 0])
             else:
-                ax.set_prop_cycle('color', colormap( np.linspace(0,1,self.data.shape[2])))
+                ax.set_prop_cycle(
+                    "color", colormap(np.linspace(0, 1, self.data.shape[2]))
+                )
                 for idens in np.arange(len(self.logNe)):
-                    ax.plot(self.logT, self.data[i,:,idens], label=f'$n_e=10^{{{self.logNe[idens]}}}$ cm$^{{{-3}}}$')
-                ax.legend(loc='best').set_draggable(True)
+                    ax.plot(
+                        self.logT,
+                        self.data[i, :, idens],
+                        label=f"$n_e=10^{{{self.logNe[idens]}}}$ cm$^{{{-3}}}$",
+                    )
+                ax.legend(loc="best").set_draggable(True)
             ax.grid(True)
-            if self.file_type != 'brs':
-                charge = i+1 if self.file_type in ['scd','prs','ccd','prb'] else i+2
-                ax.set_title(self.imp+'$^{%d\!+}$'% (charge-1))   # check?
+            if self.file_type != "brs":
+                charge = (
+                    i + 1 if self.file_type in ["scd", "prs", "ccd", "prb"] else i + 2
+                )
+                ax.set_title(self.imp + "$^{%d\!+}$" % (charge - 1))  # check?
 
         for ax in axes[-1]:
-            ax.set_xlabel('$\log T_e\ \mathrm{[eV]}$')
-        for ax in axes[:,0]:
-            if self.file_type in ['scd','acd','ccd']:
-                ax.set_ylabel('$\log('+self.file_type+')\ \mathrm{[cm^3/s]}$')
-            elif self.file_type in ['prb','plt','prc','pls','brs','prs']:
-                ax.set_ylabel('$\log('+self.file_type+')\ \mathrm{[W\cdot cm^3]}$')
+            ax.set_xlabel("$\log T_e\ \mathrm{[eV]}$")
+        for ax in axes[:, 0]:
+            if self.file_type in ["scd", "acd", "ccd"]:
+                ax.set_ylabel("$\log(" + self.file_type + ")\ \mathrm{[cm^3/s]}$")
+            elif self.file_type in ["prb", "plt", "prc", "pls", "brs", "prs"]:
+                ax.set_ylabel("$\log(" + self.file_type + ")\ \mathrm{[W\cdot cm^3]}$")
 
 
 def read_filter_response(filepath, adas_format=True, plot=False):
-    '''Read a filter response function over energy. 
+    """Read a filter response function over energy. 
 
     This function attempts to read the data checking for the following formats (in this order):
     
@@ -177,9 +212,9 @@ def read_filter_response(filepath, adas_format=True, plot=False):
     plot : bool
         If True, the filter response function is plotted. 
     
-    '''
-    E_eV=[]
-    response=[]
+    """
+    E_eV = []
+    response = []
     try:
         # Attempt to read ADAS format
         with open(filepath) as f:
@@ -190,16 +225,16 @@ def read_filter_response(filepath, adas_format=True, plot=False):
             # *****
             f.readline()
 
-            while len(E_eV)< num:
+            while len(E_eV) < num:
                 line = f.readline()
                 E_eV += [float(n) for n in line.split()]
-            while len(response)< num:
+            while len(response) < num:
                 line = f.readline()
                 response += [float(t) for t in line.split()]
 
         # energy and response function are written in natural logs
-        E_eV = np.concatenate(([0.,], np.array(np.exp(E_eV))))
-        response = np.concatenate(([0.,], np.array(np.exp(response))))
+        E_eV = np.concatenate(([0.0,], np.array(np.exp(E_eV))))
+        response = np.concatenate(([0.0,], np.array(np.exp(response))))
     except ValueError:
         try:
             # Attempt to read CXRO format
@@ -210,23 +245,23 @@ def read_filter_response(filepath, adas_format=True, plot=False):
                 tmp = line.strip().split()
                 E_eV.append(float(tmp[0]))
                 response.append(float(tmp[1]))
-            E_eV=np.concatenate(([0.,], np.array(E_eV)))
-            response=np.concatenate(([0.,],np.array(response)))
+            E_eV = np.concatenate(([0.0,], np.array(E_eV)))
+            response = np.concatenate(([0.0,], np.array(response)))
         except ValueError:
-            raise ValueError('Unrecognized filter function format...')
-    
+            raise ValueError("Unrecognized filter function format...")
+
     if plot:
-        fig,ax = plt.subplots()
+        fig, ax = plt.subplots()
         ax.semilogx(E_eV, response)
-        ax.set_xlabel('Photon energy [eV]')
-        ax.set_ylabel('Detector response efficiency')
+        ax.set_xlabel("Photon energy [eV]")
+        ax.set_ylabel("Detector response efficiency")
         plt.tight_layout()
 
     return E_eV, response
 
-    
-def get_atom_data(imp, files=['acd','scd']):
-    ''' Collect atomic data for a given impurity from all types of ADAS files available or
+
+def get_atom_data(imp, files=["acd", "scd"]):
+    """ Collect atomic data for a given impurity from all types of ADAS files available or
     for only those requested. 
 
     Parameters
@@ -257,14 +292,16 @@ def get_atom_data(imp, files=['acd','scd']):
         Dictionary containing data for each of the requested files. 
         Each entry of the dictionary gives log-10 of ne, log-10 of Te and log-10 of the data
         as attributes atom_data[key].logNe, atom_data[key].logT, atom_data[key].data
-    '''
+    """
 
     try:
         # default files dictionary
-        all_files = adas_files.adas_files_dict()[imp] # all default files for a given species
+        all_files = adas_files.adas_files_dict()[
+            imp
+        ]  # all default files for a given species
     except KeyError:
-        raise KeyError(f'ADAS data not available for ion {imp}!')
-    
+        raise KeyError(f"ADAS data not available for ion {imp}!")
+
     if isinstance(files, dict):
         # user provided files choices as a dictionary
         for filename in files:
@@ -278,14 +315,14 @@ def get_atom_data(imp, files=['acd','scd']):
 
     for filecheck in files:
         if filecheck not in all_files:
-            raise ValueError(f'Could not fetch {imp} {filecheck.upper()} file!')
-    
+            raise ValueError(f"Could not fetch {imp} {filecheck.upper()} file!")
+
     atom_data = {}
     for filetype in all_files:
 
         # find location of required ADF11 file
-        fileloc = adas_files.get_adas_file_loc(all_files[filetype],filetype='adf11')
-    
+        fileloc = adas_files.get_adas_file_loc(all_files[filetype], filetype="adf11")
+
         # load specific file and add it to output dictionary
         res = adas_file(fileloc)
         atom_data[filetype] = res.logNe, res.logT, res.data
@@ -294,17 +331,16 @@ def get_atom_data(imp, files=['acd','scd']):
 
 
 def null_space(A):
-    '''Find null space of matrix `A`.
-    '''
+    """Find null space of matrix `A`.
+    """
     u, s, vh = svd(A, full_matrices=True)
-    Q = vh[-1,:].T.conj()    # -1 index is after infinite time/equilibration
+    Q = vh[-1, :].T.conj()  # -1 index is after infinite time/equilibration
     # return the smallest singular eigenvalue
     return Q, s[-2]  # matrix is singular, so last index is ~0
 
 
-
-def superstage_rates(R, S, superstages,save_time=None):
-    '''Compute rate for a set of ion superstages. 
+def superstage_rates(R, S, superstages, save_time=None):
+    """Compute rate for a set of ion superstages. 
     Input and output rates are log-values in arbitrary base.
 
     Parameters
@@ -331,65 +367,74 @@ def superstage_rates(R, S, superstages,save_time=None):
     fz_upstage : array (space, nZ, time_
         fractional abundances of stages within superstages
 
-    '''
+    """
     Z_imp = S.shape[1]
-    
+
     # check input superstages
     if 1 not in superstages:
-        print('Warning: 1th superstage was included')
-        superstages = np.r_[1,superstages]
+        print("Warning: 1th superstage was included")
+        superstages = np.r_[1, superstages]
     if 0 not in superstages:
-        print('Warning: 0th superstage was included')
-        superstages = np.r_[0,superstages]
-    if np.any(np.diff(superstages)<=0):
-        print('Warning: sorted superstages in increasing order')
+        print("Warning: 0th superstage was included")
+        superstages = np.r_[0, superstages]
+    if np.any(np.diff(superstages) <= 0):
+        print("Warning: sorted superstages in increasing order")
         superstages = np.sort(superstages)
     if superstages[-1] > Z_imp:
-        raise Exception('The highest superstage must be less than Z_imp = %d'%Z_imp)
+        raise Exception("The highest superstage must be less than Z_imp = %d" % Z_imp)
     superstages = np.array(superstages)
 
     # indexing that accounts for no recomb of neutral stage or ionization of full-stripped stage
-    R_rates_super = R[:,superstages[1:]-1]
-    S_rates_super = S[:,superstages[1:]-1]
-    
-    if len(S) == 1 or save_time is None: # time averaged kinetic profiles
-        t_slice = slice(None,None)
+    R_rates_super = R[:, superstages[1:] - 1]
+    S_rates_super = S[:, superstages[1:] - 1]
+
+    if len(S) == 1 or save_time is None:  # time averaged kinetic profiles
+        t_slice = slice(None, None)
         nt = 1
-    else: # time resolved kinetic profiles
+    else:  # time resolved kinetic profiles
         t_slice = save_time
         nt = save_time.sum()
-    
-    # fractional abundance of supestages used for upstaging. 
-    fz_upstage = np.ones((R.shape[-1], Z_imp+1, nt))
+
+    # fractional abundance of supestages used for upstaging.
+    fz_upstage = np.ones((R.shape[-1], Z_imp + 1, nt))
 
     # add fully-stripped charge state
-    _superstages = np.r_[superstages, Z_imp+1]
+    _superstages = np.r_[superstages, Z_imp + 1]
 
-    for i in range(len(_superstages)-1):
-        if _superstages[i]+1!= _superstages[i+1]:
-            sind = slice(_superstages[i]-1, _superstages[i+1]-1)
+    for i in range(len(_superstages) - 1):
+        if _superstages[i] + 1 != _superstages[i + 1]:
+            sind = slice(_superstages[i] - 1, _superstages[i + 1] - 1)
 
             # calculate fractional abundances within the superstage
-            rate_ratio =  S[:,sind]/R[:,sind]
-            fz = np.cumprod(rate_ratio, axis=1) 
-            fz /= np.maximum(1e-60,fz.sum(1))[:,None] # prevents zero division
+            rate_ratio = S[:, sind] / R[:, sind]
+            fz = np.cumprod(rate_ratio, axis=1)
+            fz /= np.maximum(1e-60, fz.sum(1))[:, None]  # prevents zero division
 
             # superstage rates
-            R_rates_super[:,i-1] *= np.maximum(fz[:,0],1e-60)
+            R_rates_super[:, i - 1] *= np.maximum(fz[:, 0], 1e-60)
 
-            if i<len(_superstages)-2: # last superstage cannot ionize further
-                S_rates_super[:,i] *= np.maximum(fz[:, -1],1e-60)
+            if i < len(_superstages) - 2:  # last superstage cannot ionize further
+                S_rates_super[:, i] *= np.maximum(fz[:, -1], 1e-60)
 
             # fractional abundances inside of each superstage
-            fz_upstage[:,_superstages[i]:_superstages[i+1]] = fz.T[:,:,t_slice]
+            fz_upstage[:, _superstages[i] : _superstages[i + 1]] = fz.T[:, :, t_slice]
 
     return superstages, R_rates_super, S_rates_super, fz_upstage
 
 
-def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0, superstages=[],
-                        ne_tau=np.inf, plot=True, ax = None, rho = None,
-                        rho_lbl=None):
-    r'''Calculate fractional abundances from ionization and recombination equilibrium.
+def get_frac_abundances(
+    atom_data,
+    ne_cm3,
+    Te_eV=None,
+    Ti_eV=None,
+    n0_by_ne=0.0,
+    superstages=[],
+    plot=True,
+    ax=None,
+    rho=None,
+    rho_lbl=None,
+):
+    r"""Calculate fractional abundances from ionization and recombination equilibrium.
     If n0_by_ne is not 0, radiative recombination and thermal charge exchange are summed.
 
     This method can work with ne,Te and n0_by_ne arrays of arbitrary dimension, but plotting 
@@ -411,10 +456,6 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
     superstages : list or 1D array
         Indices of charge states of chosen ion that should be included. If left empty, all ion stages
         are included. If only some indices are given, these are modeled as "superstages".
-    ne_tau : float, opt
-        Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
-        This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
-        Setting ne_tau=np.inf (default) corresponds to no effect from transport. 
     plot : bool, optional
         Show fractional abundances as a function of ne,Te profiles parameterization.
     ax : matplotlib.pyplot Axes instance
@@ -433,105 +474,127 @@ def get_frac_abundances(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0,
     fz : array, (space,nZ)
         Fractional abundances across the same grid used by the input ne,Te values. 
 
-    '''
+    """
     # if input arrays are multi-dimensional, flatten them here and restructure at the end
     _ne = np.ravel(ne_cm3)
     _Te = np.ravel(Te_eV) if Te_eV is not None else None
     _Ti = np.ravel(Ti_eV) if Ti_eV is not None else _Te
     _n0_by_ne = np.ravel(n0_by_ne)
-    if superstages is None: superstages = []
+    if superstages is None:
+        superstages = []
 
     include_cx = False if not np.any(n0_by_ne) else True
 
-    Te, S, R, cx = get_cs_balance_terms(atom_data, _ne, _Te, _Ti, include_cx=include_cx)
-    Z_imp = S.shape[1]
-    
+    Te, Sne, Rne, cxne = get_cs_balance_terms(
+        atom_data, _ne, _Te, _Ti, include_cx=include_cx
+    )
+    Z_imp = Sne.shape[1]
+
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
-        R += n0_by_ne[:,None]*cx
+        Rne += n0_by_ne[:, None] * cxne
 
-    rate_ratio = np.hstack((np.ones_like(Te)[:, None], S/R))
+    rate_ratio = np.hstack((np.ones_like(Te)[:, None], Sne / Rne))
     fz_full = np.cumprod(rate_ratio, axis=1)
     fz_full /= fz_full.sum(1)[:, None]
-    
+
     # Enable use of superstages
     if len(superstages):
-        
-        # superstage_rates expects values in shape (time,nZ,space)
-        superstages, R, S,_ = superstage_rates(R.T[None], S.T[None], superstages)
-        R = R[0].T; S = S[0].T
 
-        rate_ratio = np.hstack((np.ones_like(Te)[:, None], S/R))
+        # superstage_rates expects values in shape (time,nZ,space)
+        superstages, Rne, Sne, _ = superstage_rates(
+            Rne.T[None], Sne.T[None], superstages
+        )
+        Rne = Rne[0].T
+        Sne = Sne[0].T
+
+        rate_ratio = np.hstack((np.ones_like(Te)[:, None], Sne / Rne))
         fz_super = np.cumprod(rate_ratio, axis=1)
         fz_super /= fz_super.sum(1)[:, None]
-        
-        # bundled stages can have very high values -- clip here
-        R = np.clip(R, 1e-25, 1) 
-        S = np.clip(S, 1e-25, 1)
 
-        _superstages = np.r_[superstages, Z_imp+1]
+        # bundled stages can have very high values -- clip here
+        Rne = np.clip(Rne, 1e-25, 1)
+        Sne = np.clip(Sne, 1e-25, 1)
+
+        _superstages = np.r_[superstages, Z_imp + 1]
 
     if plot:
         # plot fractional abundances (only 1D)
         if ax is None:
-            fig,axx = plt.subplots()
+            fig, axx = plt.subplots()
         else:
             axx = ax
 
         if rho is None:
             x = Te
-            axx.set_xlabel('T$_e$ [eV]')
-            axx.set_xscale('log')
+            axx.set_xlabel("T$_e$ [eV]")
+            axx.set_xscale("log")
         else:
-            if rho_lbl is None: rho_lbl='x'
+            if rho_lbl is None:
+                rho_lbl = "x"
             x = rho
             axx.set_xlabel(rho_lbl)
 
-        axx.set_prop_cycle('color',cm.plasma(np.linspace(0,1,fz_full.shape[1])))
+        axx.set_prop_cycle("color", cm.plasma(np.linspace(0, 1, fz_full.shape[1])))
 
-        css=0
+        css = 0
         for cs in range(fz_full.shape[1]):
-            l = axx.semilogy(x, fz_full[:,cs], ls='--')
-            imax = np.argmax(fz_full[:,cs])
-            axx.text(np.max([0.1,x[imax]]), fz_full[imax,cs], cs,
-                     horizontalalignment='center', clip_on=True)
+            l = axx.semilogy(x, fz_full[:, cs], ls="--")
+            imax = np.argmax(fz_full[:, cs])
+            axx.text(
+                np.max([0.1, x[imax]]),
+                fz_full[imax, cs],
+                cs,
+                horizontalalignment="center",
+                clip_on=True,
+            )
 
             if len(superstages) and cs in _superstages:
-                axx.semilogy(x, fz_super[:,css], c=l[0].get_color(), ls='-')
-                imax = np.argmax(fz_super[:,css])
-                
-                if _superstages[css]==Z_imp:
-                    lbl = r'\{'+f'{_superstages[css]}'+r'\}'
+                axx.semilogy(x, fz_super[:, css], c=l[0].get_color(), ls="-")
+                imax = np.argmax(fz_super[:, css])
+
+                if _superstages[css] == Z_imp:
+                    lbl = r"\{" + f"{_superstages[css]}" + r"\}"
                 else:
-                    if _superstages[css]!=_superstages[css+1]-1:
-                        lbl = r'\{'+f'{_superstages[css]},{_superstages[css+1]-1}'+r'\}'
+                    if _superstages[css] != _superstages[css + 1] - 1:
+                        lbl = (
+                            r"\{"
+                            + f"{_superstages[css]},{_superstages[css+1]-1}"
+                            + r"\}"
+                        )
                     else:
-                        lbl = r'\{'+f'{_superstages[css]}'+r'\}'
-                axx.text(np.max([0.05,x[imax]]), fz_super[imax,css], lbl,
-                         horizontalalignment='center', clip_on=True, backgroundcolor='w')
+                        lbl = r"\{" + f"{_superstages[css]}" + r"\}"
+                axx.text(
+                    np.max([0.05, x[imax]]),
+                    fz_super[imax, css],
+                    lbl,
+                    horizontalalignment="center",
+                    clip_on=True,
+                    backgroundcolor="w",
+                )
                 css += 1
 
-        axx.grid('on')
-        axx.set_ylim(1e-2,1.5)
-        axx.set_xlim(x[0],x[-1])
+        axx.grid("on")
+        axx.set_ylim(1e-2, 1.5)
+        axx.set_xlim(x[0], x[-1])
         plt.tight_layout()
 
-    if np.size(ne_cm3)>1:
+    if np.size(ne_cm3) > 1:
         # re-structure to original array dimensions
         Te = Te.reshape(np.array(ne_cm3).shape)
         fz_full = fz_full.reshape(*np.array(ne_cm3).shape, fz_full.shape[1])
         if len(superstages):
             fz_super = fz_super.reshape(*np.array(ne_cm3).shape, fz_super.shape[1])
-    
-    return [Te,] + [fz_super if len(superstages) else fz_full,]
- 
+
+    return [Te,] + [
+        fz_super if len(superstages) else fz_full,
+    ]
 
 
-
-
-
-def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include_cx=True):
-    '''Get S, R and cx rates on the same logTe grid. 
+def get_cs_balance_terms(
+    atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include_cx=True
+):
+    """Get S*ne, R*ne and cx*ne rates on the same logTe grid. 
     
     Parameters
     ----------
@@ -551,55 +614,75 @@ def get_cs_balance_terms(atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include
     -------
     Te : array (n_Te)
         Te grid on which atomic rates are given
-    S, R (,cx): arrays (n_ne,n_Te)
+    Sne, Rne (,cxne): arrays (n_ne,n_Te)
         atomic rates for effective ionization, radiative+dielectronic
-        recombination (+ charge exchange, if requested). All terms will be in units of :math:`s^{-1}`. 
-    '''
-    
+        recombination (+ charge exchange, if requested). 
+        All terms will be in units of :math:`s^{-1}`. 
+
+    Notes
+    -----
+        The nomenclature with 'ne' at the end of rate names
+        indicates that these are rates in units of :math:`m^3\cdot s^{-1}` multiplied by the
+        electron density 'ne' (hence, final units of :math:`s^{-1}`).
+    """
 
     if Te_eV is None:
         # find smallest Te grid from all files
-        _, logTe1,_ = atom_data['scd']
-        _, logTe2,_ = atom_data['acd']
+        _, logTe1, _ = atom_data["scd"]
+        _, logTe2, _ = atom_data["acd"]
 
-        minTe = max(logTe1[0],logTe2[0])
-        maxTe = min(logTe1[-1],logTe2[-1])  # avoid extrapolation
+        minTe = max(logTe1[0], logTe2[0])
+        maxTe = min(logTe1[-1], logTe2[-1])  # avoid extrapolation
 
         if include_cx:
-            _, logTe3,_ = atom_data['ccd']  # thermal cx recombination
-            minTe = max(minTe,logTe3[0])
-            maxTe = min(maxTe,logTe3[-1])  # avoid extrapolation
+            _, logTe3, _ = atom_data["ccd"]  # thermal cx recombination
+            minTe = max(minTe, logTe3[0])
+            maxTe = min(maxTe, logTe3[-1])  # avoid extrapolation
 
-        Te_eV = np.logspace(minTe,maxTe,200)
- 
+        Te_eV = np.logspace(minTe, maxTe, 200)
 
     logne = np.log10(ne_cm3)
     logTe = np.log10(Te_eV)
 
-    S = interp_atom_prof(atom_data['scd'], logne, logTe, x_multiply=True)
-    R = interp_atom_prof(atom_data['acd'], logne, logTe, x_multiply=True)
+    Sne = interp_atom_prof(atom_data["scd"], logne, logTe, x_multiply=True)
+    Rne = interp_atom_prof(atom_data["acd"], logne, logTe, x_multiply=True)
     if include_cx:
         logTi = np.log10(Ti_eV) if Ti_eV is not None else logTe
-        x,y,tab = atom_data['ccd']         
+        x, y, tab = atom_data["ccd"]
         # select appropriate number of charge states
         # this allows use of CCD files from higher-Z ions because of simple CX scaling
-        cx = interp_atom_prof((x,y,tab[:S.shape[1]]), logne, logTi, x_multiply=True)
+        cxne = interp_atom_prof(
+            (x, y, tab[: Sne.shape[1]]), logne, logTi, x_multiply=True
+        )
     else:
-        cx = None
-    
-    return Te_eV, S, R, cx
+        cxne = None
+
+    return Te_eV, Sne, Rne, cxne
 
 
-
-def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.0, superstages=[],
-                        ne_tau=np.inf, plot=True, ax = None, ls='-'):
-    r'''Obtain the relaxation time of the ionization equilibrium for a given atomic species.
+def get_atomic_relax_time(
+    atom_data,
+    ne_cm3,
+    Te_eV=None,
+    Ti_eV=None,
+    n0_by_ne=0.0,
+    superstages=[],
+    tau_s=np.inf,
+    plot=True,
+    ax=None,
+    ls="-",
+):
+    r"""Obtain the relaxation time of the ionization equilibrium for a given atomic species.
 
     If n0_by_ne is not 0, thermal charge exchange is added to radiative and dielectronic recombination.
     This function can work with ne,Te and n0_by_ne arrays of arbitrary dimension.
     It uses a matrix SVD approach in order to find the relaxation rates, as opposed to the simpler
     approach of :py:func:`~aurora.get_frac_abundances`, but fractional abundances produced by the two
-    methods should be the same.
+    methods should always be the same.
+
+    This function also allows use of superstages as well as specification of a :math:`\tau` value
+    representing the effect of transport on the ionization equilibrium. NB: this is only a rough metric
+    to characterize complex physics.    
 
     Parameters
     ----------
@@ -616,10 +699,10 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.
     superstages : list or 1D array
         Indices of charge states of chosen ion that should be included. If left empty, all ion stages
         are included. If only some indices are given, these are modeled as "superstages".
-    ne_tau : float, opt
-        Value of electron density in :math:`m^{-3}\cdot s` :math:`\times` particle residence time. 
-        This is a scalar value that can be used to model the effect of transport on ionization equilibrium. 
-        Setting ne_tau=np.inf (default) corresponds to no effect from transport. 
+    tau_s : float, opt
+        Value of the particle residence time [s]. This is a scalar value that can be used to model 
+        the effect of transport on ionization equilibrium. 
+        Setting tau=np.inf (default) corresponds to no effect from transport. 
     plot : bool, optional
         If True, the atomic relaxation time is plotted as a function of Te. Default is True.
     ax : matplotlib.pyplot Axes instance
@@ -636,7 +719,25 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.
         Fractional abundances across the same grid used by the input ne,Te values. 
     rate_coeffs : array, (space, nZ)
         Rate coefficients in units of [:math:`s^{-1}`]. 
-    '''
+
+    Examples
+    --------
+    To visualize relaxation times for a given species:
+    >>> atom_data = aurora.atomic.get_atom_data('N', ["scd", "acd"])
+    >>> aurora.get_atomic_relax_time(atom_data, [1e14], Te_eV=np.linspace(0.1,200,1000), plot=True)
+
+    To compare ionization balance with different values of ne*tau:
+    >>> Te0, fz0, r0 = aurora.get_atomic_relax_time(atom_data, [1e14], Te_eV=np.linspace(0.1,200,1000), tau_s=1e-3, plot=False)
+    >>> Te1, fz1, r1 = aurora.get_atomic_relax_time(atom_data, [1e14], Te_eV=np.linspace(0.1,200,1000), tau_s=1e-2, plot=False)
+    >>> Te2, fz2, r2 = aurora.get_atomic_relax_time(atom_data, [1e14], Te_eV=np.linspace(0.1,200,1000), tau_s=1e-1, plot=False)
+    >>>
+    >>> plt.figure()
+    >>> for cs in np.arange(fz0.shape[1]):
+    >>>     l = plt.plot(Te0, fz0[:,cs], ls='-')
+    >>>     plt.plot(Te1, fz1[:,cs], c=l[0].get_color(), ls='--')
+    >>>     plt.plot(Te2, fz2[:,cs], c=l[0].get_color(), ls='-.')
+
+    """
     # if input arrays are multi-dimensional, flatten them here and restructure at the end
     _ne = np.ravel(ne_cm3)
     _Te = np.ravel(Te_eV) if Te_eV is not None else None
@@ -645,29 +746,34 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.
 
     include_cx = False if not np.any(n0_by_ne) else True
 
-    Te, S, R, cx = get_cs_balance_terms(atom_data, _ne, _Te, include_cx=include_cx)
-    
+    Te, Sne, Rne, cxne = get_cs_balance_terms(
+        atom_data, _ne, _Te, include_cx=include_cx
+    )
+
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
-        R += cx*_n0_by_ne
-        
+        Rne += cxne * _n0_by_ne
+
     # Enable use of superstages
     if len(superstages):
-        _, R, S,_ = superstage_rates(R, S, superstages)
+        _, Rne, Sne, _ = superstage_rates(Rne, Sne, superstages)
 
     # numerical method that calculates also rate_coeffs
-    nion = R.shape[1]
-    fz  = np.zeros((Te.size,nion+1))
+    nion = Rne.shape[1]
+    fz = np.zeros((Te.size, nion + 1))
     rate_coeffs = np.zeros(Te.size)
 
-    for it,t in enumerate(Te):
-        A = - np.diag(np.r_[S[it], 0] + np.r_[0, R[it]] + 1e6 / ne_tau) + np.diag(S[it], -1) + np.diag(R[it], 1)
+    for it, t in enumerate(Te):
+        A = (
+            -np.diag(np.r_[Sne[it], 0] + np.r_[0, Rne[it]] + 1. / tau_s)
+            + np.diag(Sne[it], -1)
+            + np.diag(Rne[it], 1)
+        )
 
-        N,rate_coeffs[it] = null_space(A)
-        fz[it] = N/np.sum(N)
+        N, rate_coeffs[it] = null_space(A)
+        fz[it] = N / np.sum(N)
 
- 
-    if np.size(ne_cm3)>1:
+    if np.size(ne_cm3) > 1:
         # re-structure to original array dimensions
         Te = Te.reshape(np.shape(ne_cm3))
         fz = fz.reshape(*np.shape(ne_cm3), fz.shape[1])
@@ -676,20 +782,19 @@ def get_atomic_relax_time(atom_data, ne_cm3, Te_eV=None, Ti_eV=None, n0_by_ne=0.
     if plot:
         # Now plot relaxation times
         if ax is None:
-            fig,ax = plt.subplots()
-            
-        ax.loglog(Te,1e3/rate_coeffs,'b' )
-        ax.set_xlim(Te[0],Te[-1])
-        ax.grid('on')
-        ax.set_xlabel('T$_e$ [eV]')
-        ax.set_ylabel(r'$\tau_\mathrm{relax}$ [ms]')
-        
+            fig, ax = plt.subplots()
+
+        ax.loglog(Te, 1e3 / rate_coeffs, "b")
+        ax.set_xlim(Te[0], Te[-1])
+        ax.grid("on")
+        ax.set_xlabel("T$_e$ [eV]")
+        ax.set_ylabel(r"$\tau_\mathrm{relax}$ [ms]")
+
     return Te, fz, rate_coeffs
 
 
-
 class CartesianGrid:
-    """Fast linear interpolation for 1D and 2D vecctor data on equally spaced grids.
+    """Fast linear interpolation for 1D and 2D vector data on equally spaced grids.
     This offers optimal speed in Python for interpolation of atomic data tables such
     as the ADAS ones.
 
@@ -702,20 +807,27 @@ class CartesianGrid:
         data is provided on the input grids. 
         Other dimensions refer to values on the density and temperature grids.
     """
+
     def __init__(self, grids, values):
 
         values = np.ascontiguousarray(np.moveaxis(values, 0, -1))
         self.N = values.shape[:-1]
 
         if len(self.N) > 2:
-            raise OMFITexception('Only 1 and 2 dimensional interpolation is supported')
+            raise valueError("Only 1 and 2 dimensional interpolation is supported")
 
         for g, s in zip(grids, self.N):
             if len(g) != s:
-                raise OMFITexception('wrong size of values array')
+                raise ValueError("wrong size of values array")
 
-        self.offsets = [g[0] for g in grids]
-        self.scales = [(g[-1] - g[0]) / (n - 1) for g, n in zip(grids, self.N)]
+        self.eq_spaced_grid = np.all(
+            [np.std(np.diff(g)) / np.std(g) < 0.01 for g in grids]
+        )
+        if self.eq_spaced_grid:
+            self.offsets = [g[0] for g in grids]
+            self.scales = [(g[-1] - g[0]) / (n - 1) for g, n in zip(grids, self.N)]
+        else:
+            self.grids = grids
 
         A = []
         if len(self.N) == 1:
@@ -742,10 +854,17 @@ class CartesianGrid:
             List of 1D arrays for the N coordines (N=1 or N=2). These arrays must be of the same shape.
  
         """
-        coords = np.array(coords).T
-        coords -= self.offsets
-        coords /= self.scales
-        coords = coords.T
+
+        if self.eq_spaced_grid:
+            coords = np.array(coords).T
+            coords -= self.offsets
+            coords /= self.scales
+            coords = coords.T
+        else:
+            # for non-equally spaced grids must be used linear interpolation to map inputs to equally spaced indexes
+            coords = [
+                np.interp(c, g, np.arange(len(g))) for c, g in zip(coords, self.grids)
+            ]
 
         # clip dimension - it will extrapolation by a nearest value
         for coord, n in zip(coords, self.N):
@@ -780,64 +899,8 @@ class CartesianGrid:
         return np.moveaxis(inter_out, -1, 0)
 
 
-class CartesianGrid_Ndim:
-    """
-    Linear multivariate Cartesian grid interpolation in arbitrary dimensions
-    This is a regular grid with equal spacing.
-
-    Use :py:class:`~aurora.atomic.CartesianGrid` for a version that is optimally fast
-    in 2 dimensions only.
-
-    Parameters
-    ----------
-    grids: list of arrays, N=len(grids), arbitrary N
-        List of 1D arrays with equally spaced grid values for each dimension
-    values: N+1 dimensional array of values used for interpolation
-        Values to interpolate. The first dimension typically refers to different ion stages, for which 
-        data is provided on the input grids. Other dimensions refer to values on the N-dimensional grids.
-
-    """
-    def __init__(self, grids, values):
-
-        self.values = np.ascontiguousarray(values)
-        for g,s in  zip(grids,values.shape[1:]):
-            if len(g) != s: raise Exception('wrong size of values array')
-
-        self.offsets = [g[0] for g in grids]
-        self.scales  = [(g[-1]-g[0])/(n-1) for g,n in zip(grids, values.shape[1:])]
-        self.N = values.shape[1:]
-
-    def __call__(self, *coords):
-        '''Transform coords into pixel values and provide interpolated result.
-
-        Parameters
-        ----------
-        coords:  list of arrays
-            List of 1D arrays for the N coordines (N=1 or N=2). These arrays must be of the same shape.
-        '''
-        out_shape = coords[0].shape
-
-        coords = np.array(coords).T
-        coords -= self.offsets
-        coords /= self.scales
-        coords = coords.T
-
-        # clip dimension - gives extrapolation by nearest value
-        for coord, n in zip(coords, self.N):
-            np.clip(coord,0,n-1,coord)
-
-        # prepare output array
-        inter_out = np.empty((self.values.shape[0],)+out_shape, dtype=self.values.dtype)
-
-        # fast interpolation on a N-dimensional regular grid
-        for out,val in zip(inter_out,self.values):
-            scipy.ndimage.map_coordinates(val, coords, order=1, output=out)
-
-        return inter_out
-
-
-def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
-    r''' Fast interpolate atomic data in atom_table onto the xprof and yprof profiles.
+def interp_atom_prof(atom_table, xprof, yprof, log_val=False, x_multiply=True):
+    r""" Fast interpolate atomic data in atom_table onto the xprof and yprof profiles.
     This function assume that xprof, yprof, x, y, table are all base-10 logarithms,
     and xprof, yprof are equally spaced.
 
@@ -866,40 +929,29 @@ def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
     -------
     This function uses `np.log10` and exponential operations to optimize speed, since it has
     been observed that base-e operations are faster than base-10 operations in numpy. 
-    '''
-    x,y, table = atom_table
+    """
+    x, y, table = atom_table
 
-    if x_multiply and xprof is None:
-        raise ValueError('Cannot multiply output by 10^{xprof} because xprof is None!')
+    if x_multiply:  # multiplying of logarithms is just adding
+        table = table + x  # don't modify original table, create copy
 
-    if x_multiply: # multiplying of logarithms is just adding
-        table = table + x*np.log(10)  # don't modify original table, create copy
-
-
-    if (abs(table-table[...,[0]]) < 0.05).all() or xprof is None:
+    if (abs(table - table[..., [0]]) < 0.05).all() or xprof is None:
         # 1D interpolation if independent of the last dimension - like SXR radiation data
-        
-        if np.all(np.diff(y) == (y[1] - y[0])):
-            # ADAS y grid is equally spaced (almost always the case)
-            reg_interp = CartesianGrid((y, ),table[:,:,0]*np.log(10))
-        else:
-            # ADAS y-grid is not equally spaced -- cannot use fast CartesianGrid
-            reg_interp = interp1d(y, table[:,:,0]*np.log(10), axis=1, copy=False, assume_sorted=True)
 
+        reg_interp = CartesianGrid((y,), table[:, :, 0] * np.log(10))
         interp_vals = reg_interp(yprof)
 
-    else: # 2D interpolation, assume ADAS grids are equally spaced (only small inaccuracies in data files)
-
+    else:  # 2D interpolation
         # broadcast both variables to the same shape
         xprof, yprof = np.broadcast_arrays(xprof, yprof)
 
         # perform fast linear interpolation
-        reg_interp = CartesianGrid((x, y),table.swapaxes(1,2)*np.log(10))
-            
+        reg_interp = CartesianGrid((x, y), table.swapaxes(1, 2) * np.log(10))
+
         interp_vals = reg_interp(xprof, yprof)
 
     # reshape to shape(nt,nion,nr)
-    interp_vals = interp_vals.swapaxes(0,1)
+    interp_vals = interp_vals.swapaxes(0, 1)
 
     if not log_val:
         # return actual value, not logarithm
@@ -908,45 +960,92 @@ def interp_atom_prof(atom_table,xprof, yprof,log_val=False, x_multiply=True):
     return interp_vals
 
 
-
-
-
-def gff_mean(Z,Te):
-    '''
+def gff_mean(Z, Te):
+    """
     Total free-free gaunt factor yielding the total radiated bremsstrahlung power
     when multiplying with the result for gff=1.
     Data originally from Karzas & Latter, extracted from STRAHL's atomic_data.f.
-    '''
-    from scipy.constants import e,h,c,Rydberg
-    thirteenpointsix = h*c*Rydberg/e
+    """
+    from scipy.constants import e, h, c, Rydberg
 
-    log_gamma2_grid =[-3.000,-2.833,-2.667,-2.500,-2.333,-2.167,-2.000,-1.833,-1.667,-1.500,
-                        -1.333,-1.167,-1.000,-0.833,-0.667,-0.500,-0.333,-0.167, 0.000, 0.167,
-                        0.333, 0.500, 0.667, 0.833, 1.000]
+    thirteenpointsix = h * c * Rydberg / e
 
-    gff_mean_grid = [1.140, 1.149, 1.159, 1.170, 1.181, 1.193, 1.210, 1.233, 1.261, 1.290,
-                     1.318, 1.344, 1.370, 1.394, 1.416, 1.434, 1.445, 1.448, 1.440, 1.418,
-                     1.389, 1.360, 1.336, 1.317, 1.300]
+    log_gamma2_grid = [
+        -3.000,
+        -2.833,
+        -2.667,
+        -2.500,
+        -2.333,
+        -2.167,
+        -2.000,
+        -1.833,
+        -1.667,
+        -1.500,
+        -1.333,
+        -1.167,
+        -1.000,
+        -0.833,
+        -0.667,
+        -0.500,
+        -0.333,
+        -0.167,
+        0.000,
+        0.167,
+        0.333,
+        0.500,
+        0.667,
+        0.833,
+        1.000,
+    ]
+
+    gff_mean_grid = [
+        1.140,
+        1.149,
+        1.159,
+        1.170,
+        1.181,
+        1.193,
+        1.210,
+        1.233,
+        1.261,
+        1.290,
+        1.318,
+        1.344,
+        1.370,
+        1.394,
+        1.416,
+        1.434,
+        1.445,
+        1.448,
+        1.440,
+        1.418,
+        1.389,
+        1.360,
+        1.336,
+        1.317,
+        1.300,
+    ]
 
     # set min Te here to 10 eV, because the grid above does not extend to lower temperatures
     Te = np.maximum(Te, 10.0)
 
-    log_gamma2 = np.log10(Z**2*thirteenpointsix/Te)
+    log_gamma2 = np.log10(Z ** 2 * thirteenpointsix / Te)
 
     # dangerous/inaccurate extrapolation...
-    return np.interp(log_gamma2, log_gamma2_grid,gff_mean_grid)
+    return np.interp(log_gamma2, log_gamma2_grid, gff_mean_grid)
 
+def impurity_brems(nz, ne, Te, freq='all', cutoff=0.1):
+    """Approximate impurity bremsstrahlung in :math:`W/m^3`for a given range 
+    of frequencies or a specific frequency. 
 
+    We apply here a cutoff for Bremsstrahlung at h*c/lambda = cutoff*Te, 
+    where `cutoff` is an input parameter, conventionally set to 0.1 (default). 
 
-def impurity_brems(nz, ne, Te):
-    '''Approximate bremsstrahlung in units of :math:`mW/nm/sr/m^3 \cdot cm^3`, or
-    equivalently :math:`W/m^3` for full spherical emission. 
+    Gaunt factors from :py:func:`~aurora.atomic.gff_mean` are applied.
+    NB: recombination is not included.
 
-    Note that this may not be very useful, since this contribution is already included 
-    in the continuum radiation component in ADAS files. The bremsstrahlung estimate in 
-    ADAS continuum radiation files is more accurate than the one give by this function, 
-    which uses a simpler interpolation of the Gaunt factor with weak ne-dependence. 
-    Use with care!
+    Formulation based on Hutchinson's Principles of Plasma Diagnostics, 
+    p. 196, Eq. (5.3.40).
 
     Parameters
     ----------
@@ -956,27 +1055,79 @@ def impurity_brems(nz, ne, Te):
         Electron density [:math:`cm^{-3}`]
     Te : array (time,space)
         Electron temperature [:math:`cm^{-3}`]
+    freq : float, 1D array, or str
+        If a float, calculate bremsstrahlung from all charge states at
+        this frequency. If a 1D array, integrate bremsstrahlung over these wavelengths.
+        If set to `all`, then bremsstrahlung is integrated over all frequencies typical
+        of a tokamak plasma.
+        Frequencies are expected in units of :math:`s^{-1}`.
+    cutoff : float
+        Fraction of Te below which bremsstrahlung is set to 0.
+        A value of 0.1 is commonly set and is the default.
 
     Returns
     -------
-    brems : array (time,nZ,space)
-        Bremsstrahlung for each charge state 
-    '''
-    # neutral stage doesn't produce brems
-    Z_imp = nz.shape[1]-1
-    Z = np.arange(Z_imp)[None,:,None]+1
+    array (time,nZ,space):
+        Bremsstrahlung for each charge state at the given frequency or, if 
+        multiple frequences are given (or if `freq='all'`), integrated over frequencies.
+        Units of :math:`W/cm^3`.
+    """ 
+    if freq=='all':
+        # sufficient range of frequencies to obtain accurate result
+        freq = np.linspace(1e10, 1e18, num = 10000)
+    else:
+        freq = np.atleast_1d(freq)
+    Z_imp = nz.shape[1] - 1
+    Z = np.arange(Z_imp)[None, :, None] + 1
 
-    gff = gff_mean(Z,Te[:,None])
-    brems = Z**2 * nz[:,1:] * gff * (1.69e-32 *np.sqrt(Te) * ne) [:,None]
+    gff = gff_mean(Z, Te[:, None])
 
-    return brems
-       
+    # take cutoff frequency to be cutoff*Te
+    cut = cutoff*Te*constants.e/(constants.h)
+
+    # plasma frequency (divide by 2pi to have units of Hz)
+    fp = np.sqrt(1e6*ne*constants.e**2/(constants.epsilon_0*constants.m_e))/(2.*np.pi)
+
+    freqT = np.tile(freq, (ne.shape[1], ne.shape[0], 1)).T
+
+    # find all values below fw and above cut
+    mask = np.logical_or(freqT<fp, freqT>cut)
+    
+    # constant in Hutchinson Eq. 5.3.10
+    const = 32*np.pi**2/(3*np.sqrt(3)*constants.m_e**2*constants.c**3)*\
+            (constants.e**2/(4*np.pi*constants.epsilon_0))**3*\
+            np.sqrt(2*constants.m_e/np.pi)
+
+    # conversion factor to eventually have result in units of W/cm^3 rather than W/m^3
+    const *= 1e-6
+
+    if len(freq)==1:
+        intV = np.exp(-constants.h*freqT[0]/(Te*constants.e))
+        # set brems to 0 below plasma frequency and above chosen cutoff frequency
+        intV[mask[0,:,:]] = 0 
+    else:
+        # integration over frequency domain (only exponential term)
+        intgrnd = np.exp(-constants.h*freqT/(Te*constants.e))
+        intgrnd[mask] = 0
+        intV = simps(intgrnd, freqT, axis=0)
         
+    return 4*np.pi*Z**2*nz[:,1:]*gff*(ne*1e12*const*np.sqrt(1/(Te*constants.e))*intV)[:,None]
 
 
-def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
-                       nz_profs=None, rhop=None, plot=True, eps_prof=None):
-    r'''Compare effective ionization rate for each charge state with the characteristic
+
+
+def plot_norm_ion_freq(
+    S_z,
+    q_prof,
+    R_prof,
+    imp_A,
+    Ti_prof,
+    nz_profs=None,
+    rhop=None,
+    plot=True,
+    eps_prof=None,
+):
+    r"""Compare effective ionization rate for each charge state with the characteristic
     transit time that passing and trapped impurity ions take to travel a parallel distance 
     :math:`L = q R`, defining
 
@@ -1024,14 +1175,23 @@ def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
     ----------
     .. [1] R.Dux et al. Nucl. Fusion 60 (2020) 126039
 
-    '''
-    nu = np.zeros((S_z.shape[0],S_z.shape[1]-1))  # exclude neutral states, which have no parallel transport
+    """
+    nu = np.zeros(
+        (S_z.shape[0], S_z.shape[1] - 1)
+    )  # exclude neutral states, which have no parallel transport
     for cs in np.arange(nu.shape[1]):
-        nu[:,cs] = S_z[:,cs+1] * q_prof * R_prof * np.sqrt((imp_A * constants.m_p)/(2*Ti_prof*constants.e))
+        nu[:, cs] = (
+            S_z[:, cs + 1]
+            * q_prof
+            * R_prof
+            * np.sqrt((imp_A * constants.m_p) / (2 * Ti_prof * constants.e))
+        )
 
     if nz_profs is not None:
-        # calculate average nu_ioniz_star 
-        nu_ioniz_star = np.sum(nz_profs[:,1:]*nu,axis=1)/np.sum(nz_profs[:,1:],axis=1)
+        # calculate average nu_ioniz_star
+        nu_ioniz_star = np.sum(nz_profs[:, 1:] * nu, axis=1) / np.sum(
+            nz_profs[:, 1:], axis=1
+        )
     else:
         # return normalized ionization rate for each charge state
         nu_ioniz_star = nu
@@ -1039,29 +1199,28 @@ def plot_norm_ion_freq(S_z, q_prof, R_prof, imp_A, Ti_prof,
     if plot:
         if rhop is None:
             rhop = np.arange(nu.shape[0])
-            
-        fig,ax = plt.subplots()
-        if nu_ioniz_star.ndim==1:
-            ax.semilogy(rhop,nu_ioniz_star, label=r'$\nu_{ion}^*$')
+
+        fig, ax = plt.subplots()
+        if nu_ioniz_star.ndim == 1:
+            ax.semilogy(rhop, nu_ioniz_star, label=r"$\nu_{ion}^*$")
         else:
             for cs in np.arange(nu.shape[1]):
-                ax.semilogy(rhop, nu_ioniz_star[:,cs], label=f'q={cs+1}')
-            ax.set_ylabel(r'$\nu_{ion}^*$')
+                ax.semilogy(rhop, nu_ioniz_star[:, cs], label=f"q={cs+1}")
+            ax.set_ylabel(r"$\nu_{ion}^*$")
 
-        ax.set_xlabel(r'$\rho_p$')
+        ax.set_xlabel(r"$\rho_p$")
 
         if eps_prof is not None:
-            ax.semilogy(rhop, np.sqrt(eps_prof), label=r'$\sqrt{\epsilon}$')
+            ax.semilogy(rhop, np.sqrt(eps_prof), label=r"$\sqrt{\epsilon}$")
 
         ax.legend().set_draggable(True)
-        ax.set_xlim([0,1])
-
+        ax.set_xlim([0, 1])
 
 
 def read_adf12(filename, block, Ebeam, ne_cm3, Ti_eV, zeff):
-    '''Read charge exchange effective emission coefficients from ADAS ADF12 files.
+    """Read charge exchange effective emission coefficients from ADAS ADF12 files.
 
-    See https://open.adas.ac.uk/adf12 for details and to download files.
+    Files may be automatically downloaded using :py:fun:`~aurora.adas_files.get_adas_file_loc`.
 
     Parameters
     ----------
@@ -1083,23 +1242,23 @@ def read_adf12(filename, block, Ebeam, ne_cm3, Ti_eV, zeff):
     float or 1D array :
         Interpolated coefficients, units of :math:`cm^3/s`.
 
-    '''
-    with open(filename, 'r') as f:
+    """
+    with open(filename, "r") as f:
         nlines = int(f.readline())
 
         for iline in range(block):
             cer_line = {}
             params = []
-            first_line = '0'
+            first_line = "0"
             while not first_line[0].isalpha():
                 first_line = f.readline()
 
-            cer_line['header'] = first_line
-            cer_line['qefref'] = np.float(f.readline()[:63].replace('D', 'e'))
-            cer_line['parmref'] = np.float_(f.readline()[:63].replace('D', 'e').split())
-            cer_line['nparmsc'] = np.int_(f.readline()[:63].split())
+            cer_line["header"] = first_line
+            cer_line["qefref"] = np.float(f.readline()[:63].replace("D", "e"))
+            cer_line["parmref"] = np.float_(f.readline()[:63].replace("D", "e").split())
+            cer_line["nparmsc"] = np.int_(f.readline()[:63].split())
 
-            for ipar, npar in enumerate(cer_line['nparmsc']):
+            for ipar, npar in enumerate(cer_line["nparmsc"]):
                 for q in range(2):
                     data = []
                     while npar > len(data):
@@ -1110,7 +1269,7 @@ def read_adf12(filename, block, Ebeam, ne_cm3, Ti_eV, zeff):
                             if q == 0:
                                 params.append(name)
 
-                        values = np.float_(line[:63].replace('D', 'E').split())
+                        values = np.float_(line[:63].replace("D", "E").split())
                         values = values[values > 0]
                         if not len(values):
                             continue
@@ -1118,27 +1277,27 @@ def read_adf12(filename, block, Ebeam, ne_cm3, Ti_eV, zeff):
                     cer_line[name] = data
 
     # interpolate in logspace
-    lqefref = np.log(cer_line['qefref'])
-    
+    lqefref = np.log(cer_line["qefref"])
+
     lnq = np.zeros(np.broadcast(Ebeam, ne_cm3, Ti_eV, zeff).shape)
     lnq += lqefref * (1 - 4)
-    lnq += np.interp(np.log(Ti_eV), np.log(cer_line['tiev']), np.log(cer_line['qtiev']))
-    lnq += np.interp(np.log(ne_cm3), np.log(cer_line['densi']), np.log(cer_line['qdensi']))
-    lnq += np.interp(np.log(Ebeam), np.log(cer_line['ener']), np.log(cer_line['qener']))
-    lnq += np.interp(np.log(zeff), np.log(cer_line['zeff']), np.log(cer_line['qzeff']))
-    
+    lnq += np.interp(np.log(Ti_eV), np.log(cer_line["tiev"]), np.log(cer_line["qtiev"]))
+    lnq += np.interp(
+        np.log(ne_cm3), np.log(cer_line["densi"]), np.log(cer_line["qdensi"])
+    )
+    lnq += np.interp(np.log(Ebeam), np.log(cer_line["ener"]), np.log(cer_line["qener"]))
+    lnq += np.interp(np.log(zeff), np.log(cer_line["zeff"]), np.log(cer_line["qzeff"]))
+
     return np.exp(lnq)
 
 
-        
 def read_adf21(filename, Ebeam, ne_cm3, Te_eV):
-    '''Read ADAS ADF21 or ADF22 files.
+    """Read ADAS ADF21 or ADF22 files.
 
     ADF21 files contain effective beam stopping/excitation coefficients.
     ADF22 contain effective beam emission/population coefficients.
 
-    See https://open.adas.ac.uk/adf21 and https://open.adas.ac.uk/adf22 for details
-    and to download files.
+    Files may be automatically downloaded using :py:fun:`~aurora.adas_files.get_adas_file_loc`.
 
     Parameters
     ----------
@@ -1156,16 +1315,16 @@ def read_adf21(filename, Ebeam, ne_cm3, Te_eV):
     float or 1D array :
         Interpolated coefficients. For ADF21 files, these have units of :math:`cm^3/s`for ADF21 files.
         For ADF22, they correspond to n=2 fractional abundances.
-    '''
-    
-    with open(filename, 'r') as f:
+    """
+
+    with open(filename, "r") as f:
         line = f.readline()
-        ref = float(line.split()[1].split('=')[1])
+        ref = float(line.split()[1].split("=")[1])
         f.readline()
         line = f.readline()
         nE, nne, Teref = line.split()
         nE, nne = int(nE), int(nne)
-        Teref = float(Teref.split('=')[1])
+        Teref = float(Teref.split("=")[1])
         f.readline()
 
         E = []
@@ -1190,7 +1349,11 @@ def read_adf21(filename, Ebeam, ne_cm3, Te_eV):
         f.readline()
         line = f.readline()
         nTe, Eref, Neref = line.split()
-        nTe, Eref, Neref = int(nTe), float(Eref.split('=')[1]), float(Neref.split('=')[1])
+        nTe, Eref, Neref = (
+            int(nTe),
+            float(Eref.split("=")[1]),
+            float(Neref.split("=")[1]),
+        )
 
         f.readline()
 
@@ -1216,16 +1379,19 @@ def read_adf21(filename, Ebeam, ne_cm3, Te_eV):
     lref = np.log(ref)
 
     # interpolate on the requested values
-    RectInt1 = interp.interp1d(np.log(Te), np.log(Q1) - lref, assume_sorted=True, kind='quadratic')
-    RectInt2 = interp.RectBivariateSpline(np.log(ne), np.log(E), np.log(Q2) - lref, kx=2, ky=2)
+    RectInt1 = interp.interp1d(
+        np.log(Te), np.log(Q1) - lref, assume_sorted=True, kind="quadratic"
+    )
+    RectInt2 = interp.RectBivariateSpline(
+        np.log(ne), np.log(E), np.log(Q2) - lref, kx=2, ky=2
+    )
 
     adf = RectInt1(np.log(Te_eV)) + RectInt2.ev(np.log(ne_cm3), np.log(Ebeam))
     return np.exp(adf + lref)
 
 
-
 def get_natural_partition(ion, plot=True):
-    '''Identify natural partition of charge states by plotting the variation of ionization energy
+    """Identify natural partition of charge states by plotting the variation of ionization energy
     as a function of charge for a given ion, using the ADAS metric :math:`2 (I_{z+1}-I_z)/(I_{z+1}+I_z)`.
     
     Parameters
@@ -1243,36 +1409,38 @@ def get_natural_partition(ion, plot=True):
     Notes
     -----
     A ColRadPy installation must be available for this function to work.
-    '''
+    """
 
     try:
         # temporarily import this here, until ColRadPy dependency can be set up properly
         import colradpy
     except ImportError:
-        raise ValueError('Could not import colradpy. Install this from the Github repo!')
+        raise ValueError(
+            "Could not import colradpy. Install this from the Github repo!"
+        )
 
     # find location of files containing NIST data
     colradpy_dist = os.sep.join(colradpy.__file__.split(os.sep)[:-2])
-    loc = colradpy_dist+os.sep+'atomic'+os.sep+'nist_energies'
+    loc = colradpy_dist + os.sep + "atomic" + os.sep + "nist_energies"
 
     # find energies for each charge state of interest
     _E_eV = []
     cs = []
     for filename in os.listdir(loc):
-        if not filename.startswith('#') and not filename.endswith('~'):
-            _ion = filename.split('_')[0]
+        if not filename.startswith("#") and not filename.endswith("~"):
+            _ion = filename.split("_")[0]
 
-            if _ion!=ion.lower():
+            if _ion != ion.lower():
                 continue
-            charge = int(filename.split('_')[1])
+            charge = int(filename.split("_")[1])
 
             # read energy from file
-            with open(loc+os.sep+filename,'r') as f:
+            with open(loc + os.sep + filename, "r") as f:
                 cont = f.readlines()
 
             # last value is energy in cm^-1
-            E_cm_val = float(cont[-1].split(',')[-1].strip('/n'))
-            E_eV_val = constants.h*constants.c/constants.e*(E_cm_val*100.)
+            E_cm_val = float(cont[-1].split(",")[-1].strip("/n"))
+            E_eV_val = constants.h * constants.c / constants.e * (E_cm_val * 100.0)
 
             cs.append(charge)
             _E_eV.append(E_eV_val)
@@ -1282,19 +1450,18 @@ def get_natural_partition(ion, plot=True):
 
     # compute ADAS natural partitioning metric
     q = []
-    for i in np.arange(1,len(E_eV)-1):
-        q.append( 2*(E_eV[i+1] - E_eV[i])/(E_eV[i+1]+E_eV[i]))
+    for i in np.arange(1, len(E_eV) - 1):
+        q.append(2 * (E_eV[i + 1] - E_eV[i]) / (E_eV[i + 1] + E_eV[i]))
 
     if plot:
-        fig,ax = plt.subplots()
-        
+        fig, ax = plt.subplots()
+
         ax.plot(np.arange(len(q)), q)
-        ax.set_xlabel('Z')
-        ax.set_title(r'$2\times (I_{z+1}-I_z)/(I_{z+1}+I_z)$')
+        ax.set_xlabel("Z")
+        ax.set_title(r"$2\times (I_{z+1}-I_z)/(I_{z+1}+I_z)$")
 
         # take running mean over 7 adjacent charge states as indicated by Foster's thesis
-        q_mean = np.convolve(q, np.ones(7)/7, mode='same')
+        q_mean = np.convolve(q, np.ones(7) / 7, mode="same")
         plt.plot(q_mean)
 
     return q
-

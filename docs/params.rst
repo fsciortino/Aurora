@@ -121,9 +121,12 @@ The table below describes the main input parameters to Aurora's forward model of
    * - `wall_recycling`
      - 0.0
      - If True, recycling is activated: particles from the wall and divertor may return to main chamber.
-   * - `divbls`
-     - 0.0
-     - Fraction of source that is puffed into the divertor, as opposed to into the main chamber.
+   * - `source_div_time`
+     - None
+     - (Optional) Time base for any particle sources going into the divertor reservoir [s].
+   * - `source_div_vals`
+     - None
+     - (Optional) Particle sources going into the divertor reservoir [particles/s/cm].
    * - `tau_div_SOL_ms`
      - 50.0
      - Time scale for transport between the divertor and the open SOL [ms].
@@ -246,15 +249,38 @@ Let's test the creation of a grid and plot the result:::
 The plot title will show how many time steps are part of the time grid (given by the `time` output). The `save` output is a list of 0's and 1's that is used to indicate which time grid points should be saved to the output. 
 
 
-Recycling
----------
 
-A 1.5D transport model such as Aurora cannot accurately model recycling at walls. Like STRAHL, Aurora uses a number of parameters to approximate the transport of impurities outside of the LCFS; we recommend that users ensure that their core results don't depend sensitively on these parameters:
+Particle sources
+----------------
 
+Core sources of particles can be specified in a number of ways. A time- and radially-dependent source can be set by setting `namelist['source_type'] = 'arbitrary_2d_source'` and then providing the parameters
+
+#. `explicit_source_rhop` : radial grid (in square root of normalized poloidal flux)
+
+#. `explicit_source_time` : time grid (in seconds)
+
+#. `explicit_source_vals` : values of source flux (particles/s)
+
+Alternatively, if time and radial dependences of core sources can be effectively separated, source time histories and radial profiles can be described in other ways. The time history of core sources can be created using the :py:func:`~aurora.source_utils.get_source_time_history` function, whereas radial profiles of core sources can be defined by specifying parameters for the :py:func:`~aurora.source_utils.get_radial_source` function. Please refer to the documentation of these functions for explanations of how to call these.
+
+
+Particle sources can also be specified such that they enter the simulation from the divertor reservoir. This parameter can be useful to simulate divertor puffing. Note that it can only have an effect if `recycling_flag` = True and `wall_recycling` is >=0, so that particles from the divertor are allowed to flow to the main chamber plasma. In order to specify a source into the divertor, one needs to specify 2 parameters:
+
+#. `source_div_time` : time base for the particle source into the divertor;
+   
+#. `source_div_vals` : values of the particle source into the divertor.
+
+Note that while core sources (e.g. in `explicit_source_vals`) are in units of :math:`particles/cm^3`, sources going into the divertor have different units of :math:`particles/cm/s` since they are going into a 0D edge model.
+
+
+Edge parameters
+---------------
+
+A 1.5D transport model such as Aurora cannot accurately model edge transport. Aurora uses a number of parameters to approximate the transport of impurities outside of the LCFS; we recommend that users ensure that their core results don't depend sensitively on these parameters:
    
 #. `recycling_flag`: if this is False, no recycling nor communication between the divertor and core plasma particle reservoirs is allowed.
 
-#. `wall_recycling` : if this is 0, particles are allowed to move from the divertor reservoir back into the core plasma, based on the `tau_div_SOL_ms` and `tau_pump_ms` parameters, but no recycling from the wall is enabled. If >0 and <1, recycling of particles hitting the limiter and wall reservoirs is enabled, with a recycling coefficient equal to this value. 
+#. `wall_recycling` : if this is 0, particles are allowed to move from the divertor reservoir back into the core plasma, based on the `tau_div_SOL_ms` and `tau_pump_ms` parameters, but no recycling from the wall is enabled. If >0 and <=1, recycling of particles hitting the limiter and wall reservoirs is enabled, with a recycling coefficient equal to this value. 
 
 #. `tau_div_SOL_ms` : time scale with which particles travel from the divertor into the SOL, entering again the core plasma reservoir. Default is 50 ms.
 
@@ -264,9 +290,8 @@ A 1.5D transport model such as Aurora cannot accurately model recycling at walls
 
 #. `SOL_mach`: Mach number in the SOL. This is used to compute the parallel loss rate, both in the open SOL and in the limiter shadow. Default is 0.1.
 
-#. `divbls` : fraction of user-specified impurity source that is added to the divertor reservoir rather than the core plasma reservoir. These particles can return to the core plasma only if `recycling_flag=True` and `wall_recycling>=0`. This parameter is useful to simulate divertor puffing. 
-
 The parallel loss rate in the open SOL and limiter shadow also depends on the local connection length. This is approximated by two parameters: `clen_divertor` and `clen_limiter`, in the open SOL and the limiter shadow, respectively. These connection lengths can be approximated using the edge safety factor and the major radius from the `geqdsk`, making use of the :py:func:`~aurora.grids_utils.estimate_clen` function.
+
 
 
 

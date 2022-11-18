@@ -20,11 +20,11 @@ sys.path.insert(0, os.path.abspath('../aurora'))
 # -- Project information -----------------------------------------------------
 
 project = 'Aurora'
-copyright = '2020, F.Sciortino'
+copyright = '2020, F. Sciortino'
 author = 'F.Sciortino'
 
 # The full version, including alpha/beta/rc tags
-release = '1.0.0'
+release = '2.1.2'
 
 # FS: this seems to be useful for local build
 master_doc = 'index'
