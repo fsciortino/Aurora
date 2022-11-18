@@ -1,19 +1,54 @@
-import numpy as np,sys,os
+# MIT License
+#
+# Copyright (c) 2021 Francesco Sciortino
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+import numpy as np, sys, os
 from scipy.interpolate import interp1d, RectBivariateSpline
-from . import grids_utils
 import copy
-
-def get_rhop_RZ(R,Z, geqdsk):
-    '''Find rhop at every R,Z [m] based on the equilibrium in the geqdsk dictionary.
-    '''
-    return RectBivariateSpline(geqdsk['AuxQuantities']['Z'],
-                               geqdsk['AuxQuantities']['R'],
-                               geqdsk['AuxQuantities']['RHOpRZ']).ev(Z,R)
+from scipy.ndimage.interpolation import map_coordinates
+from scipy.interpolate import InterpolatedUnivariateSpline
+from . import grids_utils
 
 
+def get_rhop_RZ(R, Z, geqdsk):
+    """Find rhop at every R,Z [m] based on the equilibrium in the geqdsk dictionary.
+    """
+    return RectBivariateSpline(
+        geqdsk["AuxQuantities"]["Z"],
+        geqdsk["AuxQuantities"]["R"],
+        geqdsk["AuxQuantities"]["RHOpRZ"],
+    ).ev(Z, R)
 
-def vol_average(quant, rhop, method='omfit', geqdsk=None, device=None, shot=None, time=None, return_geqdsk=False):
-    '''Calculate the volume average of the given radially-dependent quantity on a rhop grid. 
+
+def vol_average(
+    quant,
+    rhop,
+    method="omfit",
+    geqdsk=None,
+    device=None,
+    shot=None,
+    time=None,
+    return_geqdsk=False,
+):
+    """Calculate the volume average of the given radially-dependent quantity on a rhop grid. 
 
     Parameters
     ----------
@@ -49,43 +84,56 @@ def vol_average(quant, rhop, method='omfit', geqdsk=None, device=None, shot=None
         of the radial grid will be attempted. This does not affect volume averages within the LCFS. 
     geqdsk : dict
         Only returned if return_geqdsk=True. 
-    '''
-    if time is not None and np.mean(time)<1e2:
-        print('Input time was likely in the wrong units! It should be in [ms]!')
-    if np.max(rhop)>1.0:
-        print("Input rhop goes beyond the LCFS! Results may not be meaningful (and can only be obtained via method=='fs').")
-        
+    """
+    if time is not None and np.mean(time) < 1e2:
+        print("Input time was likely in the wrong units! It should be in [ms]!")
+    if np.max(rhop) > 1.0:
+        print(
+            "Input rhop goes beyond the LCFS! Results may not be meaningful (and can only be obtained via method=='fs')."
+        )
+
     if geqdsk is None:
         # Fetch device geqdsk from MDS+ and post-process it using the OMFIT geqdsk format.
         try:
             from omfit_classes import omfit_eqdsk
         except:
-            raise ValueError('Could not import omfit_classes.omfit_eqdsk! Install with pip install omfit_classes')
-        geqdsk = omfit_eqdsk.OMFITgeqdsk('').from_mdsplus(
-            device=device, shot=shot, time=time, SNAPfile='EFIT01',
-            fail_if_out_of_range=False,time_diff_warning_threshold=20)
+            raise ValueError(
+                "Could not import omfit_classes.omfit_eqdsk! Install with pip install omfit_classes"
+            )
+        geqdsk = omfit_eqdsk.OMFITgeqdsk("").from_mdsplus(
+            device=device,
+            shot=shot,
+            time=time,
+            SNAPfile="EFIT01",
+            fail_if_out_of_range=False,
+            time_diff_warning_threshold=20,
+        )
 
-    if method=='fs':
+    if method == "fs":
         # obtain mapping between rhop and r_V coordinates
         rho_pol, r_V_ = grids_utils.get_rhopol_rvol_mapping(geqdsk)
-        
+
         # find r_V corresponding to input rhop (NB: extrapolation in the far SOL should be used carefully)
         r_V = interp1d(rho_pol, r_V_, bounds_error=False)(rhop)
-        
+
         # use convenient volume averaging in r_V coordinates
         if np.any(np.isnan(r_V)):
-            print('Ignoring all nan points! These may derive from an attempted extrapolation or from nan inputs')
-            
+            print(
+                "Ignoring all nan points! These may derive from an attempted extrapolation or from nan inputs"
+            )
+
         vol_avg = rV_vol_average(quant[~np.isnan(r_V)], r_V[~np.isnan(r_V)])
-        
-    elif method=='omfit':
+
+    elif method == "omfit":
         # use fluxSurfaces classes from OMFIT
-        rhopp = np.sqrt(geqdsk['fluxSurfaces']['geo']['psin'])
-        quantp = interp1d(rhop, quant, bounds_error=False,fill_value='extrapolate')(rhopp)
-        vol_avg = geqdsk['fluxSurfaces'].volume_integral(quantp)
+        rhopp = np.sqrt(geqdsk["fluxSurfaces"]["geo"]["psin"])
+        quantp = interp1d(rhop, quant, bounds_error=False, fill_value="extrapolate")(
+            rhopp
+        )
+        vol_avg = geqdsk["fluxSurfaces"].volume_integral(quantp)
 
     else:
-        raise ValueError('Input method for volume average could not be recognized')
+        raise ValueError("Input method for volume average could not be recognized")
 
     if return_geqdsk:
         return vol_avg, geqdsk
@@ -93,8 +141,8 @@ def vol_average(quant, rhop, method='omfit', geqdsk=None, device=None, shot=None
         return vol_avg
 
 
-def rV_vol_average(quant,r_V):
-    '''Calculate a volume average of the given radially-dependent quantity on a r_V grid.
+def rV_vol_average(quant, r_V):
+    """Calculate a volume average of the given radially-dependent quantity on a r_V grid.
     This function makes useof the fact that the r_V radial coordinate, defined as 
     :math:`r_V = \sqrt{ V / (2 \pi^2 R_{axis} }`,
     maps shaped volumes onto a circular geometry, making volume averaging a trivial 
@@ -118,13 +166,14 @@ def rV_vol_average(quant,r_V):
     -------
     quant_vol_avg : array, (space, ...)
         Volume average of the quantity given as an input, in the same units as in the input
-    '''
-    quant_vol_avg = 2.*np.cumsum(quant*r_V*np.diff(r_V,prepend=0.0)) / (r_V[-1]**2 )
+    """
+    quant_vol_avg = (
+        2.0 * np.cumsum(quant * r_V * np.diff(r_V, prepend=0.0)) / (r_V[-1] ** 2)
+    )
 
     return quant_vol_avg
 
 
-    
 def rad_coord_transform(x, name_in, name_out, geqdsk):
     """Transform from one radial coordinate to another. Note that this coordinate conversion is only
     strictly valid inside of the LCFS. A number of common coordinate nomenclatures are accepted, but
@@ -151,87 +200,164 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
     x = copy.deepcopy(x)
 
     # avoid confusion with name conventions
-    conventions = {'rvol':'rvol', 'r_vol':'rvol', 'r_V':'rvol',
-                   'rhon':'rhon', 'rho_tor':'rhon', 'rho_pol':'rhop', 'rhop':'rhop',
-                   'r/a':'r/a', 'roa':'r/a', 'rhov':'rhov', 'rho_V':'rhov', 'rho_v':'rhov',
-                   'Rmid':'Rmid', 'R_mid':'Rmid', 'rmid':'rmid', 'r_mid':'rmid'}
+    conventions = {
+        "rvol": "rvol",
+        "r_vol": "rvol",
+        "r_V": "rvol",
+        "rhon": "rhon",
+        "psin": "psin",
+        "Psin": "psin",
+        "rho_tor": "rhon",
+        "rho_pol": "rhop",
+        "rhop": "rhop",
+        "r/a": "r/a",
+        "roa": "r/a",
+        "rhov": "rhov",
+        "rho_V": "rhov",
+        "rho_v": "rhov",
+        "Rmid": "Rmid",
+        "R_mid": "Rmid",
+        "rmid": "rmid",
+        "r_mid": "rmid",
+    }
     name_in = conventions[name_in]
     name_out = conventions[name_out]
-        
-    if 'rvol' not in geqdsk['fluxSurfaces']['geo']:
-        R0 = geqdsk['RMAXIS']
-        eq_vol = geqdsk['fluxSurfaces']['geo']['vol']
-        rvol = np.sqrt(eq_vol/(2*np.pi**2*R0))
-        geqdsk['fluxSurfaces']['geo']['rvol'] = rvol
+
+    if "rvol" not in geqdsk["fluxSurfaces"]["geo"]:
+        R0 = geqdsk["RMAXIS"]
+        eq_vol = geqdsk["fluxSurfaces"]["geo"]["vol"]
+        rvol = np.sqrt(eq_vol / (2 * np.pi ** 2 * R0))
+        geqdsk["fluxSurfaces"]["geo"]["rvol"] = rvol
 
     # sqrt(norm. tor. flux)
-    rhon_ref = geqdsk['fluxSurfaces']['geo']['rhon']
+    rhon_ref = geqdsk["fluxSurfaces"]["geo"]["rhon"]
     # norm. pol. flux
-    psin_ref = geqdsk['fluxSurfaces']['geo']['psin']
+    psin_ref = geqdsk["fluxSurfaces"]["geo"]["psin"]
     # sqrt(norm. pol. flux)
     rhop_ref = np.sqrt(psin_ref)
     # volume radius
-    rvol = geqdsk['fluxSurfaces']['geo']['rvol']
+    rvol = geqdsk["fluxSurfaces"]["geo"]["rvol"]
     # R at midplane
-    Rmid = geqdsk['fluxSurfaces']['midplane']['R']
+    Rmid = geqdsk["fluxSurfaces"]["midplane"]["R"]
     # r at midplane
-    R0 = geqdsk['fluxSurfaces']['R0']
+    R0 = geqdsk["fluxSurfaces"]["R0"]
     rmid = Rmid - R0
 
     # Interpolate to transform coordiantes
-    if name_in == 'rhon':
+    if name_in == "rhon":
         coord_in = rhon_ref
-    elif name_in == 'rhop':
+    if name_in == "psin":
+        coord_in = psin_ref
+    elif name_in == "rhop":
         coord_in = rhop_ref
-    elif name_in == 'rvol':
+    elif name_in == "rvol":
         coord_in = rvol
-    elif name_in == 'rhov':
+    elif name_in == "rhov":
         rvol_lcfs = np.interp(1, rhon_ref, rvol)
-        coord_in = rvol/rvol_lcfs
-    elif name_in == 'Rmid':
-        coord_in = rmid # use rmid since it starts at 0.0, making interpolation easier
-        x -= R0 # make x represent a rmid value
-    elif name_in == 'rmid':
+        coord_in = rvol / rvol_lcfs
+    elif name_in == "Rmid":
+        coord_in = rmid  # use rmid since it starts at 0.0, making interpolation easier
+        x -= R0  # make x represent a rmid value
+    elif name_in == "rmid":
         coord_in = rmid
-    elif name_in == 'r/a':
+    elif name_in == "r/a":
         rmid_lcfs = np.interp(1, rhon_ref, rmid)
-        coord_in = rmid/rmid_lcfs
+        coord_in = rmid / rmid_lcfs
     else:
-        raise ValueError('Input coordinate was not recognized!')
+        raise ValueError("Input coordinate was not recognized!")
 
-    if name_out == 'rhon':
+    if name_out == "rhon":
         coord_out = rhon_ref
-    elif name_out == 'psin':
+    elif name_out == "psin":
         coord_out = psin_ref
-    elif name_out == 'rhop':
+    elif name_out == "rhop":
         coord_out = rhop_ref
-    elif name_out == 'rvol':
+    elif name_out == "rvol":
         coord_out = rvol
-    elif name_out == 'rhov':
+    elif name_out == "rhov":
         rvol_lcfs = np.interp(1, rhon_ref, rvol)
-        coord_out = rvol/rvol_lcfs
-    elif name_out == 'Rmid':
-        coord_out = rmid # use rmid since it starts at 0.0, making interpolation easier
-    elif name_out == 'rmid':
+        coord_out = rvol / rvol_lcfs
+    elif name_out == "Rmid":
+        coord_out = rmid  # use rmid since it starts at 0.0, making interpolation easier
+    elif name_out == "rmid":
         coord_out = rmid
-    elif name_out == 'r/a':
+    elif name_out == "r/a":
         rmid_lcfs = np.interp(1, rhon_ref, rmid)
-        coord_out = rmid/rmid_lcfs
+        coord_out = rmid / rmid_lcfs
     else:
-        raise ValueError('Output coordinate was not recognized!')
+        raise ValueError("Output coordinate was not recognized!")
 
     # trick for better extrapolation
     ind0 = coord_in == 0
-    out = np.interp(x, coord_in[~ind0], coord_out[~ind0]/coord_in[~ind0])*x
+    out = np.interp(x, coord_in[~ind0], coord_out[~ind0] / coord_in[~ind0]) * x
 
-    if (x==coord_in[0]).any() and np.sum(ind0):
+    if (x == coord_in[0]).any() and np.sum(ind0):
         x0 = x == coord_in[0]
         out[x0] = coord_out[ind0]  # give exact magnetic axis
 
-    if name_out=='Rmid':   # interpolation was done on rmid rather than Rmid
+    if name_out == "Rmid":  # interpolation was done on rmid rather than Rmid
         out += R0
 
     return out
 
+
+
+
+
+def rhoTheta2RZ(geqdsk, rho, theta, coord_in='rhop', n_line=201):
+    '''Convert values of rho,theta into R,Z coordinates from a geqdsk dictionary.
+
+    Parameters
+    ----------
+    
+
+    Results
+    -------
+
+
+    '''
+    if isinstance(geqdsk, str):
+        from omfit_classes.omfit_eqdsk import OMFITgeqdsk
+        geqdsk = OMFITgeqdsk(geqdsk)
         
+    line_m = .9 # line length: 0.9 m
+    t = np.linspace(0, 1, n_line)**.5*line_m
+    c, s = np.cos(theta), np.sin(theta)
+
+    tmpc = c[:,None]*t[None]
+    tmps = s[:,None]*t[None]
+    line_r = tmpc + geqdsk['RMAXIS']
+    line_z = tmps + geqdsk['ZMAXIS']
+
+    aux = geqdsk['AuxQuantities']
+    Rmesh = aux['R']
+    Zmesh = aux['Z']
+
+    dr = (Rmesh[-1] - Rmesh[0])/(len(Rmesh) - 1)
+    dz = (Zmesh[-1] - Zmesh[0])/(len(Zmesh) - 1)
+
+    scaling = np.array([dr, dz])
+    offset  = np.array([Rmesh[0], Zmesh[0]])
+
+    coords = np.array((line_r, line_z))
+    index = ((coords.T - offset) / scaling).T
+    
+    psin = map_coordinates(aux['PSIRZ_NORM'], index, mode='nearest',
+                           order=2, prefilter=True)
+
+    rho_line = rad_coord_transform(psin, 'psin', coord_in, geqdsk)
+
+    R = np.empty((len(theta), len(rho)))
+    Z = np.empty((len(theta), len(rho)))
+
+    for k in range(len(theta)):
+        rho_lin = rho_line[k]
+        (tmp, ) = np.where(np.diff(rho_lin) > 0)
+        imax = tmp[-1] + 1
+        R[k] = InterpolatedUnivariateSpline(rho_lin[:imax], line_r[k, :imax], k=2)(rho)
+        Z[k] = InterpolatedUnivariateSpline(rho_line[k, :imax], line_z[k, :imax], k=2)(rho)
+
+    return R,Z
+
+
 
