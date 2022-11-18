@@ -99,13 +99,11 @@ num_sims = int(sim_time / (n_rep * dt))
 ##################################################################################
 
 # do only a few time steps per "run"
-namelist["timing"] = {
-    "dt_increase": np.array([1.0, 1.0]),
-    "dt_start": np.array([dt, sim_time]),
-    "steps_per_cycle": np.array([1, 1]),
-    "times": np.array([0.0, n_rep * dt]),
-}
 
+namelist["timing"]["dt_increase"] = np.array([1.0, 1.0])
+namelist["timing"]["dt_start"] = np.array([dt, sim_time])
+namelist["timing"]["steps_per_cycle"] = np.array([1, 1])
+namelist["timing"]["times"] = np.array([0.0, n_rep * dt])
 
 # set impurity species and sources rate
 imp = namelist["imp"] = "Ar"
@@ -174,7 +172,7 @@ for i in np.arange(num_sims):
     asim.namelist["timing"]["times"] = np.array(
         [(i + 1) * n_rep * dt + dt, (i + 2) * n_rep * dt]
     )
-    asim.setup_grids(plot_time_grid = False,plot_radial_grid = False)
+    asim.setup_grids()
 
     # get charge state densities from latest time step
     nz_old = nz_all[:, :, -1 * n_rep]

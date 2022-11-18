@@ -1,11 +1,3 @@
-"""
-Script to plot relevant data for the plasma-surface interaction models
-(reflection coefficients, bulk/impurity sputtering yields)
-Note that for some data files, the fit are not properly produced yet
-The user is encouraged to manually check the quality of the data,
-stored in /Aurora/aurora/trim_data/, and read the README files
-"""
-
 import matplotlib.pyplot as plt
 import sys
 import os

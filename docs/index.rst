@@ -57,12 +57,13 @@ Documentation contents
    :maxdepth: 4
 
    install
-   model
-   tutorial
    aurora_req
+   model
    params
+   tutorial
    atomic_data
    surface_data
+   external_codes
    citing
    contacts
    aurora

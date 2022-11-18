@@ -114,7 +114,7 @@ aurora.plot_tools.slider_plot(
 )
 
 # Check particle conservation
-out_fd, axs = asim.plot_reservoirs(plot=True)
+out_fd = asim.reservoirs_time_traces(plot=True)
 
 
 ####### Finite volumes (Linder) method #########
@@ -138,7 +138,7 @@ aurora.plot_tools.slider_plot(
 )
 
 # Check particle conservation
-out_fv, axs = asim.plot_reservoirs(plot=True, axs=axs)
+out_fv = asim.reservoirs_time_traces(plot=True)
 
 
 ######### Finite volumes (Linder) evolving neutrals -- under development! #########
@@ -162,7 +162,7 @@ aurora.plot_tools.slider_plot(
 )
 
 # Check particle conservation
-out_fvn, axs = asim.plot_reservoirs(plot=True, axs=axs)
+out_fvn = asim.reservoirs_time_traces(plot=True)
 
 
 ###########################################################################

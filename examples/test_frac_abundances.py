@@ -75,6 +75,6 @@ if plot:
     plt.gca().plot(x_fine, fz_i, ls="--")
 
 # plot atomic relaxation time over Te (no transport) at a single value of ne
-_Te, fz, rate_coeffs = aurora.get_atomic_relax_time(
-    atom_data, np.ones(100) * 1e14, np.logspace(1, 4, 100), ne_tau=np.inf, plot=plot
-)
+# _Te, fz, rate_coeffs = aurora.get_atomic_relax_time(
+#     atom_data, np.ones(100) * 1e14, np.logspace(1, 4, 100), ne_tau=np.inf, plot=plot
+# )

@@ -1,7 +1,9 @@
 !MIT License
 !
 !Copyright (c) 2021 Francesco Sciortino
-!Advanced plasma-wall interaction and recycling model provided by Antonello Zito
+!
+!Extended recycling model and advanced plasma-wall interaction model
+!provided by Antonello Zito
 !
 !Permission is hereby granted, free of charge, to any person obtaining a copy
 !of this software and associated documentation files (the "Software"), to deal

@@ -2,7 +2,10 @@
 """
 # MIT License
 #
-# Copyright (c) 2021 Francesco Sciortino and 2022 Antonello Zito
+# Copyright (c) 2021 Francesco Sciortino
+#
+# Methods related to ELM model, extended recycling model and advanced plasma-wall
+# interaction model provided by Antonello Zito
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -128,68 +131,26 @@ class aurora_sim:
         """
         if namelist is not None:
             self.namelist = namelist
-
-        # Extract other inputs from namelist:
             
-        self.mixing_radius = self.namelist["saw_model"]["rmix"]
-        self.decay_length_boundary = self.namelist["SOL_decay"]
-        
-        # Edge parameters
-        
-        self.screening_eff = self.namelist["screening_eff"]
+        # Extract one by one all the inputs from namelist
+        # as attributes of asim, keeping the same name  
+        for parameter in self.namelist:
+            if isinstance(self.namelist[parameter], dict):
+                for sub_parameter in self.namelist[parameter]:
+                     setattr(self, sub_parameter, self.namelist[parameter][sub_parameter])
+            else:
+                setattr(self, parameter, self.namelist[parameter])
+
+        # consistency checks for divertor parameters
         if self.screening_eff < 0.0 or self.screening_eff > 1.0:
             raise ValueError("screening_eff must be between 0.0 and 1.0!") 
-        self.div_recomb_ratio = self.namelist["div_recomb_ratio"]
         if self.div_recomb_ratio < 0.0 or self.div_recomb_ratio > 1.0:
             raise ValueError("div_recomb_ratio must be between 0.0 and 1.0!") 
-        self.tau_div_SOL_ms = self.namelist["tau_div_SOL_ms"]
         
-        # Plasma-wall interaction parameters
-        
-        self.phys_surfaces = self.namelist["phys_surfaces"]
-        self.recycling_flag = self.namelist["recycling_flag"]
-        self.wall_recycling = self.namelist["wall_recycling"]
-        self.tau_rcl_ret_ms = self.namelist["tau_rcl_ret_ms"]
-        self.surf_mainwall = self.namelist["surf_mainwall"]
-        self.surf_divwall = self.namelist["surf_divwall"]
-        self.mainwall_roughness = self.namelist["mainwall_roughness"]
-        self.divwall_roughness = self.namelist["divwall_roughness"] 
-        self.advanced_PWI_flag = self.namelist['advanced_PWI']['advanced_PWI_flag']
-        self.main_wall_material = self.namelist['advanced_PWI']['main_wall_material']
-        self.div_wall_material = self.namelist['advanced_PWI']['div_wall_material']
-        self.background_species = self.namelist['advanced_PWI']['background_species']
-        self.advanced_PWI_mode = self.namelist['advanced_PWI']['mode']
-        self.advanced_PWI_main_wall_fluxes = self.namelist['advanced_PWI']['main_wall_fluxes']
-        self.advanced_PWI_main_wall_fluxes_ELM = self.namelist['advanced_PWI']['main_wall_fluxes_ELM']
-        self.advanced_PWI_div_wall_fluxes = self.namelist['advanced_PWI']['div_wall_fluxes']
-        self.advanced_PWI_div_wall_fluxes_ELM = self.namelist['advanced_PWI']['div_wall_fluxes_ELM']
-        self.advanced_PWI_files = self.namelist['advanced_PWI']['files']
-        self.characteristic_impact_energy_main_wall = self.namelist['advanced_PWI']['characteristic_impact_energy_main_wall']
-        self.characteristic_impact_energy_div_wall = self.namelist['advanced_PWI']['characteristic_impact_energy_div_wall']
-        self.energetic_recycled_neutrals = self.namelist['advanced_PWI']['energetic_recycled_neutrals']
-        self.Te_ped_intra_ELM = self.namelist['advanced_PWI']["Te_ped_intra_ELM"]
-        self.Te_div_inter_ELM = self.namelist['advanced_PWI']["Te_div_inter_ELM"]
-        self.Te_lim_intra_ELM = self.namelist['advanced_PWI']["Te_lim_intra_ELM"]
-        self.Te_lim_inter_ELM = self.namelist['advanced_PWI']["Te_lim_inter_ELM"]
-        self.Ti_over_Te = self.namelist['advanced_PWI']["Ti_over_Te"]
-        self.gammai = self.namelist['advanced_PWI']["gammai"]
-        
-        # if the advanced plasma-wall interaction model is to be employed, physical
-        #   surfaces of main and divertor walls must be considered
+        # consistency checks for advanced PWI model
         if self.advanced_PWI_flag and not self.phys_surfaces:
             raise ValueError("Implementing the advanced PWI model requires defining the physical wall surface areas!") 
          
-        # Pumping parameters
-        
-        self.phys_volumes = self.namelist["phys_volumes"]
-        self.pump_chamber = self.namelist["pump_chamber"]
-        self.tau_pump_ms = self.namelist["tau_pump_ms"]
-        self.S_pump = self.namelist["S_pump"]
-        self.vol_div = self.namelist["vol_div"]
-        self.L_divpump = self.namelist["L_divpump"]
-        self.vol_pump = self.namelist["vol_pump"]
-        self.L_leak = self.namelist["L_leak"]
-        
         # if phys_volumes and pump_chamber flags are set to False, pumping is done
         # directly from the divertor chamber and is defined by the time tau_pump_ms
         if not self.phys_volumes and not self.pump_chamber:
@@ -198,7 +159,6 @@ class aurora_sim:
             self.L_divpump = 0.0  # no conductance
             self.L_leak = 0.0  # no leakage
             self.S_pump = 0.0
-            
         # if pump_chamber flag is set to False but phys_volumes flag is set to True,
         # pumping is done directly from the divertor chamber and is defined by the
         # pumping speed S_pump
@@ -207,14 +167,13 @@ class aurora_sim:
             self.L_divpump = 0.0  # no conductance
             self.L_leak = 0.0  # no leakage
             self.tau_pump_ms = 0.0
-            
         # if phys_volumes and pump_chamber flags are set to True, pumping is done from
         # a pump chamber, the transport between divertor and pump chambers is defined
         # by the conductance L_divpump, and the pumping from the pump chamber is defined
         # by a pumping speed S_pump
         if self.phys_volumes and self.pump_chamber:
             self.tau_pump_ms = 0.0
-            
+        # consistency check:
         if not self.phys_volumes and self.pump_chamber:    
             raise ValueError("Assuming a secondary pump chamber requires defining the physical chamber volumes!")          
 
@@ -223,14 +182,6 @@ class aurora_sim:
         if not self.recycling_flag:
             self.wall_recycling = -1.0  # no divertor/pump return flows
             
-        # Others
-
-        self.bound_sep = self.namelist["bound_sep"]
-        self.lim_sep = self.namelist["lim_sep"]
-        self.sawtooth_erfc_width = self.namelist["saw_model"]["crash_width"]
-        self.cxr_flag = self.namelist["cxr_flag"]
-        self.nbi_cxr_flag = self.namelist["nbi_cxr_flag"]
-
     def save(self, filename):
         """Save state of `aurora_sim` object.
         """
@@ -310,10 +261,8 @@ class aurora_sim:
             
         # calculate core plasma volume (i.e. volume of region until rvol = rvol_lcfs) and total plasma volume
         ones = np.ones((len(self.time_out),len(self.rvol_grid)))
-        core_vol = grids_utils.vol_int(ones[:,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=self.rvol_lcfs)
-        plasma_vol = grids_utils.vol_int(ones[:,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=None)
-        self.core_vol = core_vol[0]
-        self.plasma_vol = plasma_vol[0]
+        self.core_vol = grids_utils.vol_int(ones[:,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=self.rvol_lcfs)[0]
+        self.plasma_vol = grids_utils.vol_int(ones[:,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=None)[0]
                  
         
     def setup_PWI_model(self):
@@ -1090,24 +1039,24 @@ class aurora_sim:
         fluxes_main_wall = np.zeros((len(self.background_species),len(self.time_out)))
         fluxes_div_wall = np.zeros((len(self.background_species),len(self.time_out)))
         
-        if self.advanced_PWI_mode == 'manual':
+        if self.background_mode == 'manual':
         # manually imposed fluxes of all the background species over the entire time grid
         #   on inter- and intra-ELM phases
                     
-            if (len(self.background_species) != len(self.advanced_PWI_main_wall_fluxes) or len(self.background_species) != len(self.advanced_PWI_div_wall_fluxes)):
+            if (len(self.background_species) != len(self.background_main_wall_fluxes) or len(self.background_species) != len(self.background_div_wall_fluxes)):
                 raise ValueError("Declared number of background species for advanced PWI model not consistent with declared number of background fluxes!")  
                 
             if not self.namelist['ELM_model']['ELM_flag']:
                 # set wall fluxes of the background species to constant value over entire time grid
                 
                 for i in range(0,len(self.background_species)):
-                    fluxes_main_wall[i,:] = np.full(len(self.time_out),self.advanced_PWI_main_wall_fluxes[i])
-                    fluxes_div_wall[i,:] = np.full(len(self.time_out),self.advanced_PWI_div_wall_fluxes[i])
+                    fluxes_main_wall[i,:] = np.full(len(self.time_out),self.background_main_wall_fluxes[i])
+                    fluxes_div_wall[i,:] = np.full(len(self.time_out),self.background_div_wall_fluxes[i])
                 
             else:
                 # impose also a peak value during ELMs
                     
-                    if (len(self.background_species) != len(self.advanced_PWI_main_wall_fluxes_ELM) or len(self.background_species) != len(self.advanced_PWI_div_wall_fluxes_ELM)):
+                    if (len(self.background_species) != len(self.background_main_wall_fluxes_ELM) or len(self.background_species) != len(self.background_div_wall_fluxes_ELM)):
                         raise ValueError("Declared number of background species for advanced PWI model not consistent with declared number of background ELM peak fluxes!")
                         
                     for i in range(0,len(self.background_species)):
@@ -1118,30 +1067,30 @@ class aurora_sim:
                         
                         # normalize the time-dependent shape so that its peaks value equates
                         #   the difference between flux_peak_intra_ELM and flux_inter_ELM
-                        shape_norm_main = shape/(max_shape/(self.advanced_PWI_main_wall_fluxes_ELM[i] - self.advanced_PWI_main_wall_fluxes[i]))
-                        shape_norm_div = shape/(max_shape/(self.advanced_PWI_div_wall_fluxes_ELM[i] - self.advanced_PWI_div_wall_fluxes[i]))
+                        shape_norm_main = shape/(max_shape/(self.background_main_wall_fluxes_ELM[i] - self.background_main_wall_fluxes[i]))
+                        shape_norm_div = shape/(max_shape/(self.background_div_wall_fluxes_ELM[i] - self.background_div_wall_fluxes[i]))
 
                         # now add this normalized shape to the inter-ELM value in order to achieve
                         #   background fluxes which flatten on their inter-ELM values during inter-ELM phases
                         #   but peak at wall_fluxes_ELM in the moment of maximum ELM-carried flux
-                        flux_main_wall_inter_ELM = np.full(len(self.time_out),self.advanced_PWI_main_wall_fluxes[i])
+                        flux_main_wall_inter_ELM = np.full(len(self.time_out),self.background_main_wall_fluxes[i])
                         fluxes_main_wall[i,:] = flux_main_wall_inter_ELM + shape_norm_main
-                        flux_div_wall_inter_ELM = np.full(len(self.time_out),self.advanced_PWI_div_wall_fluxes[i])
+                        flux_div_wall_inter_ELM = np.full(len(self.time_out),self.background_div_wall_fluxes[i])
                         fluxes_div_wall[i,:] = flux_div_wall_inter_ELM + shape_norm_div 
 
-        elif self.advanced_PWI_mode == 'files':
+        elif self.background_mode == 'files':
         # fluxes of all the background species taken from aurora simulations performed
         #   in advance, one for each background species, on the same time grid of the
         #   current simulation
             
-            if len(self.background_species) != len(self.advanced_PWI_files):
+            if len(self.background_species) != len(self.background_files):
                 raise ValueError("Declared number of background species for advanced PWI model not consistent with declared number of background simulation files!")       
             
             # Wall fluxes for the background species
             for i in range(0,len(self.background_species)):
                 
                 # Load background simulation data
-                reservoirs_background = pd.read_pickle(self.advanced_PWI_files[i])
+                reservoirs_background = pd.read_pickle(self.background_files[i])
                 
                 if len(reservoirs_background['total_flux_mainwall']) != len(self.time_out):
                     raise ValueError("Time grids of current simulation and background simulations do not match!")       
@@ -1205,12 +1154,12 @@ class aurora_sim:
         
             # Impact energy for the simulated species itself (index 0)
             # Single values
-            E0_main_wall = surface.get_impact_energy(self.Te_lim_inter_ELM,
+            E0_main_wall = surface.get_impact_energy(self.Te_lim,
                                                      self.imp,
                                                      mode = 'sheath',
                                                      Ti_over_Te = self.Ti_over_Te,
                                                      gammai = self.gammai)
-            E0_div_wall = surface.get_impact_energy(self.Te_div_inter_ELM,
+            E0_div_wall = surface.get_impact_energy(self.Te_div,
                                                     self.imp,
                                                     mode = 'sheath',
                                                     Ti_over_Te = self.Ti_over_Te,
@@ -1222,12 +1171,12 @@ class aurora_sim:
             # Impact energies for the background species (indices 1+)
             for i in range(1,len(self.background_species)+1):
                 # Single values
-                E0_main_wall_temp = surface.get_impact_energy(self.Te_lim_inter_ELM,
+                E0_main_wall_temp = surface.get_impact_energy(self.Te_lim,
                                                               self.background_species[i-1],
                                                               mode = 'sheath',
                                                               Ti_over_Te = self.Ti_over_Te,
                                                               gammai = self.gammai)
-                E0_div_wall_temp = surface.get_impact_energy(self.Te_div_inter_ELM,
+                E0_div_wall_temp = surface.get_impact_energy(self.Te_div,
                                                              self.background_species[i-1],
                                                              mode = 'sheath',
                                                              Ti_over_Te = self.Ti_over_Te,
@@ -1237,6 +1186,58 @@ class aurora_sim:
                 impact_energy_div_wall[i,:] = np.full(len(self.time_out),E0_div_wall_temp)
         
         return impact_energy_main_wall, impact_energy_div_wall
+    
+    
+    def centrifugal_asym(self, omega, Zeff, plot=False):
+        """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the
+        :py:func:`~aurora.synth_diags.centrifugal_asymmetry` function docstring for details.
+
+        In this function, we use the average Z of the impurity species in the Aurora simulation result, using only
+        the last time slice to calculate fractional abundances. The CF lambda factor
+
+        Parameters
+        -----------------
+        omega : array (nt,nr) or (nr,) [ rad/s ]
+             Toroidal rotation on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
+        Zeff : array (nt,nr), (nr,) or float
+             Effective plasma charge on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
+             Alternatively, users may give Zeff as a float (taken constant over time and space).
+        plot : bool
+            If True, plot asymmetry factor :math:`\lambda` vs. radius
+
+        Returns
+        ------------
+        CF_lambda : array (nr,)
+            Asymmetry factor, defined as :math:`\lambda` in the :py:func:`~aurora.synth_diags.centrifugal_asymmetry` function
+            docstring.
+        """
+        # this method requires all charge states to be made available
+        try:
+            assert self.res[0].shape[1] == self.Z_imp + 1
+        except AssertionError:
+            raise ValueError(
+                "centrifugal_asym method requires all charge state densities to be availble! Unstage superstages."
+            )
+
+        fz = self.res[0][..., -1] / np.sum(self.res[0][..., -1], axis=1)[:, None]
+        Z_ave_vec = np.sum(fz * np.arange(self.Z_imp + 1)[None, :], axis=1)
+
+        self.CF_lambda = synth_diags.centrifugal_asymmetry(
+            self.rhop_grid,
+            self.Rlfs,
+            omega,
+            Zeff,
+            self.A_imp,
+            Z_ave_vec,
+            self.Te,
+            self.Ti,
+            main_ion_A=self.main_ion_A,
+            plot=plot,
+            nz=self.res[0][..., -1],
+            geqdsk=self.geqdsk,
+        ).mean(0)
+
+        return self.CF_lambda
       
 
     def superstage_DV(self, D_z, V_z, times_DV=None, opt=1):
@@ -1617,12 +1618,12 @@ class aurora_sim:
                 self.rvol_grid,
                 self.pro_grid,
                 self.qpr_grid,
-                self.mixing_radius,
-                self.decay_length_boundary,
+                self.rmix,
+                self.SOL_decay,
                 self.time_grid,
                 self.saw_on,
                 self.save_time,
-                self.sawtooth_erfc_width,  # dsaw width  [cm]
+                self.crash_width,  # dsaw width  [cm]
                 self.wall_recycling,
                 self.tau_div_SOL_ms * 1e-3,  # [s]
                 self.tau_pump_ms * 1e-3,  # [s]
@@ -1657,12 +1658,12 @@ class aurora_sim:
                 self.rvol_grid, # radial grid values of rho_vol
                 self.pro_grid,
                 self.qpr_grid,
-                self.mixing_radius,
-                self.decay_length_boundary,
+                self.rmix,
+                self.SOL_decay,
                 self.time_grid, # time grid values
                 self.saw_on, # logic key for sawteeth model
                 self.save_time,
-                self.sawtooth_erfc_width,  # dsaw width [cm]
+                self.crash_width,  # dsaw width [cm]
                 self.wall_recycling, # recycling key
                 self.screening_eff, # screening coefficient
                 self.div_recomb_ratio, # divertor recombination coefficient
@@ -1759,7 +1760,7 @@ class aurora_sim:
                 )
 
             # Plot reservoirs and particle conservation
-            _ = self.plot_reservoirs(plot=True)
+            _ = self.reservoirs_time_traces(plot=True)
             
             if self.namelist['ELM_model']['ELM_flag'] and plot_average:
                 
@@ -1781,11 +1782,11 @@ class aurora_sim:
                 )
                 
                 # Plot reservoirs and particle conservation, averaged over cycles
-                _ = self.plot_reservoirs_average(interval = interval,plot = True)
+                _ = self.reservoirs_average_time_traces(interval = interval,plot = True)
 
         # Plot PWI model
         if plot_PWI and self.advanced_PWI_flag:
-            _ = self.plot_PWI_model(interval = interval,plot = True)
+            _ = self.PWI_time_traces(interval = interval,plot = True)
 
         if len(self.superstages) and unstage:
             # "unstage" superstages to recover estimates for density of all charge states
@@ -2002,6 +2003,7 @@ class aurora_sim:
             "dt_increase": [dt_increase, 1.0],
             "steps_per_cycle": [1, 1],
             "times": [0.0, max_sim_time],
+            "time_start_plot": self.time_start_plot,
         }
 
         # prepare radial and temporal grid
@@ -2256,58 +2258,6 @@ class aurora_sim:
         compression = np.divide(n_div, n_core, out=np.zeros_like(n_div), where=n_core!=0)
 
         return n_core, n_div, compression
-        
-    
-    def centrifugal_asym(self, omega, Zeff, plot=False):
-        """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the
-        :py:func:`~aurora.synth_diags.centrifugal_asymmetry` function docstring for details.
-
-        In this function, we use the average Z of the impurity species in the Aurora simulation result, using only
-        the last time slice to calculate fractional abundances. The CF lambda factor
-
-        Parameters
-        -----------------
-        omega : array (nt,nr) or (nr,) [ rad/s ]
-             Toroidal rotation on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
-        Zeff : array (nt,nr), (nr,) or float
-             Effective plasma charge on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
-             Alternatively, users may give Zeff as a float (taken constant over time and space).
-        plot : bool
-            If True, plot asymmetry factor :math:`\lambda` vs. radius
-
-        Returns
-        ------------
-        CF_lambda : array (nr,)
-            Asymmetry factor, defined as :math:`\lambda` in the :py:func:`~aurora.synth_diags.centrifugal_asymmetry` function
-            docstring.
-        """
-        # this method requires all charge states to be made available
-        try:
-            assert self.res[0].shape[1] == self.Z_imp + 1
-        except AssertionError:
-            raise ValueError(
-                "centrifugal_asym method requires all charge state densities to be availble! Unstage superstages."
-            )
-
-        fz = self.res[0][..., -1] / np.sum(self.res[0][..., -1], axis=1)[:, None]
-        Z_ave_vec = np.sum(fz * np.arange(self.Z_imp + 1)[None, :], axis=1)
-
-        self.CF_lambda = synth_diags.centrifugal_asymmetry(
-            self.rhop_grid,
-            self.Rlfs,
-            omega,
-            Zeff,
-            self.A_imp,
-            Z_ave_vec,
-            self.Te,
-            self.Ti,
-            main_ion_A=self.main_ion_A,
-            plot=plot,
-            nz=self.res[0][..., -1],
-            geqdsk=self.geqdsk,
-        ).mean(0)
-
-        return self.CF_lambda
 
     
     def plot_resolutions(self, plot_radial_grid = True, plot_time_grid = True):
@@ -2446,7 +2396,7 @@ class aurora_sim:
                 ax4.set_ylim(0,np.max(self.n0[0,:])*1.15)
 
 
-    def plot_reservoirs(self, plot=True, axs=None, plot_resolutions=False):
+    def reservoirs_time_traces(self, plot=True, axs=None, plot_resolutions=False):
         """Plot the particle content in the various reservoirs
         and check the particle conservation for an aurora simulation.
 
@@ -2626,12 +2576,14 @@ class aurora_sim:
             ax1[1, 1].set_title('Main wall recycling rate', loc='right', fontsize = 11)
 
             if self.namelist["phys_surfaces"]:
-                ax1[1, 2].plot(self.time_plot, reservoirs["particle_density_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
+                if not self.advanced_PWI_flag:
+                    ax1[1, 2].plot(self.time_plot, reservoirs["particle_density_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
                 ax1[1, 2].plot(self.time_plot, reservoirs["particle_density_retained_at_main_wall"],
                     label="Particles retained", color = light_grey)
                 ax1[1, 2].set_ylabel('[$cm^{-2}$]')              
             else:
-                ax1[1, 2].plot(self.time_plot, reservoirs["particles_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
+                if not self.advanced_PWI_flag:
+                    ax1[1, 2].plot(self.time_plot, reservoirs["particles_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
                 ax1[1, 2].plot(self.time_plot, reservoirs["particles_retained_at_main_wall"],
                     label="Particles retained", color = light_grey)
                 ax1[1, 2].set_ylabel('[#]')  
@@ -2657,12 +2609,14 @@ class aurora_sim:
             ax1[2, 1].set_title('Divertor wall recycling rate', loc='right', fontsize = 11)
             
             if self.namelist["phys_surfaces"]:
-                ax1[2, 2].plot(self.time_plot, reservoirs["particle_density_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
+                if not self.advanced_PWI_flag:
+                    ax1[2, 2].plot(self.time_plot, reservoirs["particle_density_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
                 ax1[2, 2].plot(self.time_plot, reservoirs["particle_density_retained_at_div_wall"],
                     label="Particles retained", color = grey)
                 ax1[2, 2].set_ylabel('[$cm^{-2}$]')              
             else:
-                ax1[2, 2].plot(self.time_plot, reservoirs["particles_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
+                if not self.advanced_PWI_flag:
+                    ax1[2, 2].plot(self.time_plot, reservoirs["particles_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
                 ax1[2, 2].plot(self.time_plot, reservoirs["particles_retained_at_div_wall"],
                     label="Particles retained", color = grey)
                 ax1[2, 2].set_ylabel('[#]')   
@@ -2751,7 +2705,7 @@ class aurora_sim:
         else:
             return reservoirs
   
-    def plot_reservoirs_average(self, interval, plot=True, axs=None, plot_resolutions=False):
+    def reservoirs_average_time_traces(self, interval, plot=True, axs=None, plot_resolutions=False):
         """Plot the particle content in the various reservoirs
         time-averaged over user-defined cycles.
 
@@ -2936,12 +2890,14 @@ class aurora_sim:
             ax1[1, 1].set_title('Main wall recycling rate', loc='right', fontsize = 11)
 
             if self.namelist["phys_surfaces"]:
-                ax1[1, 2].plot(time_average, reservoirs["particle_density_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
+                if not self.advanced_PWI_flag:
+                    ax1[1, 2].plot(time_average, reservoirs["particle_density_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
                 ax1[1, 2].plot(time_average, reservoirs["particle_density_retained_at_main_wall"],
                     label="Particles retained", color = light_grey)
                 ax1[1, 2].set_ylabel('[$cm^{-2}$]')            
             else:
-                ax1[1, 2].plot(time_average, reservoirs["particles_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
+                if not self.advanced_PWI_flag:
+                    ax1[1, 2].plot(time_average, reservoirs["particles_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
                 ax1[1, 2].plot(time_average, reservoirs["particles_retained_at_main_wall"],
                     label="Particles retained", color = light_grey)
                 ax1[1, 2].set_ylabel('[#]')
@@ -2967,12 +2923,14 @@ class aurora_sim:
             ax1[2, 1].set_title('Divertor wall recycling rate', loc='right', fontsize = 11)
             
             if self.namelist["phys_surfaces"]:
-                ax1[2, 2].plot(time_average, reservoirs["particle_density_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
+                if not self.advanced_PWI_flag:
+                    ax1[2, 2].plot(time_average, reservoirs["particle_density_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
                 ax1[2, 2].plot(time_average, reservoirs["particle_density_retained_at_div_wall"],
                     label="Particles retained", color = grey)
                 ax1[2, 2].set_ylabel('[$cm^{-2}$]')            
             else:
-                ax1[2, 2].plot(time_average, reservoirs["particles_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
+                if not self.advanced_PWI_flag:
+                    ax1[2, 2].plot(time_average, reservoirs["particles_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
                 ax1[2, 2].plot(time_average, reservoirs["particles_retained_at_div_wall"],
                     label="Particles retained", color = grey)
                 ax1[2, 2].set_ylabel('[#]') 
@@ -3053,7 +3011,7 @@ class aurora_sim:
         else:
             return reservoirs 
 
-    def plot_PWI_model(self, interval, plot=True, axs=None):
+    def PWI_time_traces(self, interval = 0.01, plot=True, axs=None):
         """Return and plot data regarding the plasma-wall interaction in the simulation.
 
         Parameters

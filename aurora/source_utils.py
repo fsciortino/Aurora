@@ -27,9 +27,10 @@ import numpy as np
 import copy, sys
 from scipy.constants import m_p, e as q_electron
 from scipy.special import erfc
+import matplotlib.pyplot as plt
 
 
-def get_source_time_history(namelist, Raxis_cm, time):
+def get_source_time_history(namelist, Raxis_cm, time, plot = False):
     """Load source time history based on current state of the namelist.
 
     Parameters
@@ -41,8 +42,10 @@ def get_source_time_history(namelist, Raxis_cm, time):
         Major radius at the magnetic axis [cm]. This is needed to normalize the 
         source such that it is treated as toroidally symmetric -- a necessary
         idealization for 1.5D simulations. 
-    time : array (nt,), optional
+    time : array (nt,)
         Time array the source should be returned on.
+    plot : bool, optional
+        If True, plot the source vs. the time grid. 
 
     Returns
     -------
@@ -51,7 +54,7 @@ def get_source_time_history(namelist, Raxis_cm, time):
 
     Notes
     -----
-    There are 4 options to describe the time-dependence of the source:
+    There are 5 options to describe the time-dependence of the source:
 
     #. namelist['source_type'] == 'file': in this case, a simply formatted 
     source file, with one time point and corresponding and source amplitude on each
@@ -81,7 +84,7 @@ def get_source_time_history(namelist, Raxis_cm, time):
     the source function. 
 
     """
-    imp = namelist["imp"]
+    #imp = namelist["imp"]
 
     if namelist["source_type"] == "file":
         # read time history from a simple file with 2 columns
@@ -143,6 +146,15 @@ def get_source_time_history(namelist, Raxis_cm, time):
     if all(source_time_history == 0):
         raise Exception('Impurity source is zero within the simulation range')
 
+    if plot:
+
+        fig, ax = plt.subplots()
+        fig.suptitle('External particle source')
+        ax.set_xlabel('time [s]')
+        ax.set_ylabel('$\Gamma_{{source}}$ [s$^{{-1}}$]'),
+        ax.plot(time, source)
+        ax.set_ylim(0, None)
+        ax.set_xlim(time[0],time[-1])
 
     return np.asfortranarray(source_time_history)
 

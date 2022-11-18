@@ -41,22 +41,48 @@ rhop = kp["Te"]["rhop"] = kp["ne"]["rhop"] = np.linspace(0, 1, 100)
 kp["ne"]["vals"] = (n_core - n_edge) * (1 - rhop ** n_alpha1) ** n_alpha2 + n_edge
 kp["Te"]["vals"] = (T_core - T_edge) * (1 - rhop ** T_alpha1) ** T_alpha2 + T_edge
 
-# set impurity species and sources rate
-imp = namelist["imp"] = "Ar"
+# set impurity species and main ion species
+namelist["imp"] = "Ar"
+namelist["main_element"] = "D"
+
+# set start and end time
+namelist["timing"]["times"] = [0,0.2]
+
+# set external source
 namelist["source_type"] = "const"
 namelist["source_rate"] = 2e20  # particles/s
 
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
-# set time-independent transport coefficients (flat D=1 m^2/s, V=-2 cm/s)
-D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
-V_z = -2e2 * np.ones(len(asim.rvol_grid))  # cm/s
+# set time-independent transport coefficients profiles at aribrary rho_pol locations
+
+# arbitrary rho_pol locations:
+rhop = [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.85,
+        0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96,
+        0.97, 0.98, 0.99, 1.00, 1.01, 1.02, 1.03,
+        1.04, 1.05, 1.06, 1.07, 1.08, 1.09, 1.10]
+        
+# desired values of D_Z (in cm^2/s) corresponding to each radial location in rhop:
+D = [2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4,
+     1.20e4, 1.00e4, 0.75e4, 0.75e4, 0.75e4, 0.75e4, 0.75e4,
+     0.50e4, 0.50e4, 0.50e4, 0.50e4, 0.75e4, 1.00e4, 1.50e4, 
+     2.00e4, 2.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4]  # cm^2/s  
+
+# desired values of v_Z (in cm/s) corresponding to each radial location in rhop:
+v = [-0.5e2, -0.5e2, -1e2, -3e2, -4e2, -3.5e2, -3.0e2, -1.0e2, -1.5e2, -2.5e2,
+     -5e2, -5e2, -5e2, -5e2, -6e2, -6e2, -6e2,
+     -8e2, -12e2, -15e2, -20e2, -15e2, -12e2, -10e2,
+     -8e2, -6e2, -4e2, -2e2, -2e2, -2e2, -2e2]   # cm/s
+
+# now create the transport arrays to be used as input for aurora and plot them
+D_z = aurora.transport_utils.interp_coeffs(namelist, asim.rhop_grid, D, radial_dependency = True, rhop = rhop, method = 'Pchip_spline', plot = True, name = 'D')
+v_z = aurora.transport_utils.interp_coeffs(namelist, asim.rhop_grid, v, radial_dependency = True, rhop = rhop, method = 'Pchip_spline', plot = True, name = 'v')
 
 # run Aurora forward model and plot the results
 #   (i.e. particle conservation and reservoirs plots)
 #   including the line radiation
-out = asim.run_aurora(D_z, V_z, plot=True, plot_radiation=True)
+out = asim.run_aurora(D_z, v_z, plot=True, plot_radiation=True)
 
 # extract densities and particle numbers in each simulation reservoir
 nz, N_mainwall, N_div, N_out, N_mainret, N_tsu, N_dsu, N_dsul, rclb_rate, rclw_rate = out

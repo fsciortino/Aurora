@@ -6,7 +6,9 @@ radial pinch velocity) and possibly impose other time-dependent models
 """
 # MIT License
 #
-# Copyright (c) 2022 Antonello Zito
+# Copyright (c) 2021 Francesco Sciortino
+#
+# Module provided by Antonello Zito
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -377,16 +379,16 @@ def ELM_cycle_impact_energy_main_wall(species,time_grid,advanced_PWI,ELM_model,t
     """
 
     # intra- and inter-ELM limiter electron temperatures + sheath parameters
-    Te_lim_intra_ELM = advanced_PWI["Te_lim_intra_ELM"]
-    Te_lim_inter_ELM = advanced_PWI["Te_lim_inter_ELM"]
+    Te_lim_ELM = advanced_PWI["Te_lim_ELM"]
+    Te_lim = advanced_PWI["Te_lim"]
     Ti_over_Te = advanced_PWI["Ti_over_Te"]
     gammai = advanced_PWI["gammai"]
     
     # Calculate the inter-ELM impact energy
-    E0_inter_ELM = surface.get_impact_energy(Te_lim_inter_ELM, species, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
+    E0_inter_ELM = surface.get_impact_energy(Te_lim, species, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
 
     # Calculate the peak intra-ELM impact energy
-    E0_peak_intra_ELM = surface.get_impact_energy(Te_lim_intra_ELM, species, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
+    E0_peak_intra_ELM = surface.get_impact_energy(Te_lim_ELM, species, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
     
     # general time-dependent shape following the ELMS onto the entire time grid
     shape = ELM_cycle_shape(time_grid,ELM_model,timing)
@@ -415,18 +417,18 @@ def ELM_cycle_impact_energy_div_wall(species,time_grid,advanced_PWI,ELM_model,ti
     """
 
     # intra-ELM pedestal electron temperature
-    Te_ped_intra_ELM = advanced_PWI["Te_ped_intra_ELM"]
+    Te_ped_ELM = advanced_PWI["Te_ped_ELM"]
     
     # inter-ELM electron temperature on the divertor target + sheath parameters
-    Te_div_inter_ELM = advanced_PWI["Te_div_inter_ELM"]
+    Te_div = advanced_PWI["Te_div"]
     Ti_over_Te = advanced_PWI["Ti_over_Te"]
     gammai = advanced_PWI["gammai"]
     
     # Calculate the inter-ELM impact energy
-    E0_inter_ELM = surface.get_impact_energy(Te_div_inter_ELM, species, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
+    E0_inter_ELM = surface.get_impact_energy(Te_div, species, mode = 'sheath' ,Ti_over_Te = Ti_over_Te, gammai = gammai)
 
     # Calculate the peak intra-ELM impact energy
-    E0_peak_intra_ELM = surface.get_impact_energy(Te_ped_intra_ELM, species, mode = 'FSM')
+    E0_peak_intra_ELM = surface.get_impact_energy(Te_ped_ELM, species, mode = 'FSM')
     
     # general time-dependent shape following the ELMS onto the entire time grid
     shape = ELM_cycle_shape(time_grid,ELM_model,timing)

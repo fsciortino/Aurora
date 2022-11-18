@@ -41,15 +41,20 @@ rhop = kp["Te"]["rhop"] = kp["ne"]["rhop"] = np.linspace(0, 1, 100)
 kp["ne"]["vals"] = (n_core - n_edge) * (1 - rhop ** n_alpha1) ** n_alpha2 + n_edge
 kp["Te"]["vals"] = (T_core - T_edge) * (1 - rhop ** T_alpha1) ** T_alpha2 + T_edge
 
-# set impurity species and sources rate
-imp = namelist["imp"] = "He"
+# set impurity species and main ion species
+namelist["imp"] = "He"
+namelist["main_element"] = "D"
+
+# set start and end time
+namelist["timing"]["times"] = [0,1.0]
+
+# set external source
 namelist["source_type"] = "const"
 namelist["source_rate"] = 2e20  # particles/s
 
-# explicitly set some parameters for the time grid
-namelist['timing']['times'] = [0.0, 2.0] # Start and end times of the simulation
-namelist['timing']['dt_increase'][0] = 1.05 # dt multiplier at every time steps
-namelist['timing']['dt_start'][0] = 5e-5 # dt values at the beginning of the simulation
+# activate recycling
+namelist["recycling_flag"] = True
+namelist["wall_recycling"] = 0.5
 
 # impose ELM parameters
 namelist['ELM_model']['ELM_flag'] = True
@@ -59,13 +64,13 @@ namelist['ELM_model']['ELM_time_windows'] = None
     # If None, then the ELMs take place for the entire duration of the simulation
 namelist['ELM_model']['ELM_frequency'] = 100 # Hz
     # Frequency at which ELM cycles take place
-namelist['ELM_model']['crash_duration'] = 0.05 # ms
+namelist['ELM_model']['crash_duration'] = 0.5 # ms
     # Duration of the time windows, within an ELM, during which the transport coefficients
     #   (at each radial location) are ramped up linearly from their inter-ELM values to their intra-ELM values
 namelist['ELM_model']['plateau_duration'] = 0.0 # ms
     # Duration of the time windows, within an ELM, during which the transport coefficients
     #   (at each radial location) stays constantly at their intra-ELM values
-namelist['ELM_model']['recovery_duration'] = 0.5 # ms
+namelist['ELM_model']['recovery_duration'] = 0.1 # ms
     # Duration of the time windows, within an ELM, during which the transport coefficients
     #   (at each radial location) are ramped down linearly from their intra-ELM values to their inter-ELM values
 

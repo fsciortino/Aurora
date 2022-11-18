@@ -3,22 +3,29 @@ Tutorial
 
 Assuming that you have Aurora already installed on your system, we're now ready to move forward. Some basic Aurora functionality is demonstrated in the `examples` package directory, where users may find a number of useful scripts. Here, we go through some of the same examples and methods.
 
-Running Aurora simulations
---------------------------
+Preparing Aurora simulations
+----------------------------
 
 If Aurora is correctly installed, you should be able to do::
 
   import aurora
+  
+Let's also import some other Python package that we will need::
 
-and then load a default namelist for impurity transport forward modeling::
+  import numpy as np
+  import matplotlib.pyplot as plt
+  
+Now let's load a the Aurora namelist containing the default input parameters::
 
   namelist = aurora.load_default_namelist()
 
-Note that you can always look at where this function is defined in the package by using, e.g.::
+Note that you can always look at where this and other functions are defined in the package by using, e.g.::
 
   aurora.load_default_namelist.__module__
 
-Once you have loaded the default namelist, have a look at the `namelist` dictionary. It contains a number of parameters that are needed for Aurora runs. Some of them, like the name of the device, are only important if automatic fetching of the EFIT equilibrium through `MDSplus` is required, or else it can be ignored (leaving it to its default value). Most of the parameter names should be fairly self-descriptive. Please refer to docstrings throughout the code documentation.
+Once you have loaded the default namelist, have a look at the `namelist` dictionary. It contains a number of parameters that are needed for Aurora runs. See the section :ref:`params` for a complete list of such parameters.
+
+Some of them, like the name of the device, are only important if automatic fetching of the EFIT equilibrium through `MDSplus` is required, or else it can be ignored (leaving it to its default value). Most of the parameter names should be fairly self-descriptive.
 
 Aurora leverages the `omfit_classes` package to interface with MDS+, EFIT, and a number of other codes. Thanks to this, users can focus more on their applications of interest, and less on re-inventing the wheel to write code that the OMFIT Team has kindly made public! To follow the rest of this tutorial, do::
 
@@ -43,59 +50,97 @@ Other file formats (e.g. plasma statefiles, TRANSP outputs, etc.) may also be re
 
 Note that both electron density (`ne`) and temperature (`Te`) must be saved on a `rhop` grid. This grid is internally used by Aurora to map to the `rvol` grid. Also note that, unless otherwise stated, Aurora inputs are always in CGS units, i.e. all spatial quantities are given in :math:`cm`!! (the extra exclamation mark is there for a good reason...).
 
-Next, we specify the ion species that we want to simulate. We can simply do::
+Next, we specify the ion species that we want to simulate, as well as the main ion species. We can simply do::
 
   imp = namelist['imp'] = 'Ar'
+  namelist["main_element"] = "D"
 
-and Aurora will internally find ADAS data for that ion (assuming that this is one of the common ones for fusion modeling). The namelist also contains information on what kind of source of impurities we need to simulate; here we are going to select a constant source (starting at t=0) of :math:`10^{24}` particles/second.::
+and Aurora will internally find ADAS data for that ion (assuming that this is one of the common ones for fusion modeling).
+
+Let's set the duration of the simulation to 0.2 s::
+
+  namelist["timing"]["times"] = [0,0.2]
+
+Let's also select a simple constant source of particles (starting at t=0) of :math:`2\cdot 10^{20}` particles/second::
 
   namelist['source_type'] = 'const'
-  namelist['source_rate'] = 1e24
+  namelist['source_rate'] = 2e20
 
-Time dependent time histories of the impurity source may however be given by selecting `namelist['source_type']="step"` (for a series of step functions), `"synth_LBO"` (for an analytic function resembling a laser-blow-off (LBO) time history) or `"file"` (to load a detailed function from a file). Refer to the :py:meth:`~aurora.source_utils.get_source_time_history` method for more details. 
-
-Assuming that we're happy with all the inputs in the namelist at this point (many more could be changed!), we can now go ahead and set up our Aurora simulation:::
+Assuming that we're happy with all the inputs in the namelist at this point (many more could be changed!), we can now go ahead and set up our Aurora simulation, using the input parameters contained in `namelist` and the magnetic equilibrium contained in `geqdsk`::
 
   asim = aurora.aurora_sim(namelist, geqdsk=geqdsk)
 
-The :py:class:`~aurora.core.aurora_sim` class creates a Python object with spatial and temporal grids, kinetic profiles, atomic rates and all other inputs to the forward model. Aurora uses a diffusive-convective model for particle fluxes, so we need to specify diffusion (D) and convection (V) coefficients next:::
+The :py:class:`~aurora.core.aurora_sim` class creates a Python object with spatial and temporal grids, kinetic profiles, atomic rates and all other inputs to the forward model. For example, it contains, as attributes, the time grid (`asim.time_grid`), the radial grid in different coordinates (`asim.rvol_grid`, `asim.rhop_grid`) and many more else.
 
-  D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
-  V_z = -2e2 * np.ones(len(asim.rvol_grid)) # cm/s
+Running Aurora simulations
+--------------------------
 
-Here we have made use of the `rvol_grid` attribute of the `asim` object, whose name is self-explanatory. This grid has a 1-to-1 correspondence with `asim.rhop_grid`. In the lines above we have created flat profiles of :math:`D=10^4 cm^2/s` and :math:`V=-2\times 10^2 cm/s`, defined on our simulation grids. D's and V's could in principle (and, very often, in practice) be defined with more dimensions to represent a time-dependence and also different values for different charge states. Unless specifed otherwise, Aurora assumes all points of the time grid (now stored in `asim.time_grid`) and all charge states to have the same D and V. See the :py:meth:`aurora.core.run_aurora` method for details on how to speficy further dependencies.
+Finally, let's impose some transport coefficients and run a simulation.
+
+Aurora uses a diffusive-convective model for particle fluxes, so we need to specify diffusion (D) and convection (v) coefficients. The function :py:func:`~aurora.transport_utils.interp_coeffs` function allows to easily impose radial profiles for D and v on the radial grid, after specifying their values at some arbitrary values of :math:`\rho_{pol}`, and then interpolating::
+
+  rhop = [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.85,
+          0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96,
+          0.97, 0.98, 0.99, 1.00, 1.01, 1.02, 1.03,
+          1.04, 1.05, 1.06, 1.07, 1.08, 1.09, 1.10]
+          
+  D = [2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4,
+       1.20e4, 1.00e4, 0.75e4, 0.75e4, 0.75e4, 0.75e4, 0.75e4,
+       0.50e4, 0.50e4, 0.50e4, 0.50e4, 0.75e4, 1.00e4, 1.50e4, 
+       2.00e4, 2.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4]  # cm^2/s  
+
+  v = [-0.5e2, -0.5e2, -1e2, -3e2, -4e2, -3.5e2, -3.0e2, -1.0e2, -1.5e2, -2.5e2,
+       -5e2, -5e2, -5e2, -5e2, -6e2, -6e2, -6e2,
+       -8e2, -12e2, -15e2, -20e2, -15e2, -12e2, -10e2,
+       -8e2, -6e2, -4e2, -2e2, -2e2, -2e2, -2e2]   # cm/s
+
+  D_z = aurora.transport_utils.interp_coeffs(namelist, asim.rhop_grid, D, radial_dependency = True, rhop = rhop, method = 'Pchip_spline', plot = True, name = 'D')
+  v_z = aurora.transport_utils.interp_coeffs(namelist, asim.rhop_grid, v, radial_dependency = True, rhop = rhop, method = 'Pchip_spline', plot = True, name = 'v')
+  
+Having selected `plot = True` in the interpolating functions, the employed transport profiles will be automatically shown:
+
+.. figure:: figs/tutorial_transport_profiles.png
+    :align: center
+    :alt: Constant transport profiles imposed in the simulation
+    :figclass: align-center 
+
+    Constant transport profiles imposed in the simulation
+
+In general (and very often in practice), D and v could be defined with more dimensions to include a time-dependence and also different values for different charge states.
 
 At this point, we are ready to run an Aurora simulation, with::
 
-  out = asim.run_aurora(D_z, V_z)
+  out = asim.run_aurora(D_z, v_z, plot=True)
 
-Blazing fast! Depending on how many time and radial points you have requested (a few hundreds by default), how many charge states you are simulating, etc., a simulation could take as little as <50 ms, which is significantly faster than other code, as far as we know. If you add `use_julia=True` to the :py:meth:`aurora.core.run_aurora` call the run will be even faster; wear your seatbelt!
+Blazing fast! Depending on how many time and radial points you have requested (a few hundreds by default), how many charge states you are simulating, etc., a simulation could take as little as <50 ms, which is significantly faster than other codes, as far as we know. If you add `use_julia=True` to the :py:meth:`aurora.core.run_aurora` call the run will be even faster; wear your seatbelt!
 
-You can easily check the quality of particle conservation in the various reservoirs by using::
+Having selected `plot = True`, some plots of the results will be automatically shown. First of all, we have a table with the time traces of the particle content in the various reservoirs, the main fluxes between these, etc.:
 
-  reservoirs = asim.check_conservation()
-
-which will show the results in full detail. The `reservoirs` output list contains information about how many particles are in the plasma, in the wall reservoir, in the pump, etc.. Refer to the :py:meth:`aurora.core.run_aurora` docstring for details. 
-
-A plot is worth a thousand words, so let's make one for the charge state densities:::
-
-  nz = out[0]  # charge state densities are stored first in the output of the run_aurora method
-  aurora.slider_plot(asim.rvol_grid, asim.time_out, nz.t.transpose(1,0,2),
-                     xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]',
-                     labels=[str(i) for i in np.arange(0,nz.shape[1])],
-		     plot_sum=True, x_line=asim.rvol_lcfs )
-
-You should get a slider showing a result like the following:
-
-.. figure:: figs/aurora_nz_example.jpeg
+.. figure:: figs/tutorial_time_traces.png
     :align: center
-    :alt: Example of charge state density profiles at the end of an Aurora Ar simulation
+    :alt: Time traces from the multi-reservoir particle balance model
+    :figclass: align-center 
+
+    Time traces from the multi-reservoir particle balance model
+
+* In the first row, we have a global balance for the plasma, including the fluxes of particles entering the plasma (through external sources and recycling) and the removel rate. If the net sum is zero, it means that the simulation has reached convergence. Additionally, we also have the total number of particles contained in the plasma, and the total line radiation emitted by the simulated impurity.
+
+* In the second row, we have some time traces regarding the interaction between plasma and main wall. In particular, we have the total impurity flux towards the wall (through radial flux and parallel limiter loss in the SOL), the recycling rate from this, and the total number of particles stuck and retained in it.
+
+* In the third row, we have some time traces regarding the interaction between plasma and divertor wall. In particular, we have the total impurity flux towards the wall (through parallel divertor loss in the SOL), the recycling rate from this, and the total number of particles stuck and retained in it.
+
+* In the fourth row, we have some time traces regarding the neutral reservoirs, namely the backflow rate from the divertor reservoir towards the plasma, the leakage rate from the pump reservoir towards the plasma (if used), and the dynamic content of the employed neutrals reservoirs.
+
+Then, we will also have a slider plot with which we can conveniently explore all the simulated charge state densities at all time steps:
+
+.. figure:: figs/tutorial_plasma_profiles.png
+    :align: center
+    :alt: Simulated charge state density profiles
     :figclass: align-center
 
-    Example of charge state density profiles at the end of an Aurora Ar simulation
+    Simulated charge state density profiles
 
-    
-Use the slider to go over time, as you look at the distributions over radius of all the charge states. It would be really great if you could just save this type of time- and spatially-dependent visualization to a video-format, right? That couldn't be easier, using the :py:func:`~aurora.animate.animate_aurora` function:::
+Use the slider to go over time, as you look at the distributions over radius of all the charge states. It would be really great if you could just save this type of time- and spatially-dependent visualization to a video-format, right? That couldn't be easier, using the :py:func:`~aurora.animate.animate_aurora` function::
 
   aurora.animate_aurora(asim.rhop_grid, asim.time_out, nz.transpose(1,0,2),
                         xlabel=r'$\rho_p$', ylabel='t={:.4f} [s]', zlabel=r'$n_z$ [A.U.]',
@@ -103,28 +148,68 @@ Use the slider to go over time, as you look at the distributions over radius of 
                         plot_sum=True, save_filename='aurora_anim')
 
 After running this, a .mp4 file with the name "aurora_anim.mp4" will be saved locally.
+    
+The main output object of the simulation is the tuple `out`. This contains a number of fields, which might be extracted in an ordered way. The number of fields contained in `out` depends on how advanced is the multi-reservoir model we are using, i.e. on the values of some input parameters in the namelist. Here follows an ordered list of all the possible fields, highlighting in which case they are present, as well as the relative dimensions and units:
 
+* `nz` (r, z, t): impurity density for all charge states in the plasma over time [1/cm^3]. Always present.
 
-Imposing transport coefficient profiles
----------------------------------------
+* `N_mainwall` (t): number of impurity particles permanently stuck at the main wall over time [1/cm]. Always present.
 
+* `N_divwall` (t):  number of impurity particles permanently stuck at the divertor wall over time [1/cm]. Present only if `div_recomb_ratio` < 1.0.
 
+* `N_div` (t):  number of impurity particles within the divertor reservoir over time [1/cm]. Always present.
 
-Including ELM transport in the simulation
------------------------------------------
+* `N_pump` (t):  number of impurity particles within the pump reservoir over time [1/cm]. Present only is `pump_chamber` is True.
 
+* `N_out` (t):  number of impurity particles permanently removed through pumping over time [1/cm]. Always present.
 
+* `N_mainret` (t): number of impurity particles temporarily retained at the main wall over time [1/cm]. Always present.
 
-Using the extended recycling/pumping model
-------------------------------------------
+* `N_divret` (t): number of impurity particles temporarily retained at the divertor wall over time [1/cm]. Present only if `div_recomb_ratio` < 1.0.
 
+* `N_tsu` (t): radial impurity flux towards main wall over time [1/cm/s]. Always present.
 
+* `N_dsu` (t): parallel impurity flux towards divertor wall over time [1/cm/s]. Always present.
 
-Using the advanced plasma-wall interaction model
-------------------------------------------------
+* `N_dsul` (t): parallel impurity flux towards limiter over time [1/cm/s]. Always present.
 
+* `rcld_rate` (t): total recycling flux from divertor wall over time [1/cm/s]. Present only if `div_recomb_ratio` < 1.0.
 
+* `rcld_refl_rate` (t): reflected flux from divertor wall over time [1/cm/s]. Present only if `div_recomb_ratio` < 1.0 and `advanced_PWI_flag` is True.
 
+* `rcld_recl_rate` (t): promptly recycled flux from divertor wall over time [1/cm/s]. Present only if `div_recomb_ratio` < 1.0 and `advanced_PWI_flag` is True.
+
+* `rcld_impl_rate` (t): implanted flux into divertor wall over time [1/cm/s]. Present only if `div_recomb_ratio` < 1.0 and `advanced_PWI_flag` is True.
+
+* `rcld_sput_rate` (1+background_species, t): sputtered fluxes from divertor wall over time [1/cm/s]. Present only if `div_recomb_ratio` < 1.0 and `advanced_PWI_flag` is True.
+
+* `rclb_rate` (t): backflow from divertor reservoir towards the plasma over time [1/cm/s]. Always present.
+
+* `rcls_rate` (t): backflow from divertor reservoir which is screened from the plasma over time [1/cm/s]. Present only if `screening_eff` > 0.0
+
+* `rclp_rate` (t): leakage from pump reservoir towards the plasma over time [1/cm/s]. Present only is `pump_chamber` is True.
+
+* `rclw_rate` (t): total recycling flux from main wall over time [1/cm/s]. Always present.
+
+* `rclw_refl_rate` (t): reflected flux from main wall over time [1/cm/s]. Present only if and `advanced_PWI_flag` is True.
+
+* `rclw_recl_rate` (t): promptly recycled flux from main wall over time [1/cm/s]. Present only if and `advanced_PWI_flag` is True.
+
+* `rclw_impl_rate` (t): implanted flux into main wall over time [1/cm/s]. Present only if and `advanced_PWI_flag` is True.
+
+* `rclw_sput_rate` (1+background_species, t): sputtered fluxes from main wall over time [1/cm/s]. Present only if and `advanced_PWI_flag` is True.
+
+Note that absolute numbers and fluxes are expressed as "per unit of length", since the multi-reservoir model is 0D.
+
+In our case, all the optional fields were not called, therefore `out` can be unpacked simply through::
+
+  nz, N_mainwall, N_div, N_out, N_mainret, N_tsu, N_dsu, N_dsul, rclb_rate, rclw_rate = out
+
+Finally, all the time traces concerning the multi-reservoir model might be also extracted in a dictionary `reservoirs` through::
+
+  reservoirs = asim.reservoirs_time_traces(plot = False)
+
+The names of the various fields in `reservoirs` should be self-explanatory.
 
 Radiation predictions
 ---------------------
@@ -137,39 +222,39 @@ The documentation on :py:func:`~aurora.radiation.compute_rad` gives details on i
 
 Other possible flags of the :py:func:`~aurora.radiation.compute_rad` function include:
 
-#. `sxr_flag`: if True, compute line and continuum radiation in the SXR range using the ADAS "pls" and "prs" files. Bremsstrahlung is also separately computed using the ADAS "pbs" files.
+* `sxr_flag`: if True, compute line and continuum radiation in the SXR range using the ADAS "pls" and "prs" files. Bremsstrahlung is also separately computed using the ADAS "pbs" files.
 
-#. `thermal_cx_rad_flag`: if True, the code checks for inputs `n0` (atomic H/D/T neutral density) and `Ti` (ion temperature) and computes line power due to charge transfer from thermal background neutrals and impurities.
+* `thermal_cx_rad_flag`: if True, the code checks for inputs `n0` (atomic H/D/T neutral density) and `Ti` (ion temperature) and computes line power due to charge transfer from thermal background neutrals and impurities.
 
-#. `spectral_brem_flag`: if True, use the ADAS "brs" files to compute bremsstrahlung at a wavelength specified by the chosen file. 
+* `spectral_brem_flag`: if True, use the ADAS "brs" files to compute bremsstrahlung at a wavelength specified by the chosen file. 
      
 All of the radiation flags are `False` by default.
 
 ADAS files for all calculations are taken by default from the list of files indicated in :py:func:`~aurora.adas_files.adas_files_dict` function, but may be replaced by specifying the `adas_files` dictionary argument to :py:func:`~aurora.radiation.compute_rad`.
 
-Results from :py:func:`~aurora.radiation.compute_rad` are collected in a dictionary (named "rad" above and added as an attribute to the "asim" object, for convenience) with clear keys, described in the function documentation. To get a quick plot of the radiation profiles, e.g. for line radiation from all simulated charge states, one can do::
+Results from :py:func:`~aurora.radiation.compute_rad` are collected in a dictionary (named "rad" above and added as an attribute to the "asim" object, for convenience) with clear keys, described in the function documentation.
+
+To get a quick plot of the radiation profiles, e.g. for line radiation from all simulated charge states, one can do::
 
   aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.rad['line_rad'].transpose(1,2,0),
                      xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel='Total radiation [A.U.]',
                      labels=[str(i) for i in np.arange(0,nz.shape[1])],
                      plot_sum=True, x_line=asim.rvol_lcfs)
 
-		    
-This will give you a slider again, showing figures like this:
-
-.. figure:: figs/aurora_line_rad_example.jpeg
+.. figure:: figs/tutorial_line_radiation.png
     :align: center
-    :alt: Example of line radiation at the end of an Aurora Ar simulation
+    :alt: Simulated line radiation profiles
     :figclass: align-center
 
-    Example of line radiation at the end of an Aurora Ar simulation
+    Simulated line radiation profiles
 
+Radiation profiles might be also plotted automatically, with all the default options in :py:func:`~aurora.radiation.compute_rad`, selecting the optional argument `plot_radiation = True` in the main run_aurora command.
 
 Aurora's radiation modeling capabilities may also be useful when assessing total power radiation for integrated modeling. The :py:func:`~aurora.radiation.radiation_model` function allows one to easily obtain the most important radiation terms at a single time slice, both as power densities (units of :math:`MW/cm^{-3}`) and absolute power (units of :math:`MW`). To obtain the latter form, we need to integrate over flux surface volumes. To do so, we make use of the `geqdsk` dictionary obtained via::
 
   geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
 
-We then pass that to :py:func:`~aurora.radiation.radiation_model`, together with the impurity atomic symbol (`imp`), the `rhop` grid array, electron density (`ne_cm3`) and temperature (`Te_eV`), and optionally also background neutral densities to include thermal charge exchange:::
+We then pass that to :py:func:`~aurora.radiation.radiation_model`, together with the impurity atomic symbol (`imp`), the `rhop` grid array, electron density (`ne_cm3`) and temperature (`Te_eV`), and optionally also background neutral densities to include thermal charge exchange::
 
   res = aurora.radiation_model(imp,rhop,ne_cm3,Te_eV, geqdsk,
                                n0_cm3=None, frac=0.005, plot=True)
@@ -200,7 +285,7 @@ To estimate main ion radiation we can now do::
   
   res_mainion = aurora.radiation_model('H',rhop,ne_cm3,Te_eV, vol, nz_cm3 = niz_cm3, plot=True)
 
-(Note that the atomic data does not discriminate between hydrogen isotopes)
+(Note that the atomic data does not discriminate between hydrogen isotopes).
 In the call above, the neutral density has been included in `niz_cm3`, but note that (1) there is no radiation due to charge exchange between deuterium neutrals and deuterium ions, since they are indistinguishable, and (2) we did not attempt to include the effect of charge exchange on deuterium fractional abundances because `n0_cm3` (included in `niz_cm3` already fully specifies fractional abundances for main ions).
 
 
@@ -212,7 +297,7 @@ Following an Aurora run, one may be interested in what is the contribution of th
 
   asim.calc_Zeff()
 
-This makes use of the electron density profiles (as a function of space and time), stored in the "asim" object, and keeps Zeff contributions separate for each charge state. They can of course be plotted with :py:func:`~aurora.plot_tools.slider_plot`:::
+This makes use of the electron density profiles (as a function of space and time), stored in the "asim" object, and keeps Zeff contributions separate for each charge state. They can of course be plotted with :py:func:`~aurora.plot_tools.slider_plot`::
 
   aurora.slider_plot(asim.rvol_grid, asim.time_out, asim.delta_Zeff.transpose(1,0,2),
                      xlabel=r'$r_V$ [cm]', ylabel='time [s]', zlabel=r'$\Delta$ $Z_{eff}$',
@@ -232,7 +317,7 @@ You should get something that looks like this:
 Ionization equilibrium
 ----------------------
 
-It may be useful to compare and contrast the charge state distributions obtained from an Aurora run with the distributions predicted by pure ionization equilibium, i.e. by atomic physics only, with no trasport. To do this, we only need some kinetic profiles, which for this example we will load from the sample `input.gacode` file available in the "examples" directory:::
+It may be useful to compare and contrast the charge state distributions obtained from an Aurora run with the distributions predicted by pure ionization equilibium, i.e. by atomic physics only, with no trasport. To do this, we only need some kinetic profiles, which for this example we will load from the sample `input.gacode` file available in the "examples" directory::
 
   import omfit_gapy
   inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
@@ -243,7 +328,7 @@ Recall that Aurora generally uses CGS units, so we need to convert electron dens
   ne_vals = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
   Te_vals = inputgacode['Te']*1e3  # keV --> eV
 
-Here we also defined a `rhop` grid from the poloidal flux values in the `inputgacode` dictionary. We can then use the :py:func:`~aurora.atomic.get_atom_data` function to read atomic effective ionization ("scd") and recombination ("acd") from the default ADAS files listed in :py:func:`~aurora.adas_files.adas_files_dict`. In this example, we are going to focus on calcium ions:::
+Here we also defined a `rhop` grid from the poloidal flux values in the `inputgacode` dictionary. We can then use the :py:func:`~aurora.atomic.get_atom_data` function to read atomic effective ionization ("scd") and recombination ("acd") from the default ADAS files listed in :py:func:`~aurora.adas_files.adas_files_dict`. In this example, we are going to focus on calcium ions::
 
   atom_data = aurora.get_atom_data('Ca',['scd','acd'])
 
@@ -263,179 +348,442 @@ The :py:func:`~aurora.atomic.get_frac_abundances` function returns the log-10 of
 
 The figure above shows examples of ionization equilibria for W and Ca as a function of electron temperature. Dashed lines here show the complete/standard result, whereas the continuous lines show examples of charge state bundling (superstaging), using arbitrarily-chosen partitions. Superstaging is an extremely useful and interesting technique to reduce the computational complexity of medium- and high-Z ions, since often the cost of simulations scales linearly (as in Aurora), or worse, with the number of charge states (Z). You can read more about superstaging in the paper `F Sciortino et al 2021 Plasma Phys. Control. Fusion 63 112001 <https://iopscience.iop.org/article/10.1088/1361-6587/ac2890>`_.
 
+
+
+Extending the multi-reservoir particle balance model
+----------------------------------------------------
+
+So far we have been working with most of the input parameters set to their default value. Let's try now to adapt some parameters in order to extend the employed recycling options and fully exploit Aurora's multi-reservoir particle balance.
+
+We start by setting the some input parameters as in the previous tutorial::
+
+  import aurora
   
-Atomic spectra
---------------
+  import numpy as np
+  import matplotlib.pyplot as plt
+  
+  namelist = aurora.load_default_namelist()
+  
+  from omfit_classes import omfit_eqdsk, omfit_gapy
 
-If you have atomic data files containing photon emissivity coefficients (PECs) in ADF15 format, you can use Aurora to combine them and see what the overall spectrum might look like. Let's say you want to look at the :math:`K_\alpha` spectrum of Ca at a specific electron density of :math:`10^{14}` :math:`cm^{-3}` and temperature of 1 keV. Let's begin with a single ADF15 file located at the following path::
+  geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
+  
+  inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
 
-  filepath_he='~/pec#ca18.dat'
+  kp = namelist['kin_profs']
+  kp['Te']['rhop'] = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
+  kp['ne']['vals'] = inputgacode['ne']*1e13    # 1e19 m^-3 --> cm^-3
+  kp['Te']['vals'] = inputgacode['Te']*1e3     # keV --> eV
+  
+  imp = namelist['imp'] = 'Ar'
+  namelist["main_element"] = "D"
 
-The simplest way to check what the spectrum may look like is to weigh contributions from different charge states according to their fractional abundances at ionization equilibrium. Aurora allows you to get the fractional abundances with just a couple of lines::
+  namelist["timing"]["times"] = [0,0.2]
 
-  ion = 'Ca'
-  ne_cm3 = 1e14
-  Te_eV = 1e3
-  atom_data = aurora.get_atom_data(ion,['scd','acd'])
-  Te, fz = aurora.get_frac_abundances(atom_data, np.array([ne_cm3,]), np.array([Te_eV,]), plot=False)
+  namelist["source_type"] = "const"
+  namelist["source_rate"] = 2e20  # particles/s
 
-You can now use the `aurora.get_local_spectrum` function to read all the lines in each ADF15 file and broaden them according to some ion temperature (which could be dictated by broadening mechanisms other than Doppler effects, in principle). For our example, one can do::
+Let's activate now recycling, i.e. we allow particles from the walls and from the neutrals reservoirs to return back to the plasma, which is a more realistic representation of the behavior of an actual tokamak discharge::
 
-  # He-like state
-  out= aurora.get_local_spectrum(filepath_he, ion, ne_cm3, Te_eV, n0_cm3=0.0,
-                               ion_exc_rec_dens=[fz[0,-4], fz[0,-3], fz[0,-2]], # Li-like, He-like, H-like
-                               dlam_A = 0.0, plot_spec_tot=False, no_leg=True,
-			       plot_all_lines=True, ax=None)
-  wave_final_he, spec_ion_he, spec_exc_he, spec_rec_he, spec_dr_he, spec_cx_he, ax = out
+  namelist['recycling_flag'] = True
 
-By changing the `dlam_A` parameter, you can also add a wavelength shift (e.g. from the Doppler effect). The `ion_exc_rec_dens` parameter allows specification of fractional abundances for the charge stages of interest. To be quite general, in the lines above we have included contributions to the spectrum from ionizing, excited and recombining PEC components. By passing an `ax` argument one can also specify which matplotlib axes are used for plotting.
+For this, we need to set a recycling coefficient and a recycling time for the walls::
 
-By repeating the same operations using several ADF15 files, one can overplot contributions to the spectrum from several charge states. As an example, the figure below shows the K-alpha spectrum of Ca, with contributions from Li-like, He-like and H-like Ca, evaluated at 1 keV and :math:`10^{20}` :math:`cm^{-3}`.
+  namelist['wall_recycling'] = 0.8
+  namelist['tau_rcl_ret_ms'] = 2.0  # ms
 
+and a retention time for the divertor neutrals reservoir, i.e. the time scale for the backflow from the divertor reservoir towards the plasma::
 
-.. figure:: figs/Helike_Ca_spectrum_Te1keV_ne1e14cm3_lin.png
+  namelist['tau_div_SOL_ms'] = 2.0  # ms
+
+We can also set more parameters for edge/divertor transport. For example, we can select the fraction of the parallel impurity flux towards the divertor which recombines before reaching the divertor wall, and the screening efficiency of the backflow from the divertor reservoir towards the plasma:::
+
+  namelist['div_recomb_ratio'] = 0.2
+  namelist['screening_eff'] = 0.5
+
+Finally, let's select also realistic parameters for the pumping model. Aurora allows to impose a physical volume for the divertor neutrals reservoir, through::
+
+  namelist['phys_volumes'] = True
+  namelist['vol_div'] = 0.4e6  # cm^3
+
+We can also specify a pumping which takes place not from the divertor reservoir, but from a second "pump" reservoir connected to the divertor (whose volume must be also specified), through::
+
+  namelist['pump_chamber'] = True
+  namelist['vol_pump'] = 1.0e6  # cm^3
+
+Neutral transport and pumping must be finally specified through the following parameters::
+
+  namelist['L_divpump'] = 0.5e8  # cm^3/s, transport conductance from divertor reservoir to pump reservoir
+  namelist['L_leak'] = 0.5e8  # cm^3/s, leakage conductance from pump reservoir towards plasma
+  namelist['S_pump'] = 5.0e7  # cm^3/s, engineering pumping speed applied to the pump reservoir, for permanent particle removal
+
+We can now go ahead and set up our Aurora simulation, using the input parameters contained in `namelist` and the magnetic equilibrium contained in `geqdsk`: ::
+
+    asim = aurora.aurora_sim(namelist, geqdsk=geqdsk)
+
+Again, let's set some transport profiles::
+
+  rhop = [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.85,
+          0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96,
+          0.97, 0.98, 0.99, 1.00, 1.01, 1.02, 1.03,
+          1.04, 1.05, 1.06, 1.07, 1.08, 1.09, 1.10]
+          
+  D = [2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4,
+       1.20e4, 1.00e4, 0.75e4, 0.75e4, 0.75e4, 0.75e4, 0.75e4,
+       0.50e4, 0.50e4, 0.50e4, 0.50e4, 0.75e4, 1.00e4, 1.50e4, 
+       2.00e4, 2.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4]  # cm^2/s  
+
+  v = [-0.5e2, -0.5e2, -1e2, -3e2, -4e2, -3.5e2, -3.0e2, -1.0e2, -1.5e2, -2.5e2,
+       -5e2, -5e2, -5e2, -5e2, -6e2, -6e2, -6e2,
+       -8e2, -12e2, -15e2, -20e2, -15e2, -12e2, -10e2,
+       -8e2, -6e2, -4e2, -2e2, -2e2, -2e2, -2e2]   # cm/s
+
+  D_z = aurora.transport_utils.interp_coeffs(namelist, asim.rhop_grid, D, radial_dependency = True, rhop = rhop, method = 'Pchip_spline', plot = False, name = 'D')
+  v_z = aurora.transport_utils.interp_coeffs(namelist, asim.rhop_grid, v, radial_dependency = True, rhop = rhop, method = 'Pchip_spline', plot = False, name = 'v')
+
+and finally let's run the simulation::
+
+  out = asim.run_aurora(D_z, v_z, plot=True)
+
+Looking at the time traces, we will see several new plots being filled, corresponding to the new non-default options we used.
+
+.. figure:: figs/tutorial_time_traces_extended_recycling.png
     :align: center
-    :alt: example of high-resolution K-alpha spectrum of Ca
+    :alt: Time traces from the extended multi-reservoir particle balance model
+    :figclass: align-center 
+
+    Time traces from the extended multi-reservoir particle balance model
+
+* Having activated wall recycling, we will have a fraction of particles striking the wall being permanently stuck, and the remaning fraction being only temporarily retained, i.e. being later released and producing recycling fluxes.
+
+* Having imposed a recombination ratio < 1.0 in the the divertor, a fraction of the parallel SOL flux will also interact with the divertor wall instead of directly entering the divertor neutrals reservoir. The behavior of the divertor wall is exactly the same as the main wall: however, while particles recycling from the main wall will constitute a new source for the plasma, particle recycling from the divertor wall will fill the divertor neutrals reservoir.
+
+* Having activated the recycling, a backflow from the divertor neutrals reservoir towards the plasma is allowed. However, having imposed a screening factor > 0.0 in the divertor, only a fraction of the flux lost from the divertor will effectively re-enter the plasma.
+
+* Having assumed the presence of a second neutrals reservoir, i.e. the "pump" reservoir, before the actual pump, its content will be also shown, together with the content of the divertor neutrals reservoir. Additionally, having assumed a leakage conductance > 0.0 from the pump, also from this chamber there will be a flux of particles coming back to the plasma.
+
+Note that, having defined actual volumes for the neutrals reservoirs, the particle content in these (rightmost plot in the bottom row) is automatically shown in terms of volumetric densities rather than in absolute number of particles. For consistency, the same is applied to the plasma (center plot in the first row), where volume-averaged density of plasma particles is shown.
+
+Also note that now several more fields will be present in the tuple `out`, which still might be exctracted in an ordered way. In particular, we have now a divertor wall which is activated (as well as the recycling flux from this), an additional screened flux, and a pump reservoir which is activated (as well as the leaked flux from this). So, looking at which additional fields will be present (see list from the previous paragraph), we understand that the correct way to unpack `out` is now::
+
+  nz, N_mainwall, N_divwall, N_div, N_pump, N_out, N_mainret, Ndivret, N_tsu, N_dsu, N_dsul, rcld_rate, rcls_rate, rclb_rate, rclp_rate, rclw_rate = out
+
+Finally, all the time traces concerning the multi-reservoir model might be also extracted, as before, in a dictionary `reservoirs` through::
+
+  reservoirs = asim.reservoirs_time_traces(plot = False)
+
+
+Including ELM transport in the simulation
+-----------------------------------------
+
+Let's try now to use the model which automatically adapt the transport coefficients to a simple phenomenological model to simulate ELM transport.
+
+We start by setting the some input parameters as in the previous tutorial::
+
+  import aurora
+  
+  import numpy as np
+  import matplotlib.pyplot as plt
+  
+  namelist = aurora.load_default_namelist()
+  
+  from omfit_classes import omfit_eqdsk, omfit_gapy
+
+  geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
+  
+  inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
+
+  kp = namelist['kin_profs']
+  kp['Te']['rhop'] = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
+  kp['ne']['vals'] = inputgacode['ne']*1e13    # 1e19 m^-3 --> cm^-3
+  kp['Te']['vals'] = inputgacode['Te']*1e3     # keV --> eV
+  
+  imp = namelist['imp'] = 'He'
+  namelist["main_element"] = "D"
+
+  namelist["timing"]["times"] = [0,1.0]
+
+  namelist["source_type"] = "const"
+  namelist["source_rate"] = 2e20  # particles/s
+  
+  namelist["recycling_flag"] = True
+  namelist["wall_recycling"] = 0.5
+  
+The activation of the ELM model is recognized by Aurora setting::
+
+  namelist['ELM_model']['ELM_flag'] = True
+
+Let's impose now the ELM parameters, namely ELM frequency and the duration of the various phases of the ELM-driven transport modulation::
+
+  namelist['ELM_model']['ELM_frequency'] = 100 # Hz
+  namelist['ELM_model']['crash_duration'] = 0.5 # ms
+  namelist['ELM_model']['plateau_duration'] = 0.0 # ms
+  namelist['ELM_model']['recovery_duration'] = 0.1 # ms
+
+Let's also adapt the time grid, in order to save computation time::
+
+  namelist['ELM_model']['adapt_time_grid'] = True
+  namelist['ELM_model']['dt_intra_ELM'] = 5e-5 # s
+  namelist['ELM_model']['dt_increase_inter_ELM'] = 1.05 
+
+We can now go ahead and set up our Aurora simulation, using the input parameters contained in `namelist` and the magnetic equilibrium contained in `geqdsk`: ::
+
+    asim = aurora.aurora_sim(namelist, geqdsk=geqdsk)
+    
+It is now time to impose the transport. Both for D and for v, we will need to specify two profile: one "inter-ELM", and one "intra-ELM". The time modulation between the two will be done linearly according to the parameters `crash_duration`, `plateau_duration` and `recovery_duration`, with a frequency specified by `ELM_frequency`: ::
+
+  rhop = [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.85,
+          0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96,
+          0.97, 0.98, 0.99, 1.00, 1.01, 1.02, 1.03,
+          1.04, 1.05, 1.06, 1.07, 1.08, 1.09, 1.10]
+      
+  D = [2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4,
+       1.20e4, 1.00e4, 0.75e4, 0.75e4, 0.75e4, 0.75e4, 0.75e4,
+       0.50e4, 0.50e4, 0.50e4, 0.50e4, 0.75e4, 1.00e4, 1.50e4, 
+       2.00e4, 2.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4] # inter-ELM profile, cm^2/s  
+
+  D_ELM = [2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 
+           2.00e4, 1.50e4, 1.00e4, 1.50e4, 2.00e4, 3.00e4, 4.00e4,
+           8.00e4, 16.00e4, 16.00e4, 12.00e4, 8.00e4, 6.00e4, 4.00e4, 
+           4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4] # intra-ELM profile, cm^2/s  
+      
+  v = [-0.5e2, -0.5e2, -1e2, -3e2, -4e2, -3.5e2, -3.0e2, -1.0e2, -1.5e2, -2.5e2,
+       -5e2, -5e2, -5e2, -5e2, -6e2, -6e2, -6e2,
+       -8e2, -12e2, -15e2, -20e2, -15e2, -12e2, -10e2,
+       -8e2, -6e2, -4e2, -2e2, -2e2, -2e2, -2e2] # inter-ELM profile, cm/s  
+
+  v_ELM = [-0.5e2, -0.5e2, -1e2, -3e2, -4e2, -3.5e2, -3.0e2, -1.0e2, -1.5e2, -2.5e2,
+       -5e2, -5e2, -5e2, -5e2, -6e2, -6e2, -6e2,
+       -8e2, -12e2, -15e2, -20e2, -15e2, -12e2, -10e2,
+       -8e2, -6e2, -4e2, -2e2, -2e2, -2e2, -2e2] # intra-ELM profile, cm/s  
+
+  times_transport, D_z = aurora.transport_utils.ELM_model(namelist['timing'], namelist['ELM_model'], asim.rhop_grid, rhop, D, D_ELM, method = 'Pchip_spline', plot = False, name = 'D')
+  times_transport, v_z = aurora.transport_utils.ELM_model(namelist['timing'], namelist['ELM_model'], asim.rhop_grid, rhop, v, v_ELM, method = 'Pchip_spline', plot = False, name = 'v')
+  
+The function :py:func:`~aurora.transport_utils.ELM_model` will automatically create the time array times_transport and the transport arrays D_z, v_z, which we will need to use.
+
+Let's finally run the simulation, explicitly referring to the time array corresponding to the input transport values::
+
+  out = asim.run_aurora(D_z, v_z, times_transport, plot=True, plot_average = True, interval = 0.01)
+
+Again, having selected `plot = True`, some plots of the results will be automatically shown. Additionally, having selected `plot_average = True`, the same plots will be shown also in their "ELM-averaged" version, i.e. showing the values of the various density/fluxes... averaged over the ELM cycles. For this, we will need to specify the argument `interval` with the time interval over which perform the average, i.e. the ELM period, which is in this case 1/100 = 0.01 s.
+
+Here we have the main time traces:
+
+.. figure:: figs/tutorial_time_traces_ELM.png
+    :align: center
+    :alt: Time traces from the multi-reservoir particle balance model including ELMs
+    :figclass: align-center 
+
+    Time traces from the multi-reservoir particle balance model including ELMs
+
+In order to make this more clear, we can plot the same, but averaged over cycles...
+
+.. figure:: figs/tutorial_time_traces_ELM_average.png
+    :align: center
+    :alt: ELM-averaged time traces from the multi-reservoir particle balance model including ELMs
+    :figclass: align-center 
+
+    ELM-averaged time traces from the multi-reservoir particle balance model including ELMs
+
+or we might zoom in and see what ELMs do:
+
+.. figure:: figs/tutorial_time_traces_ELM_zoom.png
+    :align: center
+    :alt: Zoomed-in time traces from the multi-reservoir particle balance model including ELMs
+    :figclass: align-center 
+
+    Zoomed-in time traces from the multi-reservoir particle balance model including ELMs
+    
+Same story for the impurity density profiles: we might observe the individual profile during the ELM cycles, showing the expected degradation of the pedestal in the times of maximum transport...
+
+.. figure:: figs/tutorial_plasma_profiles_ELM.png
+    :align: center
+    :alt: Simulated charge state density profiles including ELMs (left: inter-ELM, right: intra-ELM)
     :figclass: align-center
 
-    Example of high-resolution K-alpha spectrum of Ca
+    Simulated charge state density profiles including ELMs (left: inter-ELM, right: intra-ELM)
+    
+or we might look at the ELM-averaged profile:
 
-
-If you just want to plot where atomic lines are expected to be and how intense their PECs are at specific plasma conditions, you can also use the simpler `aurora.adf15_line_identification` function. This can be called as::
-
-  aurora.adf15_line_identification(pec_files, Te_eV=Te_eV, ne_cm3=ne_cm3, mult=mult)
-
-and can be used to plot something like this:
-
-.. figure:: figs/spectrum_adf15_identification.jpg
+.. figure:: figs/tutorial_plasma_profiles_ELM_average.png
     :align: center
-    :alt: example of Ca spectrum overview combining several PEC files
+    :alt: Simulated ELM-averaged charge state density profiles including ELM
     :figclass: align-center
 
-    Example of Ca spectrum overview combining several PEC files
+    Simulated ELM-averaged charge state density profiles including ELM
+
+Finally, if the ELM model is used, the same time traces contained in reservoirs can be extracted in a dictionary `reservoirs_average`, in their averaged version over ELM cycles, again specifying the interval over which the average is performed, as:::
+
+  reservoirs_average = asim.reservoirs_average_time_traces(interval = 0.01, plot = False) 
 
 
-A&M data from AMJUEL/HYDHEL
--------------------------------
+Using the advanced plasma-wall interaction model
+------------------------------------------------
 
-Aurora allows one to load and process atomic and molecular (A&M) rates collected in the form of polynomial fits in the AMJUEL and HYDHEL databases, publicly released as part of the EIRENE code. These rates are partly redundant and partly complement those provided by ADAS.
-
-The following code illustrates how one may evaluate A&M components of the Balmer lines of deuterium:
-
-.. literalinclude:: ../examples/am_balmer_emission.py
-
-
-Working with neutrals
----------------------
-
-Aurora includes a number of useful functions for neutral modeling, both from the edge of fusion devices (thermal neutrals) and from neutral beams (fast and halo neutrals).
-
-For thermal neutrals, we make use of atomic data from the `Collrad` collisional-radiative model, part of the `DEGAS2`_ code.
-
-.. _DEGAS2: https://w3.pppl.gov/degas2/
-
-The :py:class:`~aurora.neutrals.erh5_file` class allows one to parse the `erh5.dat` file of DEGAS-2 that contains useful information to assess excited state fractions of neutrals in specific kinetic backgrounds. If the `erh5.dat` file is not available already, Aurora will download it and store it locally within its distribution directory. The data in this file is used for example in the :py:func:`~aurora.neutrals.get_exc_state_ratio` function, which given a ground state density of neutrals (`N1`), some ion and electron densities (`ni` and `ne`) and electron temperature (`Te`), will compute the fraction of neutrals in the principal quantum number `m`. Keyword arguments can be passed to this function to plot the results. Note that kinetic inputs may be given as a scalar or as a 1D list/array. The :py:func:`~aurora.neutrals.plot_exc_ratios` function may also be useful to plot the excited state ratios.
-
-Note that in order to find the photon emissivity coefficient of specific neutral lines, the :py:func:`~aurora.atomic.read_adf15` function may be used. For example, to obtain interpolation functions for neutral H Lyman-alpha emissivity, one can use::
-
-  filename = 'pec96#h_pju#h0.dat' # for D Ly-alpha
-  
-  # fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
-  path = aurora.get_adas_file_loc(filename, filetype='adf15')  
-  
-  # load all the transitions in the chosen ADF15 file -- returns a pandas.DataFrame
-  trs = aurora.read_adf15(path)
-
-  # select and plot the Lyman-alpha line at 1215.2 A
-  tr = trs.loc[(trs['lambda [A]']==1215.2) & (trs['type']=='excit')]
-  aurora.plot_pec(tr)
-  
-
-This will plot the Lyman-alpha photon emissivity coefficients (both the components due to excitation and recombination) as a function of temperature in eV, as shown in the figures below.
-
-.. figure:: figs/aurora_h_lya_exc_pec.jpeg
-    :width: 500
-    :align: center
-    :alt: ADAS photon emissivity coefficients for the excitation contribution to the H :math:`Ly_\alpha` transition.
-    :figclass: align-center
-
-    ADAS photon emissivity coefficients for the excitation contribution to the H :math:`Ly_\alpha` transition.
-
-.. figure:: figs/aurora_h_lya_rec_pec.jpeg
-    :width: 500
-    :align: center
-    :alt: ADAS photon emissivity coefficients for the recombination contribution to the H :math:`Ly_\alpha` transition.
-    :figclass: align-center
-
-    ADAS photon emissivity coefficients for the recombination contribution to the H :math:`Ly_\alpha` transition.
-
-
-Some files (e.g. try `pec96#c_pju#c2.dat`) may also have charge exchange components. Note that both the inputs and outputs of the :py:func:`~aurora.atomic.read_adf15` function act on log-10 values, i.e. interpolants should be called on log-10 values of :math:`n_e` and :math:`T_e`, and the result of interpolation will only be in units of :math:`photons \cdot cm^3/s` after one takes the power of 10 of it.
-
-Analysis routines to work with fast and halo neutrals are also provided in Aurora. Atomic rates for charge exchange of impurities with NBI neutrals are taken from Janev & Smith NF 1993 and can be obtained from :py:func:`~aurora.janev_smith_rates.js_sigma`, which wraps a number of functions for specific atomic processes. To compute charge exchange rates between NBI neutrals (fast or thermal) and any ions in the plasma, users need to provide a prediction of neutral densities, likely from an external code like `FIDASIM`_.
-
-.. _FIDASIM: https://d3denergetic.github.io/FIDASIM/
-
-
-Neutral densities for each fast ion population (full-,half- and third-energy), multiple halo generations and a few excited states are expected. Refer to the documentation of :py:func:`~aurora.nbi_neutrals.get_neutrals_fsa` to read about how to provide neutrals on a poloidal cross section so that they may be "flux-surface averaged".
-
-:py:func:`~aurora.nbi_neutrals.bt_rate_maxwell_average` shows how beam-thermal Maxwell-averaged rates can be obtained; :py:func:`~aurora.nbi_neutrals.tt_rate_maxwell_average` shows the equivalent for thermal-thermal Maxwell-averaged rates.
-
-Finally, :py:func:`~aurora.nbi_neutrals.get_NBI_imp_cxr_q` shows how flux-surface-averaged charge exchnage recombination rates between an impurity ion of charge `q` with NBI neutrals (all populations, fast and thermal) can be computed for use in Aurora forward modeling. For more details, feel free to contact Francesco Sciortino (sciortino-at-psfc.mit.edu).
-
-Plotting surface data
----------------------
-
-
-
-Interfacing with SOLPS-ITER
----------------------------
-
-While running SOLPS-ITER is a complex task, reading and processing its results does't need to be. Aurora offers a convenient Python interface to rapidly load results, set them to convenient data arrays, plot on 1D or 2D grids, etc.
-
-Here's an example of how you could load a SOLPS-ITER run and create some useful plots:
-
-.. literalinclude:: ../examples/solps_example.py
-
-
-In this example, we are first loading a SOLPS-ITER case from MDS+, using the default server and tree which are set for Asdex-Upgrade. These MDS+ settings can be easily changed by looking at the docstring for :py:class:`~aurora.solps.solps_case`. The alternative of loading SOLPS output from files on disk (`b2fstate` and `b2fgmry`, in this case) is also shown.
-
-The instantiation of a :py:class:`~aurora.solps.solps_case` object enables a large number of operations based on the SOLPS output. The second part of the script above shows how one can plot 2D data on the B2 grid. The last section demonstrates how the EIRENE output can be displayed both on the B2 grid, on which it is interpolated by SOLPS, or on the native EIRENE grid.
+Finally, let's try to couple the wall recyclng model in Aurora with the advanced plasma-wall interaction model, in which wall retention is simulated according to realistic reflection and sputtering coefficient and wall saturation densities and impact energy/angles of projectile ions.
 
 .. warning::
-    EIRENE results can only be displayed on the EIRENE mesh if EIRENE (`fort.*`) output files are provided. At present, SOLPS output saved to MDS+ trees only provides EIRENE results interpolated on the B2 mesh. 
+    The advanced PWI model is currently only supported for He as impurity and W as wall material, with several other species as projectiles (D, He, B, N). Coefficients for other impurity-wall material-projectile combinations might be, however, easily calculated and implemented. Please contact the code developers if you are interested in some other specific combination of impurity-wall material-projectile.
 
+We start by setting the some input parameters as in the previous tutorial: ::
 
-In the original `Plasma Physics & Fusion Energy <https://iopscience.iop.org/article/10.1088/1361-6587/ac2890>`_ paper on Aurora, an example of processing SOLPS-ITER output for the ITER baseline scenario was described. Some example figures produced via the methods shown above are displayed here below.
+  import aurora
+  
+  import numpy as np
+  import matplotlib.pyplot as plt
+  
+  namelist = aurora.load_default_namelist()
+  
+  from omfit_classes import omfit_eqdsk, omfit_gapy
 
-.. note::
-   Note that no SOLPS results are not distributed with Aurora. You must have the output of a SOLPS-ITER run available to you in order to try out these Aurora capabilities. 
+  geqdsk = omfit_eqdsk.OMFITgeqdsk('example.gfile')
+  
+  inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
 
+  kp = namelist['kin_profs']
+  kp['Te']['rhop'] = kp['ne']['rhop'] = np.sqrt(inputgacode['polflux']/inputgacode['polflux'][-1])
+  kp['ne']['vals'] = inputgacode['ne']*1e13    # 1e19 m^-3 --> cm^-3
+  kp['Te']['vals'] = inputgacode['Te']*1e3     # keV --> eV
+  
+  imp = namelist['imp'] = 'He'
+  namelist["main_element"] = "D"
 
-.. figure:: figs/aurora_solps_iter.jpg
+  namelist["timing"]["times"] = [0,1.0]
+
+  namelist["source_type"] = "const"
+  namelist["source_rate"] = 2e20  # particles/s
+  
+Of course, the recycling needs to be activated: ::
+
+  namelist['recycling_flag'] = True
+  
+Let's also activate some features regarding edge/divertor transport, and pumping: ::
+
+  namelist['screening_eff'] = 0.5
+  namelist['div_recomb_ratio'] = 0.2  # ms
+  namelist['tau_div_SOL_ms'] = 40.0  # ms
+  namelist['phys_volumes'] = True
+  namelist['vol_div'] = 0.4e6  # cm^3
+  namelist['pump_chamber'] = True
+  namelist['vol_pump'] = 1.0e6  # cm^3
+  namelist['L_divpump'] = 0.5e8 # cm^3/s 
+  namelist['L_leak'] = 1.0e6 # cm^3/s
+  namelist['S_pump'] = 1.0e8  # cm^3/s 
+  
+To properly account the number of particles stored in a wall material, we need to specify the surface areas of main and divertor walls which are in contact with the plasma (i.e. over which the impurity fluxes will strike): ::
+
+  namelist['phys_surfaces'] = True
+  namelist['surf_mainwall'] = 1.0e4 # cm^2
+  namelist['surf_divwall'] = 1.0e3 # cm^2    
+
+The main parameter to overall activate the advanced PWI model is: ::
+
+  namelist['advanced_PWI']['advanced_PWI_flag'] = True
+
+We will need now to specify some characteristics of both the walls. First of all, their bulk material: ::
+
+  namelist['advanced_PWI']['main_wall_material'] = 'W'
+  namelist['advanced_PWI']['div_wall_material'] = 'W'
+
+Then, a "saturation value"2 of implanted impurity surface density: ::
+
+  namelist['advanced_PWI']['n_main_wall_sat'] = 1e19  # m^-2
+  namelist['advanced_PWI']['n_div_wall_sat'] = 1e19  # m^-2
+
+and a "characteristic" impact energy of the simulated impurity onto the walls over the entire device lifetime, used by Aurora estimate the implantation depth of the impurity into the wall material: ::
+
+  namelist['advanced_PWI']['characteristic_impact_energy_main_wall'] = 200 # eV
+  namelist['advanced_PWI']['characteristic_impact_energy_div_wall'] = 500 # eV
+
+The last two couples of parameters together will be used to calculate the absolute maximum number of impurity particles which the walls can accomodate as reservoirs.
+
+Now, we should consider that, while the implantation of the impurity is only determined by the flux of the impurity itself hitting a wall surface (which is self-consistently simulated by Aurora), the successive through sputtering is determined by the bombardment of wall by not only the simulated impurity itself, but also by the main ion species in the background (and possibly other impurities present in the simulated experiment). Therefore, the user needs to manually specify the fluxes of all the other present "background species" towards the wall. We will need to do then: ::
+
+  namelist['advanced_PWI']['background_mode'] = 'manual'
+  namelist['advanced_PWI']['background_species'] = ['D']  # list of all background species
+  namelist['advanced_PWI']['background_main_wall_fluxes'] = [1e22]  # s^-1, list of fluxes to main wall for all background species
+  namelist['advanced_PWI']['background_div_wall_fluxes'] = [1e21]  # s^-1, list of fluxes to div. wall for all background species
+
+For determing the coefficient it is also important to calculate the impact energy of the various projectiles onto the wall surface. This is calculated by Aurora specifying the electron temperature at the plasma-material interface: ::
+
+  namelist['advanced_PWI']['Te_lim'] = 10.0 #  eV, main wall
+  namelist['advanced_PWI']['Te_div'] = 15.0 #  eV, div. wall
+
+Finally, let's also include the possibility of the recycled neutrals being re-emitted towards the plasma as energetic, with energies calculated from the plasma-material interaction coefficients: ::
+
+  namelist['advanced_PWI']['energetic_recycled_neutrals'] = True
+
+We are ready! Let's set up our Aurora simulation, using the input parameters contained in `namelist` and the magnetic equilibrium contained in `geqdsk`: ::
+
+    asim = aurora.aurora_sim(namelist, geqdsk=geqdsk)
+
+Again, let's set some transport profiles::
+
+  rhop = [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.85,
+          0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96,
+          0.97, 0.98, 0.99, 1.00, 1.01, 1.02, 1.03,
+          1.04, 1.05, 1.06, 1.07, 1.08, 1.09, 1.10]
+          
+  D = [2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4, 2.00e4,
+       1.20e4, 1.00e4, 0.75e4, 0.75e4, 0.75e4, 0.75e4, 0.75e4,
+       0.50e4, 0.50e4, 0.50e4, 0.50e4, 0.75e4, 1.00e4, 1.50e4, 
+       2.00e4, 2.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4, 4.00e4]  # cm^2/s  
+
+  v = [-0.5e2, -0.5e2, -1e2, -3e2, -4e2, -3.5e2, -3.0e2, -1.0e2, -1.5e2, -2.5e2,
+       -5e2, -5e2, -5e2, -5e2, -6e2, -6e2, -6e2,
+       -8e2, -12e2, -15e2, -20e2, -15e2, -12e2, -10e2,
+       -8e2, -6e2, -4e2, -2e2, -2e2, -2e2, -2e2]   # cm/s
+
+  D_z = aurora.transport_utils.interp_coeffs(namelist, asim.rhop_grid, D, radial_dependency = True, rhop = rhop, method = 'Pchip_spline', plot = False, name = 'D')
+  v_z = aurora.transport_utils.interp_coeffs(namelist, asim.rhop_grid, v, radial_dependency = True, rhop = rhop, method = 'Pchip_spline', plot = False, name = 'v')
+
+and finally let's run the simulation::
+
+  out = asim.run_aurora(D_z, v_z, plot=True, plot_PWI=True)
+  
+The time traces will be similar as before.
+
+.. figure:: figs/tutorial_time_traces_PWI.png
     :align: center
-    :alt: example of SOLPS-ITER output
-    :figclass: align-center
+    :alt: Time traces from the extended multi-reservoir particle balance model with advanced PWI model
+    :figclass: align-center 
 
-    Example of electron density and temperature + atomic D/T neutral density and temperature from a SOLPS-ITER simulation of ITER
+    Time traces from the extended multi-reservoir particle balance model with advanced PWI model
+    
+We note that now there is not an artificial distinction between particles "stuck" and "retained" at the walls. Additionally, having defined actual surface areas for the walls, the particles retained in these are automatically shown in terms of surface densities rather than in absolute number of particles.
 
-.. figure:: figs/aurora_solps_iter_b2_eirene_grids.jpg
+Having also called the argument `plot_PWI=True`, a couple of new windows will show the various time time traces related to plasma-wall interaction, for both main and divertor walls:
+
+.. figure:: figs/tutorial_time_traces_PWI_main.png
     :align: center
-    :alt: example of SOLPS-ITER output on different grids
-    :figclass: align-center
+    :alt: Plasma-wall interaction time traces for the main wall
+    :figclass: align-center 
 
-    Comparison of D/T atomic neutral density on the B2 and EIRENE grids. 
+    Plasma-wall interaction time traces for the main wall
+    
+    
+.. figure:: figs/tutorial_time_traces_PWI_divertor.png
+    :align: center
+    :alt: Plasma-wall interaction time traces for the divertor wall
+    :figclass: align-center 
 
-Aurora capabilities to post-process SOLPS results can be useful, for example, to assess synthetic diagnostics for the edge of a fusion device. For this purpose, the :py:meth:`~aurora.solps.solps_case.eval_LOS` method can help to extract a specific data field from the loaded SOLPS case, interpolating resuls along a line-of-sight (LOS) that goes between two spatial (3D) points. This, combined with Aurora's capability to examine and simulate atomic spectra, reduces the technical barrier to investigate edge physics.
+    Plasma-wall interaction time traces for the divertor wall
+    
+* In the first row, we have the amount of impurity particles retained in the walls (but expressed now in terms of wall saturation level), the simulated impurity flux towards the wall, as well as the mean impact energy at which impurity particles collide with the wall. Finally we also have the calculated reflection coefficient for the simulated impurity from the wall, and the mean energy at which impurity particles are reflected.
 
+* In the second row we have the manually imposed fluxes of all the other "background" species towards the wall, as well as their impact energy. Finally we have also the calculated sputtering yields for the implanted impurity from both the impurity itself as projectile, and from the other background species as projectiles, as well as the mean energy at which impurity particles are released by sputtering (in function of the projectile).
 
-Interfacing with OEDGE
-----------------------
+* Finally, in the third row we have the various interaction rates, namely: rate of reflected impurity particles, rate of promptly recycled impurity particles, rate of implanted impurity particles (i.e. absorbed by the wall), and rate of sputtered impurity particles by different projectiles (i.e. released by the wall). Rightmost, we have a global absorption/release balance for impurity particles from the wall as reservoir.
 
-OEDGE is a simulation package developed around DIVIMP, a Monte Carlo impurity transport code for the plasma edge. OEDGE allows one to load plasma backgrounds from either EDGE2D-EIRENE or B2-EIRENE, or to create approximate backgrounds based on Onion-Skin Modeling (OSM) coupled with EIRENE. Use of the OSM-EIRENE scheme is itself an interesting application of OEDGE.
+We note that, in this case, balance in the simulation (i.e. in turn a constant impurity content in the plasma) is determined by when fluxes into/out from the walls are balanced, i.e. absorption and release rate become equal.
 
-Aurora includes tools to read OEDGE input files and read/postprocess its results. The following code illustrates how one may run an OEDGE simulation, load and postprocess its results in order to evaluate Balmer line A&M components, using the AMJUEL rates from the EIRENE package:
+We note that even more fields now will be present in the tuple `out`, which still might be exctracted in an ordered way, as all the individual fluxes in/out of the walls are calculated as well. In this example, all the possible fields are, in fact, present, so the correct way to unpack `out` is now::
 
+  nz, N_mainwall, N_divwall, N_div, N_pump, N_out, N_mainret, Ndivret, N_tsu, N_dsu, N_dsul, rcld_rate, rcld_refl_rate, rcld_recl_rate, rcld_impl_rate, rcld_sput_rate, rclb_rate, rcls_rate, rclp_rate, rclw_rate, rclw_refl_rate, rclw_recl_rate, rclw_impl_rate, rclw_sput_rate = out
+  
+Finally, similarly as it is done for `reservoirs`, the time traces concerning the plasma-wall interaction might be also extracted in a dictionary `PWI_traces` as::
 
-.. literalinclude:: ../examples/oedge_am_postprocessing.py
+  PWI_traces = asim.PWI_time_traces(plot = False)
 
+The names of the various fields in `PWI_traces` should be self-explanatory.

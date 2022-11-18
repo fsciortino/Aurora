@@ -154,7 +154,7 @@ def create_radial_grid(namelist, plot=False):
             )
 
         ax.set_xlabel(r"$r/r_{lcfs}$")
-        ax.set_ylabel(r"$\Delta$ r [cm]")
+        ax.set_ylabel(r"$\Delta$r [cm]")
         ax.set_ylim(0, None)
         ax.set_xlim(0, r_edge / namelist["rvol_lcfs"])
         ax.set_title(r"$\#$ radial grid points: %d" % len(rvol_grid))
@@ -219,6 +219,8 @@ def create_time_grid(timing=None, plot=False):
         ax.semilogy(time[1:][save[1:]], np.diff(time)[save[1:]], "o", label="step")
         [ax.axvline(t, c="k", ls="--") for t in timing["times"]]
         ax.set_xlim(time[0], time[-1])
+        ax.set_xlabel('time [s]')
+        ax.set_ylabel('time step duration [s]'),
 
     return time, save
 

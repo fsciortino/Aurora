@@ -8,18 +8,30 @@ The following sketch summarized the various particles reservoirs, fluxes and phy
 .. figure:: figs/aurora_model.png
     :align: center
     :alt: Reservoirs, fluxes and processes included in Aurora simulations
-    :figclass: align-center
+    :figclass: align-center 
 
     Reservoirs, fluxes and processes included in Aurora simulations
 
 Magnetic geometry
 -----------------
 
-The model features a 1D coordinate for the plasma, assiming flux-surface-averaged quantities in a cylindrical geometry. The toroidicity is taken into account computing the quantities per unit of `length` of the cyclinder, and then multiplying then by the actual circular length in the toroidal direction (i.e. :math:`2 \pi R_0`, with :math:`R_0` being the major radius at the magnetic axis).
+The model features a 1D coordinate for the plasma, assuming flux-surface-averaged quantities in a cylindrical geometry. The toroidicity is taken into account computing the quantities per unit of `length` of the cyclinder, and then multiplying then by the actual circular length in the toroidal direction (i.e. :math:`2 \pi R_0`, with :math:`R_0` being the major radius at the magnetic axis).
 
-The considered spatial coordinate is :math:`r = \sqrt{V/(2 \pi^2 R_0)}`, where :math:`V` is the volume enclosed in the relative flux surface. For axially symmetric plasma geometries (e.g. tokamaks) this becomes equivalent to a radial coordinate, therefore in the output visualization it can be easily converted to other experimentally relevant coordinates, such as :math:`\rho_{pol}` or :math:`\rho_{tor}`. However, since the definition of :math:`r` is more general, containing information about 2D flux surface volumes, it may be applied also to non axially symmetric plasma geometry (e.g. stellarators).
+The considered spatial coordinate is 
 
-The :math:`\rho_{vol}` coordinate is extended outside the LCFS into the SOL considering the major radii at the HFS and LFS midplanes, allowing to roughly estimate the particle fluxes towards the radial boundary of the grid, as well the parallel particle losses outside the LCFS.
+    .. math::
+
+        r = \sqrt{V/(2 \pi^2 R_0)}
+
+which is the radius of a circular torus whose volume enclosed in the relative flux surface is :math:`V`. For axially symmetric plasma geometries (e.g. tokamaks) this becomes equivalent to a radial coordinate, therefore in the output visualization it can be easily converted to other experimentally relevant coordinates, such as the poloidal flux coordinate
+
+    .. math::
+
+        \rho_{pol} = \sqrt{\frac{\Psi - \Psi_{\text{axis}}}{\Psi_{\text{LCFS}}-\Psi_{\text{axis}}}}
+
+with :math:`\Psi` being the poloidal flux function, given as input for a simulation. However, since the definition of :math:`r` is more general, containing information about 2D flux surface volumes, it may be applied also to non axially symmetric plasma geometry (e.g. stellarators).
+
+The :math:`r` coordinate is extended outside the LCFS into the SOL considering the major radii at the HFS and LFS midplanes, allowing to roughly estimate the particle fluxes towards the radial boundary of the grid, as well the parallel particle losses outside the LCFS.
 
 Impurity particle transport in the plasma
 -----------------------------------------
@@ -55,7 +67,13 @@ Flux-surface-average of the radial transport equation
 
 Although assuming constant impurity densities and source terms on a flux surface, the radial particle flux might show a variation with the poloidal angle, which would require a full 2D geometry to be self-consistently computed. The reasons are the poloidally varying physical distance between two flux surface being shorter around the outer midplane than around the inner midplane, because of the Grad-Shafranov shift, and the 1/R dependence of the toroidal magnetic field. This leads to a poloidal variation of density and temperature gradients which impact the radial impurity fluxes through an additional centrifugal effect.
 
-In general, flux-surface-averaged transport coefficients might be computed knowing the exact variation of :math:`D_{z}` and :math:`v_{z}` along the poloidal angle, e.g. from the neoclassical transport theory. In Aurora, this can be included considering the user inputs as the transport coefficients at the outer midplane (which can be usually experimentally inferred), i.e. :math:`D_{z,LFS}`, :math:`v_{z,LFS}`, and using in the continuity equations the flux-surface-averaged coefficients given as
+In general, the `flux-surface average` of an arbitrary scalar quantity :math:`\mathcal{F}` is found integrating over the relative flux surface as
+
+    .. math::
+
+        \langle \mathcal{F} \rangle = \left(\frac{\partial V}{\partial r} \right)^{-1} \oint \mathcal{F} \frac{dS}{|\nabla r|} = \frac{1}{4 \pi^2 R_{\text{axis}}r} \int_{0}^{2 \pi} \mathcal{F}(\theta) \frac{dS}{d \theta} d \theta
+
+Therefore, the flux-surface-averaged transport coefficients might be computed knowing the exact variation of :math:`D_{z}` and :math:`v_{z}` along the poloidal angle :math:`\theta` on a given flux surface, e.g. from the neoclassical transport theory. In Aurora, this can be included considering the user inputs as the transport coefficients at the outer midplane (which can be usually experimentally inferred), i.e. :math:`D_{z,LFS}`, :math:`v_{z,LFS}`, and using in the continuity equations the flux-surface-averaged coefficients given as
 
     .. math::
 
@@ -73,13 +91,15 @@ Impurity sources in the plasma
 
 The transport equation is not solved for the neutrals, but these act as a source for the first ionization stage.
 
-The neutrals profile on the radial grid is estimated assuming the neutrals to enter the plasma with a given speed :math:`v_0`, calculated from the energy at which they are emitted. The resulting profile is
+By default, the neutrals profile on the radial grid is estimated assuming the neutrals to enter the plasma with a given speed :math:`v_0`, calculated from the energy at which they are emitted. The resulting profile is
 
     .. math::
 
         n_{\text{imp},0}(r) \propto \frac{r_{edge}}{r} \exp{\left( - \int_{r}^{r_{edge}}\frac{n_e S_{\text{imp},0}^{\text{ion}}}{v_0} dr \right)}
 
 with :math:`r_{edge}` being the outermost boundary of the grid, from which the neutrals are injected. The resulting profile will be decaying with decreasing radial coordinate, due to ionization. The injection energy will define how far the neutrals can penetrate into the plasma before being ionized, i.e. the radial point at which the decay will start.
+
+Alternatively, the source profile may be also specificed as a point-like source, with gaussian distribution with arbitrary FWHM around the location until which they can penetrate into the plasma before being ionized, or even with a completely user-defined radial distribution.
 
 Aurora can consider different injection energies for neutrals externally emitted (e.g. from gas puff source), which may be often thermal, and neutrals recycled from the wall surfaces, which may be either thermal or energetic depending on the release mechanism.
 
@@ -226,6 +246,6 @@ Finally, the time descretization of the evolution of the particle content :math:
 
     .. math::
 
-       N^{j+1} = N^{j}\left( 1 - \frac{\Delta t}{\tau_{depl}} \right) + Q_j \Delta t
+       N^{j+1} = N^{j}\left( 1 - \frac{\Delta t}{\tau_{depl}} \right) + \sum_{sources,sinks}Q_s^j \Delta t
 
-with :math:`\tau_{depl}` being the characteristic time scale for depletion of the particle content in the reservoir, if appliable, and :math:`Q_j` being the global source/sink term.
+with :math:`\tau_{depl}` being the characteristic time scale for depletion of the particle content in the reservoir, if appliable, and :math:`Q_s` being the source/sink terms.

@@ -85,7 +85,7 @@ Several ADAS formats can currently be managed -- please see the docs. Please con
 Surface data
 -----------
 
-Aurora also contains an interface to read and plot plasma-material interaction data, for the most fusion-relevant ion species and wall materials, namely concerning reflection, sputtering and implantation of plasma ions from/into wall materials. The data were generated with the TRIM.SP Monte Carlo program: https://rmlmcfadden.github.io/ion-implantation/trimsp/. 
+Aurora also contains an interface to read and plot plasma-material interaction data, for the most fusion-relevant ion species and wall materials, namely concerning reflection, sputtering and implantation of plasma ions from/into wall materials. The data were generated with the TRIM.SP Monte Carlo program. 
 
 Please contact the authors to request and/or suggest expansions of current capabilities.
 
