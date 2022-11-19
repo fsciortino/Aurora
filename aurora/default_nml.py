@@ -39,8 +39,7 @@ def load_default_namelist(device=None):
             "dt_increase": np.array([1.005, 1.0]),
             "dt_start": np.array([1e-5, 0.001]),
             "steps_per_cycle": np.array([1, 1]),
-            "times": np.array([0.0, 0.1]),
-            "time_start_plot": 0.0,
+            "times": np.array([0.0, 0.1])
         },
         # --------------------
         # RADIAL GRID
@@ -49,7 +48,7 @@ def load_default_namelist(device=None):
         "dr_1": 0.05,
         "lim_sep": 1.0, # cm
         "bound_sep": 2.0, # cm
-        "SOL_decay": 0.05,
+        "decay_length_boundary": 0.05,
         # --------------------
         # KINETIC PROFILES 
         "kin_profs": {

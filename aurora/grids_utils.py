@@ -517,9 +517,8 @@ def ELM_time_grid(timing, ELM_model):
         "dt_increase": dt_increase,
         "dt_start": dt_start,
         "steps_per_cycle": steps_per_cycle,
-        "times": times,
-        "time_start_plot": timing["time_start_plot"]
-    } 
+        "times": times
+    }
     
     return timing_update
 

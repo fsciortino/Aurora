@@ -161,7 +161,7 @@ def interp_coeffs(namelist, rhop_grid, data, radial_dependency = False, rhop = N
                 zlabel = '$v_Z$ [$cm/s$]'
             plot_tools.slider_plot(
                 rhop_grid,
-                times + namelist["timing"]["time_start_plot"],
+                times,
                 np.reshape(coeffs,(1,coeffs.shape[0],coeffs.shape[1])),
                 xlabel=r'$\rho_p$',
                 ylabel="time [s]",
@@ -331,7 +331,7 @@ def ELM_model(timing, ELM_model, rhop_grid, rhop, data_inter_ELM, data_intra_ELM
         coeff = np.transpose(np.array(coeffs))
         plot_tools.slider_plot(
             rhop_grid,
-            times + timing["time_start_plot"],
+            times,
             np.reshape(coeff,(1,coeff.shape[0],coeff.shape[1])),
             xlabel=r'$\rho_p$',
             ylabel="time [s]",
