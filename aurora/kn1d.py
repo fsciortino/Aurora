@@ -526,11 +526,11 @@ exit
     )
 
     # write IDL file
-    with open(f"{thisdir}/KN1D/new_kn1d_run.pro", "w") as f:
+    with open(f"{thisdir}/KN1D/kn1d_run_script.pro", "w") as f:
         f.write(idl_cmd)
 
     # Run the script
-    os.system(f"cd {thisdir}/KN1D; idl new_kn1d_run.pro")
+    os.system(f"cd {thisdir}/KN1D; idl kn1d_run_script.pro")
 
     #### store all KN1D data for postprocessing  #####
     res = {}
