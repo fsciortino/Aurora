@@ -515,7 +515,6 @@ In addition to the collisional transport coefficients calculated with FACIT, we 
    D_z += Dz_an
    V_z += Vz_an
 
-
 .. note::
    FACIT is distributed within Aurora. The following papers contain the derivation of the model:
    The self-consistent calculation of the Pfirsch-Schlüter flux and the poloidal asymmetries of heavy impurities at high collisionality is given in 
