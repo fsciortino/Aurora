@@ -1559,7 +1559,7 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
     Minimal Working Example
     -----------------------
     >>> Te_eV=500; ne_cm3=5e13 # eV and cm^{-3}
-    >>> filepath = aurora.get_adas_file_loc('pec96#he_pjr#he0.dat', filetype='adf15')
+    >>> filepath = aurora.get_adas_file_loc('pec96#he_pju#he0.dat', filetype='adf15')
     >>> aurora.adf15_line_identification(filepath, Te_eV=Te_eV, ne_cm3=ne_cm3)
     
     """

@@ -22,8 +22,10 @@
 
 import numpy as np, sys, os
 from scipy.interpolate import interp1d, RectBivariateSpline
-from . import grids_utils
 import copy
+from scipy.ndimage.interpolation import map_coordinates
+from scipy.interpolate import InterpolatedUnivariateSpline
+from . import grids_utils
 
 
 def get_rhop_RZ(R, Z, geqdsk):
@@ -203,6 +205,8 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
         "r_vol": "rvol",
         "r_V": "rvol",
         "rhon": "rhon",
+        "psin": "psin",
+        "Psin": "psin",
         "rho_tor": "rhon",
         "rho_pol": "rhop",
         "rhop": "rhop",
@@ -242,6 +246,11 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
     # Interpolate to transform coordiantes
     if name_in == "rhon":
         coord_in = rhon_ref
+<<<<<<< HEAD
+    if name_in == "psin":
+        coord_in = psin_ref
+=======
+>>>>>>> master
     elif name_in == "rhop":
         coord_in = rhop_ref
     elif name_in == "rvol":
@@ -293,3 +302,61 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
         out += R0
 
     return out
+
+
+
+
+def rhoTheta2RZ(geqdsk, rho, theta, coord_in='rhop', n_line=201):
+    '''Convert values of rho,theta into R,Z coordinates from a geqdsk dictionary.
+
+    Parameters
+    ----------
+    
+
+    Results
+    -------
+
+
+    '''
+    if isinstance(geqdsk, str):
+        from omfit_classes.omfit_eqdsk import OMFITgeqdsk
+        geqdsk = OMFITgeqdsk(geqdsk)
+        
+    line_m = .9 # line length: 0.9 m
+    t = np.linspace(0, 1, n_line)**.5*line_m
+    c, s = np.cos(theta), np.sin(theta)
+
+    tmpc = c[:,None]*t[None]
+    tmps = s[:,None]*t[None]
+    line_r = tmpc + geqdsk['RMAXIS']
+    line_z = tmps + geqdsk['ZMAXIS']
+
+    aux = geqdsk['AuxQuantities']
+    Rmesh = aux['R']
+    Zmesh = aux['Z']
+
+    dr = (Rmesh[-1] - Rmesh[0])/(len(Rmesh) - 1)
+    dz = (Zmesh[-1] - Zmesh[0])/(len(Zmesh) - 1)
+
+    scaling = np.array([dr, dz])
+    offset  = np.array([Rmesh[0], Zmesh[0]])
+
+    coords = np.array((line_r, line_z))
+    index = ((coords.T - offset) / scaling).T
+    
+    psin = map_coordinates(aux['PSIRZ_NORM'], index, mode='nearest',
+                           order=2, prefilter=True)
+
+    rho_line = rad_coord_transform(psin, 'psin', coord_in, geqdsk)
+
+    R = np.empty((len(theta), len(rho)))
+    Z = np.empty((len(theta), len(rho)))
+
+    for k in range(len(theta)):
+        rho_lin = rho_line[k]
+        (tmp, ) = np.where(np.diff(rho_lin) > 0)
+        imax = tmp[-1] + 1
+        R[k] = InterpolatedUnivariateSpline(rho_lin[:imax], line_r[k, :imax], k=2)(rho)
+        Z[k] = InterpolatedUnivariateSpline(rho_line[k, :imax], line_z[k, :imax], k=2)(rho)
+
+    return R,Z
