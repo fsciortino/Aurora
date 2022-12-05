@@ -246,11 +246,8 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
     # Interpolate to transform coordiantes
     if name_in == "rhon":
         coord_in = rhon_ref
-<<<<<<< HEAD
     if name_in == "psin":
         coord_in = psin_ref
-=======
->>>>>>> master
     elif name_in == "rhop":
         coord_in = rhop_ref
     elif name_in == "rvol":
@@ -311,12 +308,24 @@ def rhoTheta2RZ(geqdsk, rho, theta, coord_in='rhop', n_line=201):
 
     Parameters
     ----------
-    
+    geqdsk : output of the :py:class:`omfit_classes.omfit_eqdsk.OMFITgeqdsk` class, postprocessing the EFIT geqdsk file
+        containing the magnetic geometry. If this is left to None, the function internally tries to fetch
+        it using MDS+ and `omfit_classes.omfit_eqdsk`. In this case, device, shot and time to fetch the equilibrium 
+    rho : np.ndarray
+        Values of normalized radial coordinate to consider.
+    theta : np.ndarray
+        Values of poloidal angle coordinate to consider.
+    coord_in : str
+        Label describing the nature of the radial coordinate in use.
+    n_line : int
+        Number of points to discretize flux surface.
 
     Results
     -------
-
-
+    R : np.array, (ntheta, nrho)
+        Values of the major radius along flux surfaces.
+    Z : np.array, (ntheta, nrho)
+        Values of the vertical coordinate along flux surfaces.
     '''
     if isinstance(geqdsk, str):
         from omfit_classes.omfit_eqdsk import OMFITgeqdsk
@@ -349,14 +358,15 @@ def rhoTheta2RZ(geqdsk, rho, theta, coord_in='rhop', n_line=201):
 
     rho_line = rad_coord_transform(psin, 'psin', coord_in, geqdsk)
 
+    rho = np.atleast_1d(rho)
+    theta = np.atleast_1d(theta)
     R = np.empty((len(theta), len(rho)))
     Z = np.empty((len(theta), len(rho)))
 
     for k in range(len(theta)):
-        rho_lin = rho_line[k]
-        (tmp, ) = np.where(np.diff(rho_lin) > 0)
+        (tmp, ) = np.where(np.diff(rho_line[k]) < 0)
         imax = tmp[-1] + 1
-        R[k] = InterpolatedUnivariateSpline(rho_lin[:imax], line_r[k, :imax], k=2)(rho)
+        R[k] = InterpolatedUnivariateSpline(rho_line[k, :imax], line_r[k, :imax], k=2)(rho)
         Z[k] = InterpolatedUnivariateSpline(rho_line[k, :imax], line_z[k, :imax], k=2)(rho)
 
     return R,Z

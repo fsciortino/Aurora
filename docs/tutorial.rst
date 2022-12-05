@@ -444,7 +444,6 @@ An important feature of FACIT is the description of the effects of rotation on n
 ::
    from facit import FACIT
     
-
    # initialize transport coefficients
    # note that to be able to give charge-dependent Dz and Vz,
    # one has to give also time dependence (see documentation of aurora.core.run_aurora())
@@ -457,37 +456,33 @@ An important feature of FACIT is the description of the effects of rotation on n
    
    '''
    here kinetic profiles, their gradients, and geometric quantities should be defined.
-   the procedure to obtain some geometric quantities from the geqdisk file in the necessary
-   shape is shown explicitly.
    '''
 
-   R = rhoTheta2RZ(geqdsk, rho, theta)
-   Z = 
-
-   for k, zk in enumerate(range(asim.Z_imp + 1)):
+   R,Z = aurora.rhoTheta2RZ(geqdsk, rho, theta)
+   
+   for zk in range(asim.Z_imp + 1):
 
        if zk != 0:
 
            # we can set a trace impurity density profile here or simply set to zero
-           Nz     = nz_init[:idxsep+1,k]*1e6 # in 1/m**3
+           Nz = nz_init[:idxsep+1,zk]*1e6 # in 1/m**3
            gradNz = np.gradient(Nz, rova*amin)
             
-            
-           fct = FACIT(rova,\
-                       zk, asim.A_imp,\
-                       asim.main_ion_Z, asim.main_ion_A,\
-                       Ti, Ni, Nz, Machi, Zeff, \
-                       gradTi, gradNi, gradNz, \
-                       amin/R0, B0, R0, qmag, \
-                       rotation_model = rot_mod, Te_Ti = TeovTi,\
+           fct = FACIT(roa,
+                       zk, asim.A_imp,
+                       asim.main_ion_Z, asim.main_ion_A,
+                       Ti, Ni, Nz, Machi, Zeff,
+                       gradTi, gradNi, gradNz,
+                       amin/R0, B0, R0, qmag,
+                       rotation_model = rot_mod, Te_Ti = TeovTi,
                        RV = R, ZV = Z)
             
-                D_z[:idxsep+1,0,k] = fct.Dz*100**2 # converto to cm**2/s     
-                V_z[:idxsep+1,0,k] = fct.Vconv*100 # convert to cm/s
+                D_z[:idxsep+1,0,zk] = fct.Dz*100**2 # converto to cm**2/s     
+                V_z[:idxsep+1,0,zk] = fct.Vconv*100 # convert to cm/s
 
-            else:
-                D_z[:idxsep+1,0,k] = 0.0     
-                V_z[:idxsep+1,0,k] = 0.0
+        else:
+            D_z[:idxsep+1,0,zk] = 0.0     
+            V_z[:idxsep+1,0,zk] = 0.0
 
    
 .. warning::
