@@ -2460,7 +2460,13 @@ def read_vessel_geom(vessel_file, plot=False):
             elems[label] = []
             continue
         data = line.split()
-        elems[label].append([float(data[0]), float(data[1])])
+        if len(data)==4 and lines[0].startswith('{'):
+            # line segment (4 values on 1 line)
+            elems[label].append([float(data[0]), float(data[1])])
+            elems[label].append([float(data[2]), float(data[3])])
+        else:
+            # points or structures with more  than 2 points
+            elems[label].append([float(data[0]), float(data[1])])
 
     for el in elems:
         elems[el] = np.array(elems[el])
@@ -2472,6 +2478,7 @@ def read_vessel_geom(vessel_file, plot=False):
         for el in elems:
             if 'HOLE' not in el:
                 l = ax.plot(elems[el][:,0], elems[el][:,1])
+        ax.axis('equal')
 
     return elems
 
@@ -2511,15 +2518,6 @@ def plot_eirene(quant='n_H', path='.', ax=None, vessel_file=None):
     if ax is None:
         fig, ax = plt.subplots(1, figsize=(6, 8))
 
-    if vessel_file is not None:
-        elems = read_vessel_geom(vessel_file, plot=False)
-        for el in elems:
-            if 'HOLE' not in el:
-                l = ax.plot(elems[el][:,0], elems[el][:,1], 'k')
-        if '{PUMP}' in elems:
-            # plot pumping surfaces
-            ax.plot(elems['PUMP'][:,0], elems['PUMP'][:,1], 'r')
-
     ax.set_xlabel('R [m]')
     ax.set_ylabel('Z [m]')
 
@@ -2530,6 +2528,15 @@ def plot_eirene(quant='n_H', path='.', ax=None, vessel_file=None):
     cbar.set_label(eirene_indices(quant)['label'])
     ax.set_xlabel('R [m]')
     ax.set_ylabel('Z [m]')
+
+    if vessel_file is not None:
+        elems = read_vessel_geom(vessel_file, plot=False)
+        for el in elems:
+            if 'HOLE' not in el:
+                l = ax.plot(elems[el][:,0], elems[el][:,1], 'k')
+        if 'PUMP' in elems:
+            # plot pumping surfaces
+            ax.plot(elems['PUMP'][:,0], elems['PUMP'][:,1], 'r')
 
 
 def get_eirene_data(quant='n_H', path='.', RZ_points=None):
@@ -2674,8 +2681,8 @@ def plot_eirene_tracks(
         elems = read_vessel_geom(vessel_file, plot=False)
         for el in elems:
             if 'HOLE' not in el:
-                l = ax.plot(elems[el][:,0], elems[el][:,1], 'k')
-        if '{PUMP}' in elems:
+                l = ax.plot(elems[el][:,0], elems[el][:,1], 'k')             
+        if 'PUMP' in elems:
             # plot pumping surfaces
             ax.plot(elems['PUMP'][:,0], elems['PUMP'][:,1], 'r')
             
