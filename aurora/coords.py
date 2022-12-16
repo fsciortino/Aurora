@@ -353,7 +353,7 @@ def rhoTheta2RZ(geqdsk, rho, theta, coord_in='rhop', n_line=201):
     coords = np.array((line_r, line_z))
     index = ((coords.T - offset) / scaling).T
     
-    psin = map_coordinates(aux['PSIRZ_NORM'], index, mode='nearest',
+    psin = map_coordinates(aux['PSIRZ'], index, mode='nearest',
                            order=2, prefilter=True)
 
     rho_line = rad_coord_transform(psin, 'psin', coord_in, geqdsk)

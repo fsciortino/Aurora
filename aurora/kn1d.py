@@ -671,8 +671,6 @@ def plot_input_kin_prof(
     axs[1].set_ylabel(r"$T_e$ [$eV$]")
     axs[2].set_ylabel(r"$T_i$ [$eV$]")
 
-    # from IPython import embed
-    # embed()
     indin = np.argmin(
         np.abs(
             rmid_to_wall_m * 100 - (np.max(rmid_to_wall_m) * 100.0 - innermost_rmid_cm)
