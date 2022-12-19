@@ -303,6 +303,7 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
 
 
 
+ 
 def rhoTheta2RZ(geqdsk, rho, theta, coord_in='rhop', n_line=201):
     '''Convert values of rho,theta into R,Z coordinates from a geqdsk dictionary.
 
@@ -353,7 +354,7 @@ def rhoTheta2RZ(geqdsk, rho, theta, coord_in='rhop', n_line=201):
     coords = np.array((line_r, line_z))
     index = ((coords.T - offset) / scaling).T
     
-    psin = map_coordinates(aux['PSIRZ'], index, mode='nearest',
+    psin = map_coordinates(aux['PSIRZ_NORM'].T, index, mode='nearest',
                            order=2, prefilter=True)
 
     rho_line = rad_coord_transform(psin, 'psin', coord_in, geqdsk)
@@ -362,11 +363,15 @@ def rhoTheta2RZ(geqdsk, rho, theta, coord_in='rhop', n_line=201):
     theta = np.atleast_1d(theta)
     R = np.empty((len(theta), len(rho)))
     Z = np.empty((len(theta), len(rho)))
-
+ 
     for k in range(len(theta)):
-        (tmp, ) = np.where(np.diff(rho_line[k]) < 0)
-        imax = tmp[-1] + 1
+        
+        monotonicity = np.cumprod(np.ediff1d(rho_line[k],1)>0)==1
+        imax = np.argmax(rho_line[k, monotonicity])
+
+
         R[k] = InterpolatedUnivariateSpline(rho_line[k, :imax], line_r[k, :imax], k=2)(rho)
         Z[k] = InterpolatedUnivariateSpline(rho_line[k, :imax], line_z[k, :imax], k=2)(rho)
-
+     
+           
     return R,Z
