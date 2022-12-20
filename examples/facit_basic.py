@@ -131,25 +131,8 @@ elif rotation_model == 2:
     theta = np.linspace(0,2*np.pi,nth)
 
     RV, ZV = aurora.rhoTheta2RZ(geqdsk, rhop, theta, coord_in='rhop', n_line=201)
-
-    #mapping = None #geqdsk['RHOVN']
-    #geqdsk['fluxSurfaces'].findSurfaces(np.linspace(0,1,rr[:idxsep+1].size), map = mapping)
-    #geqdsk['fluxSurfaces'].resample(npts=nth)
-    #Z0 = geqdsk['fluxSurfaces']['Z0'] 
-    #R1    = np.zeros((geqdsk['fluxSurfaces']['flux'].keys()[-1]+1, nth))
-    #Z1    = np.zeros(R1.shape)
-    
-    # new radial positions
-    #RV = np.zeros((roa.size,nth))
-    #ZV = np.zeros((roa.size,nth))
-    #for key, value in geqdsk['fluxSurfaces']['flux'].items():
-    #    thg = np.arctan2(value['Z']-Z0, value['R']-R0)
-    #    thg[thg<0] += 2*np.pi
-    #    idxsort = np.argsort(thg)
-    #    Rtemp = value['R'][idxsort]
-    #    Ztemp = value['Z'][idxsort]
-    #    RV[key] = Rtemp
-    #    ZV[key] = Ztemp
+    RV, ZV = RV.T, ZV.T
+     
 
     # Jacobian of coordinate system
     dRdr  = np.gradient(RV, roa*amin, axis = 0)
@@ -190,17 +173,9 @@ for j, tj in enumerate(times_DV):
                         rotation_model = rotation_model, Te_Ti = TeovTi,\
                         RV = RV, ZV = ZV) #JV = JV)
 
-            D_z[:idxsep+1,j,i] = fct.Dz*100**2 # converto to cm**2/s     
+            D_z[:idxsep+1,j,i] = fct.Dz*100**2 # convert to cm**2/s     
             V_z[:idxsep+1,j,i] = fct.Vconv*100 # convert to cm/s
 
-        else:
-            D_z[:idxsep+1,j,i] = 0.0 #1.0*100**2     
-            V_z[:idxsep+1,j,i] = 0.0
-
-        # transport coefficients after separatrix in SOL
-
-        D_z[idxsep+1:,j,i] = 0.0 # D_z[idxsep,j,i] #?
-        V_z[idxsep+1:,j,i] = 0.0 # V_z[idxsep,j,i] #?
 
 time_exec = time.time()-starttime
 print('FACIT exec time [s]: ', time_exec)
