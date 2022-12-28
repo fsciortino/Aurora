@@ -190,9 +190,9 @@ class aurora_sim:
             self.rhop_grid[0] = 0.0  # enforce on axis
 
             # Save R on LFS and HFS
-            self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(
-                self.geqdsk, rho_pol=self.rhop_grid
-            )
+            #self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(
+            #    self.geqdsk, rho_pol=self.rhop_grid
+            #)
             
         else:
             # use rho_vol = rvol/rvol_lcfs
@@ -1305,10 +1305,11 @@ class aurora_sim:
 
         fz = self.res[0][..., -1] / np.sum(self.res[0][..., -1], axis=1)[:, None]
         Z_ave_vec = np.sum(fz * np.arange(self.Z_imp + 1)[None, :], axis=1)
-
+        _, Rlfs = grids_utils.get_HFS_LFS(self.geqdsk, rho_pol=self.rhop_grid)
+        
         self.CF_lambda = synth_diags.centrifugal_asymmetry(
             self.rhop_grid,
-            self.Rlfs,
+            Rlfs,
             omega,
             Zeff,
             self.A_imp,
