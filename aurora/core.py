@@ -190,9 +190,9 @@ class aurora_sim:
             self.rhop_grid[0] = 0.0  # enforce on axis
 
             # Save R on LFS and HFS
-            #self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(
-            #    self.geqdsk, rho_pol=self.rhop_grid
-            #)
+            self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(
+                self.geqdsk, rho_pol=self.rhop_grid
+            )
             
         else:
             # use rho_vol = rvol/rvol_lcfs
