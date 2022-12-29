@@ -97,9 +97,9 @@ def get_source_time_history(namelist, Raxis_cm, time):
 
     elif namelist["source_type"] == "const":
         # constant source
-        src_times = copy.deepcopy(time)
-        src_rates = np.ones(len(time)) * namelist["source_rate"]
-        src_rates[0] = 0.0  # start with 0
+        src_times = [-np.inf, np.inf]
+        src_rates = [namelist["source_rate"],namelist["source_rate"] ]
+        #src_rates[0] = 0.0  # start with 0
 
     elif namelist["source_type"] == "step":
         # Create the time-dependent step source
@@ -136,14 +136,13 @@ def get_source_time_history(namelist, Raxis_cm, time):
 
     # get number of particles per cm and sec
     circ = 2 * np.pi * Raxis_cm
-
+    
     # For ease of comparison with STRAHL, shift source by one time step
-
     source_time_history = np.r_[source[1:], source[-1]] / circ
     if all(source_time_history == 0):
         raise Exception('Impurity source is zero within the simulation range')
 
-
+ 
     return np.asfortranarray(source_time_history)
 
 
