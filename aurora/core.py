@@ -29,6 +29,7 @@ from scipy.constants import e as q_electron, m_p
 import pickle as pkl
 from copy import deepcopy
 from scipy.integrate import cumtrapz
+from scipy.linalg import solve_banded
 import matplotlib.pyplot as plt
 from . import interp
 from . import atomic
@@ -37,7 +38,7 @@ from . import source_utils
 from . import plot_tools
 from . import synth_diags
 from . import adas_files
-
+ 
 
 class aurora_sim:
     """Setup the input dictionary for an Aurora ion transport simulation from the given namelist.
@@ -90,7 +91,7 @@ class aurora_sim:
            and not hasattr(self, 'Baxis'):
             # need magnetic field to model prompt redeposition
             raise ValueError('Missing magnetic field on axis! Please define this in the namelist')
-
+       
         # specify which atomic data files should be used -- use defaults unless user specified in namelist
         atom_files = {}
         atom_files["acd"] = self.namelist.get(
@@ -124,7 +125,7 @@ class aurora_sim:
 
         # Extract other inputs from namelist:
         self.mixing_radius = self.namelist["saw_model"]["rmix"]
-        self.decay_length_boundary = self.namelist["SOL_decay"]
+        self.decay_length_boundary = self.namelist["SOL_decay"] #cm
         self.wall_recycling = self.namelist["wall_recycling"]
         self.tau_div_SOL_ms = self.namelist["tau_div_SOL_ms"]
         self.tau_pump_ms = self.namelist["tau_pump_ms"]
@@ -177,7 +178,7 @@ class aurora_sim:
 
         else:
             raise ValueError('Could not identify rvol_lcfs. Either provide this in the namelist or provide a geqdsk equilibrium')
-            
+             
         # create radial grid
         grid_params = grids_utils.create_radial_grid(self.namelist, plot=False)
         self.rvol_grid, self.pro_grid, self.qpr_grid, self.prox_param = grid_params
@@ -191,7 +192,7 @@ class aurora_sim:
 
             # Save R on LFS and HFS
             #self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(
-            #    self.geqdsk, rho_pol=self.rhop_grid
+                #self.geqdsk, rho_pol=self.rhop_grid
             #)
             
         else:
@@ -208,6 +209,7 @@ class aurora_sim:
         # create array of 0's of length equal to self.time_grid, with 1's where sawteeth must be triggered
         self.saw_on = np.zeros_like(self.time_grid)
         input_saw_times = self.namelist["saw_model"]["times"]
+     
         self.saw_times = np.array(input_saw_times)[input_saw_times < self.time_grid[-1]]
         if self.namelist["saw_model"]["saw_flag"] and len(self.saw_times) > 0:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
@@ -354,7 +356,7 @@ class aurora_sim:
         else:
             # dummy profile -- recycling is turned off
             self.rcl_rad_prof = np.zeros((len(self.rhop_grid), len(self.time_grid)))
-
+ 
     def interp_kin_prof(self, prof):
         """ Interpolate the given kinetic profile on the radial and temporal grids [units of s].
         This function extrapolates in the SOL based on input options using the same methods as in STRAHL.
@@ -367,6 +369,7 @@ class aurora_sim:
         r = interp1d(self.rhop_grid, self.rvol_grid, fill_value="extrapolate")(
             self.kin_profs[prof]["rhop"]
         )
+        
         if self.kin_profs[prof]["fun"] == "interp":
             if "decay" not in self.kin_profs[prof]:
                 # if decay length in the SOL was not given by the user, assume a decay length of 1cm
@@ -391,12 +394,15 @@ class aurora_sim:
                 r / r_lcfs, self.kin_profs[prof]["vals"], r_lcfs, self.rvol_grid
             )
 
+
+
         # linear interpolation in time
         if len(times) > 1:  # time-dept
             data = interp1d(times, data, axis=0)(
                 np.clip(self.time_grid, *times[[0, -1]])
             )
-
+ 
+        
         return data
 
     def get_aurora_kin_profs(self, min_T=1.01, min_ne=1e10):
@@ -734,8 +740,8 @@ class aurora_sim:
 
         # D_z and V_z must have the same shape
         assert np.shape(D_z) == np.shape(V_z)
-
-        if (times_DV is None) and (D_z.ndim > 1 or V_z.ndim > 1):
+      
+        if times_DV is None and D_z.ndim > 1 and D_z.shape[1] > 1:
             raise ValueError(
                 "D_z and V_z given as time dependent, but times were not specified!"
             )
@@ -797,8 +803,8 @@ class aurora_sim:
                 self.rvol_grid,
                 self.pro_grid,
                 self.qpr_grid,
-                self.mixing_radius,
-                self.decay_length_boundary,
+                self.mixing_radius,   
+                self.decay_length_boundary, #cm
                 self.time_grid,
                 self.saw_on,
                 self.save_time,
@@ -819,7 +825,6 @@ class aurora_sim:
         else:
             # import here to avoid import when building documentation or package (negligible slow down)
             from ._aurora import run as fortran_run
-
             self.res = fortran_run(
                 nt,  # number of times at which simulation outputs results
                 times_DV,
@@ -891,6 +896,154 @@ class aurora_sim:
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         return self.res
 
+
+
+    def run_aurora_steady_analytic( self, D_z, V_z):
+        
+        """ Evaluate analytical steady state solution of the transport equation.
+         some difference in absolute density from full aurora solution can be caused by recycling and divertor model which are not included here. 
+ 
+        Parameters
+        ----------
+        D_z: array, shape of (space,nZ) or (space,)
+            Diffusion coefficients, in units of :math:`cm^2/s`. This may be given as a function of space only or (space,nZ).
+            No time dependence is allowed in this function. Here, nZ indicates the number of charge states.
+            Note that it is assumed that radial profiles are already on the self.rvol_grid radial grid.
+        V_z: array, shape of (space,nZ) or (space,)
+            Convection coefficients, in units of :math:`cm/s`. This may be given as a function of space only or (space,nZ).
+            No time dependence is allowed in this function. Here, nZ indicates the number of charge states.
+ 
+        """
+        
+
+        if self.ne.shape[0] > 1 or self.Te.shape[0] > 1:
+            raise ValueError(
+                "This method is designed to operate with time-independent background profiles!"
+            )
+
+        if D_z.ndim > 2 or V_z.ndim > 2:
+            raise ValueError(
+                "This method is designed to operate with time-independent D and V profiles!"
+            )
+ 
+        if D_z.ndim == 2:
+            # make sure that transport coefficients were given as a function of space and nZ, not time!
+            assert D_z.shape[0] == len(self.rhop_grid) and D_z.shape[1] == self.Z_imp + 1
+            assert V_z.shape[0] == len(self.rhop_grid) and V_z.shape[1] == self.Z_imp + 1
+
+
+
+           
+        def between_grid(arr,axis=0):
+            #calculate value in between grid points
+            sl = (slice(None), ) * axis
+            return (arr[sl+(slice(1,None),)]+arr[sl+(slice(None,-1),)])/2.
+        
+  
+
+        D_btw = between_grid(D_z,0).T # input D profile btw the spatial grids 
+        v_btw = between_grid(V_z,0).T # input v profile btw the spatial grids 
+        
+
+        par_loss_rate = between_grid(self.par_loss_rate[:,0]/100) #convert in the 1/s/cm units
+
+        del_r = np.diff(self.rvol_grid)
+        r_btw = between_grid(self.rvol_grid)
+        self.rhop_btw = between_grid(self.rhop_grid)
+  
+        #diagonal of matrices az,bz,cz 
+        n = len(r_btw) 
+        n_state = self.Z_imp
+
+        a_z = between_grid(self.Rne_rates.T[0],1) 
+        b_z = between_grid(self.Sne_rates.T[0],1) 
+        c_z = par_loss_rate*r_btw
+
+        #uvec
+        exp_diag = np.exp(cumtrapz(v_btw/D_btw, r_btw, initial=0, axis=-1))
+        exp_diag /= exp_diag[...,[-1]]
+ 
+        exp_Dr =  1/(exp_diag*D_btw*r_btw ) #diagonal of the matrix
+        lam=self.decay_length_boundary 
+        edge_factor = 1/(1/lam+v_btw[...,[-1]]/D_btw[...,[-1]]) #units of m
+         
+        #calculate spatial integrals
+        del_r_up   = np.tri(n+1,n,-1)*(del_r*r_btw)
+        del_r_down = np.tri(n,n+1).T* del_r 
+        
+        def apply_integral(prof, i = ...):
+            #the first cumulative trapezoid integral
+            a = del_r_up * prof
+            a = between_grid(a)
+            a *= exp_Dr[i,:,None] 
+            #the second cumulative trapezoid integral
+            a = np.dot(del_r_down,a) 
+            a = between_grid(a)
+            #incorporate edge boundary condition with decay length lambda 
+            a += a[-1]/del_r[-1]*edge_factor[i] 
+            a *= exp_diag[i, :,None]
+            return a
+        
+        #charge dependent transport coefficients 
+        if D_btw.ndim == 2 or v_btw.ndim == 2:
+            A_z = [apply_integral(a,i) for i,a in enumerate(a_z)]
+            B_z = [apply_integral(b,i) for i,b in enumerate(b_z)]
+            C_z = [apply_integral(c_z,i) for i in range(n_state)]
+        else:
+            A_z = [apply_integral(a) for a in a_z]
+            B_z = [apply_integral(b) for b in b_z]
+            C_z = [apply_integral(c_z)]*n_state
+ 
+        #radial integral of the source used to calculate total impurity density profile
+        nz_0 = np.zeros((n_state, n))
+        nimp0 = between_grid(self.src_core[:,0])#*b_z[0] 
+
+        nz_0[0] = np.dot(B_z[0], nimp0) #include also recombination to neutral state??
+
+        
+        source_mtx = np.zeros([ n_state, n_state, n, n ])
+         
+        for i in range(n_state):
+            if i==0: #First
+                source_mtx[0,0] = -B_z[i+1] #ionisation
+                source_mtx[0,1] = A_z[i+1] # recombination source
+ 
+            elif 0 < i < n_state-1: #middle
+                source_mtx[i, i-1] = B_z[i]
+                source_mtx[i, i] = -A_z[i]-B_z[i+1]
+                source_mtx[i, i+1] = A_z[i+1]
+            else: #last
+                source_mtx[i, -2 ] =  B_z[i]
+                source_mtx[i, -1 ] = -A_z[i]
+                
+            #paraell looses are on diagonal 
+            source_mtx[i, i] -= C_z[i]
+            
+        #reshape to 2D matrix
+        source_mtx = source_mtx.swapaxes(1,2).reshape(n*n_state, n*n_state)
+ 
+   
+        #convert source_mtx matrix to band diagonal form 
+        n_diags = 2*n
+        source_mtx_diag = np.zeros((1+2*n_diags, n*n_state))
+        for i,d in enumerate(range(n_diags, -n_diags-1,-1)):
+            source_mtx_diag[i, np.maximum(0,d): n*n_state+np.minimum(0,d)] = np.diagonal(source_mtx, d)
+        
+        #calculate eye( ) - source_mtx 
+        mtx_solv_diag = source_mtx_diag
+        mtx_solv_diag*= -1
+        mtx_solv_diag[n_diags]+= 1
+        
+        #solve band matrix 
+        nz_steady = solve_banded((n_diags,n_diags), mtx_solv_diag,  nz_0.flatten()).reshape(-1, n)
+
+        return nz_steady
+        
+        
+
+
+
+
     def run_aurora_steady(
         self,
         D_z,
@@ -948,7 +1101,7 @@ class aurora_sim:
         plot : bool
             If True, plot time evolution of charge state density profiles to show convergence.
         """
-
+ 
         if n_steps < 2:
             raise ValueError("n_steps must be greater than 2!")
 
@@ -964,7 +1117,7 @@ class aurora_sim:
 
         # set constant timesource
         self.namelist["source_type"] = "const"
-        self.namelist["source_rate"] = 1.0
+        #self.namelist["source_rate"] = 1.0
 
         # build timing dictionary
         self.namelist["timing"] = {
@@ -983,8 +1136,8 @@ class aurora_sim:
         times_DV = None
         if D_z.ndim == 2:
             # make sure that transport coefficients were given as a function of space and nZ, not time!
-            assert D_z.shape[0] == self.rhop_grid and D_z.shape[1] == self.Z_imp + 1
-            assert V_z.shape[0] == self.rhop_grid and V_z.shape[1] == self.Z_imp + 1
+            assert D_z.shape[0] == len(self.rhop_grid) and D_z.shape[1] == self.Z_imp + 1
+            assert V_z.shape[0] == len(self.rhop_grid) and V_z.shape[1] == self.Z_imp + 1
 
             D_z = D_z[:, None]  # (ir,nt_trans,nion)
             V_z = V_z[:, None]
@@ -1002,7 +1155,6 @@ class aurora_sim:
         saw_on = self.saw_on.copy()
         src_div = self.src_div.copy()
         nz_all = None if nz_init is None else nz_init
-
         while sim_steps < len(time_grid):
 
             self.time_grid = self.time_out = time_grid[sim_steps : sim_steps + n_steps]
@@ -1013,7 +1165,7 @@ class aurora_sim:
             self.Sne_rates = Sne_rates[:, :, sim_steps : sim_steps + n_steps]
             self.Rne_rates = Rne_rates[:, :, sim_steps : sim_steps + n_steps]
             self.saw_on = saw_on[sim_steps : sim_steps + n_steps]
-            self.src_div = self.src_div[sim_steps : sim_steps + n_steps]
+            self.src_div = src_div[sim_steps : sim_steps + n_steps]
             
             sim_steps += n_steps
 
@@ -1042,18 +1194,13 @@ class aurora_sim:
                 nz_all = np.dstack((nz_all, nz_new))
 
             # check if normalized profiles have converged
-            if (
-                np.linalg.norm(nz_new[:, :, -1] - nz_init)
-                / (np.linalg.norm(nz_init) + 1e-99)
-                < tolerance
-            ):
+            if (np.linalg.norm(nz_new[:, :, -1] - nz_init) / (np.linalg.norm(nz_init) + 1e-99) < tolerance ):
                 break
 
         # store final time grids
         self.time_grid = time_grid[:sim_steps]
-        self.time_out = time_grid[
-            :sim_steps
-        ]  # identical because steps_per_cycle is fixed to 1
+        # identical because steps_per_cycle is fixed to 1
+        self.time_out = time_grid[:sim_steps]
         self.save_time = save_time[:sim_steps]
 
         if plot:
@@ -1068,7 +1215,7 @@ class aurora_sim:
                 labels=[str(i) for i in np.arange(0, nz_all.shape[1])],
                 plot_sum=True,
             )
-
+        
         if sim_steps >= len(time_grid):
             raise ValueError(
                 f"Could not reach convergence before {max_sim_time:.3f}s of simulated time!"
@@ -1089,6 +1236,7 @@ class aurora_sim:
         self.tau_imp = (
             var_volint / source_time_history[-2]
         )  # avoid last time point because source may be 0 there
+  
 
         return nz_new[:, :, -1]
 
@@ -1305,7 +1453,7 @@ class aurora_sim:
 
         fz = self.res[0][..., -1] / np.sum(self.res[0][..., -1], axis=1)[:, None]
         Z_ave_vec = np.sum(fz * np.arange(self.Z_imp + 1)[None, :], axis=1)
-
+        _, self.Rlfs = grids_utils.get_HFS_LFS(self.geqdsk, rho_pol=self.rhop_grid)
         self.CF_lambda = synth_diags.centrifugal_asymmetry(
             self.rhop_grid,
             self.Rlfs,
