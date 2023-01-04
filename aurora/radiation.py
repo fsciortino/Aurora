@@ -666,20 +666,19 @@ def read_adf15(path, order=1):
 
     """
     # find out whether file is metastable resolved
-    meta_resolved = path.split("#")[-2][-1] == "r"
-    if meta_resolved:
-        print("Identified metastable-resolved PEC file")
-
     with open(path, "r") as f:
         lines = f.readlines()
-    cs = path.split("#")[-1].split(".dat")[0]
+    #cs = path.split("#")[-1].split(".dat")[0]
 
-    header = lines.pop(0)
+    header = lines.pop(0).split()
     # Get the expected number of lines by reading the header:
-    num_lines = int(header.split()[0])
+    num_lines = int(header[0])
+    spec = header[1].strip('/')
+    Z = int(header[3])
+
     
     log10pec_dict = {}
-    for i in range(0, num_lines):
+    for i in range( num_lines):
 
         while "isel" not in lines[0].lower():
             # eliminate variable number of label lines at the top
@@ -689,57 +688,36 @@ def read_adf15(path, order=1):
         # from the first line of the entry:
         l = lines.pop(0)
 
-        # prevent issues with inconsistent spacing/characters
-        l = l.replace('/', ' /').replace('=', ' = ')
-        if l.find('TYPE') == -1:
-            l = l.replace('type', 'TYPE')
+        header_dict = {}
 
-        header = l.split()
+        header = l.split('/')
+        lam, sizes = header[0].split('A')
+        header_dict['lam'] = float(lam)
+        num_den, num_temp = np.int_(sizes.split())
 
-        # sometimes the wavelength and its units are not separated:
-        try:
-            header = [hh.split("A")[0] for hh in header]
-        except:
-            # lam and A are separated. Delete 'A' unit.
-            header = np.delete(header, 1)
 
-        lam = float(header[0])
-
-        if header[1] == "":
-            # 2nd element was empty -- annoyingly, this happens sometimes
-            num_den = int(header[2])
-            num_temp = int(header[3])
-        else:
-            num_den = int(header[1])
-            num_temp = int(header[2])
-
-        if meta_resolved:
-            # index of metastable state
-            INDM = int(header[-3].split("/")[0].split("=")[-1])
+        for item in header[1:]:
+            par, val = item.split('=')
+            header_dict[par.strip().upper()] = val.strip()
 
         # Get the densities:
         dens = []
         while len(dens) < num_den:
             dens += [float(v) for v in lines.pop(0).split()]
-        dens = np.asarray(dens)
-
-        # get ISEL index
-        isel = int(header[-1])
-        log10pec_dict[isel] = {}
+        dens = np.array(dens)
 
         # Get the temperatures:
         temp = []
         while len(temp) < num_temp:
             temp += [float(v) for v in lines.pop(0).split()]
-        temp = np.asarray(temp)
+        temp = np.array(temp)
+        
 
         # Get the PEC's:
         PEC = []
-        while len(PEC) < num_den:
-            PEC.append([])
-            while len(PEC[-1]) < num_temp:
-                PEC[-1] += [float(v) for v in lines.pop(0).split()]
-        PEC = np.asarray(PEC)
+        while len(PEC) < num_den*num_temp:
+            PEC += [float(v) for v in lines.pop(0).split()]
+        PEC = np.reshape(PEC, (num_den, num_temp))
         
         # interpolate PEC on log dens,temp scales
         pec_fun = RectBivariateSpline(
@@ -750,34 +728,54 @@ def read_adf15(path, order=1):
             ky=order,
         )
 
+        # get ISEL index
+        isel = int(header_dict['ISEL'])
+        
         # simple indexing for each line, with different indices for different upper-state
         # populating mechanisms for the same spectral line
+        log10pec_dict[isel] = OrderedDict()
         log10pec_dict[isel]['log10 PEC fun'] = pec_fun
         log10pec_dict[isel]['dens pnts'] = dens
         log10pec_dict[isel]['temp pnts'] = temp
         log10pec_dict[isel]['PEC pnts'] = PEC
-        log10pec_dict[isel]['lambda [A]'] = lam
-        log10pec_dict[isel]['type'] = header[header.index(r'/TYPE')+2]
+        log10pec_dict[isel]['lambda [A]'] = header_dict['lam']
+        log10pec_dict[isel]['type'] = header_dict['TYPE'].lower()
+        #for meta resolved files 
+        INDM = header_dict.get('INDM',1)
+        if 'T' in INDM :  INDM = 1
+        log10pec_dict[isel]['INDM'] = int(INDM)
 
     # attempt to parse info at end of file:
     try:
         out = parse_adf15_spec(lines, num_lines)
     except:
         # save only basic info for each line, since parsing of end of file failed
-        d = {'isel': [int(iselval) for iselval in log10pec_dict.keys()]}
-        d['lambda [A]'] = [float(log10pec_dict[i]['lambda [A]']) for i in log10pec_dict]
-        d['type'] = [log10pec_dict[i]['type'].lower() for i in log10pec_dict]
+        d = {'isel': list(log10pec_dict.keys())}
+        d['lambda [A]'] = [val['lambda [A]'] for val in log10pec_dict.values()]
+        d['type'] = [val['type'] for val in log10pec_dict.values()]
         out = pd.DataFrame(data=d)
-        
+    
+    out.attrs['Z'] = Z
+    out.attrs['element'] = spec
+
     # add log10pec interpolants to pandas DataFrame or dictionary
-    out['log10 PEC fun'] = [log10pec_dict[i]['log10 PEC fun'] for i in log10pec_dict]
+    out['log10 PEC fun'] = [val['log10 PEC fun'] for val in log10pec_dict.values()]
+    #metastate index
+    out['indm'] = [val['INDM'] for val in log10pec_dict.values()]
 
     # store original data as well as its density and temperature grids
-    out['dens pnts'] = [log10pec_dict[i]['dens pnts'] for i in log10pec_dict]
-    out['temp pnts'] = [log10pec_dict[i]['temp pnts'] for i in log10pec_dict]
-    out['PEC pnts'] = [log10pec_dict[i]['PEC pnts'] for i in log10pec_dict]
-
+    out['dens pnts'] = [val['dens pnts'] for val in log10pec_dict.values()]
+    out['temp pnts'] = [val['temp pnts'] for val in log10pec_dict.values()]
+    out['PEC pnts'] = [val['PEC pnts'] for val in log10pec_dict.values()]
+    
+    # safety checks for populating process nomenclature -- often inconsistent
+    out.type.where(~out.type.str.startswith('ion'), 'ioniz', inplace=True)
+    out.type.where(~out.type.str.startswith('rec'), 'recom', inplace=True)
+    out.type.where(~out.type.str.startswith('exc'), 'excit', inplace=True)
+    out.type.where(~out.type.str.startswith('dr'), 'drsat', inplace=True)
+    out.type.where(~out.type.str.startswith('cx'), 'chexc', inplace=True)
     return out
+
 
 def _find_adf15_spacing(l):
     l = l.replace('\n',' ')
@@ -954,7 +952,7 @@ def plot_pec(transition, ax=None, plot_3d=False):
 
     Parameters
     ----------
-    transition : 
+    transition : panda array with the PEC data
     ax : matplotlib axes instance
         If not None, plot on this set of axes.
     plot_3d : bool
@@ -1003,6 +1001,7 @@ def plot_pec(transition, ax=None, plot_3d=False):
 
         # plot interpolation surface
         ax1.plot_surface(DENS, TEMP, PEC_eval.T, alpha=0.5)
+        ax1.set_xscale("log")
 
         if 'PEC pnts' in transition:
             # overplot ADAS data points
@@ -1011,7 +1010,7 @@ def plot_pec(transition, ax=None, plot_3d=False):
         if ax is None:
             ax1.set_xlabel("$log_{10}(n_e)$ [cm$^{-3}$]")
             ax1.set_ylabel("$log_{10}(T_e)$ [eV]")
-            ax1.set_zlabel("PEC [photons $\cdot cm^3/s$]")
+            ax1.set_zlabel("PEC [photons $\cdot \mathrm{cm^3/s}$]")
 
     else:
         # plot in 2D
@@ -1024,19 +1023,88 @@ def plot_pec(transition, ax=None, plot_3d=False):
             if 'PEC pnts' in transition:
                 ax1.plot(temp, PEC_pnts[ine, :], ls, marker="o", mfc=l.get_color(), ms=5.0)
         ax1.set_xlabel(r"$T_e$ [eV]")
-        ax1.set_ylabel("PEC [photons $\cdot cm^3/s$]")
+        ax1.set_ylabel("PEC [photons $\cdot \mathrm{cm^3/s}$]")
         ax1.set_yscale("log")
+        ax1.set_xscale("log")
 
         ax1.legend(loc="best").set_draggable(True)
-
-    ax1.set_title(f'{transition["isel"]}, {transition["lambda [A]"]} A, {transition["type"]}')
+  
+    ax1.set_title(f' ISEL={transition["isel"]}, LAM={transition["lambda [A]"]} A, TYP={transition["type"]}')
     plt.tight_layout()
 
 
 
+def get_photon_emissivity(adf15, lam, ne_cm3, Te_eV, imp_density,n0_cm3=0, meta_ind=None):
+    r"""Evaluate PEC coefficients and return all components of intensity saved in te PEC file in ph/s units
+ 
+
+    Parameters
+    ----------
+    adf15  : PandasFrame with ADF15 PEC coefficients
+    ne_cm3 : array (nr)
+        Profile of electron density, in units of :math:`cm^{-3}`.
+    Te_eV : array (nr)
+        Profile of electron temperature, in units of :math:`eV`.  
+
+    imp_density : list or 2D array (nstate, nr)
+        Density of all impurity states. These which are not needed can be set to None
+ 
+    n0_cm3 : array, optional
+        Local density of atomic neutral hydrogen isotopes. This is only used if the provided
+        ADF15 file contains charge exchange contributions.
+    meta_ind: list (nstate), optional
+        indexes of metastates corresponding to imp_density
+
+    Returns
+    -------
+    intensity: dict of arrays (nr)
+        arrays of line emissivity in ph/s units 
+  
+    """
+    
+    
+    line_emiss_dict = {}
+    
+    if meta_ind is None:
+        #assume that the data are not metastable resolved
+        meta_ind = [(z,1) for z in range(len(imp_density))]
+ 
+ 
+    source = {"ioniz": -1, "excit": 0, "recom": 1, "chexc": 1, "drsat": 1}
+    Z = adf15.attrs['Z']
+    lne = np.log10(ne_cm3)
+    lte = np.log10(Te_eV)
+    
+    line_emiss = {} #ph/s
+
+    trs_line = adf15.loc[adf15['lambda [A]']==lam]
+    for typ in trs_line['type'].unique():
+
+        line_emiss[typ] = np.zeros_like(ne_cm3)
+        trs_line_type = trs_line.loc[trs_line['type']==typ]
+        
+        for m in trs_line_type['indm']:
+            log10pec_fun =  trs_line_type.loc[trs_line_type['indm']==m]['log10 PEC fun'].iloc[0]
+ 
+            emiss = 10**log10pec_fun.ev(lne, lte)
+            emiss *= imp_density[meta_ind.index((Z+source[typ], m))] 
+            
+            if typ == 'chexc':
+                emiss *= n0_cm3
+            else:
+                emiss *= ne_cm3
+            #sum contributions from all metastables
+            line_emiss[typ] += emiss
+  
+    return line_emiss
+
+    
+    
+    
+    
+
 def get_local_spectrum(
     adf15_file,
-    ion,
     ne_cm3,
     Te_eV,
     ion_exc_rec_dens=[0,1,0],
@@ -1059,8 +1127,6 @@ def get_local_spectrum(
         Path on disk to the ADAS ADF15 file of interest or dictionary returned when calling the :py:func:`~aurora.radiation.read_adf15`
         with this file path as an argument. All wavelengths and radiating components in the file or dictionary
         will be read/processed.
-    ion : str
-        Atomic symbol of ion of interest, e.g. 'Ar'
     ne_cm3 : float
         Local value of electron density, in units of :math:`cm^{-3}`.
     Te_eV : float
@@ -1170,134 +1236,80 @@ def get_local_spectrum(
     from omfit_classes.utils_math import atomic_element
 
     # get nuclear charge Z and atomic mass number A
-    out = atomic_element(symbol=ion)
+    out = atomic_element(symbol=trs.attrs['element'])
     spec = list(out.keys())[0]
-    ion_Z = int(out[spec]["Z"])
     ion_A = int(out[spec]["A"])
+    ion_Z = int(out[spec]["Z"])
+
+    Z = trs.attrs['Z']
 
     nlines = len(trs['isel'])
     wave_A = np.array(trs['lambda [A]'])
+    
+    #populate ion density list requited by get_photon_emissivity function
+    imp_density = [None]*(ion_Z+1)
+    for i, d in enumerate(ion_exc_rec_dens):
+        if 0 <= Z+i-1 <  ion_Z+1:
+            imp_density[Z+i-1] = d
 
-    # safety checks for populating process nomenclature -- often inconsistent
-    trs.type.where(~trs.type.str.startswith('ion'), 'ioniz', inplace=True)
-    trs.type.where(~trs.type.str.startswith('rec'), 'recom', inplace=True)
-    trs.type.where(~trs.type.str.startswith('exc'), 'excit', inplace=True)
-    trs.type.where(~trs.type.str.startswith('dr'), 'drsat', inplace=True)
-    trs.type.where(~trs.type.str.startswith('cx'), 'chexc', inplace=True)
+    line_emiss = []
+    for ii,lam in enumerate(trs['lambda [A]']):
+        line_emiss.append(get_photon_emissivity(trs, lam, ne_cm3, Te_eV, imp_density,n0_cm3))
 
-    # now interpolate all rates on chosen ne and Te values
-    pec = {}
-    for typ in ["ioniz", "excit", "recom", "chexc", "drsat"]:
-        _trs_type = trs.loc[trs['type']==typ]
-        pec[typ] = np.zeros(nlines)
-        for ii,lam in enumerate(trs['lambda [A]']):
-            if lam in np.array(_trs_type['lambda [A]']):
-                log10pec_fun = _trs_type.loc[trs['lambda [A]']==lam]['log10 PEC fun'].iloc[0]
-                pec[typ][ii] = 10**log10pec_fun.ev(np.log10(ne_cm3), np.log10(Te_eV))
-
+    from scipy.constants import e, m_p, c
     # Doppler broadening
-    mass = constants.m_p * ion_A
-    dnu_g = (
-        np.sqrt(2.0 * (Ti_eV * constants.e) / mass)
-        * (constants.c / wave_A)
-        / constants.c
-    )
+    mass = m_p * ion_A
+    dnu_g = np.sqrt(2.0 * (Ti_eV * e) / mass) * (c / wave_A)  / c
 
     # set a variable delta lambda based on the width of the broadening
-    _dlam_A = wave_A ** 2 / constants.c * dnu_g * 5  # 5 standard deviations
+    _dlam_A = wave_A ** 2 / c * dnu_g * 5  # 5 standard deviations
 
     lams_profs_A = np.linspace(wave_A - _dlam_A, wave_A + _dlam_A, 100, axis=1)
-
-    theta_tmp = (
-        1.0 / (np.sqrt(np.pi) * dnu_g[:, None]) * np.exp(
-            -(
-                (
-                    (constants.c / lams_profs_A - constants.c / wave_A[:, None])
-                    / dnu_g[:, None]
-                )**2
-            )
-        )
-    )
+    
+    #Gaussian profiles of the lines
+    theta = np.exp(- ( (c / lams_profs_A - c / wave_A[:, None]) / dnu_g[:, None] )**2)
     
     # Normalize Gaussian profile
-    theta = np.einsum(
-        "ij,i->ij", theta_tmp, 1.0 / np.trapz(theta_tmp, x=lams_profs_A, axis=1)
-    )
+    theta /= np.sqrt(np.pi) * dnu_g[:, None]*wave_A[:, None] **2/c
 
-    wave_final_A = np.linspace(np.min(lams_profs_A), np.max(lams_profs_A), 100000)
+    
+    #non-equally spaced wavelenght
+    wave_final_A = np.unique(lams_profs_A)
 
     if (plot_all_lines or plot_spec_tot) and ax is None:
         fig, ax = plt.subplots()
 
 
     # contributions to spectrum
-    source = {"ioniz": 0, "excit": 1, "recom": 2, "chexc": 2, "drsat": 2}
-    spec_ion = np.zeros_like(wave_final_A)
     spec = {}
     spec_tot = np.zeros_like(wave_final_A)
-
-    for typ, c in zip(
-        ["ioniz", "excit", "recom", "drsat", "chexc"], ["r", "b", "g", "m", "c"]
-    ):
-        spec[typ] = np.zeros_like(wave_final_A)
-        for ii in np.arange(lams_profs_A.shape[0]):
-            comp = interp1d(
-                lams_profs_A[ii, :],
-                ne_cm3 * ion_exc_rec_dens[source[typ]] * pec[typ][ii] * theta[ii, :],
-                bounds_error=False,
-                fill_value=0.0,
-            )(wave_final_A)
-            if plot_all_lines and pec[typ][ii] > np.max(pec[typ]) / 1000:
-                ax.plot(wave_final_A + dlam_A, comp, c=c)
+    colors =  {"ioniz": "r", "excit": "b", "recom": "g", "drsat": "m", "chexc": 'c'}
+    for ii in np.arange(lams_profs_A.shape[0]):
+        line_shape = interp1d(lams_profs_A[ii],theta[ii], bounds_error=False,  fill_value=0.0)(wave_final_A)
+        for typ, intens in line_emiss[ii].items():
+            comp = intens * line_shape
+            if typ not in spec:
+                spec[typ] = np.zeros_like(comp)
+       
+            if plot_all_lines and intens > np.max([l[typ] for l in line_emiss]) / 1000:
+                ax.plot(lams_profs_A[ii]  + dlam_A, intens*theta[ii], c=colors[typ])
+                
             spec[typ] += comp
-        spec_tot += spec[typ]
+            spec_tot += comp
+        
+        
+    labels =  {"ioniz": "ionization", "excit": "excitation", "recom": "radiative recomb", 
+               "drsat": "dielectronic recomb", "chexc": 'charge exchange recomb'}
+    
 
     if plot_spec_tot:
         # plot contributions from different processes
-        ax.plot(
-            wave_final_A + dlam_A,
-            spec["ioniz"],
-            c="r",
-            ls="--",
-            label="" if no_leg else "ionization",
-        )
-        ax.plot(
-            wave_final_A + dlam_A,
-            spec["excit"],
-            c="b",
-            ls="--",
-            label="" if no_leg else "excitation",
-        )
-        ax.plot(
-            wave_final_A + dlam_A,
-            spec["recom"],
-            c="g",
-            ls="--",
-            label="" if no_leg else "radiative recomb",
-        )
-        ax.plot(
-            wave_final_A + dlam_A,
-            spec["drsat"],
-            c="m",
-            ls="--",
-            label="" if no_leg else "dielectronic recomb",
-        )
-        ax.plot(
-            wave_final_A + dlam_A,
-            spec["chexc"],
-            c="c",
-            ls="--",
-            label="" if no_leg else "charge exchange recomb",
-        )
+        for t, spectrum in spec.items():
+            ax.plot(wave_final_A + dlam_A, spectrum, "--", c = colors[t],  label = labels[t])
+   
 
         # total envelope
-        ax.plot(
-            wave_final_A + dlam_A,
-            spec_tot,
-            c="k",
-            ls="--",
-            label="" if no_leg else "total",
-        )
+        ax.plot( wave_final_A + dlam_A, spec_tot,"k-", label=  "total" )
 
     if plot_all_lines or plot_spec_tot:
         if not no_leg:
@@ -1310,11 +1322,11 @@ def get_local_spectrum(
     # return Doppler-shifted wavelength if dlam_A was given as non-zero
     return (
         wave_final_A + dlam_A,
-        spec["ioniz"],
-        spec["excit"],
-        spec["recom"],
-        spec["drsat"],
-        spec["chexc"],
+        spec.get("ioniz",None),
+        spec.get("excit",None),
+        spec.get("recom",None),
+        spec.get("drsat",None),
+        spec.get("chexc",None),
         ax
     )
 
