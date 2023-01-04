@@ -14,7 +14,7 @@ from omfit_classes import omfit_eqdsk
 import sys, os
 from scipy.interpolate import interp1d
 import copy
-plt.ion()
+
 # Make sure that package home is added to sys.path
 sys.path.append("../")
 import aurora
@@ -52,7 +52,7 @@ namelist['lim_sep'] = 5.6
 namelist['clen_divertor'] = 25
 namelist['clen_limiter'] = 0.5
 namelist['bound_sep'] = 8
-namelist['source_cm_out_lcfs'] = 4.5
+namelist['source_cm_out_lcfs'] = 10
 namelist['recycling_switch'] = 0
 namelist['dr_0'] = 1
 namelist['dr_1'] = 0.1
@@ -81,7 +81,7 @@ V_z = -10e2 * asim.rhop_grid ** 5  # cm/s
  
 
 t = time()
-nz_norm_steady = asim.run_aurora_steady_analytic( D_z, V_z)#) ,  rvol,  nz[0], ploss, Sne, Rne, lam = 1.0)
+meta_ind, nz_norm_steady = asim.run_aurora_steady_analytic( D_z, V_z)#) ,  rvol,  nz[0], ploss, Sne, Rne, lam = 1.0)
 print('Analytical steady solution calculated in : %.3fs'%(time()-t))
  
  
@@ -97,13 +97,16 @@ nz_norm_steady2 = asim.run_aurora_steady(D_z, V_z, nz_init= None,
 print('Steady solution 2 calculated in : %.3fs'%(time()-t))
 
 
-
 plt.plot(asim.rhop_btw,nz_norm_steady.T )
 plt.gca().set_prop_cycle(None)
-plt.plot(asim.rhop_grid,nz_norm_steady2[:,1:] , '--')
+plt.plot(asim.rhop_grid,nz_norm_steady2, '--')
+
 plt.plot(asim.rhop_btw,nz_norm_steady.sum(0),'k-',lw=2,label='Analytical solution')
 plt.plot(asim.rhop_grid,nz_norm_steady2.sum(1) ,'k--',lw=2,label='Full iterative solution')
 plt.legend()
 plt.xlabel('rhop')
 plt.ylabel('impurity density [$cm^{-3}$]')
+plt.ioff()
+plt.show()
 
+#TODO both solution have a different Z=0 profile why??
