@@ -64,13 +64,14 @@ def get_adas_file_types():
         "plt": "line radiation",
         "ccd": "thermal charge exchange",
         "prc": "thermal charge exchange continuum radiation",
+        "xcd": "Parent cross-coupling coefficients",
+        "qcd": "Cross-coupling coefficients",        
         "pls": "line radiation in the SXR range",
         "prs": "continuum radiation in the SXR range",
         "brs": "continuum spectral bremstrahlung",
         "fis": "sensitivity in the SXR range",
         "pbs": "impurity bremsstrahlung in SXR range, also included in prs files",
     }
-
 
 class adas_file:
     """Read ADAS file in ADF11 format over the given density and temperature grids. 
@@ -91,51 +92,84 @@ class adas_file:
         self.file_type = self.filename[:3]
 
         if self.file_type not in ["brs", "sxr"]:
-            self.imp = self.filename.split("_")[1].split(".")[0]
+            try:
+                self.imp = self.filename.split("_")[1].split(".")[0]
+            except:
+                self.imp = None  #soem old files have a different naming convenction
 
         # get data
         self.load()
 
-        # settings for plotting
-        self.n_ion = self.data.shape[0]
-        self.ncol = np.ceil(np.sqrt(self.n_ion))
-        self.nrow = np.ceil(self.n_ion / self.ncol)
+
 
     def load(self):
+        #https://www.adas.ac.uk/man/appxa-11.pdf
 
         with open(self.filepath) as f:
             header = f.readline()
-            n_ions, n_ne, n_T = header.split()[:3]
+            self.n_ion, n_ne, n_T = np.int_(header.split()[:3])
             details = " ".join(header.split()[3:])
+   
+            
+            f.readline() #skip empty line
+            line = f.readline()
+            #metastable resolved file
+            if all([a.isdigit() for a in line.split()]):
+                self.metastables = np.int_(line.split())
+                f.readline()#skip empty line
+                line = f.readline()
+            else:
+                self.metastables = np.ones(self.n_ion+1,dtype=int)
+                
 
-            f.readline()
-
-            n_ions, n_ne, n_T = int(n_ions), int(n_ne), int(n_T)
-            logT = []
             logNe = []
             while len(logNe) < n_ne:
+                logNe += [float(n) for n in line.split()]
                 line = f.readline()
-                logNe = logNe + [float(n) for n in line.split()]
+
+            logT = []
             while len(logT) < n_T:
+                logT += [float(t) for t in line.split()]
                 line = f.readline()
-                logT = logT + [float(t) for t in line.split()]
+            
+            subheader = line
+            
+            ldata, self.Z, self.MGRD, self.MPRT = [],[],[],[]  
+            ind = 0
+            while True:
+                ind += 1
 
-            logT = np.array(logT)
-            logNe = np.array(logNe)
+                try:
+                    iprt,igrd,typ,z =  subheader.split('/')[1:5]
+                    self.Z.append(int(z.split('=')[1]))
+                    self.MGRD.append(int(igrd.split('=')[1]))
+                    self.MPRT.append(int(iprt.split('=')[1]))
+                except:
+                    #some old files have different header
+                    self.Z.append(ind+1)
+                    self.MGRD.append(1)
+                    self.MPRT.append(1)
 
-            data = []
-            for i_ion in range(n_ions):
-                f.readline()
-                plsx = []
-                while len(plsx) < n_ne * n_T:
+                #drcofd = log10(generalised collisional radiative coefficients) (units according to class)                                
+                drcofd = []
+                while len(drcofd) < n_ne * n_T:
                     line = f.readline()
-                    plsx = plsx + [float(L) for L in line.split()]
-                plsx = np.array(plsx).reshape(n_T, n_ne)
-                data.append(np.array(plsx))
+                    drcofd += [float(L) for L in line.split()]
+                    
+                ldata.append(np.array(drcofd).reshape(n_T, n_ne))
+        
+                subheader = f.readline().replace('-',' ')
+                #end of the file
+                if len(subheader) == 0 or subheader.isspace() or subheader[0] == 'C':
+                    break
+                
 
-        self.logNe = logNe
-        self.logT = logT
-        self.data = np.array(data)
+        self.logNe = np.array(logNe)
+        self.logT = np.array(logT)
+        self.logdata = np.array(ldata)
+   
+        self.meta_ind = list(zip(self.Z, self.MGRD, self.MPRT))
+        
 
     def plot(self, fig=None, axes=None):
         """Plot data from input ADAS file. If provided, the arguments allow users to overplot
@@ -150,6 +184,11 @@ class adas_file:
             for each plotted charge state. Users may want to call this function once first to get
             some axes, and then pass those same axes to a second call for another file to compare with.
         """
+        
+        # settings for plotting
+        self.ncol = np.ceil(np.sqrt(len(self.Z)))
+        self.nrow = np.ceil(len(self.Z) / self.ncol)
+        
         if fig is None or axes is None:
             fig, axes = plt.subplots(
                 int(self.ncol), int(self.nrow), sharex=True, sharey=True
@@ -157,34 +196,35 @@ class adas_file:
 
         axes = np.atleast_2d(axes)
         colormap = cm.rainbow
+        colors = cm.rainbow(np.linspace(0, 1, len(self.logNe)))
+
         if fig is not None:
             fig.suptitle(self.filename + "  " + get_adas_file_types()[self.file_type])
 
         for i, ax in enumerate(axes.flatten()):
-            if i >= self.n_ion:
+            if i >= len(self.Z):
                 break
-            if all(self.data[i, :, :].std(axis=1) == 0):  # independent of density
-                ax.plot(self.logT, self.data[i, :, 0])
+            if all(self.logdata[i].std(1) == 0):  # independent of density
+                ax.plot(self.logT, self.logdata[i, :, 0])
             else:
-                ax.set_prop_cycle(
-                    "color", colormap(np.linspace(0, 1, self.data.shape[2]))
-                )
-                for idens in np.arange(len(self.logNe)):
-                    ax.plot(
-                        self.logT,
-                        self.data[i, :, idens],
-                        label=f"$n_e=10^{{{self.logNe[idens]}}}$ cm$^{{{-3}}}$",
-                    )
-                ax.legend(loc="best").set_draggable(True)
+                ax.set_prop_cycle("color", colors)
+                ax.plot(self.logT,self.logdata[i])
+                ax.text(0.1, 0.8, '$n_e = 10^{%.0f-%.0f}\mathrm{[cm^{-3}]}$'%(self.logNe[0],self.logNe[-1]), horizontalalignment='left', transform=ax.transAxes)
+           
             ax.grid(True)
+            
             if self.file_type != "brs":
-                charge = (
-                    i + 1 if self.file_type in ["scd", "prs", "ccd", "prb"] else i + 2
-                )
-                ax.set_title(self.imp + "$^{%d\!+}$" % (charge - 1))  # check?
+                charge = self.Z[i]
+                meta = self.MPRT[i],self.MGRD[i] 
+                if self.file_type in ["scd", "prs", "ccd", "prb", 'qcd']:
+                    charge -= 1
+                title = self.imp + "$^{%d\!+}$" % charge
+                if any(self.metastables > 1):
+                    title += str(meta)
+                ax.set_title(title)  # check?
 
         for ax in axes[-1]:
-            ax.set_xlabel("$\log T_e\ \mathrm{[eV]}$")
+            ax.set_xlabel("$\log\ T_e\ \mathrm{[eV]}$")
         for ax in axes[:, 0]:
             if self.file_type in ["scd", "acd", "ccd"]:
                 ax.set_ylabel("$\log(" + self.file_type + ")\ \mathrm{[cm^3/s]}$")
@@ -291,14 +331,13 @@ def get_atom_data(imp, files=["acd", "scd"]):
     atom_data : dict
         Dictionary containing data for each of the requested files. 
         Each entry of the dictionary gives log-10 of ne, log-10 of Te and log-10 of the data
-        as attributes atom_data[key].logNe, atom_data[key].logT, atom_data[key].data
+        as attributes res.logNe, res.logT,  res.logdata, res.meta_ind, res.metastables
     """
 
     try:
         # default files dictionary
-        all_files = adas_files.adas_files_dict()[
-            imp
-        ]  # all default files for a given species
+        # all default files for a given species
+        all_files = adas_files.adas_files_dict()[ imp]  
     except KeyError:
         raise KeyError(f"ADAS data not available for ion {imp}!")
 
@@ -325,8 +364,10 @@ def get_atom_data(imp, files=["acd", "scd"]):
 
         # load specific file and add it to output dictionary
         res = adas_file(fileloc)
-        atom_data[filetype] = res.logNe, res.logT, res.data
-
+        atom_data[filetype] = adas_file(fileloc)
+        #{'lne': res.logNe, 'lte': res.logT, 'ldata': res.data,
+            #'meta_ind': res.meta_ind, 'meta': res.metastables}
+ 
     return atom_data
 
 
@@ -485,14 +526,16 @@ def get_frac_abundances(
 
     include_cx = False if not np.any(n0_by_ne) else True
 
-    Te, Sne, Rne, cxne = get_cs_balance_terms(
+    out = get_cs_balance_terms(
         atom_data, _ne, _Te, _Ti, include_cx=include_cx
     )
+    Te, Sne, Rne = out[:3]
+    
     Z_imp = Sne.shape[1]
 
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
-        Rne += n0_by_ne[:, None] * cxne
+        Rne += n0_by_ne[:, None] * out[3]
 
     rate_ratio = np.hstack((np.ones_like(Te)[:, None], Sne / Rne))
     fz_full = np.cumprod(rate_ratio, axis=1)
@@ -592,8 +635,7 @@ def get_frac_abundances(
 
 
 def get_cs_balance_terms(
-    atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include_cx=True
-):
+    atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include_cx=True, metastables=False):
     """Get S*ne, R*ne and cx*ne rates on the same logTe grid. 
     
     Parameters
@@ -614,9 +656,9 @@ def get_cs_balance_terms(
     -------
     Te : array (n_Te)
         Te grid on which atomic rates are given
-    Sne, Rne (,cxne): arrays (n_ne,n_Te)
+    Sne, Rne (,cxne, Qne, Xne): arrays (n_ne,n_Te)
         atomic rates for effective ionization, radiative+dielectronic
-        recombination (+ charge exchange, if requested). 
+        recombination (+ charge exchange, + crosscoupling if requested). 
         All terms will be in units of :math:`s^{-1}`. 
 
     Notes
@@ -628,14 +670,14 @@ def get_cs_balance_terms(
 
     if Te_eV is None:
         # find smallest Te grid from all files
-        _, logTe1, _ = atom_data["scd"]
-        _, logTe2, _ = atom_data["acd"]
+        logTe1 = atom_data["scd"].logT
+        logTe2 = atom_data["acd"].logT
 
         minTe = max(logTe1[0], logTe2[0])
         maxTe = min(logTe1[-1], logTe2[-1])  # avoid extrapolation
 
         if include_cx:
-            _, logTe3, _ = atom_data["ccd"]  # thermal cx recombination
+            logTe3 = atom_data["ccd"].logT  # thermal cx recombination
             minTe = max(minTe, logTe3[0])
             maxTe = min(maxTe, logTe3[-1])  # avoid extrapolation
 
@@ -643,21 +685,28 @@ def get_cs_balance_terms(
 
     logne = np.log10(ne_cm3)
     logTe = np.log10(Te_eV)
+    
+    
 
     Sne = interp_atom_prof(atom_data["scd"], logne, logTe, x_multiply=True)
     Rne = interp_atom_prof(atom_data["acd"], logne, logTe, x_multiply=True)
+    out = [Te_eV,Sne, Rne]
+    
     if include_cx:
+        #this should be neutral temperature? or weighted Ti and T0 temperature?
         logTi = np.log10(Ti_eV) if Ti_eV is not None else logTe
-        x, y, tab = atom_data["ccd"]
+        cxne = interp_atom_prof(atom_data["ccd"], logne, logTi, x_multiply=True)
         # select appropriate number of charge states
         # this allows use of CCD files from higher-Z ions because of simple CX scaling
-        cxne = interp_atom_prof(
-            (x, y, tab[: Sne.shape[1]]), logne, logTi, x_multiply=True
-        )
-    else:
-        cxne = None
+        out.append(cxne[: Sne.shape[1]])
 
-    return Te_eV, Sne, Rne, cxne
+    if metastables:
+        Qne = interp_atom_prof(atom_data["qcd"], logne, logTe, x_multiply=True)
+        Xne = interp_atom_prof(atom_data["xcd"], logne, logTe, x_multiply=True)
+        out += [Qne, Xne]
+    
+
+    return out
 
 
 def get_atomic_relax_time(
@@ -746,13 +795,14 @@ def get_atomic_relax_time(
 
     include_cx = False if not np.any(n0_by_ne) else True
 
-    Te, Sne, Rne, cxne = get_cs_balance_terms(
+    out = get_cs_balance_terms(
         atom_data, _ne, _Te, include_cx=include_cx
     )
 
+    Te, Sne, Rne = out[:3]
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
-        Rne += cxne * _n0_by_ne
+        Rne += out[3] * _n0_by_ne
 
     # Enable use of superstages
     if len(superstages):
@@ -907,7 +957,7 @@ def interp_atom_prof(atom_table, xprof, yprof, log_val=False, x_multiply=True):
     Parameters
     ----------
     atom_table : list
-        List with x,y, table = atom_table, containing atomic data from one of the ADAS files. 
+        object atom_data, containing atomic data from one of the ADAS files. 
     xprof : array (nt,nr)
         Spatio-temporal profiles of the first coordinate of the ADAS file table (usually 
         electron density in :math:`cm^{-3}`)
@@ -930,7 +980,10 @@ def interp_atom_prof(atom_table, xprof, yprof, log_val=False, x_multiply=True):
     This function uses `np.log10` and exponential operations to optimize speed, since it has
     been observed that base-e operations are faster than base-10 operations in numpy. 
     """
-    x, y, table = atom_table
+    x = atom_table.logNe
+    y = atom_table.logT
+    table = atom_table.logdata
+
 
     if x_multiply:  # multiplying of logarithms is just adding
         table = table + x  # don't modify original table, create copy
