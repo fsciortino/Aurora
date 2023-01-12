@@ -29,4 +29,6 @@ from .solps import *
 from .kn1d import *
 from .oedge import *
 
+from .facit import *
+
 aurora_dir = os.path.dirname(os.path.abspath(__file__))

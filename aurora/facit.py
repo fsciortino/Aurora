@@ -65,8 +65,7 @@ class FACIT:
         if 0, use non-rotating limit from Fajardo PPCF (2022)
         if 1, use PS model from Maget PPCf (2020)
         if 2, use BP and PS model from Fajardo (subm. to PPCF)
-        default is 0
-        0 is suggested for low-Z impurities (e.g. B, N, Ne)
+        Default is 0. 0 is recommended for low-Z impurities (e.g. B, N, Ne)
     Te_Ti : 1D array (nr) or float, optional
         electron to ion temperature ratio [-]
         default is 1.0

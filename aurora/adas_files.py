@@ -73,13 +73,13 @@ def get_adas_file_loc(filename, filetype="adf11"):
         if not os.path.isdir(os.path.dirname(loc)):
             os.makedirs(os.path.dirname(loc))
 
-        url = "https://open.adas.ac.uk/download/" + filetype + os.sep
+        url = "https://open.adas.ac.uk/download/" + filetype + '/'
         if filetype == "adf11":
-            filename_mod = filename.split("_")[0] + os.sep + filename
+            filename_mod = filename.split("_")[0] + '/' + filename
             
         elif filetype in ["adf12", "adf13", "adf21", "adf22"]:
             filename_mod = filename.replace("#","][").split("_")[0] +\
-                           os.sep + filename.replace("#", "][")
+                           '/' + filename.replace("#", "][")
 
         elif filetype == "adf15":
             
@@ -93,15 +93,14 @@ def get_adas_file_loc(filename, filetype="adf11"):
                 filename_mod = "transport/" + filename.replace("#", "][")
             else:
                 # patterns may be different, attempt simple guess:
-                filename_mod = filename.split("_")[0] + os.sep + filename.replace("#", "][")
+                filename_mod = filename.split("_")[0] + '/' + filename.replace("#", "][")
                 
         else:
             raise ValueError(
                 "ADAS file type/format not recognized.\n"+\
                 "Could not find it or download it automatically!"
             )
-
-        r = requests.get(url + os.sep + filename_mod)
+        r = requests.get(url + '/' + filename_mod)
             
         if len(r.text) < 1000:
             # OPEN-ADAS reports short URL error text rather than an error code
