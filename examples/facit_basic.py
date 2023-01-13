@@ -64,25 +64,17 @@ D_z = np.zeros((asim.rvol_grid.size, times_DV.size, asim.Z_imp+1)) # space, time
 V_z = np.zeros(D_z.shape)
 
 # set time-independent anomalous transport coefficients
-# flat D=1 m^2/s, V=-1 m/s in core, 0 in pedestal, half of core in SOL (?)
 Dz_an = np.zeros(D_z.shape) # space, time, nZ
 Vz_an = np.zeros(D_z.shape)
 
-rped   = 0.90
-idxped = np.argmin(np.abs(rped - asim.rhop_grid))
-idxsep = np.argmin(np.abs(1.0 - asim.rhop_grid))
-
 # set anomalous transport coefficients
-#Dz_an[:idxped,:,:] = D_an 
-#Vz_an[:idxped,:,:] = V_an
-#Dz_an[idxsep:,:,:] = D_an/2
-#Vz_an[idxsep:,:,:] = V_an/2
 Dz_an[:] = D_an
 Vz_an[:] = V_an
 
 # -------------------
 # prepare FACIT input
 rr = asim.rvol_grid/100 # in m
+idxsep = np.argmin(np.abs(1.0 - asim.rhop_grid)) # index of radial position of separatrix
 amin = rr[idxsep] # minor radius in m
 roa = rr[:idxsep+1]/amin # normalized radial coordinate
 
@@ -91,7 +83,6 @@ R0 = geqdsk['fluxSurfaces']['R0'] # major radius
 
 qmag = np.interp(roa, geqdsk['RHOVN'], geqdsk['QPSI'])[:idxsep+1] # safety factor
 
-#rhop = np.linspace(0,1,roa.size)
 rhop = asim.rhop_grid[:idxsep+1]
 
 # profiles
@@ -117,7 +108,6 @@ if rotation_model == 0:
 
     Machi  = np.zeros(roa.size)    # no rotation (not that it matters with rotation_model=0)
     RV = None
-    #JV = None
     ZV = None
 
 elif rotation_model == 2:
@@ -132,20 +122,6 @@ elif rotation_model == 2:
 
     RV, ZV = aurora.rhoTheta2RZ(geqdsk, rhop, theta, coord_in='rhop', n_line=201)
     RV, ZV = RV.T, ZV.T
-     
-
-    # Jacobian of coordinate system
-    dRdr  = np.gradient(RV, roa*amin, axis = 0)
-    dRdth = np.gradient(RV, theta, axis = 1)
-    dZdr  = np.gradient(ZV, roa*amin, axis = 0)
-    dZdth = np.gradient(ZV, theta, axis = 1)
-
-    grr   = dRdr**2 + dZdr**2
-    grth  = dRdr*dRdth + dZdr*dZdth
-    gthth = dRdth**2 + dZdth**2
-
-    JV = (RV/(amin*np.maximum(roa[:,None],0.001)*B0/qmag[:,None]))*np.sqrt(grr*gthth - grth**2)
-
 
 # ----------
 # call FACIT
@@ -171,9 +147,9 @@ for j, tj in enumerate(times_DV):
                         gradTi, gradNi, gradNz, \
                         amin/R0, B0, R0, qmag, \
                         rotation_model = rotation_model, Te_Ti = TeovTi,\
-                        RV = RV, ZV = ZV) #JV = JV)
-
-            D_z[:idxsep+1,j,i] = fct.Dz*100**2 # convert to cm**2/s     
+                        RV = RV, ZV = ZV)
+            
+            D_z[:idxsep+1,j,i] = fct.Dz*100**2 # convert to cm**2/s
             V_z[:idxsep+1,j,i] = fct.Vconv*100 # convert to cm/s
 
 

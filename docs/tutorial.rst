@@ -442,7 +442,8 @@ An important feature of FACIT is the description of the effects of rotation on n
    If :py:`rotation_model=2`, then the flux surface contours :math:`R(r,\theta)`, :math:`Z(r,\theta)` that are inputs of FACIT should have a radial discretization equal to the :py:`rho` coordinate in which FACIT will be evaluated. If they are not given as inputs, circular geometry will be assumed internally.  
 
 ::
-   from facit import FACIT
+   # The full example on how to run FACIT in Aurora is given in the folder examples/facit_basic.py
+   # in the following only the initialization of the transport coefficients, the magnetic geometry and the main call to FACIT are given 
     
    # initialize transport coefficients
    # note that to be able to give charge-dependent Dz and Vz,
@@ -453,36 +454,31 @@ An important feature of FACIT is the description of the effects of rotation on n
     
    D_z = np.zeros((asim.rvol_grid.size, times_DV.size, asim.Z_imp+1)) # space, time, nZ
    V_z = np.zeros(D_z.shape)
+
+   # flux surface contours (when rotation_model = 2)
+   RV, ZV = aurora.rhoTheta2RZ(geqdsk, rhop, theta, coord_in='rhop', n_line=201)
+   RV, ZV = RV.T, ZV.T
    
-   '''
-   here kinetic profiles, their gradients, and geometric quantities should be defined.
-   '''
+   # call to FACIT for each charge state
+   for j, tj in enumerate(times_DV):
 
-   R,Z = aurora.rhoTheta2RZ(geqdsk, rho, theta)
-   
-   for zk in range(asim.Z_imp + 1):
+       for i, zi in enumerate(range(asim.Z_imp + 1)):
 
-       if zk != 0:
+           if zi != 0:
+               Nz     = nz_init[:idxsep+1,i]*1e6 # in 1/m**3
+               gradNz = np.gradient(Nz, roa*amin)
 
-           # we can set a trace impurity density profile here or simply set to zero
-           Nz = nz_init[:idxsep+1,zk]*1e6 # in 1/m**3
-           gradNz = np.gradient(Nz, rova*amin)
+               fct = aurora.FACIT(roa,\
+                           zi, asim.A_imp,\
+                           asim.main_ion_Z, asim.main_ion_A,\
+                           Ti, Ni, Nz, Machi, Zeff, \
+                           gradTi, gradNi, gradNz, \
+                           amin/R0, B0, R0, qmag, \
+                           rotation_model = rotation_model, Te_Ti = TeovTi,\
+                           RV = RV, ZV = ZV)
             
-           fct = FACIT(roa,
-                       zk, asim.A_imp,
-                       asim.main_ion_Z, asim.main_ion_A,
-                       Ti, Ni, Nz, Machi, Zeff,
-                       gradTi, gradNi, gradNz,
-                       amin/R0, B0, R0, qmag,
-                       rotation_model = rot_mod, Te_Ti = TeovTi,
-                       RV = R, ZV = Z)
-            
-                D_z[:idxsep+1,0,zk] = fct.Dz*100**2 # converto to cm**2/s     
-                V_z[:idxsep+1,0,zk] = fct.Vconv*100 # convert to cm/s
-
-        else:
-            D_z[:idxsep+1,0,zk] = 0.0     
-            V_z[:idxsep+1,0,zk] = 0.0
+               D_z[:idxsep+1,j,i] = fct.Dz*100**2 # convert to cm**2/s
+               V_z[:idxsep+1,j,i] = fct.Vconv*100 # convert to cm/s
 
    
 .. warning::
@@ -518,5 +514,5 @@ In addition to the collisional transport coefficients calculated with FACIT, we 
    while the extension to arbitrary collisionality and inclusion of the Banana-Plateau flux in the poloidally-symmetric (non-rotating) limit is obtained in
    `Fajardo et al 2022 Plasma Phys. Control. Fusion 64 055017 <https://iopscience.iop.org/article/10.1088/1361-6587/ac5b4d>`_,
    and finally the description of the effects of rotation across collisionality regimes is presented in
-   `Fajardo et al subm. to Plasma Phys. Control. Fusion`_.
+   `Fajardo et al 2023 Plasma Phys. Control. Fusion 65 <https://iopscience.iop.org/article/10.1088/1361-6587/acb0fc>`_.
    

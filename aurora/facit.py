@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------
 # Python standalone of FACIT routine for collisional impurity transport
-# Daniel Fajardo (daniel.fajardo@ipp.mpg.de), September 2022
+# Daniel Fajardo (daniel.fajardo@ipp.mpg.de), January 2023
 #-----------------------------------------------------------------------------
 
 import numpy as np
@@ -12,6 +12,7 @@ class FACIT:
     References:  Maget et al 2020 Plasma Phys. Control. Fusion 62 105001
                  Fajardo et al 2022 Plasma Phys. Control. Fusion 64 055017
                  Maget et al 2022 Plasma Phys. Control. Fusion 64 069501
+                 Fajardo et al 2023 Plasma Phys. Control. Fusion 65 
           
     License statement:
     Software name : FACIT
@@ -136,8 +137,8 @@ class FACIT:
         only relevant if pol_asym
         default is 1.0
         
-    Returns
-    -------
+    Returns (as attributes)
+    -----------------------
     Dz_* : 1D array (nr)
         diffusion coefficient for each flux component [:math:`m^2/s`]
         * = PS, BP or CL (for Pfirsch-Schlüter, Banana-Plateau and Classical)
@@ -147,7 +148,7 @@ class FACIT:
         coefficient of the main ion temperature gradient for each flux component [:math:`m^2/s`]
     Vrz_* : 1D array (nr)
         radial flux per particle (Flux_z/nz)_* for each flux component [:math:`m/s`]
-    Vrz_* : 1D array (nr)
+    Vconv_* : 1D array (nr)
         radial convective velocity for each flux component [:math:`m/s`]
     Dz : 1D array (nr)
         total diffusion coefficient [:math:`m^2/s`]
@@ -460,7 +461,7 @@ class FACIT:
         
         self.Vrz_PS = -self.Dz_PS*grad_ln_Nimp + self.Kz_PS*grad_ln_Ni + \
                        self.Hz_PS*grad_ln_Ti # PS radial flux per particle [m/s]
-        self.Vz_PS = self.Kz_PS*grad_ln_Ni + self.Hz_PS*grad_ln_Ti # PS convective velocity [m/s]
+        self.Vconv_PS = self.Kz_PS*grad_ln_Ni + self.Hz_PS*grad_ln_Ti # PS convective velocity [m/s]
         
         # Banana-Plateau (BP)
         
@@ -471,7 +472,7 @@ class FACIT:
         self.Vrz_BP = -self.Dz_BP*grad_ln_Nimp + self.Kz_BP*grad_ln_Ni + \
                        self.Hz_BP*grad_ln_Ti  # BP radial flux per particle [m/s]
         
-        self.Vz_BP = self.Kz_BP*grad_ln_Ni + self.Hz_BP*grad_ln_Ti # BP convective velocity [m/s]
+        self.Vconv_BP = self.Kz_BP*grad_ln_Ni + self.Hz_BP*grad_ln_Ti # BP convective velocity [m/s]
         
         # Classical
         
@@ -481,7 +482,7 @@ class FACIT:
         
         self.Vrz_CL = -self.Dz_CL*grad_ln_Nimp + self.Kz_CL*grad_ln_Ni + \
                        self.Hz_CL*grad_ln_Ti # CL radial flux per particle [m/s]
-        self.Vz_CL  = self.Kz_CL*grad_ln_Ni + self.Hz_CL*grad_ln_Ti # CL convective velocity [m/s]
+        self.Vconv_CL  = self.Kz_CL*grad_ln_Ni + self.Hz_CL*grad_ln_Ti # CL convective velocity [m/s]
         
         
         # Total
