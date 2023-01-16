@@ -460,7 +460,7 @@ def Lya_to_neut_dens(
         pec_recomb = 10 ** log10pec_dict[1215.2]["recom"].ev(np.log10(ne), np.log10(Te))
         pec_exc = 10 ** log10pec_dict[1215.2]["excit"].ev(np.log10(ne), np.log10(Te))
 
-        N1 = emiss_prof / E_21 / (ne * pec_exc + ni * pec_recomb)
+        N1 = ( ( emiss_prof / E_21 ) - (ni * ne * pec_recomb) ) / (ne * pec_exc)
 
     if plot:
         if rhop is None:
