@@ -50,10 +50,10 @@ else:
 
 
 def download_ehr5_file():
-    """Download the ehr5.dat file containing atomic data describing the multi-step ionization and 
-    recombination of hydrogen. 
+    """Download the ehr5.dat file containing atomic data describing the multi-step ionization and
+    recombination of hydrogen.
 
-    See https://w3.pppl.gov/degas2/ for details. 
+    See https://w3.pppl.gov/degas2/ for details.
     """
     filename = "ehr5.dat"
     url = "https://w3.pppl.gov/degas2/ehr5.dat"
@@ -67,7 +67,7 @@ def download_ehr5_file():
 
 
 class ehr5_file:
-    """ Read ehr5.dat file from DEGAS2. 
+    """Read ehr5.dat file from DEGAS2.
     Returns a dictionary containing
 
     - Ionization rate Seff in :math:`cm^3 s^{-1}`
@@ -78,17 +78,17 @@ class ehr5_file:
     - Continuum “n=2 / n=1”, :math:`N_2^{(ii)}/N_11
     - Neutral “n=3 / n=1”, :math:`N_3^{(i)}/N_1`
     - Continuum “n=3 / n=1”, :math:`N_3^{(ii)}/N_1`
-    
+
     ... and similarly for n=4 to 9. Refer to the DEGAS2 manual for details.
     """
 
     def __init__(self, filepath=None):
-        """Load ehr5.dat file, either from the indicated path or by downloading it locally. 
+        """Load ehr5.dat file, either from the indicated path or by downloading it locally.
 
         Keyword Args:
             filepath : str, optional
                 Path of ehr5.dat file to use. If left to None, the file is downloaded from the web
-                and saved locally. 
+                and saved locally.
 
         Results for each of the fields in the `fields` attribute will be available in the `res`
         attribute in the form of a dictionary. Refer to the DEGAS2 manual for a description of these
@@ -197,9 +197,9 @@ def get_exc_state_ratio(
         N_m/N_1 = \left(\frac{N_m^i}{N_1} \right) N_m + \left(\frac{N_m^{ii}}{n_i} \right) n_i
 
 
-    where :math:`N_m` is the number of electrons in the excited state :math:`m`, :math:`N_1` 
+    where :math:`N_m` is the number of electrons in the excited state :math:`m`, :math:`N_1`
     is the number in the ground state, and :math:`n_i` is the density of ions that could recombine.
-    :math:`i` and :math:`ii` indicate terms corresponding to coupling to the ground state and to 
+    :math:`i` and :math:`ii` indicate terms corresponding to coupling to the ground state and to
     the continuum, respectively.
 
     Ref.: DEGAS2 manual.
@@ -341,18 +341,18 @@ def plot_exc_ratios(
         state fractions depend on the balance of excitation from the ground state and
         coupling to the continuum.
     ax : matplotlib.axes instance, optional
-        Axes instance on which results should be plotted. 
+        Axes instance on which results should be plotted.
     ls : str
         Line style to use
     c : str or other matplotlib color specification
         Color to use in plots
     label : str
-        Label to use in scatter plot. 
+        Label to use in scatter plot.
 
     Returns
     -------
     Ns : list of arrays
-        List of arrays for each of the n-levels requested, each containing excited state 
+        List of arrays for each of the n-levels requested, each containing excited state
         densities at the chosen densities and temperatures for the given ground state density.
     """
 
@@ -374,7 +374,7 @@ def plot_exc_ratios(
 def Lya_to_neut_dens(
     emiss_prof, ne, Te, ni=None, plot=True, rhop=None, rates_source="adas", axs=None
 ):
-    """ Estimate ground state neutral density from measured emissivity profiles.
+    """Estimate ground state neutral density from measured emissivity profiles.
     This ignores possible molecular dynamics and effects that may be captured via
     forward modeling of neutral transport.
 
@@ -387,7 +387,7 @@ def Lya_to_neut_dens(
     Te : 1D array
         Electron temperature, units of :math:`eV`
     ni : 1D array
-        Main ion (H/D/T) density, units of :math:`cm^{-3}`. 
+        Main ion (H/D/T) density, units of :math:`cm^{-3}`.
         If left to None, this is internally set to ni=ne.
     plot : bool
         If True, plot some of the key density profiles.
@@ -401,18 +401,18 @@ def Lya_to_neut_dens(
     Returns
     ------------
     N1 : 1D array
-        Radial profile of estimated ground state atomic neutral density on the same grid 
+        Radial profile of estimated ground state atomic neutral density on the same grid
         as the input arrays. Units of :math:`cm^{-3}`.
 
     Examples
     --------------
-    
-    >>> N2_colrad,axs = Lya_to_neut_dens_basic(emiss_prof, ne, Te, ni, 
+
+    >>> N2_colrad,axs = Lya_to_neut_dens_basic(emiss_prof, ne, Te, ni,
     >>>                                  plot=True, rhop=rhop, rates_source='colrad')
-    
-    >>> N2_adas,axs = Lya_to_neut_dens_basic(emiss_prof, ne, Te, ni, plot=True, rhop=rhop, 
+
+    >>> N2_adas,axs = Lya_to_neut_dens_basic(emiss_prof, ne, Te, ni, plot=True, rhop=rhop,
     >>>                       rates_source='adas',axs=axs)
-    
+
     """
     assert len(emiss_prof) == len(ne) and len(ne) == len(Te)
     if ni is None:
@@ -474,9 +474,9 @@ def Lya_to_neut_dens(
         if axs is None:
             # plot this only the first time
             ax[0].plot(rhop[sel:], N2[sel:], label=r"$N_2$")
-        ax[0].semilogy(rhop[sel:], N1[sel:], label=fr"{rates_source} $N_1$")
+        ax[0].semilogy(rhop[sel:], N1[sel:], label=rf"{rates_source} $N_1$")
         ax[1].semilogy(
-            rhop[sel:], N1[sel:] / ne[sel:], label=fr"{rates_source} $N_1/n_e$"
+            rhop[sel:], N1[sel:] / ne[sel:], label=rf"{rates_source} $N_1/n_e$"
         )
         ax[0].set_ylim([1e10, None])
         ax[1].set_ylim([1e-5, None])

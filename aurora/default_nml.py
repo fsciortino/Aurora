@@ -24,7 +24,7 @@ import numpy as np
 
 
 def load_default_namelist():
-    """ Load default namelist. 
+    """Load default namelist.
     Users should modify and complement this for a successful forward-model run.
     """
 
@@ -69,7 +69,9 @@ def load_default_namelist():
         "saw_model": {
             "saw_flag": False,
             "rmix": 1000.0,
-            "times": [1.0,],
+            "times": [
+                1.0,
+            ],
             "crash_width": 1.0,
         },
         # --------------------

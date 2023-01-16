@@ -29,6 +29,7 @@ from scipy.constants import e as q_electron, m_p
 import pickle as pkl
 from copy import deepcopy
 from scipy.integrate import cumtrapz
+from scipy.linalg import solve_banded
 import matplotlib.pyplot as plt
 from . import interp
 from . import atomic
@@ -64,7 +65,7 @@ class aurora_sim:
 
         # make sure that any changes in namelist will not propagate back to the calling function
         self.namelist = deepcopy(namelist)
-        self.geqdsk = geqdsk # if None, minor (rvol_lcfs) and major radius (Raxis_cm) must be in namelist
+        self.geqdsk = geqdsk  # if None, minor (rvol_lcfs) and major radius (Raxis_cm) must be in namelist
         self.kin_profs = self.namelist["kin_profs"]
         self.imp = namelist["imp"]
 
@@ -79,17 +80,20 @@ class aurora_sim:
 
         self.reload_namelist()
 
-        if 'Raxis_cm' in self.namelist:
-            self.Raxis_cm = self.namelist['Raxis_cm'] # cm
-        elif self.geqdsk is not None and 'RMAXIS' in self.geqdsk:
+        if "Raxis_cm" in self.namelist:
+            self.Raxis_cm = self.namelist["Raxis_cm"]  # cm
+        elif self.geqdsk is not None and "RMAXIS" in self.geqdsk:
             self.Raxis_cm = self.geqdsk["RMAXIS"] * 100.0  # cm
 
-        if self.geqdsk is not None and 'BCENTR' in self.geqdsk:
-            self.namelist['Baxis'] = self.geqdsk["BCENTR"]
-        if ('prompt_redep_flag' in self.namelist and self.namelist['prompt_redep_flag'])\
-           and not hasattr(self, 'Baxis'):
+        if self.geqdsk is not None and "BCENTR" in self.geqdsk:
+            self.namelist["Baxis"] = self.geqdsk["BCENTR"]
+        if (
+            "prompt_redep_flag" in self.namelist and self.namelist["prompt_redep_flag"]
+        ) and not hasattr(self, "Baxis"):
             # need magnetic field to model prompt redeposition
-            raise ValueError('Missing magnetic field on axis! Please define this in the namelist')
+            raise ValueError(
+                "Missing magnetic field on axis! Please define this in the namelist"
+            )
 
         # specify which atomic data files should be used -- use defaults unless user specified in namelist
         atom_files = {}
@@ -99,9 +103,17 @@ class aurora_sim:
         atom_files["scd"] = self.namelist.get(
             "scd", adas_files.adas_files_dict()[self.imp]["scd"]
         )
-        if self.namelist["cxr_flag"]:
+        if self.namelist.get("cxr_flag", False):
             atom_files["ccd"] = self.namelist.get(
                 "ccd", adas_files.adas_files_dict()[self.imp]["ccd"]
+            )
+
+        if self.namelist.get("metastable_flag", False):
+            atom_files["qcd"] = self.namelist.get(
+                "qcd", adas_files.adas_files_dict()[self.imp].get("qcd", None)
+            )
+            atom_files["xcd"] = self.namelist.get(
+                "xcd", adas_files.adas_files_dict()[self.imp].get("xcd", None)
             )
 
         # now load ionization and recombination rates
@@ -117,14 +129,13 @@ class aurora_sim:
         self.setup_kin_profs_depts()
 
     def reload_namelist(self, namelist=None):
-        """(Re-)load namelist to update scalar variables.
-        """
+        """(Re-)load namelist to update scalar variables."""
         if namelist is not None:
             self.namelist = namelist
 
         # Extract other inputs from namelist:
         self.mixing_radius = self.namelist["saw_model"]["rmix"]
-        self.decay_length_boundary = self.namelist["SOL_decay"]
+        self.decay_length_boundary = self.namelist["SOL_decay"]  # cm
         self.wall_recycling = self.namelist["wall_recycling"]
         self.tau_div_SOL_ms = self.namelist["tau_div_SOL_ms"]
         self.tau_pump_ms = self.namelist["tau_pump_ms"]
@@ -142,14 +153,12 @@ class aurora_sim:
         self.nbi_cxr_flag = self.namelist["nbi_cxr_flag"]
 
     def save(self, filename):
-        """Save state of `aurora_sim` object.
-        """
+        """Save state of `aurora_sim` object."""
         with open(filename, "wb") as f:
             pkl.dump(self, f)
 
     def load(self, filename):
-        """Load `aurora_sim` object.
-        """
+        """Load `aurora_sim` object."""
         with open(filename, "rb") as f:
             obj = pkl.load(f)
         self.__dict__.update(obj.__dict__)
@@ -161,8 +170,7 @@ class aurora_sim:
         self.__dict__.update(aurora_dict)
 
     def setup_grids(self):
-        """Method to set up radial and temporal grids given namelist inputs.
-        """
+        """Method to set up radial and temporal grids given namelist inputs."""
         if self.geqdsk is not None:
             # Get r_V to rho_pol mapping
             rho_pol, _rvol = grids_utils.get_rhopol_rvol_mapping(self.geqdsk)
@@ -170,14 +178,16 @@ class aurora_sim:
             self.rvol_lcfs = self.namelist["rvol_lcfs"] = np.round(
                 rvol_lcfs, 3
             )  # set limit on accuracy
-        
-        elif 'rvol_lcfs' in self.namelist:
+
+        elif "rvol_lcfs" in self.namelist:
             # separatrix location explicitly given by user
-            self.rvol_lcfs = self.namelist['rvol_lcfs']
+            self.rvol_lcfs = self.namelist["rvol_lcfs"]
 
         else:
-            raise ValueError('Could not identify rvol_lcfs. Either provide this in the namelist or provide a geqdsk equilibrium')
-            
+            raise ValueError(
+                "Could not identify rvol_lcfs. Either provide this in the namelist or provide a geqdsk equilibrium"
+            )
+
         # create radial grid
         grid_params = grids_utils.create_radial_grid(self.namelist, plot=False)
         self.rvol_grid, self.pro_grid, self.qpr_grid, self.prox_param = grid_params
@@ -188,12 +198,6 @@ class aurora_sim:
                 self.rvol_grid
             )
             self.rhop_grid[0] = 0.0  # enforce on axis
-
-            # Save R on LFS and HFS
-            #self.Rhfs, self.Rlfs = grids_utils.get_HFS_LFS(
-            #    self.geqdsk, rho_pol=self.rhop_grid
-            #)
-            
         else:
             # use rho_vol = rvol/rvol_lcfs
             self.rhop_grid = self.rvol_grid / self.rvol_lcfs
@@ -208,13 +212,13 @@ class aurora_sim:
         # create array of 0's of length equal to self.time_grid, with 1's where sawteeth must be triggered
         self.saw_on = np.zeros_like(self.time_grid)
         input_saw_times = self.namelist["saw_model"]["times"]
+
         self.saw_times = np.array(input_saw_times)[input_saw_times < self.time_grid[-1]]
         if self.namelist["saw_model"]["saw_flag"] and len(self.saw_times) > 0:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
 
     def setup_kin_profs_depts(self):
-        """Method to set up Aurora inputs related to the kinetic background from namelist inputs.
-        """
+        """Method to set up Aurora inputs related to the kinetic background from namelist inputs."""
         # get kinetic profiles on the radial and (internal) temporal grids
         self._ne, self._Te, self._Ti, self._n0 = self.get_aurora_kin_profs()
 
@@ -232,9 +236,11 @@ class aurora_sim:
         # Get time-dependent parallel loss rate
         self.par_loss_rate = self.get_par_loss_rate()
 
+        metastables = self.namelist.get("metastable_flag", False)
+        superstages = self.namelist.get("superstages", [])
         # Obtain atomic rates on the computational time and radial grids
-        self.Sne_rates, self.Rne_rates = self.get_time_dept_atomic_rates(
-            superstages=self.namelist.get("superstages", [])
+        self.set_time_dept_atomic_rates(
+            superstages=superstages, metastables=metastables
         )
 
         Sne0 = self.Sne_rates[:, 0, :]
@@ -330,11 +336,13 @@ class aurora_sim:
                         "main_ion_A",
                     ]
                 }
-                if 'prompt_redep_flag' in self.namelist and\
-                   self.namelist['prompt_redep_flag']:
+                if (
+                    "prompt_redep_flag" in self.namelist
+                    and self.namelist["prompt_redep_flag"]
+                ):
                     # only need Baxis for prompt redeposition model
-                    nml_rcl_prof['Baxis'] = self.namelist['Baxis']
-                    
+                    nml_rcl_prof["Baxis"] = self.namelist["Baxis"]
+
                 nml_rcl_prof["source_width_in"] = 0
                 nml_rcl_prof["source_width_out"] = 0
 
@@ -356,7 +364,7 @@ class aurora_sim:
             self.rcl_rad_prof = np.zeros((len(self.rhop_grid), len(self.time_grid)))
 
     def interp_kin_prof(self, prof):
-        """ Interpolate the given kinetic profile on the radial and temporal grids [units of s].
+        """Interpolate the given kinetic profile on the radial and temporal grids [units of s].
         This function extrapolates in the SOL based on input options using the same methods as in STRAHL.
         """
         times = self.kin_profs[prof]["times"]
@@ -367,12 +375,13 @@ class aurora_sim:
         r = interp1d(self.rhop_grid, self.rvol_grid, fill_value="extrapolate")(
             self.kin_profs[prof]["rhop"]
         )
+
         if self.kin_profs[prof]["fun"] == "interp":
             if "decay" not in self.kin_profs[prof]:
                 # if decay length in the SOL was not given by the user, assume a decay length of 1cm
-                #print(
+                # print(
                 #    f"Namelist did not provide a {prof} decay length for the SOL. Setting it to 1cm."
-                #)
+                # )
                 self.kin_profs[prof]["decay"] = np.ones(
                     len(self.kin_profs[prof]["vals"])
                 )
@@ -400,8 +409,7 @@ class aurora_sim:
         return data
 
     def get_aurora_kin_profs(self, min_T=1.01, min_ne=1e10):
-        """Get kinetic profiles on radial and time grids.
-        """
+        """Get kinetic profiles on radial and time grids."""
         # ensure 2-dimensional inputs:
         self.kin_profs["ne"]["vals"] = np.atleast_2d(self.kin_profs["ne"]["vals"])
         self.kin_profs["Te"]["vals"] = np.atleast_2d(self.kin_profs["Te"]["vals"])
@@ -431,7 +439,7 @@ class aurora_sim:
 
         return ne, Te, Ti, n0
 
-    def get_time_dept_atomic_rates(self, superstages=[]):
+    def set_time_dept_atomic_rates(self, superstages=[], metastables=False):
         """Obtain time-dependent ionization and recombination rates for a simulation run.
         If kinetic profiles are given as time-independent, atomic rates for each time slice
         will be set to be the same.
@@ -441,32 +449,43 @@ class aurora_sim:
         superstages : list or 1D array
             Indices of charge states that should be kept as superstages.
             The default is to have this as an empty list, in which case all charge states are kept.
+        metastables : bool
+            Load metastable resolved atomic data and rates. Default is False.
 
-        Returns
-        -------
+        Attributes
+        ----------
         Sne_rates : array (space, nZ(-super), time)
             Effective ionization rates [s]. If superstages were indicated, these are the rates of superstages.
         Rne_rates : array (space, nZ(-super), time)
             Effective recombination rates [s]. If superstages were indicated, these are the rates of superstages.
+        Qne_rates : array (space, nZ(-super), time)
+            Cross-coupling coefficients, only computed if :param:`metastables`=True.
+        Xne_rates : array (space, nZ(-super), time)
+            Parent cross-coupling coefficients, only computed if :param:`metastables`=True.
         """
 
         # get electron impact ionization and radiative recombination rates in units of [s^-1]
-        _, Sne, Rne, cxne = atomic.get_cs_balance_terms(
+        out = atomic.get_cs_balance_terms(
             self.atom_data,
             ne_cm3=self._ne,
             Te_eV=self._Te,
             Ti_eV=self._Ti,
             include_cx=self.namelist["cxr_flag"],
+            metastables=metastables,
         )
+        out.pop(0)
+        Sne = out.pop(0)
+        Rne = out.pop(0)
 
         # cache radiative & dielectronic recomb:
         self.alpha_RDR_rates = Rne
-        
-        
+
         if self.namelist["cxr_flag"]:
             # Get an effective recombination rate by summing radiative & CX recombination rates
-            self.alpha_CX_rates = cxne * (self._n0 / self._ne)[:, None]
-            Rne = Rne + self.alpha_CX_rates  #inplace addition would change also self.alpha_RDR_rates
+            self.alpha_CX_rates = out.pop(0) * (self._n0 / self._ne)[:, None]
+            Rne = (
+                Rne + self.alpha_CX_rates
+            )  # inplace addition would change also self.alpha_RDR_rates
 
         if self.namelist["nbi_cxr_flag"]:
             # include charge exchange between NBI neutrals and impurities
@@ -478,7 +497,7 @@ class aurora_sim:
                 fill_value=0.0,
             )(self.rhop_grid)
 
-            Rne += self.nbi_cxr.T[None, :, :]
+            Rne = Rne + self.nbi_cxr.T[None, :, :]
 
         if len(superstages):
             self.superstages, Rne, Sne, self.fz_upstage = atomic.superstage_rates(
@@ -487,17 +506,19 @@ class aurora_sim:
 
         # Sne and Rne for the Z+1 stage must be zero for the forward model.
         # Use Fortran-ordered arrays for speed in forward modeling (both Fortran and Julia)
-        Sne_rates = np.zeros(
+        self.Sne_rates = np.zeros(
             (Sne.shape[2], Sne.shape[1] + 1, self.time_grid.size), order="F"
         )
-        Sne_rates[:, :-1] = Sne.T
+        self.Sne_rates[:, :-1] = Sne.T
 
-        Rne_rates = np.zeros(
+        self.Rne_rates = np.zeros(
             (Rne.shape[2], Rne.shape[1] + 1, self.time_grid.size), order="F"
         )
-        Rne_rates[:, :-1] = Rne.T
+        self.Rne_rates[:, :-1] = Rne.T
 
-        return Sne_rates, Rne_rates
+        if metastables:
+            self.Qne_rates = out.pop(0).T
+            self.Xne_rates = out.pop(0).T
 
     def get_par_loss_rate(self, trust_SOL_Ti=False):
         """Calculate the parallel loss frequency on the radial and temporal grids [1/s].
@@ -735,7 +756,7 @@ class aurora_sim:
         # D_z and V_z must have the same shape
         assert np.shape(D_z) == np.shape(V_z)
 
-        if (times_DV is None) and (D_z.ndim > 1 or V_z.ndim > 1):
+        if times_DV is None and D_z.ndim > 1 and D_z.shape[1] > 1:
             raise ValueError(
                 "D_z and V_z given as time dependent, but times were not specified!"
             )
@@ -798,7 +819,7 @@ class aurora_sim:
                 self.pro_grid,
                 self.qpr_grid,
                 self.mixing_radius,
-                self.decay_length_boundary,
+                self.decay_length_boundary,  # cm
                 self.time_grid,
                 self.saw_on,
                 self.save_time,
@@ -891,6 +912,203 @@ class aurora_sim:
         # nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = self.res
         return self.res
 
+    def run_aurora_steady_analytic(self, D_z, V_z):
+        """Evaluate the analytic steady state solution of the transport equation.
+        Small differences in absolute densities from the full time-dependent, multi-reservoir Aurora solutions
+        can be caused by recycling and divertor models, which are not included here.
+
+        Parameters
+        ----------
+        D_z: array, shape of (space,nZ) or (space,)
+            Diffusion coefficients, in units of :math:`cm^2/s`. This may be given as a function of space only or (space,nZ).
+            No time dependence is allowed in this function. Here, nZ indicates the number of charge states.
+            Note that it is assumed that radial profiles are already on the self.rvol_grid radial grid.
+        V_z: array, shape of (space,nZ) or (space,)
+            Convection coefficients, in units of :math:`cm/s`. This may be given as a function of space only or (space,nZ).
+            No time dependence is allowed in this function. Here, nZ indicates the number of charge states.
+        """
+        if self.ne.shape[0] > 1 or self.Te.shape[0] > 1:
+            raise ValueError(
+                "This method is designed to operate with time-independent background profiles!"
+            )
+
+        if len(self.superstages) > 0:
+            raise Exception("Superstages are not yet suported by analytical solver")
+
+        if D_z.shape != V_z.shape:
+            raise ValueError("Shape of D and V must be the same")
+
+        if D_z.ndim > 2:
+            raise ValueError(
+                "This method is designed to operate with time-independent transport coefficients"
+            )
+
+        if D_z.ndim == 2:
+            # make sure that transport coefficients were given as a function of space and nZ, not time!
+            assert (
+                D_z.shape[0] == len(self.rhop_grid) and D_z.shape[1] == self.Z_imp + 1
+            )
+            D_z = D_z[:, 1:]
+            V_z = V_z[:, 1:]
+
+        def between_grid(arr, axis=0):
+            # calculate value in between grid points
+            sl = (slice(None),) * axis
+            return (arr[sl + (slice(1, None),)] + arr[sl + (slice(None, -1),)]) / 2.0
+
+        # prepare inputs
+        D_btw = between_grid(D_z, 0).T  # input D profile btw the spatial grids
+        v_btw = between_grid(V_z, 0).T  # input v profile btw the spatial grids
+
+        par_loss_rate = between_grid(
+            self.par_loss_rate[:, 0] / 100
+        )  # convert in the 1/s/cm units
+
+        del_r = np.diff(self.rvol_grid)
+        r_btw = between_grid(self.rvol_grid)
+        self.rhop_btw = between_grid(self.rhop_grid)
+
+        nr = len(r_btw)
+
+        # diagonal of matrices for recombination, ionisation and parallel flux
+        r_z = between_grid(self.Rne_rates.T[0, :-1], 1)
+        s_z = between_grid(self.Sne_rates.T[0, :-1], 1)
+        p_z = par_loss_rate * r_btw
+
+        # in case that metastable resolved atomics data are used
+        metastables = self.namelist.get("metastable_flag", False)
+        if metastables:
+            q_z = between_grid(self.Qne_rates.T[0], 1)
+            x_z = between_grid(self.Xne_rates.T[0], 1)
+
+            x_meta_ind = self.atom_data["xcd"].meta_ind
+            q_meta_ind = self.atom_data["qcd"].meta_ind
+
+        s_meta_ind = self.atom_data["scd"].meta_ind
+        r_meta_ind = self.atom_data["acd"].meta_ind
+
+        # number of metastables for each ion (ones if data are unresolved)
+        Mmeta = self.atom_data["scd"].metastables
+        # index of each metastable
+        meta_ind = [(z, m + 1) for z, M in enumerate(Mmeta) for m in range(M)]
+        n_state = len(meta_ind)
+
+        # uvec
+        exp_diag = np.exp(cumtrapz(v_btw / D_btw, r_btw, initial=0, axis=-1))
+        exp_diag /= exp_diag[..., [-1]]
+
+        exp_Dr = 1 / (exp_diag * D_btw * r_btw)  # diagonal of the matrix
+        lam = self.decay_length_boundary
+        edge_factor = 1 / (1 / lam + v_btw[..., [-1]] / D_btw[..., [-1]])  # units of m
+
+        # calculate spatial integrals
+        del_r_up = np.tri(nr + 1, nr, -1) * (del_r * r_btw)
+        del_r_down = np.tri(nr, nr + 1).T * del_r
+
+        def apply_integral(prof, i):
+            # charge independent transport coefficients
+            i = ... if D_btw.ndim == 1 else i - 1
+            # the first cumulative trapezoid integral
+            a = del_r_up * prof
+            a = between_grid(a)
+            a *= exp_Dr[i, :, None]
+            # the second cumulative trapezoid integral
+            a = np.dot(del_r_down, a)
+            a = between_grid(a)
+            # incorporate edge boundary condition with decay length lambda
+            a += a[-1] / del_r[-1] * edge_factor[i]
+            a *= exp_diag[i, :, None]
+            return a
+
+        R_z = {i: apply_integral(r, i[0]) for i, r in zip(r_meta_ind, r_z)}
+        S_z = {i: apply_integral(s, i[0]) for i, s in zip(s_meta_ind, s_z)}
+
+        if D_z.ndim == 2:
+            P_z = [apply_integral(p_z, z) for z in range(self.Z_imp + 1)]
+        else:
+            P_z = [apply_integral(p_z, 0)] * (self.Z_imp + 1)
+
+        if metastables:
+            Q_z = {i: apply_integral(q, i[0]) for i, q in zip(q_meta_ind, q_z)}
+            X_z = {i: apply_integral(x, i[0]) for i, x in zip(x_meta_ind, x_z)}
+
+        # radial integral of the source used to calculate total impurity density profile
+        nz_0 = np.zeros((n_state, nr))
+        nimp0 = between_grid(self.src_core[:, 0])
+
+        # metastable distributon of neutral influx is unknow
+        meta_source = (1, 1)
+        nz_0[meta_ind.index(meta_source)] = np.dot(S_z[meta_source + (1,)], nimp0)
+
+        source_mtx = np.zeros([n_state, n_state, nr, nr])
+        for i, (z, m) in enumerate(meta_ind):
+            # paraell looses are on diagonal
+            source_mtx[i, i] -= P_z[z]
+
+            if z < self.Z_imp:  # for non-fully stripped species
+                for g in range(1, Mmeta[z + 1] + 1):
+                    source_mtx[i, i] -= S_z[(z + 1, m, g)]
+                    j = meta_ind.index((z + 1, g))
+                    source_mtx[i, j] += R_z[(z + 1, m, g)]
+
+            if z > 0:  # for ionised species
+                for g in range(1, Mmeta[z - 1] + 1):
+                    source_mtx[i, i] -= R_z[(z, g, m)]
+                    j = meta_ind.index((z - 1, g))
+                    source_mtx[i, j] += S_z[(z, g, m)]
+
+            if not metastables:
+                continue
+
+            # cross-coupling of the metastables
+            for g in range(1, Mmeta[z] + 1):
+                if g == m:
+                    continue
+                j = meta_ind.index((z, g))
+                # cross-coupling coefficients important at lower Te
+                source_mtx[i, j] += Q_z[(z + 1, m, g)]
+                source_mtx[i, i] -= Q_z[(z + 1, g, m)]
+
+                # Beringer 1989 is not including the parent cross coupling coefficients!
+                # cross-coupling between parents via recombination to excited states
+                # of the z-times ionised ion followed by re-ionisation to a different metastable
+                # BUG when included, the summed ion metastable stage profiles disagree with unresolved profile
+                # if g > m and z > 0:
+                # source_mtx[i,j] += X_z[(z, g, m)] #BUG not yet sure about the order of m,g indexes
+                # if g < m and z > 0:
+                # source_mtx[i,i] -= X_z[(z, g, m)]
+
+        # reshape to 2D matrix
+        source_mtx = source_mtx.swapaxes(1, 2).reshape(nr * n_state, nr * n_state)
+
+        if not metastables:
+            # faster inversion if the matrix is block diagonal
+            # convert source_mtx matrix to band diagonal form
+            n_diags = 2 * nr
+            source_mtx_diag = np.zeros((1 + 2 * n_diags, nr * n_state))
+            for i, d in enumerate(range(n_diags, -n_diags - 1, -1)):
+                source_mtx_diag[
+                    i, np.maximum(0, d) : nr * n_state + np.minimum(0, d)
+                ] = np.diagonal(source_mtx, d)
+
+            # calculate eye( ) - source_mtx
+            mtx_solv_diag = source_mtx_diag
+            mtx_solv_diag *= -1
+            mtx_solv_diag[n_diags] += 1
+
+            # solve band matrix
+            nz_steady = solve_banded(
+                (n_diags, n_diags), mtx_solv_diag, nz_0.flatten()
+            ).reshape(-1, nr)
+
+        else:
+            # standart numpy solver for a square matrix
+            A = np.eye(nr * n_state) - source_mtx
+            # slowest step
+            nz_steady = np.linalg.solve(A, nz_0.flatten()).reshape(-1, nr)
+
+        return meta_ind, nz_steady
+
     def run_aurora_steady(
         self,
         D_z,
@@ -907,8 +1125,10 @@ class aurora_sim:
         n_steps=100,
         plot=False,
     ):
-        """Run an AURORA simulation until reaching steady state profiles. This method calls :py:meth:`~aurora.core.run_aurora`
+        """Run an Aurora simulation until reaching steady state profiles. This method calls :py:meth:`~aurora.core.run_aurora`
         checking at every iteration whether profile shapes are still changing within a given fractional tolerance.
+        Note that this method differs from :py:meth:`~aurora.core.run_aurora_steady_analytic` in that it runs time-dependent
+        simulations until reaching steady-state, rather than using an analytic solution for steady-state profiles.
 
         Parameters
         ----------
@@ -964,7 +1184,7 @@ class aurora_sim:
 
         # set constant timesource
         self.namelist["source_type"] = "const"
-        self.namelist["source_rate"] = 1.0
+        # self.namelist["source_rate"] = 1.0
 
         # build timing dictionary
         self.namelist["timing"] = {
@@ -983,8 +1203,12 @@ class aurora_sim:
         times_DV = None
         if D_z.ndim == 2:
             # make sure that transport coefficients were given as a function of space and nZ, not time!
-            assert D_z.shape[0] == self.rhop_grid and D_z.shape[1] == self.Z_imp + 1
-            assert V_z.shape[0] == self.rhop_grid and V_z.shape[1] == self.Z_imp + 1
+            assert (
+                D_z.shape[0] == len(self.rhop_grid) and D_z.shape[1] == self.Z_imp + 1
+            )
+            assert (
+                V_z.shape[0] == len(self.rhop_grid) and V_z.shape[1] == self.Z_imp + 1
+            )
 
             D_z = D_z[:, None]  # (ir,nt_trans,nion)
             V_z = V_z[:, None]
@@ -1002,19 +1226,18 @@ class aurora_sim:
         saw_on = self.saw_on.copy()
         src_div = self.src_div.copy()
         nz_all = None if nz_init is None else nz_init
-
         while sim_steps < len(time_grid):
 
             self.time_grid = self.time_out = time_grid[sim_steps : sim_steps + n_steps]
             self.save_time = save_time[sim_steps : sim_steps + n_steps]
             self.par_loss_rate = par_loss_rate[:, sim_steps : sim_steps + n_steps]
-            self.rcl_rad_prof = rcl_rad_prof[:, sim_steps  : sim_steps + n_steps]
+            self.rcl_rad_prof = rcl_rad_prof[:, sim_steps : sim_steps + n_steps]
             self.src_core = src_core[:, sim_steps : sim_steps + n_steps]
             self.Sne_rates = Sne_rates[:, :, sim_steps : sim_steps + n_steps]
             self.Rne_rates = Rne_rates[:, :, sim_steps : sim_steps + n_steps]
             self.saw_on = saw_on[sim_steps : sim_steps + n_steps]
-            self.src_div = self.src_div[sim_steps : sim_steps + n_steps]
-            
+            self.src_div = src_div[sim_steps : sim_steps + n_steps]
+
             sim_steps += n_steps
 
             # get charge state densities from latest time step
@@ -1051,9 +1274,8 @@ class aurora_sim:
 
         # store final time grids
         self.time_grid = time_grid[:sim_steps]
-        self.time_out = time_grid[
-            :sim_steps
-        ]  # identical because steps_per_cycle is fixed to 1
+        # identical because steps_per_cycle is fixed to 1
+        self.time_out = time_grid[:sim_steps]
         self.save_time = save_time[:sim_steps]
 
         if plot:
@@ -1083,8 +1305,11 @@ class aurora_sim:
 
         # compute effective particle confinement time
         source_time_history = grids_utils.vol_int(
-            self.src_core.T, self.rvol_grid, self.pro_grid, self.Raxis_cm,
-            rvol_max = self.rvol_lcfs
+            self.src_core.T,
+            self.rvol_grid,
+            self.pro_grid,
+            self.Raxis_cm,
+            rvol_max=self.rvol_lcfs,
         )
         self.tau_imp = (
             var_volint / source_time_history[-2]
@@ -1120,8 +1345,7 @@ class aurora_sim:
         self.delta_Zeff /= self.ne.T[:, None, :]
 
     def plot_resolutions(self):
-        """Convenience function to show time and spatial resolution in Aurora simulation setup.
-        """
+        """Convenience function to show time and spatial resolution in Aurora simulation setup."""
         # display radial resolution
         _ = grids_utils.create_radial_grid(self.namelist, plot=True)
 
@@ -1174,13 +1398,16 @@ class aurora_sim:
 
         # Compute total number of particles for particle conservation checks:
         all_particles = grids_utils.vol_int(
-            total_impurity_density, self.rvol_grid, self.pro_grid, self.Raxis_cm,
-            rvol_max = None
+            total_impurity_density,
+            self.rvol_grid,
+            self.pro_grid,
+            self.Raxis_cm,
+            rvol_max=None,
         )
 
         out["total"] = all_particles + (N_wall + N_div + N_pump + N_ret) * circ
 
-        out["source"] = self.total_source*circ + out["total"][0]
+        out["source"] = self.total_source * circ + out["total"][0]
 
         # integrated source over time
         out["integ_source"] = cumtrapz(out["source"], self.time_out, initial=0)
@@ -1196,8 +1423,11 @@ class aurora_sim:
         out["recycling_from_wall"] = rclw_rate * circ
         if hasattr(self, "rad"):  # radiation has already been compputed
             out["impurity_radiation"] = grids_utils.vol_int(
-                self.rad["tot"], self.rvol_grid, self.pro_grid, self.Raxis_cm,
-                rvol_max = self.rvol_lcfs
+                self.rad["tot"],
+                self.rvol_grid,
+                self.pro_grid,
+                self.Raxis_cm,
+                rvol_max=self.rvol_lcfs,
             )
 
         if plot:
@@ -1209,28 +1439,48 @@ class aurora_sim:
                 ax1 = axs[0]
 
             ax1[0, 0].plot(self.time_out, out["source"], label="Influx ($s^{-1}$)")
-            ax1[0, 1].plot(self.time_out, out["particles_in_divertor"],
-                           label="Particles in divertor")
-            ax1[0, 2].plot(self.time_out, out["particles_in_pump"], label="Particles in pump")
+            ax1[0, 1].plot(
+                self.time_out,
+                out["particles_in_divertor"],
+                label="Particles in divertor",
+            )
+            ax1[0, 2].plot(
+                self.time_out, out["particles_in_pump"], label="Particles in pump"
+            )
 
             ax1[1, 0].plot(self.time_out, out["parallel_loss"], label="Parallel Loss")
-            ax1[1, 1].plot(self.time_out, out["parallel_loss_to_limiter"],
-                           label="Parallel Loss to Limiter")
+            ax1[1, 1].plot(
+                self.time_out,
+                out["parallel_loss_to_limiter"],
+                label="Parallel Loss to Limiter",
+            )
             ax1[1, 2].plot(self.time_out, out["edge_loss"], label="Edge Loss")
 
-            ax1[2, 0].plot(self.time_out, out["particles_at_wall"], label="Particles stuck at wall")
-            ax1[2, 1].plot(self.time_out, out["particles_retained_at_wall"],
-                label="Particles retained at wall")
-            ax1[2, 2].plot(self.time_out, out["recycling_from_wall"], label="Wall rec. rate")
+            ax1[2, 0].plot(
+                self.time_out, out["particles_at_wall"], label="Particles stuck at wall"
+            )
+            ax1[2, 1].plot(
+                self.time_out,
+                out["particles_retained_at_wall"],
+                label="Particles retained at wall",
+            )
+            ax1[2, 2].plot(
+                self.time_out, out["recycling_from_wall"], label="Wall rec. rate"
+            )
 
-            ax1[3, 0].plot(self.time_out, out["recycling_from_divertor"],
-                           label="Divertor rec. rate")
+            ax1[3, 0].plot(
+                self.time_out,
+                out["recycling_from_divertor"],
+                label="Divertor rec. rate",
+            )
             ax1[3, 1].plot(self.time_out, out["total"], label="Core impurity particles")
             for aa in ax1.flatten()[:11]:
                 aa.legend(loc="best").set_draggable(True)
 
             if "impurity_radiation" in out:
-                ax1[3, 2].plot(self.time_out, out["impurity_radiation"], label="Core radiation (W)")
+                ax1[3, 2].plot(
+                    self.time_out, out["impurity_radiation"], label="Core radiation (W)"
+                )
                 ax1[3, 2].legend(loc="best").set_draggable(True)
 
             for ii in [0, 1, 2]:
@@ -1247,22 +1497,39 @@ class aurora_sim:
             ax2.set_xlabel("time [s]")
 
             ax2.plot(self.time_out, all_particles, label="Particles in Plasma")
-            ax2.plot(self.time_out, out["particles_at_wall"], label="Particles stuck at wall")
-            ax2.plot(self.time_out, out["particles_in_divertor"], label="Particles in Divertor")
+            ax2.plot(
+                self.time_out, out["particles_at_wall"], label="Particles stuck at wall"
+            )
+            ax2.plot(
+                self.time_out,
+                out["particles_in_divertor"],
+                label="Particles in Divertor",
+            )
             ax2.plot(self.time_out, out["particles_in_pump"], label="Particles in Pump")
-            ax2.plot(self.time_out, out["particles_retained_at_wall"],
-                     label="Particles retained at wall")
+            ax2.plot(
+                self.time_out,
+                out["particles_retained_at_wall"],
+                label="Particles retained at wall",
+            )
             ax2.plot(self.time_out, out["total"], label="Total")
             ax2.plot(self.time_out, out["integ_source"], label="Integrated source")
 
-            if (abs((out["total"][-1] - out["integ_source"][-1]) / out["integ_source"][-1]) > 0.1):
+            if (
+                abs(
+                    (out["total"][-1] - out["integ_source"][-1])
+                    / out["integ_source"][-1]
+                )
+                > 0.1
+            ):
                 print("Warning: significant error in particle conservation!")
 
             Ntot = out["integ_source"][-1]
-            dN = np.trapz((out["total"] / Ntot - out["integ_source"] / Ntot) ** 2, self.time_out)
+            dN = np.trapz(
+                (out["total"] / Ntot - out["integ_source"] / Ntot) ** 2, self.time_out
+            )
             dN /= np.trapz((out["integ_source"] / Ntot) ** 2, self.time_out)
-            print('Particle conservation error %.1f%%' % (np.sqrt(dN) * 100))
-        
+            print("Particle conservation error %.1f%%" % (np.sqrt(dN) * 100))
+
             ax2.set_ylim(0, None)
             ax2.legend(loc="best")
             plt.tight_layout()
@@ -1305,7 +1572,7 @@ class aurora_sim:
 
         fz = self.res[0][..., -1] / np.sum(self.res[0][..., -1], axis=1)[:, None]
         Z_ave_vec = np.sum(fz * np.arange(self.Z_imp + 1)[None, :], axis=1)
-
+        _, self.Rlfs = grids_utils.get_HFS_LFS(self.geqdsk, rho_pol=self.rhop_grid)
         self.CF_lambda = synth_diags.centrifugal_asymmetry(
             self.rhop_grid,
             self.Rlfs,

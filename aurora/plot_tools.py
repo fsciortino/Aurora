@@ -65,7 +65,7 @@ def slider_plot(
     plot_sum : bool, optional
         If True, will also plot the sum over all `P` cases. Default is False.
     x_line : float, optional
-        x coordinate at which a vertical line will be drawn. 
+        x coordinate at which a vertical line will be drawn.
     y_line : float, optional
         y coordinate at which a horizontal line will be drawn.
     """
@@ -163,17 +163,17 @@ def get_ls_cycle():
     return itertools.cycle(ls_vals)
 
 
-def get_color_cycle(num=None, map='plasma'):
-    '''Get an iterable to select different colors in a loop.
+def get_color_cycle(num=None, map="plasma"):
+    """Get an iterable to select different colors in a loop.
     Efficiently splits a chosen color map into as many (`num`) parts as needed.
-    '''
+    """
     cols = ["b", "g", "r", "c", "m", "y", "k"]
-    if num is None or num<=len(cols):
+    if num is None or num <= len(cols):
         return itertools.cycle(cols[:num])
     cm = plt.get_cmap(map)
     cols = np.empty(num)
     for j in np.arange(num):
-        cols[j] = cm(1.*j/num)
+        cols[j] = cm(1.0 * j / num)
     return itertools.cycle(cols)
 
 
@@ -183,7 +183,7 @@ def get_line_cycle():
 
 
 class DraggableColorbar:
-    """Create a draggable colorbar for matplotlib plots to enable quick changes in color scale. 
+    """Create a draggable colorbar for matplotlib plots to enable quick changes in color scale.
 
     Example:::
 
@@ -205,8 +205,7 @@ class DraggableColorbar:
         self.index = self.cycle.index(ScalarMappable.get_cmap(cbar).name)
 
     def connect(self):
-        """Matplotlib connection for button and key pressing, release, and motion.
-        """
+        """Matplotlib connection for button and key pressing, release, and motion."""
         self.cidpress = self.cbar.patch.figure.canvas.mpl_connect(
             "button_press_event", self.on_press
         )
@@ -221,15 +220,13 @@ class DraggableColorbar:
         )
 
     def on_press(self, event):
-        """Button pressing; check if mouse is over colorbar.
-        """
+        """Button pressing; check if mouse is over colorbar."""
         if event.inaxes != self.cbar.ax:
             return
         self.press = event.x, event.y
 
     def key_press(self, event):
-        """Key pressing event
-        """
+        """Key pressing event"""
         if event.key == "down":
             self.index += 1
         elif event.key == "up":
@@ -249,8 +246,7 @@ class DraggableColorbar:
         self.cbar.patch.figure.canvas.draw()
 
     def on_motion(self, event):
-        """Move if the mouse is over the colorbar.
-        """
+        """Move if the mouse is over the colorbar."""
         if self.press is None:
             return
         if event.inaxes != self.cbar.ax:
@@ -273,8 +269,7 @@ class DraggableColorbar:
         self.cbar.patch.figure.canvas.draw()
 
     def on_release(self, event):
-        """Upon release, reset press data
-        """
+        """Upon release, reset press data"""
         self.press = None
         self.mapimage.set_norm(self.cbar.norm)
         self.cbar.patch.figure.canvas.draw()
