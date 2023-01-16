@@ -45,14 +45,14 @@ def get_adas_file_types():
 
     Notes
     ---------
-    For background on ADAS generalized collisional-radiative modeling and data formats, refer to 
+    For background on ADAS generalized collisional-radiative modeling and data formats, refer to
     [1]_.
 
     References
     -----------------
-    
-    .. [1] Summers et al., "Ionization state, excited populations and emission of impurities 
-       in dynamic finite density plasmas: I. The generalized collisional-radiative model for 
+
+    .. [1] Summers et al., "Ionization state, excited populations and emission of impurities
+       in dynamic finite density plasmas: I. The generalized collisional-radiative model for
        light elements", Plasma Physics and Controlled Fusion, 48:2, 2006
 
     """
@@ -65,7 +65,7 @@ def get_adas_file_types():
         "ccd": "thermal charge exchange",
         "prc": "thermal charge exchange continuum radiation",
         "xcd": "Parent cross-coupling coefficients",
-        "qcd": "Cross-coupling coefficients",        
+        "qcd": "Cross-coupling coefficients",
         "pls": "line radiation in the SXR range",
         "prs": "continuum radiation in the SXR range",
         "brs": "continuum spectral bremstrahlung",
@@ -73,8 +73,9 @@ def get_adas_file_types():
         "pbs": "impurity bremsstrahlung in SXR range, also included in prs files",
     }
 
+
 class adas_file:
-    """Read ADAS file in ADF11 format over the given density and temperature grids. 
+    """Read ADAS file in ADF11 format over the given density and temperature grids.
     Note that such grids vary between files, and the species they refer to may too.
 
     Refer to ADAS documentation for details on each file.
@@ -95,32 +96,27 @@ class adas_file:
             try:
                 self.imp = self.filename.split("_")[1].split(".")[0]
             except:
-                self.imp = None  #soem old files have a different naming convenction
+                self.imp = None  # soem old files have a different naming convenction
 
         # get data
         self.load()
 
-
-
     def load(self):
-        #https://www.adas.ac.uk/man/appxa-11.pdf
-
+        """ADF11 format description: https://www.adas.ac.uk/man/appxa-11.pdf"""
         with open(self.filepath) as f:
             header = f.readline()
             self.n_ion, n_ne, n_T = np.int_(header.split()[:3])
             details = " ".join(header.split()[3:])
-   
-            
-            f.readline() #skip empty line
+
+            f.readline()  # skip empty line
             line = f.readline()
-            #metastable resolved file
+            # metastable resolved file
             if all([a.isdigit() for a in line.split()]):
                 self.metastables = np.int_(line.split())
-                f.readline()#skip empty line
+                f.readline()  # skip empty line
                 line = f.readline()
             else:
-                self.metastables = np.ones(self.n_ion+1,dtype=int)
-                
+                self.metastables = np.ones(self.n_ion + 1, dtype=int)
 
             logNe = []
             while len(logNe) < n_ne:
@@ -131,49 +127,47 @@ class adas_file:
             while len(logT) < n_T:
                 logT += [float(t) for t in line.split()]
                 line = f.readline()
-            
+
             subheader = line
-            
-            ldata, self.Z, self.MGRD, self.MPRT = [],[],[],[]  
+
+            ldata, self.Z, self.MGRD, self.MPRT = [], [], [], []
             ind = 0
             while True:
                 ind += 1
 
                 try:
-                    iprt,igrd,typ,z =  subheader.split('/')[1:5]
-                    self.Z.append(int(z.split('=')[1]))
-                    self.MGRD.append(int(igrd.split('=')[1]))
-                    self.MPRT.append(int(iprt.split('=')[1]))
+                    iprt, igrd, typ, z = subheader.split("/")[1:5]
+                    self.Z.append(int(z.split("=")[1]))
+                    self.MGRD.append(int(igrd.split("=")[1]))
+                    self.MPRT.append(int(iprt.split("=")[1]))
                 except:
-                    #some old files have different header
-                    self.Z.append(ind+1)
+                    # some old files have different header
+                    self.Z.append(ind + 1)
                     self.MGRD.append(1)
                     self.MPRT.append(1)
 
-                #drcofd = log10(generalised collisional radiative coefficients) (units according to class)                                
+                # drcofd = log10(generalised collisional radiative coefficients) (units according to class)
                 drcofd = []
                 while len(drcofd) < n_ne * n_T:
                     line = f.readline()
                     drcofd += [float(L) for L in line.split()]
-                    
+
                 ldata.append(np.array(drcofd).reshape(n_T, n_ne))
-        
-                subheader = f.readline().replace('-',' ')
-                #end of the file
-                if len(subheader) == 0 or subheader.isspace() or subheader[0] == 'C':
+
+                subheader = f.readline().replace("-", " ")
+                # end of the file
+                if len(subheader) == 0 or subheader.isspace() or subheader[0] == "C":
                     break
-                
 
         self.logNe = np.array(logNe)
         self.logT = np.array(logT)
         self.logdata = np.array(ldata)
-   
+
         self.meta_ind = list(zip(self.Z, self.MGRD, self.MPRT))
-        
 
     def plot(self, fig=None, axes=None):
         """Plot data from input ADAS file. If provided, the arguments allow users to overplot
-        and compare data from multiple files. 
+        and compare data from multiple files.
 
         Parameters
         ----------
@@ -184,11 +178,11 @@ class adas_file:
             for each plotted charge state. Users may want to call this function once first to get
             some axes, and then pass those same axes to a second call for another file to compare with.
         """
-        
+
         # settings for plotting
         self.ncol = np.ceil(np.sqrt(len(self.Z)))
         self.nrow = np.ceil(len(self.Z) / self.ncol)
-        
+
         if fig is None or axes is None:
             fig, axes = plt.subplots(
                 int(self.ncol), int(self.nrow), sharex=True, sharey=True
@@ -208,20 +202,27 @@ class adas_file:
                 ax.plot(self.logT, self.logdata[i, :, 0])
             else:
                 ax.set_prop_cycle("color", colors)
-                ax.plot(self.logT,self.logdata[i])
-                ax.text(0.1, 0.8, '$n_e = 10^{%.0f-%.0f}\mathrm{[cm^{-3}]}$'%(self.logNe[0],self.logNe[-1]), horizontalalignment='left', transform=ax.transAxes)
-           
+                ax.plot(self.logT, self.logdata[i])
+                ax.text(
+                    0.1,
+                    0.8,
+                    "$n_e = 10^{%.0f-%.0f}\mathrm{[cm^{-3}]}$"
+                    % (self.logNe[0], self.logNe[-1]),
+                    horizontalalignment="left",
+                    transform=ax.transAxes,
+                )
+
             ax.grid(True)
-            
+
             if self.file_type != "brs":
                 charge = self.Z[i]
-                meta = self.MPRT[i],self.MGRD[i] 
-                if self.file_type in ["scd", "prs", "ccd", "prb", 'qcd']:
+                meta = self.MPRT[i], self.MGRD[i]
+                if self.file_type in ["scd", "prs", "ccd", "prb", "qcd"]:
                     charge -= 1
                 title = self.imp + "$^{%d\!+}$" % charge
                 if any(self.metastables > 1):
                     title += str(meta)
-                ax.set_title(title)  # check?
+                ax.set_title(title)
 
         for ax in axes[-1]:
             ax.set_xlabel("$\log\ T_e\ \mathrm{[eV]}$")
@@ -233,25 +234,25 @@ class adas_file:
 
 
 def read_filter_response(filepath, adas_format=True, plot=False):
-    """Read a filter response function over energy. 
+    """Read a filter response function over energy.
 
     This function attempts to read the data checking for the following formats (in this order):
-    
+
     #. The ADAS format. Typically, this data is from obtained from http://xray.uu.se and produced
-       via ADAS routines. 
+       via ADAS routines.
 
     #. The format returned by the `Center for X-Ray Optics website  <https://henke.lbl.gov/optical_constants/filter2.html>`__ .
 
-    Note that filter response functions are typically a combination of a filter transmissivity 
-    and a detector absorption. 
+    Note that filter response functions are typically a combination of a filter transmissivity
+    and a detector absorption.
 
     Parameters
     ----------
     filepath : str
         Path to filter file of interest.
     plot : bool
-        If True, the filter response function is plotted. 
-    
+        If True, the filter response function is plotted.
+
     """
     E_eV = []
     response = []
@@ -273,8 +274,22 @@ def read_filter_response(filepath, adas_format=True, plot=False):
                 response += [float(t) for t in line.split()]
 
         # energy and response function are written in natural logs
-        E_eV = np.concatenate(([0.0,], np.array(np.exp(E_eV))))
-        response = np.concatenate(([0.0,], np.array(np.exp(response))))
+        E_eV = np.concatenate(
+            (
+                [
+                    0.0,
+                ],
+                np.array(np.exp(E_eV)),
+            )
+        )
+        response = np.concatenate(
+            (
+                [
+                    0.0,
+                ],
+                np.array(np.exp(response)),
+            )
+        )
     except ValueError:
         try:
             # Attempt to read CXRO format
@@ -285,8 +300,22 @@ def read_filter_response(filepath, adas_format=True, plot=False):
                 tmp = line.strip().split()
                 E_eV.append(float(tmp[0]))
                 response.append(float(tmp[1]))
-            E_eV = np.concatenate(([0.0,], np.array(E_eV)))
-            response = np.concatenate(([0.0,], np.array(response)))
+            E_eV = np.concatenate(
+                (
+                    [
+                        0.0,
+                    ],
+                    np.array(E_eV),
+                )
+            )
+            response = np.concatenate(
+                (
+                    [
+                        0.0,
+                    ],
+                    np.array(response),
+                )
+            )
         except ValueError:
             raise ValueError("Unrecognized filter function format...")
 
@@ -301,15 +330,15 @@ def read_filter_response(filepath, adas_format=True, plot=False):
 
 
 def get_atom_data(imp, files=["acd", "scd"]):
-    """ Collect atomic data for a given impurity from all types of ADAS files available or
-    for only those requested. 
+    """Collect atomic data for a given impurity from all types of ADAS files available or
+    for only those requested.
 
     Parameters
     ----------
     imp : str
         Atomic symbol of impurity ion.
     files : list or dict
-        ADAS file types to be fetched. Default is ["acd","scd"] for effective ionization 
+        ADAS file types to be fetched. Default is ["acd","scd"] for effective ionization
         and recombination rates (excluding CX) using default files, listed in :py:func:`~aurora.adas_files_adas_files_dict`.
         If users prefer to use specific files, they may pass a dictionary instead, of the form
 
@@ -323,13 +352,13 @@ def get_atom_data(imp, files=["acd", "scd"]):
 
             {'acd': 'acd89_ar.dat', 'scd': None}
 
-        if only some of the files need specifications and others (given as None) should be 
+        if only some of the files need specifications and others (given as None) should be
         taken from the default files.
-    
+
     Returns
     -------
     atom_data : dict
-        Dictionary containing data for each of the requested files. 
+        Dictionary containing data for each of the requested files.
         Each entry of the dictionary gives log-10 of ne, log-10 of Te and log-10 of the data
         as attributes res.logNe, res.logT,  res.logdata, res.meta_ind, res.metastables
     """
@@ -337,7 +366,7 @@ def get_atom_data(imp, files=["acd", "scd"]):
     try:
         # default files dictionary
         # all default files for a given species
-        all_files = adas_files.adas_files_dict()[ imp]  
+        all_files = adas_files.adas_files_dict()[imp]
     except KeyError:
         raise KeyError(f"ADAS data not available for ion {imp}!")
 
@@ -365,15 +394,14 @@ def get_atom_data(imp, files=["acd", "scd"]):
         # load specific file and add it to output dictionary
         res = adas_file(fileloc)
         atom_data[filetype] = adas_file(fileloc)
-        #{'lne': res.logNe, 'lte': res.logT, 'ldata': res.data,
-            #'meta_ind': res.meta_ind, 'meta': res.metastables}
- 
+        # {'lne': res.logNe, 'lte': res.logT, 'ldata': res.data,
+        #'meta_ind': res.meta_ind, 'meta': res.metastables}
+
     return atom_data
 
 
 def null_space(A):
-    """Find null space of matrix `A`.
-    """
+    """Find null space of matrix `A`."""
     u, s, vh = svd(A, full_matrices=True)
     Q = vh[-1, :].T.conj()  # -1 index is after infinite time/equilibration
     # return the smallest singular eigenvalue
@@ -381,22 +409,22 @@ def null_space(A):
 
 
 def superstage_rates(R, S, superstages, save_time=None):
-    """Compute rate for a set of ion superstages. 
+    """Compute rate for a set of ion superstages.
     Input and output rates are log-values in arbitrary base.
 
     Parameters
     ----------
     R : array (time,nZ,space)
-        Array containing the effective recombination rates for all ion stages, 
-        These are typically combinations of radiative and dielectronic recombination, 
+        Array containing the effective recombination rates for all ion stages,
+        These are typically combinations of radiative and dielectronic recombination,
         possibly also of charge exchange recombination.
     S : array (time,nZ,space)
         Array containing the effective ionization rates for all ion stages.
     superstages : list or 1D array
-        Indices of charge states of chosen ion that should be included. 
+        Indices of charge states of chosen ion that should be included.
     save_time : list or 1D array of bools
         Indices of the timeslcies which are actually returned by AURORA
-    
+
     Returns
     -------
     superstages : array
@@ -478,17 +506,17 @@ def get_frac_abundances(
     r"""Calculate fractional abundances from ionization and recombination equilibrium.
     If n0_by_ne is not 0, radiative recombination and thermal charge exchange are summed.
 
-    This method can work with ne,Te and n0_by_ne arrays of arbitrary dimension, but plotting 
+    This method can work with ne,Te and n0_by_ne arrays of arbitrary dimension, but plotting
     is only supported in 1D (defaults to flattened arrays).
 
     Parameters
     ----------
-    atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
+    atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is
         necessary only if include_cx=True)
     ne_cm3 : float or array
         Electron density in units of :math:`cm^{-3}`
     Te_eV : float or array, optional
-        Electron temperature in units of eV. If left to None, the Te grid given in the 
+        Electron temperature in units of eV. If left to None, the Te grid given in the
         atomic data is used.
     Ti_eV : float or array, optional
         Bulk ion temperature in units of eV. If left to None, Ti is set to be equal to Te
@@ -502,8 +530,8 @@ def get_frac_abundances(
     ax : matplotlib.pyplot Axes instance
         Axes on which to plot if plot=True. If False, it creates new axes
     rho : list or array, optional
-        Vector of radial coordinates on which ne,Te (and possibly n0_by_ne) are given. 
-        This is only used for plotting, if given. 
+        Vector of radial coordinates on which ne,Te (and possibly n0_by_ne) are given.
+        This is only used for plotting, if given.
     rho_lbl: str, optional
         Label to be used for rho. If left to None, defaults to a general "x".
 
@@ -513,7 +541,7 @@ def get_frac_abundances(
         electron temperatures as a function of which the fractional abundances and
         rate coefficients are given.
     fz : array, (space,nZ)
-        Fractional abundances across the same grid used by the input ne,Te values. 
+        Fractional abundances across the same grid used by the input ne,Te values.
 
     """
     # if input arrays are multi-dimensional, flatten them here and restructure at the end
@@ -526,11 +554,9 @@ def get_frac_abundances(
 
     include_cx = False if not np.any(n0_by_ne) else True
 
-    out = get_cs_balance_terms(
-        atom_data, _ne, _Te, _Ti, include_cx=include_cx
-    )
+    out = get_cs_balance_terms(atom_data, _ne, _Te, _Ti, include_cx=include_cx)
     Te, Sne, Rne = out[:3]
-    
+
     Z_imp = Sne.shape[1]
 
     if include_cx:
@@ -635,12 +661,13 @@ def get_frac_abundances(
 
 
 def get_cs_balance_terms(
-    atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include_cx=True, metastables=False):
-    """Get S*ne, R*ne and cx*ne rates on the same logTe grid. 
-    
+    atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include_cx=True, metastables=False
+):
+    """Get S*ne, R*ne and cx*ne rates on the same logTe grid.
+
     Parameters
     ----------
-    atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
+    atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is
         necessary only if include_cx=True)
     ne_cm3 : float or array
         Electron density in units of :math:`cm^{-3}`
@@ -650,16 +677,16 @@ def get_cs_balance_terms(
     Ti_eV : float or array
         Bulk ion temperature in units of eV, only needed for CX. If left to None, Ti is set equal to Te.
     include_cx : bool
-        If True, obtain charge exchange terms as well. 
-    
+        If True, obtain charge exchange terms as well.
+
     Returns
     -------
     Te : array (n_Te)
         Te grid on which atomic rates are given
     Sne, Rne (,cxne, Qne, Xne): arrays (n_ne,n_Te)
         atomic rates for effective ionization, radiative+dielectronic
-        recombination (+ charge exchange, + crosscoupling if requested). 
-        All terms will be in units of :math:`s^{-1}`. 
+        recombination (+ charge exchange, + crosscoupling if requested).
+        All terms will be in units of :math:`s^{-1}`.
 
     Notes
     -----
@@ -685,15 +712,13 @@ def get_cs_balance_terms(
 
     logne = np.log10(ne_cm3)
     logTe = np.log10(Te_eV)
-    
-    
 
     Sne = interp_atom_prof(atom_data["scd"], logne, logTe, x_multiply=True)
     Rne = interp_atom_prof(atom_data["acd"], logne, logTe, x_multiply=True)
-    out = [Te_eV,Sne, Rne]
-    
+    out = [Te_eV, Sne, Rne]
+
     if include_cx:
-        #this should be neutral temperature? or weighted Ti and T0 temperature?
+        # this should be neutral temperature? or weighted Ti and T0 temperature?
         logTi = np.log10(Ti_eV) if Ti_eV is not None else logTe
         cxne = interp_atom_prof(atom_data["ccd"], logne, logTi, x_multiply=True)
         # select appropriate number of charge states
@@ -704,7 +729,6 @@ def get_cs_balance_terms(
         Qne = interp_atom_prof(atom_data["qcd"], logne, logTe, x_multiply=True)
         Xne = interp_atom_prof(atom_data["xcd"], logne, logTe, x_multiply=True)
         out += [Qne, Xne]
-    
 
     return out
 
@@ -731,11 +755,11 @@ def get_atomic_relax_time(
 
     This function also allows use of superstages as well as specification of a :math:`\tau` value
     representing the effect of transport on the ionization equilibrium. NB: this is only a rough metric
-    to characterize complex physics.    
+    to characterize complex physics.
 
     Parameters
     ----------
-    atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is 
+    atom_data : dictionary of atomic ADAS files (only acd, scd are required; ccd is
         necessary only if n0_by_ne is not 0).
     ne_cm3 : float or array
         Electron density in units of :math:`cm^{-3}`.
@@ -749,15 +773,15 @@ def get_atomic_relax_time(
         Indices of charge states of chosen ion that should be included. If left empty, all ion stages
         are included. If only some indices are given, these are modeled as "superstages".
     tau_s : float, opt
-        Value of the particle residence time [s]. This is a scalar value that can be used to model 
-        the effect of transport on ionization equilibrium. 
-        Setting tau=np.inf (default) corresponds to no effect from transport. 
+        Value of the particle residence time [s]. This is a scalar value that can be used to model
+        the effect of transport on ionization equilibrium.
+        Setting tau=np.inf (default) corresponds to no effect from transport.
     plot : bool, optional
         If True, the atomic relaxation time is plotted as a function of Te. Default is True.
     ax : matplotlib.pyplot Axes instance
         Axes on which to plot if plot=True. If False, new axes are created.
     ls : str, optional
-        Line style for plots. Continuous lines are used by default. 
+        Line style for plots. Continuous lines are used by default.
 
     Returns
     -------
@@ -765,9 +789,9 @@ def get_atomic_relax_time(
         electron temperatures as a function of which the fractional abundances and
         rate coefficients are given.
     fz : array, (space,nZ)
-        Fractional abundances across the same grid used by the input ne,Te values. 
+        Fractional abundances across the same grid used by the input ne,Te values.
     rate_coeffs : array, (space, nZ)
-        Rate coefficients in units of [:math:`s^{-1}`]. 
+        Rate coefficients in units of [:math:`s^{-1}`].
 
     Examples
     --------
@@ -795,9 +819,7 @@ def get_atomic_relax_time(
 
     include_cx = False if not np.any(n0_by_ne) else True
 
-    out = get_cs_balance_terms(
-        atom_data, _ne, _Te, include_cx=include_cx
-    )
+    out = get_cs_balance_terms(atom_data, _ne, _Te, include_cx=include_cx)
 
     Te, Sne, Rne = out[:3]
     if include_cx:
@@ -815,7 +837,7 @@ def get_atomic_relax_time(
 
     for it, t in enumerate(Te):
         A = (
-            -np.diag(np.r_[Sne[it], 0] + np.r_[0, Rne[it]] + 1. / tau_s)
+            -np.diag(np.r_[Sne[it], 0] + np.r_[0, Rne[it]] + 1.0 / tau_s)
             + np.diag(Sne[it], -1)
             + np.diag(Rne[it], 1)
         )
@@ -853,8 +875,8 @@ class CartesianGrid:
     grids: list of arrays, N=len(grids), N=1 or N=2
         List of 1D arrays with equally spaced grid values for each dimension
     values: N+1 dimensional array of values used for interpolation
-        Values to interpolate. The first dimension typically refers to different ion stages, for which 
-        data is provided on the input grids. 
+        Values to interpolate. The first dimension typically refers to different ion stages, for which
+        data is provided on the input grids.
         Other dimensions refer to values on the density and temperature grids.
     """
 
@@ -894,15 +916,15 @@ class CartesianGrid:
 
     def __call__(self, *coords):
         """Evaluate the interpolation at the input `coords` values.
-        
-        This offers optimally-fast linear interpolation for 1D and  2D dimensional vector data 
+
+        This offers optimally-fast linear interpolation for 1D and  2D dimensional vector data
         on a equally spaced grids
-        
+
         Parameters
         ----------
         coords:  list of arrays
             List of 1D arrays for the N coordines (N=1 or N=2). These arrays must be of the same shape.
- 
+
         """
 
         if self.eq_spaced_grid:
@@ -950,40 +972,39 @@ class CartesianGrid:
 
 
 def interp_atom_prof(atom_table, xprof, yprof, log_val=False, x_multiply=True):
-    r""" Fast interpolate atomic data in atom_table onto the xprof and yprof profiles.
+    r"""Fast interpolate atomic data in atom_table onto the xprof and yprof profiles.
     This function assume that xprof, yprof, x, y, table are all base-10 logarithms,
     and xprof, yprof are equally spaced.
 
     Parameters
     ----------
     atom_table : list
-        object atom_data, containing atomic data from one of the ADAS files. 
+        object atom_data, containing atomic data from one of the ADAS files.
     xprof : array (nt,nr)
-        Spatio-temporal profiles of the first coordinate of the ADAS file table (usually 
+        Spatio-temporal profiles of the first coordinate of the ADAS file table (usually
         electron density in :math:`cm^{-3}`)
     yprof : array (nt,nr)
-        Spatio-temporal profiles of the second coordinate of the ADAS file table (usually 
+        Spatio-temporal profiles of the second coordinate of the ADAS file table (usually
         electron temperature in :math:`eV`)
     log_val : bool
         If True, return natural logarithm of the data
     x_multiply : bool
-        If True, multiply output by :math:`10^{xprof}`. 
+        If True, multiply output by :math:`10^{xprof}`.
 
     Returns
     -------
     interp_vals : array (nt,nion,nr)
-        Interpolated atomic data on time,charge state and spatial grid that correspond to the 
+        Interpolated atomic data on time,charge state and spatial grid that correspond to the
         ion of interest and the spatiotemporal grids of xprof and yprof.
 
     Notes
     -------
     This function uses `np.log10` and exponential operations to optimize speed, since it has
-    been observed that base-e operations are faster than base-10 operations in numpy. 
+    been observed that base-e operations are faster than base-10 operations in numpy.
     """
     x = atom_table.logNe
     y = atom_table.logT
     table = atom_table.logdata
-
 
     if x_multiply:  # multiplying of logarithms is just adding
         table = table + x  # don't modify original table, create copy
@@ -1082,22 +1103,23 @@ def gff_mean(Z, Te):
     # set min Te here to 10 eV, because the grid above does not extend to lower temperatures
     Te = np.maximum(Te, 10.0)
 
-    log_gamma2 = np.log10(Z ** 2 * thirteenpointsix / Te)
+    log_gamma2 = np.log10(Z**2 * thirteenpointsix / Te)
 
     # dangerous/inaccurate extrapolation...
     return np.interp(log_gamma2, log_gamma2_grid, gff_mean_grid)
 
-def impurity_brems(nz, ne, Te, freq='all', cutoff=0.1):
-    """Approximate impurity bremsstrahlung in :math:`W/m^3`for a given range 
-    of frequencies or a specific frequency. 
 
-    We apply here a cutoff for Bremsstrahlung at h*c/lambda = cutoff*Te, 
-    where `cutoff` is an input parameter, conventionally set to 0.1 (default). 
+def impurity_brems(nz, ne, Te, freq="all", cutoff=0.1):
+    """Approximate impurity bremsstrahlung in :math:`W/m^3`for a given range
+    of frequencies or a specific frequency.
+
+    We apply here a cutoff for Bremsstrahlung at h*c/lambda = cutoff*Te,
+    where `cutoff` is an input parameter, conventionally set to 0.1 (default).
 
     Gaunt factors from :py:func:`~aurora.atomic.gff_mean` are applied.
     NB: recombination is not included.
 
-    Formulation based on Hutchinson's Principles of Plasma Diagnostics, 
+    Formulation based on Hutchinson's Principles of Plasma Diagnostics,
     p. 196, Eq. (5.3.40).
 
     Parameters
@@ -1121,13 +1143,13 @@ def impurity_brems(nz, ne, Te, freq='all', cutoff=0.1):
     Returns
     -------
     array (time,nZ,space):
-        Bremsstrahlung for each charge state at the given frequency or, if 
+        Bremsstrahlung for each charge state at the given frequency or, if
         multiple frequences are given (or if `freq='all'`), integrated over frequencies.
         Units of :math:`W/cm^3`.
-    """ 
-    if freq=='all':
+    """
+    if freq == "all":
         # sufficient range of frequencies to obtain accurate result
-        freq = np.linspace(1e10, 1e18, num = 10000)
+        freq = np.linspace(1e10, 1e18, num=10000)
     else:
         freq = np.atleast_1d(freq)
     Z_imp = nz.shape[1] - 1
@@ -1136,37 +1158,48 @@ def impurity_brems(nz, ne, Te, freq='all', cutoff=0.1):
     gff = gff_mean(Z, Te[:, None])
 
     # take cutoff frequency to be cutoff*Te
-    cut = cutoff*Te*constants.e/(constants.h)
+    cut = cutoff * Te * constants.e / (constants.h)
 
     # plasma frequency (divide by 2pi to have units of Hz)
-    fp = np.sqrt(1e6*ne*constants.e**2/(constants.epsilon_0*constants.m_e))/(2.*np.pi)
+    fp = np.sqrt(
+        1e6 * ne * constants.e**2 / (constants.epsilon_0 * constants.m_e)
+    ) / (2.0 * np.pi)
 
     freqT = np.tile(freq, (ne.shape[1], ne.shape[0], 1)).T
 
     # find all values below fw and above cut
-    mask = np.logical_or(freqT<fp, freqT>cut)
-    
+    mask = np.logical_or(freqT < fp, freqT > cut)
+
     # constant in Hutchinson Eq. 5.3.10
-    const = 32*np.pi**2/(3*np.sqrt(3)*constants.m_e**2*constants.c**3)*\
-            (constants.e**2/(4*np.pi*constants.epsilon_0))**3*\
-            np.sqrt(2*constants.m_e/np.pi)
+    const = (
+        32
+        * np.pi**2
+        / (3 * np.sqrt(3) * constants.m_e**2 * constants.c**3)
+        * (constants.e**2 / (4 * np.pi * constants.epsilon_0)) ** 3
+        * np.sqrt(2 * constants.m_e / np.pi)
+    )
 
     # conversion factor to eventually have result in units of W/cm^3 rather than W/m^3
     const *= 1e-6
 
-    if len(freq)==1:
-        intV = np.exp(-constants.h*freqT[0]/(Te*constants.e))
+    if len(freq) == 1:
+        intV = np.exp(-constants.h * freqT[0] / (Te * constants.e))
         # set brems to 0 below plasma frequency and above chosen cutoff frequency
-        intV[mask[0,:,:]] = 0 
+        intV[mask[0, :, :]] = 0
     else:
         # integration over frequency domain (only exponential term)
-        intgrnd = np.exp(-constants.h*freqT/(Te*constants.e))
+        intgrnd = np.exp(-constants.h * freqT / (Te * constants.e))
         intgrnd[mask] = 0
         intV = simps(intgrnd, freqT, axis=0)
-        
-    return 4*np.pi*Z**2*nz[:,1:]*gff*(ne*1e12*const*np.sqrt(1/(Te*constants.e))*intV)[:,None]
 
-
+    return (
+        4
+        * np.pi
+        * Z**2
+        * nz[:, 1:]
+        * gff
+        * (ne * 1e12 * const * np.sqrt(1 / (Te * constants.e)) * intV)[:, None]
+    )
 
 
 def plot_norm_ion_freq(
@@ -1181,23 +1214,23 @@ def plot_norm_ion_freq(
     eps_prof=None,
 ):
     r"""Compare effective ionization rate for each charge state with the characteristic
-    transit time that passing and trapped impurity ions take to travel a parallel distance 
+    transit time that passing and trapped impurity ions take to travel a parallel distance
     :math:`L = q R`, defining
 
     .. math::
 
         \nu_{ion}^* \equiv \nu_{ion} \tau_t = \nu_{ion} \frac{q R}{v_{th}} = \frac{\sum_z n_z \nu_z^{ion}}{\sum_z n_z} q R \sqrt{\frac{m_{imp}}{2 k_B T_i}}
 
-    following Ref.[1]_. If the normalized ionization rate (:math:`\nu_{ion}^*`) is less than 1, 
-    then flux surface averaging of background asymmetries (e.g. from edge or beam neutrals) may 
+    following Ref.[1]_. If the normalized ionization rate (:math:`\nu_{ion}^*`) is less than 1,
+    then flux surface averaging of background asymmetries (e.g. from edge or beam neutrals) may
     be taken as a good approximation of reality; in this case, 1.5D simulations of impurity transport
-    are expected to be valid. If, on the other hand, :math:`\nu_{ion}^*>1` then local effects 
-    may be too important to ignore. 
+    are expected to be valid. If, on the other hand, :math:`\nu_{ion}^*>1` then local effects
+    may be too important to ignore.
 
     Parameters
     ----------
     S_z : array (r,cs) [:math:`s^{-1}`]
-         Effective ionization rates for each charge state as a function of radius. 
+         Effective ionization rates for each charge state as a function of radius.
          Note that, for convenience within aurora, cs includes the neutral stage.
     q_prof : array (r,)
          Radial profile of safety factor
@@ -1209,14 +1242,14 @@ def plot_norm_ion_freq(
     Ti_prof : array (r,)
          Radial profile of ion temperature [:math:`eV`]
     nz_profs : array (r,cs), optional
-         Radial profile for each charge state. If provided, calculate average normalized 
+         Radial profile for each charge state. If provided, calculate average normalized
          ionization rate over all charge states.
     rhop : array (r,), optional
-         Sqrt of poloidal flux radial grid. This is used only for (optional) plotting. 
+         Sqrt of poloidal flux radial grid. This is used only for (optional) plotting.
     plot : bool, optional
          If True, plot results.
     eps_prof : array (r,), optional
-         Radial profile of inverse aspect ratio, i.e. r/R, only used if plotting is requested.  
+         Radial profile of inverse aspect ratio, i.e. r/R, only used if plotting is requested.
 
     Returns
     -------
@@ -1446,7 +1479,7 @@ def read_adf21(filename, Ebeam, ne_cm3, Te_eV):
 def get_natural_partition(ion, plot=True):
     """Identify natural partition of charge states by plotting the variation of ionization energy
     as a function of charge for a given ion, using the ADAS metric :math:`2 (I_{z+1}-I_z)/(I_{z+1}+I_z)`.
-    
+
     Parameters
     ----------
     ion : str
@@ -1458,7 +1491,7 @@ def get_natural_partition(ion, plot=True):
     -------
     q : 1D array
         Metric to identify natural partition.
-    
+
     Notes
     -----
     A ColRadPy installation must be available for this function to work.

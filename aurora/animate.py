@@ -41,7 +41,7 @@ def animate_aurora(
     uniform_y_spacing=True,
     save_filename=None,
 ):
-    """ Produce animation of time- and radially-dependent results from aurora.
+    """Produce animation of time- and radially-dependent results from aurora.
 
     Parameters
     ----------
@@ -65,7 +65,7 @@ def animate_aurora(
     uniform_y_spacing : bool, optional
         If True, interpolate values in z onto a uniformly-spaced y grid
     save_filename : str
-        If a valid path/filename is provided, the animation will be saved here in mp4 format. 
+        If a valid path/filename is provided, the animation will be saved here in mp4 format.
     """
     if labels is None:
         labels = ["" for v in z]

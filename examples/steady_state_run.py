@@ -3,13 +3,9 @@ Script to test functionality of steady-state run with AURORA.
 
 It is recommended to run this in IPython.
 """
-
-
-
 import numpy as np
 import matplotlib.pyplot as plt
 from time import time
-
 from omfit_classes import omfit_eqdsk
 import sys, os
 from scipy.interpolate import interp1d
@@ -19,7 +15,6 @@ import copy
 sys.path.append("../")
 import aurora
 
- 
 # read in default Aurora namelist
 namelist = aurora.default_nml.load_default_namelist()
 
@@ -27,7 +22,6 @@ namelist = aurora.default_nml.load_default_namelist()
 examples_dir = os.path.dirname(os.path.abspath(__file__))
 geqdsk = omfit_eqdsk.OMFITgeqdsk(examples_dir + "/example.gfile")
 
- 
 # save kinetic profiles on a rhop (sqrt of norm. pol. flux) grid
 # parameterization f=(f_center-f_edge)*(1-rhop**alpha1)**alpha2 + f_edge
 
@@ -83,8 +77,6 @@ V_z = -10e2 * asim.rhop_grid ** 5  # cm/s
 t = time()
 meta_ind, nz_norm_steady = asim.run_aurora_steady_analytic( D_z, V_z)#) ,  rvol,  nz[0], ploss, Sne, Rne, lam = 1.0)
 print('Analytical steady solution calculated in : %.3fs'%(time()-t))
- 
- 
 
 n_steps = 10
 max_sim_time = 1000
@@ -94,8 +86,7 @@ nz_norm_steady2 = asim.run_aurora_steady(D_z, V_z, nz_init= None,
                                         dt=1e-4, dt_increase=1.05,
                                         n_steps = n_steps,
                                         plot=False)
-print('Steady solution 2 calculated in : %.3fs'%(time()-t))
-
+print('Steady solution from convergence of time-dependent solver calculated in : %.3fs'%(time()-t))
 
 plt.plot(asim.rhop_btw,nz_norm_steady.T )
 plt.gca().set_prop_cycle(None)
@@ -109,4 +100,4 @@ plt.ylabel('impurity density [$cm^{-3}$]')
 plt.ioff()
 plt.show()
 
-#TODO both solution have a different Z=0 profile why??
+# TODO the two solutions have a different Z=0 profile - why??

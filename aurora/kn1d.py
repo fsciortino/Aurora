@@ -65,11 +65,11 @@ def _setup_kin_profs(
     Te_min_eV=1.0,
     Ti_min_eV=1.0,
 ):
-    """Private method to set up kinetic profiles to the format required by 
+    """Private method to set up kinetic profiles to the format required by
     :py:func:`~aurora.kn1d.run_kn1d`. Refer to this function for descriptions of inputs.
-    
-    This function returns ne, Te and Ti profiles on the rmid_to_wall_cm radial grid, 
-    from the core to the wall. 
+
+    This function returns ne, Te and Ti profiles on the rmid_to_wall_cm radial grid,
+    from the core to the wall.
 
     Parameters
     ----------
@@ -92,13 +92,13 @@ def _setup_kin_profs(
     kin_prof_exp_decay_LS : bool
         If True, kinetic profiles are set to exponentially decay over the LS region.
     ne_decay_len_cm : list of 2 float
-        Exponential decay lengths of electron density in the SOL and LS regions. 
+        Exponential decay lengths of electron density in the SOL and LS regions.
         Default is [1,1] :math:`cm`.
     Te_decay_len_cm : float
-        Exponential decay lengths of electron temperature in the SOL and LS regions. 
-        Default is [1,1] :math:`cm`.    
+        Exponential decay lengths of electron temperature in the SOL and LS regions.
+        Default is [1,1] :math:`cm`.
     Ti_decay_len_cm : float
-        Exponential decay lengths of main ion temperature in the SOL and LS regions. 
+        Exponential decay lengths of main ion temperature in the SOL and LS regions.
         Default is [1,1] :math:`cm`.
     ne_min_cm3 : float
         Minimum electron density across profile. Default is :math:`10^{12} cm^{-3}`.
@@ -253,15 +253,15 @@ def run_kn1d(
     Ti_min_eV=1.0,
     plot_kin_profs=False,
 ):
-    """Run KN1D for the given parameters. Refer to the KN1D manual for details. 
+    """Run KN1D for the given parameters. Refer to the KN1D manual for details.
 
     Depending on the provided options, kinetic profiles are extended beyond the Last Closed
-    Flux Surface (LCxFS) and the Limiter Shadow (LS) via exponential decays with specified 
+    Flux Surface (LCxFS) and the Limiter Shadow (LS) via exponential decays with specified
     decay lengths. It is assumed that the given kinetic profiles extend from the core until
     at least the LCFS. All inputs are taken to be time-independent.
 
     This function automatically checks if a KN1D repository is available; if it is not,
-    it obtains it from the web and compiles the necessary code. 
+    it obtains it from the web and compiles the necessary code.
 
     Note that an IDL license must be available. Aurora does not currently include a Python
     translation of KN1D -- it only acts as a wrapper.
@@ -280,7 +280,7 @@ def run_kn1d(
         gEQDSK file as processed by the `omfit_classes.omfit_eqdsk.OMFITgeqdsk` class.
     p_H2_mTorr : float
         Pressure of molecular hydrogen-isotopes measured at the wall. This may be estimated
-        from experimental pressure gauges. This variable effectively sets the amplitude of the 
+        from experimental pressure gauges. This variable effectively sets the amplitude of the
         neutral source at the edge. Units of :math:`mTorr`.
     clen_divertor_cm : float
         Connection length from the midplane to the divertor [:math:`cm`].
@@ -291,17 +291,17 @@ def run_kn1d(
     lim_sep_cm : float
         Distance between the limiter and the separatrix [:math:`cm`].
     innermost_rmid_cm : float
-        Distance from the wall to solve for. Default is 5 cm. 
+        Distance from the wall to solve for. Default is 5 cm.
     mu : float
-        Atomic mass number of simulated species. Default is 2.0 (D). 
+        Atomic mass number of simulated species. Default is 2.0 (D).
     pipe_diag_cm : float
-        Diameter of the pipe through which H2 pressure is measured (see `p_H2_mTorr` variable). 
-        If left to 0, this diameter is effectively set to infinity. Default is 0. 
+        Diameter of the pipe through which H2 pressure is measured (see `p_H2_mTorr` variable).
+        If left to 0, this diameter is effectively set to infinity. Default is 0.
     vx : float
-        Radial velocity imposed on neutrals. This only has a weak effect usually. 
+        Radial velocity imposed on neutrals. This only has a weak effect usually.
         Default is 0 [:math:`cm/s`].
     collisions : dict
-        Collision terms flags. Set each to True or False. If any of the flags are not given, 
+        Collision terms flags. Set each to True or False. If any of the flags are not given,
         all collision terms are internally set to be active. Possible flags are
         'H2_H2_EL','H2_P_EL','H2_H_EL','H2_HP_CX','H_H_EL','H_P_CX','H_P_EL','Simple_CX'
     kin_prof_exp_decay_SOL : bool
@@ -309,13 +309,13 @@ def run_kn1d(
     kin_prof_exp_decay_LS : bool
         If True, kinetic profiles are set to exponentially decay over the LS region.
     ne_decay_len_cm : list of 2 float
-        Exponential decay lengths of electron density in the SOL and LS regions. 
+        Exponential decay lengths of electron density in the SOL and LS regions.
         Default is [1,1] :math:`cm`.
     Te_decay_len_cm : float
-        Exponential decay lengths of electron temperature in the SOL and LS regions. 
-        Default is [1,1] :math:`cm`.    
+        Exponential decay lengths of electron temperature in the SOL and LS regions.
+        Default is [1,1] :math:`cm`.
     Ti_decay_len_cm : float
-        Exponential decay lengths of main ion temperature in the SOL and LS regions. 
+        Exponential decay lengths of main ion temperature in the SOL and LS regions.
         Default is [1,1] :math:`cm`.
     ne_min_cm3 : float
         Minimum electron density across profile. Default is :math:`10^{12} cm^{-3}`.
@@ -325,16 +325,16 @@ def run_kn1d(
         Minimum main ion temperaure across profile. Default is :math:`eV`.
     plot_kin_profs : bool
         If True, kinetic profiles input to KN1D are plotted.
-    
+
     Returns
     -------
     dict
         KN1D results and inputs, all collected into a dictionary. See example script for
-        an illustration of using this. 
+        an illustration of using this.
 
     Notes
     -----
-    For an example application, see the examples/aurora_kn1d.py script. 
+    For an example application, see the examples/aurora_kn1d.py script.
     """
 
     if "IDL_STARTUP" not in os.environ and "IDL_HOME" not in os.environ:
@@ -660,8 +660,7 @@ exit
 def plot_input_kin_prof(
     rmid_to_wall_m, ne_cm3, Te_eV, Ti_eV, innermost_rmid_cm, bound_sep_cm, lim_sep_cm
 ):
-    """Plot extent of kinetic profiles entering KN1D calculation
-    """
+    """Plot extent of kinetic profiles entering KN1D calculation"""
     fig, axs = plt.subplots(3, 1, figsize=(8, 8), sharex=True)
     axs[0].plot(rmid_to_wall_m * 1e2, ne_cm3)
     axs[1].plot(rmid_to_wall_m * 1e2, Te_eV)
@@ -704,8 +703,8 @@ def plot_input_kin_prof(
 
 
 def plot_overview(res):
-    """Plot an overview of a KN1D run, showing both kinetic profile inputs and 
-    a small selection of the outputs. 
+    """Plot an overview of a KN1D run, showing both kinetic profile inputs and
+    a small selection of the outputs.
 
     Parameters
     ----------
@@ -728,10 +727,10 @@ def plot_overview(res):
     ax[1].semilogy(ins["x"], ins["te"], lw=2.0, c=c, ls="-", label=r"$T_e$")
     ax[1].semilogy(ins["x"], ins["ti"], lw=2.0, c=c, ls="--", label=r"$T_i$")
     ax[1].semilogy(
-        outs["xh"], outs["th"], lw=2.0, c=c, ls="-.", label=fr"$T_{species}$"
+        outs["xh"], outs["th"], lw=2.0, c=c, ls="-.", label=rf"$T_{species}$"
     )
 
-    ax[2].semilogy(outs["xh"], outs["nh"], lw=2.0, c=c, ls="-", label=fr"$n_{species}$")
+    ax[2].semilogy(outs["xh"], outs["nh"], lw=2.0, c=c, ls="-", label=rf"$n_{species}$")
     ax[2].semilogy(
         outs["xh2"], outs["nh2"], lw=2.0, c=c, ls="--", label=r"$n_{%s2}$" % species
     )
@@ -872,11 +871,11 @@ def plot_exc_states(res):
 
 
 def plot_emiss(res, check_collrad=True):
-    """Plot profiles of Ly-a and D-alpha emissivity from the KN1D output. 
+    """Plot profiles of Ly-a and D-alpha emissivity from the KN1D output.
     KN1D internally computes Ly-a and D-alpha emission using the Johnson-Hinnov
-    coefficients; here we check the result of that calculation and compare it to the 
+    coefficients; here we check the result of that calculation and compare it to the
     prediction from atomic data from the COLLRAD collisional-radiative model included
-    in DEGAS2. 
+    in DEGAS2.
 
     Parameters
     ----------
@@ -884,7 +883,7 @@ def plot_emiss(res, check_collrad=True):
         Output dictionary from function :py:func:`~aurora.kn1d.run_kn1d`.
     check_collrad : bool
         If True, compare KN1D prediction of Ly-a and D-a emission using Johnson-Hinnov
-        rates using rates from COLLRAD. 
+        rates using rates from COLLRAD.
     """
 
     ins = res["kn1d_input"]
@@ -988,7 +987,7 @@ def plot_emiss(res, check_collrad=True):
 
         ax[0].set_ylabel(r"Ly-alpha [W m$^{-3}$]")
         ax[1].set_ylabel(
-            fr'{"H" if mu == 1 else "D"}-alpha [W m$^{-3}$]'
+            rf'{"H" if mu == 1 else "D"}-alpha [W m$^{-3}$]'
         )  # 656.28 nm in air
         ax[-1].set_xlabel("Distance from the wall [m]")
 
@@ -999,7 +998,7 @@ def plot_emiss(res, check_collrad=True):
 def plot_transport(res):
     """Make a simple set of plots of gradient scale lengths and effective diffusion coefficients
     from the KN1D output.
-    
+
     Parameters
     ----------
     res : dict

@@ -53,8 +53,6 @@ kp["n0"] = copy.copy(kp["ne"])
 n0 = kp["n0"]["vals"] = kp["ne"]["vals"]/1e6
 namelist['cxr_flag'] = True
 
- 
- 
 namelist['rvol_lcfs'] = 70
 namelist['Raxis_cm'] = 170
 namelist['lim_sep'] = 5.6
@@ -156,11 +154,9 @@ resolved_files = ['pec96#c_pjr#c0.dat',
 
 observed_lines = [[], [6581.5, 5143.3], [4650.1, 5697.5], [5806.5], [], [5292.7]]
 
- 
 n0 = np.interp(asim.rhop_btw, rhop, n0)
 ne = np.interp(asim.rhop_btw, rhop, ne)
 Te = np.interp(asim.rhop_btw, rhop, Te)
- 
 
 line_emiss_dict_resolved = {}
 for filename, lines in zip(resolved_files, observed_lines):
@@ -180,17 +176,14 @@ for filename, lines in zip(resolved_files, observed_lines):
         line_emiss = aurora.radiation.get_photon_emissivity(trs, lam, ne, Te, nz_norm_steady,n0, meta_ind)
         line_emiss_dict_resolved[(Z, lam)] = np.sum([emiss for emiss in line_emiss.values()],0)
         
-
-           
-            
- 
+     
+#######
 unresolved_files = ['pec96#c_pju#c0.dat',
                     'pec96#c_vsu#c1.dat',
                     'pec96#c_vsu#c2.dat',
                     'pec96#c_pju#c3.dat',
                     'pec96#c_pju#c4.dat',
                     'pec96#c_bnd#c5.dat',]
-
 
 line_emiss_dict_unresolved = {}
 for filename, lines in zip(unresolved_files, observed_lines):
@@ -245,9 +238,6 @@ plt.ylim(0, 1.06)
 plt.xlabel('rhop')
 plt.ylabel('Normalised line emissivity [-]')
 
-
-
-    
 plt.ioff()    
 plt.show()
            
