@@ -28,7 +28,7 @@ import numpy as np
 
 
 def funct(params, rLCFS, r):
-    """ Function 'funct' in STRAHL manual
+    """Function 'funct' in STRAHL manual
 
     The "params" input is broken down into 6 arguments:
         y0 is core offset
@@ -47,16 +47,15 @@ def funct(params, rLCFS, r):
         rin = r[r <= r1]
         rout = r[r > r1]
 
-        yin = y0 + (y2 - y0) * np.exp(np.maximum(-((rin - r1) ** 2) / p0 ** 2, -50))
-        yout = y1 + (y2 - y1) * np.exp(np.maximum(-((rout - r1) ** 2) / p1 ** 2, -50))
+        yin = y0 + (y2 - y0) * np.exp(np.maximum(-((rin - r1) ** 2) / p0**2, -50))
+        yout = y1 + (y2 - y1) * np.exp(np.maximum(-((rout - r1) ** 2) / p1**2, -50))
         out.append(np.concatenate((yin, yout)))
 
     return np.array(out)
 
 
 def funct2(params, rLCFS, r):
-    """Function 'funct2' in STRAHL manual.   
-    """
+    """Function 'funct2' in STRAHL manual."""
     params_1, params_2 = np.swapaxes(np.reshape(params, (-1, 2, 6)), 0, 1)
 
     funct_1 = funct(params_1, rLCFS, r)
@@ -107,8 +106,7 @@ def ratfun(params, d, rLCFS, r):
 
 
 def interp_quad(x, y, d, rLCFS, r):
-    """Function 'interp' used for kinetic profiles.
-    """
+    """Function 'interp' used for kinetic profiles."""
     f = interp1d(x, np.log(y), kind="quadratic", assume_sorted=True, copy=False)
     idx = np.searchsorted(r, rLCFS)
     core = np.exp(f(np.clip(r[:idx] / rLCFS, 0, x[-1])))
@@ -120,8 +118,7 @@ def interp_quad(x, y, d, rLCFS, r):
 
 
 def interpa_quad(x, y, rLCFS, r):
-    """Function 'interpa' used for kinetic profiles
-    """
+    """Function 'interpa' used for kinetic profiles"""
     f = interp1d(
         x,
         np.log(y),
@@ -134,7 +131,6 @@ def interpa_quad(x, y, rLCFS, r):
 
 
 def interp(x, y, rLCFS, r):
-    """Function 'interp' used in STRAHL for D and V profiles.
-    """
+    """Function 'interp' used in STRAHL for D and V profiles."""
     f = interp1d(x, y, fill_value="extrapolate", assume_sorted=True, copy=False)
     return f(r / rLCFS)

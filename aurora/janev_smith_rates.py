@@ -35,12 +35,12 @@ def js_sigma_ioniz_n1_q8(E):
     """Ionization cross section for
 
     .. math::
-    
+
         O^{8+} + H(1s) --> O^{8+} + H^+ +e^-
 
     Notes
     ---------
-    Section 4.2.4 of Janev & Smith, NF 1993. 
+    Section 4.2.4 of Janev & Smith, NF 1993.
     """
     A1 = 1244.44
     A2 = 249.36
@@ -55,7 +55,7 @@ def js_sigma_ioniz_n1_q8(E):
         * A1
         * (
             (np.exp(-A2 / E) * np.log(1.0 + A3 * E)) / E
-            + (A4 * np.exp(-A5 * E)) / (E ** A6 + A7 * E ** A8)
+            + (A4 * np.exp(-A5 * E)) / (E**A6 + A7 * E**A8)
         )
     )  # cm^2
 
@@ -69,7 +69,7 @@ def js_sigma_cx_n1_q1(E):
 
     Notes
     ---------
-    Section 2.3.1 of Janev & Smith, NF 1993. 
+    Section 2.3.1 of Janev & Smith, NF 1993.
     """
     A1 = 3.2345
     A2 = 235.88
@@ -78,7 +78,7 @@ def js_sigma_cx_n1_q1(E):
     A5 = 1.1832e-10
     A6 = 2.3713
     return (1e-16 * A1 * np.log(A2 / E + A6)) / (
-        1.0 + A3 * E + A4 * E ** 3.5 + A5 * E ** 5.4
+        1.0 + A3 * E + A4 * E**3.5 + A5 * E**5.4
     )  # cm^2
 
 
@@ -91,7 +91,7 @@ def js_sigma_cx_ng1_q1(E, n1):
 
     Notes
     ---------
-    Section 2.3.2 of Janev & Smith, NF 1993. 
+    Section 2.3.2 of Janev & Smith, NF 1993.
     """
     assert n1 > 1
     if n1 == 2:
@@ -110,11 +110,11 @@ def js_sigma_cx_ng1_q1(E, n1):
         A3 = 1.8184e-3
         A4 = 1.3426e6
 
-    Ew = E * n1 ** 2
+    Ew = E * n1**2
     return (
-        n1 ** 4
+        n1**4
         * (1e-16 * A1 * np.log(A2 / Ew + A4))
-        / (1.0 + A3 * Ew + 3.0842e-6 * Ew ** 3.5 + 1.1832e-10 * Ew ** 5.4)
+        / (1.0 + A3 * Ew + 3.0842e-6 * Ew**3.5 + 1.1832e-10 * Ew**5.4)
     )  # cm^2
 
 
@@ -127,7 +127,7 @@ def js_sigma_cx_n1_q2(E):
 
     Notes
     ---------
-    Section 3.3.1 of Janev & Smith, NF 1993. 
+    Section 3.3.1 of Janev & Smith, NF 1993.
     """
     A1 = 17.438
     A2 = 2.1263
@@ -143,8 +143,8 @@ def js_sigma_cx_n1_q2(E):
         1e-16
         * A1
         * (
-            (np.exp(-A2 / E) / (1.0 + A3 * E ** A4 + A5 * E ** 3.5 + A6 * E ** 5.4))
-            + (A7 * np.exp(-A8 * E)) / (E ** A9)
+            (np.exp(-A2 / E) / (1.0 + A3 * E**A4 + A5 * E**3.5 + A6 * E**5.4))
+            + (A7 * np.exp(-A8 * E)) / (E**A9)
         )
     )
 
@@ -153,12 +153,12 @@ def js_sigma_cx_n2_q2(E):
     """Electron capture cross section for
 
     .. math::
-    
+
         He^{2+} + H(n=2) --> He^+ + H^+
 
     Notes
     ---------
-    Section 3.3.2 of Janev & Smith, NF 1993. 
+    Section 3.3.2 of Janev & Smith, NF 1993.
     """
     A1 = 88.508
     A2 = 0.78429
@@ -173,8 +173,8 @@ def js_sigma_cx_n2_q2(E):
         1e-16
         * A1
         * (
-            (np.exp(-A2 / E)) / (1.0 + A3 * E ** A4 + A5 * E ** 3.5 + A6 * E ** 5.4)
-            + (A7 * np.exp(-A8 * E)) / (E ** A9)
+            (np.exp(-A2 / E)) / (1.0 + A3 * E**A4 + A5 * E**3.5 + A6 * E**5.4)
+            + (A7 * np.exp(-A8 * E)) / (E**A9)
         )
     )  # cm^2
 
@@ -187,25 +187,25 @@ def js_sigma_cx_ng2_q2(E, n1):
 
     Notes
     ---------
-    Section 3.2.3 of Janev & Smith, NF 1993. 
+    Section 3.2.3 of Janev & Smith, NF 1993.
     """
     A1 = 2.0032e2
     A2 = 1.4591
     A3 = 2.0384e-4
     A4 = 2e-9
 
-    Ew = E * n1 ** 2
+    Ew = E * n1**2
     return (
-        n1 ** 4
+        n1**4
         * 7.04e-16
         * A1
         * (
             1.0
             - np.exp(
-                -(4.0 / 3.0 * A1) * (1.0 + Ew ** A2 + A3 * Ew ** 3.5 + A4 * Ew ** 5.4)
+                -(4.0 / 3.0 * A1) * (1.0 + Ew**A2 + A3 * Ew**3.5 + A4 * Ew**5.4)
             )
         )
-        / (1.0 + Ew ** A2 + A3 * Ew ** 3.5 + A4 * Ew ** 5.4)
+        / (1.0 + Ew**A2 + A3 * Ew**3.5 + A4 * Ew**5.4)
     )  # cm^2
 
 
@@ -218,7 +218,7 @@ def js_sigma_cx_n1_q4(E):
 
     Notes
     ---------
-    Section 4.3.1 of Janev & Smith, NF 1993. 
+    Section 4.3.1 of Janev & Smith, NF 1993.
     """
     A1 = 19.952
     A2 = 0.20036
@@ -235,9 +235,9 @@ def js_sigma_cx_n1_q4(E):
         1e-16
         * A1
         * (
-            (np.exp(-A2 / (E ** A8)))
-            / (1.0 + A3 * (E ** 2) + A4 * (E ** A5) + A6 * (E ** A7))
-            + (A9 * np.exp(-A10 * E)) / (E ** A11)
+            (np.exp(-A2 / (E**A8)))
+            / (1.0 + A3 * (E**2) + A4 * (E**A5) + A6 * (E**A7))
+            + (A9 * np.exp(-A10 * E)) / (E**A11)
         )
     )  # cm^2
 
@@ -251,7 +251,7 @@ def js_sigma_cx_n1_q5(E):
 
     Notes
     ---------
-    Section 4.3.2 of Janev & Smith, NF 1993. 
+    Section 4.3.2 of Janev & Smith, NF 1993.
     """
     A1 = 31.226
     A2 = 1.1442
@@ -268,9 +268,9 @@ def js_sigma_cx_n1_q5(E):
         1e-16
         * A1
         * (
-            (np.exp(-A2 / (E ** A8)))
-            / (1.0 + A3 * (E ** 2) + A4 * (E ** A5) + A6 * (E ** A7))
-            + (A9 * np.exp(-A10 * E)) / (E ** A11)
+            (np.exp(-A2 / (E**A8)))
+            / (1.0 + A3 * (E**2) + A4 * (E**A5) + A6 * (E**A7))
+            + (A9 * np.exp(-A10 * E)) / (E**A11)
         )
     )  # cm^2
 
@@ -279,12 +279,12 @@ def js_sigma_cx_n1_q6(E):
     """Electron capture cross section for
 
     .. math::
-    
+
         C^{6+} + H(1s) --> C^{5+} + H^+
 
     Notes
     ---------
-    Section 4.3.3 of Janev & Smith, NF 1993. 
+    Section 4.3.3 of Janev & Smith, NF 1993.
     """
     A1 = 418.18
     A2 = 2.1585
@@ -301,9 +301,9 @@ def js_sigma_cx_n1_q6(E):
         1e-16
         * A1
         * (
-            (np.exp(-A2 / (E ** A8)))
-            / (1.0 + A3 * (E ** 2) + A4 * (E ** A5) + A6 * (E ** A7))
-            + (A9 * np.exp(-A10 * E)) / (E ** A11)
+            (np.exp(-A2 / (E**A8)))
+            / (1.0 + A3 * (E**2) + A4 * (E**A5) + A6 * (E**A7))
+            + (A9 * np.exp(-A10 * E)) / (E**A11)
         )
     )  # cm^2
 
@@ -317,7 +317,7 @@ def js_sigma_cx_n1_q8(E):
 
     Notes
     ---------
-    Section 4.3.4 of Janev & Smith, NF 1993. 
+    Section 4.3.4 of Janev & Smith, NF 1993.
     """
     A1 = 1244.44
     A2 = 249.36
@@ -332,7 +332,7 @@ def js_sigma_cx_n1_q8(E):
         * A1
         * (
             (np.exp(-A2 / E) * np.log(1.0 + A3 * E)) / E
-            + (A4 * np.exp(-A5 * E)) / (E ** A6 + A7 * E ** A8)
+            + (A4 * np.exp(-A5 * E)) / (E**A6 + A7 * E**A8)
         )
     )  # cm^2
 
@@ -346,7 +346,7 @@ def js_sigma_cx_n1_qg8(E, q):
 
     Notes
     ---------
-    Section 4.3.5, p.172, of Janev & Smith, NF 1993. 
+    Section 4.3.5, p.172, of Janev & Smith, NF 1993.
     """
     Ew = E / q ** (3.0 / 7.0)
     A1 = 0.73362
@@ -358,7 +358,7 @@ def js_sigma_cx_n1_qg8(E, q):
     return (
         q
         * (1e-16 * A1 * np.log(A2 / Ew + A3))
-        / (1 + A4 * Ew + A5 * Ew ** 3.5 + A6 * Ew ** 5.4)
+        / (1 + A4 * Ew + A5 * Ew**3.5 + A6 * Ew**5.4)
     )  # cm^2
 
 
@@ -371,23 +371,23 @@ def js_sigma_cx_ng1_qg3(E, n1, q):
 
     Notes
     ---------
-    Section 4.3.6, p.174, of Janev & Smith, NF 1993. 
+    Section 4.3.6, p.174, of Janev & Smith, NF 1993.
     """
     A = 1.507e5
     B = 1.974e-5
-    Ew = E * n1 ** 2 / q ** 0.5
+    Ew = E * n1**2 / q**0.5
     return (
         q
-        * n1 ** 4
+        * n1**4
         * 7.04e-16
         * A
-        / (Ew ** 3.5 * (1 + B * Ew ** 2))
-        * (1 - np.exp((-2.0 * Ew ** 3.5 * (1 + B * Ew ** 2)) / (3.0 * A)))
+        / (Ew**3.5 * (1 + B * Ew**2))
+        * (1 - np.exp((-2.0 * Ew**3.5 * (1 + B * Ew**2)) / (3.0 * A)))
     )  # cm^2
 
 
 def js_sigma(E, q, n1, n2=None, type="cx"):
-    """Cross sections for collisional processes between beam neutrals and highly-charged 
+    """Cross sections for collisional processes between beam neutrals and highly-charged
     ions, from Janev & Smith 1993.
 
     Parameters
@@ -511,7 +511,7 @@ def plot_js_sigma(q=18):
     n1 = 2
     sigma = np.array([js_sigma(E, q, n1=n1, type="cx") for E in Ebeam])
     fig, ax = plt.subplots(1, 2, figsize=(14, 8))
-    ax[0].loglog(1e3 * Ebeam * n1 ** 2 / (q ** 0.5), sigma / (q * n1 ** 4), "*-")
+    ax[0].loglog(1e3 * Ebeam * n1**2 / (q**0.5), sigma / (q * n1**4), "*-")
     ax[0].set_xlabel(r"Scaled energy ($E n^2 / q^{0.5}$) [eV/amu]", fontsize=18)
     ax[0].set_ylabel(
         r"Scaled Cross Section ($\sigma_{cx}/(q n^4)$) [$cm^2$]", fontsize=18
@@ -519,8 +519,8 @@ def plot_js_sigma(q=18):
     ax[0].grid(True, which="both")
     ax[0].set_xlim(
         [
-            np.min(1e3 * Ebeam * n1 ** 2 / (q ** 0.5)),
-            np.max(1e3 * Ebeam * n1 ** 2 / (q ** 0.5)),
+            np.min(1e3 * Ebeam * n1**2 / (q**0.5)),
+            np.max(1e3 * Ebeam * n1**2 / (q**0.5)),
         ]
     )
 
