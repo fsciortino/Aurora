@@ -48,7 +48,7 @@ def load_default_namelist():
         "dr_1": 0.05,
         "lim_sep": 1.0,  # cm
         "bound_sep": 2.0,  # cm
-        "SOL_decay": 0.05,
+        "decay_length_boundary": 0.05,
         # --------------------
         # KINETIC PROFILES 
         "kin_profs": {
@@ -87,7 +87,7 @@ def load_default_namelist():
         # SAWTEETH MODEL
         "saw_model": {
             "saw_flag": False,
-            "rmix": 1000.0,
+            "mixing_radius": 1000.0,
             "times": [1.0,],
             "crash_width": 1.0,
         },
