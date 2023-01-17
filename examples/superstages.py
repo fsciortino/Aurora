@@ -68,22 +68,6 @@ V_z = 0.0 * np.ones(len(asim.rvol_grid))  # cm/s
 # run Aurora forward model and plot results
 out = asim.run_aurora(D_z, V_z, times_DV=[1.0,], unstage=True, plot=plot)
 
-# extract densities and particle numbers in each simulation reservoir
-nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
-
-
-# plot charge state distributions over radius and time
-aurora.plot_tools.slider_plot(
-    asim.rhop_grid,
-    asim.time_grid,
-    nz.transpose(1, 0, 2),
-    xlabel=r"$\rho_p$",
-    ylabel="time [s]",
-    zlabel=r"$n_z$ [$cm^{-3}$]",
-    labels=[str(i) for i in np.arange(0, nz.shape[1])],
-    plot_sum=True,
-)  # , x_line=asim.rvol_lcfs)
-
 
 ########
 # now choose superstages: always include 0 and 1!
@@ -93,22 +77,7 @@ namelist["superstages"] = superstages
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
 # run Aurora forward model and plot results
-out = asim.run_aurora(D_z, V_z, times_DV=[1.0,], unstage=True, plot=plot)
-
-# extract densities and particle numbers in each simulation reservoir
-nzs, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
-
-# plot charge state distributions over radius and time
-aurora.plot_tools.slider_plot(
-    asim.rvol_grid,
-    asim.time_grid,
-    nzs.transpose(1, 0, 2),
-    xlabel=r"$\rho_p$",
-    ylabel="time [s]",
-    zlabel=r"$n_z$ [$cm^{-3}$]",
-    labels=[str(i) for i in np.arange(0, nzs.shape[1])],
-    plot_sum=True,
-)  # , x_line=asim.rvol_lcfs)
+outs = asim.run_aurora(D_z, V_z, times_DV=[1.0,], unstage=True, plot=plot)
 
 
 # compare at last slice
@@ -120,10 +89,10 @@ a_plot = plt.subplot2grid((10, 10), (0, 0), rowspan=10, colspan=8, fig=fig)
 a_legend = plt.subplot2grid((10, 10), (0, 8), rowspan=10, colspan=2, fig=fig)
 a_legend.axis("off")
 
-for cs in np.arange(nz.shape[1]):
+for cs in np.arange(out['nz'].shape[1]):
     ls = next(ls_cycle)
-    a_plot.plot(asim.rhop_grid, nz[:, cs, -1], ls, lw=1.0)
-    a_plot.plot(asim.rhop_grid, nzs[:, cs, -1], ls, lw=2.0)
+    a_plot.plot(asim.rhop_grid, out['nz'][:, cs, -1], ls, lw=1.0)
+    a_plot.plot(asim.rhop_grid, outs['nz'][:, cs, -1], ls, lw=2.0)
     a_legend.plot([], [], ls, label=imp + f"$^{{{cs}+}}$")
 
 a_plot.set_xlabel(r"$\rho_p$")

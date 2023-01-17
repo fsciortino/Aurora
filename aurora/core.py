@@ -1321,9 +1321,9 @@ class aurora_sim:
                 if superstages[i] + 1 < superstages[i + 1]:
                     # fill skipped stages from ionization equilibrium
                     ind = slice(superstages[i], superstages[i + 1])
-                    nz_unstaged[:, ind] = self.res[0][:, [i]] * self.fz_upstage[:, ind]
+                    nz_unstaged[:, ind] = self.res['nz'][:, [i]] * self.fz_upstage[:, ind]
                 else:
-                    nz_unstaged[:, superstages[i]] = self.res[0][:, i]
+                    nz_unstaged[:, superstages[i]] = self.res['nz'][:, i]
 
             self.res = nz_unstaged, *self.res[1:]
 
@@ -1541,6 +1541,7 @@ class aurora_sim:
         dt_increase=1.05,
         n_steps=100,
         plot=False,
+        radial_coordinate = 'rho_vol',
     ):
         """Run an Aurora simulation until reaching steady state profiles. This method calls :py:meth:`~aurora.core.run_aurora`
         checking at every iteration whether profile shapes are still changing within a given fractional tolerance.
@@ -1584,6 +1585,8 @@ class aurora_sim:
             Number of time steps (>2) before convergence is checked.
         plot : bool
             If True, plot time evolution of charge state density profiles to show convergence.
+        radial_coordinate : string, optional
+            Radial coordinate shown in the plot. Options: 'rho_vol' (default) or 'rho_pol'
         """
 
         if n_steps < 2:
@@ -1673,7 +1676,7 @@ class aurora_sim:
                 evolneut=evolneut,
                 use_julia=use_julia,
                 plot=False,
-            )[0]
+            )['nz']
 
             if nz_all is None:
                 nz_all = np.dstack((np.zeros_like(nz_new[:, :, [0]]), nz_new))
@@ -1696,16 +1699,29 @@ class aurora_sim:
         self.save_time = save_time[:sim_steps]
 
         if plot:
+            
+            if radial_coordinate == 'rho_vol':
+                x = self.rvol_grid
+                xlabel = r"$r_V$ [cm]"
+                x_line=self.rvol_lcfs
+            elif radial_coordinate == 'rho_pol':
+                x = self.rhop_grid
+                xlabel=r'$\rho_p$'
+                x_line = 1
+            
             # plot charge state distributions over radius and time
             plot_tools.slider_plot(
-                self.rhop_grid,
+                x,
                 self.time_grid,
                 nz_all.transpose(1, 0, 2),
-                xlabel=r"$\rho_p$",
+                xlabel=xlabel,
                 ylabel="time [s]",
-                zlabel=r"$n_z$ [$cm^{-3}$]",
+                zlabel=f'$n_{{{self.imp}}}$ [cm$^{{-3}}$]',
+                plot_title = f'{self.imp} density profiles',
                 labels=[str(i) for i in np.arange(0, nz_all.shape[1])],
                 plot_sum=True,
+                x_line=x_line,
+                zlim = True,
             )
 
         if sim_steps >= len(time_grid):
@@ -1965,7 +1981,7 @@ class aurora_sim:
                                color = blue)
                 if ylim:
                     ax1[0, 1].set_ylim(0,np.max(reservoirs["particles_in_plasma"])*1.15)
-                ax1[0, 1].set_ylabel('[\#]')
+                ax1[0, 1].set_ylabel('[#]')
             ax1[0, 1].set_title('Plasma', loc='right', fontsize = 11)
 
             if "impurity_radiation" in reservoirs:
@@ -2001,7 +2017,7 @@ class aurora_sim:
                     ax1[1, 2].plot(self.time_out, reservoirs["particles_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
                 ax1[1, 2].plot(self.time_out, reservoirs["particles_retained_at_main_wall"],
                     label="Particles retained", color = light_grey)
-                ax1[1, 2].set_ylabel('[\#]')  
+                ax1[1, 2].set_ylabel('[#]')  
             ax1[1, 2].set_title('Main wall reservoir', loc='right', fontsize = 11)
             ax1[1, 2].legend(loc="best", fontsize = 9).set_draggable(True)
 
@@ -2038,7 +2054,7 @@ class aurora_sim:
                     ax1[2, 2].plot(self.time_out, reservoirs["particles_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
                 ax1[2, 2].plot(self.time_out, reservoirs["particles_retained_at_div_wall"],
                     label="Particles retained", color = grey)
-                ax1[2, 2].set_ylabel('[\#]')   
+                ax1[2, 2].set_ylabel('[#]')   
             ax1[2, 2].set_title('Divertor wall reservoir', loc='right', fontsize = 11)
             ax1[2, 2].legend(loc="best", fontsize = 9).set_draggable(True)
             
@@ -2083,7 +2099,7 @@ class aurora_sim:
                            label="Pump reservoir", color = light_green)
                 if ylim:
                     ax1[3, 2].set_ylim(0,np.max(reservoirs["particles_in_divertor"])*1.15)
-                ax1[3, 2].set_ylabel('[\#]')
+                ax1[3, 2].set_ylabel('[#]')
             ax1[3, 2].set_title('Neutrals reservoirs', loc='right', fontsize = 11)
             ax1[3, 2].legend(loc="best", fontsize = 9).set_draggable(True)
 
