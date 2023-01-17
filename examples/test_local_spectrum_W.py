@@ -36,6 +36,8 @@ lam_common = np.linspace(lam_min, lam_max, 1000)
 total_emiss = np.zeros((len(lam_common), len(Te_eV)))
 
 
+ 
+
 for z in Z:
 
     # load W PEC file
@@ -64,12 +66,14 @@ for z in Z:
  
  
 lemiss = np.log(total_emiss.T)
-plt.contourf(lam_common/10, Te_eV/1000, lemiss , np.linspace(1,lemiss.max(),30), cmap='CMRmap_r' )
-cb = plt.colorbar( ticks=range(1,11))
+plt.contourf(lam_common/10, Te_eV/1000, lemiss , np.linspace(6,lemiss.max(),30), cmap='CMRmap_r' )
+cb = plt.colorbar( ticks=range(6,11))
 plt.xlabel('$\lambda$ [nm]')
 plt.ylabel('$T_e$ [keV]')
 cb.set_label('log$_{10}$(Emissivity)')
 plt.title('W spectrum')
+plt.ioff()
+plt.show()
 
 
  
