@@ -589,7 +589,6 @@ def get_main_ion_dens(ne_cm3, ions, rhop_plot=None):
 
     return ni_cm3
 
-
 def read_adf15(path, order=1):
     """Read photon emissivity coefficients (PECs) from an ADAS ADF15 file.
 
@@ -674,7 +673,7 @@ def read_adf15(path, order=1):
     # Get the expected number of lines by reading the header:
     num_lines = int(header[0])
     spec = header[1].strip("/")
-    Z = int(header[3])
+    Z = int(''.join(header[2:-3]).strip(':'))
 
     log10pec_dict = {}
     for i in range(num_lines):
@@ -686,17 +685,23 @@ def read_adf15(path, order=1):
         # Get the wavelength, number of densities and number of temperatures
         # from the first line of the entry:
         l = lines.pop(0)
-
+ 
         header_dict = {}
 
-        header = l.split("/")
-        lam, sizes = header[0].split("A")
-        header_dict["lam"] = float(lam)
-        num_den, num_temp = np.int_(sizes.split())
+        header = l.split('/')
+
+        header0 = header[0].split()
+        header_dict['lam'] = float(header0[0].strip('A'))
+        num_den = np.int_(header0[-2])
+        num_temp = np.int_(header0[-1])
 
         for item in header[1:]:
-            par, val = item.split("=")
-            header_dict[par.strip().upper()] = val.strip()
+            try:
+                par, val = item.split('=')
+                header_dict[par.strip().upper()] = val.strip()
+            except:
+                pass
+ 
 
         # Get the densities:
         dens = []
@@ -717,12 +722,11 @@ def read_adf15(path, order=1):
         PEC = np.reshape(PEC, (num_den, num_temp))
 
         # interpolate PEC on log dens,temp scales
+         # interpolation of log10(PEC) to avoid issues at low ne or Te
         pec_fun = RectBivariateSpline(
             np.log10(dens),
             np.log10(temp),
-            np.log10(
-                PEC
-            ),  # interpolation of log10(PEC) to avoid issues at low ne or Te
+            np.log10( PEC), 
             kx=order,
             ky=order,
         )
@@ -740,7 +744,7 @@ def read_adf15(path, order=1):
         log10pec_dict[isel]["lambda [A]"] = header_dict["lam"]
         log10pec_dict[isel]["type"] = header_dict["TYPE"].lower()
         # for meta resolved files
-        INDM = header_dict.get("INDM", 1)
+        INDM = header_dict.get("INDM", "1")
         if "T" in INDM:
             INDM = 1
         log10pec_dict[isel]["INDM"] = int(INDM)
@@ -775,6 +779,7 @@ def read_adf15(path, order=1):
     out.type.where(~out.type.str.startswith("dr"), "drsat", inplace=True)
     out.type.where(~out.type.str.startswith("cx"), "chexc", inplace=True)
     return out
+ 
 
 
 def _find_adf15_spacing(l):
