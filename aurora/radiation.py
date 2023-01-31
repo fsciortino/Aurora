@@ -697,6 +697,7 @@ def read_adf15(path, order=1):
 
         for item in header[1:]:
             try:
+                #the parameters which cannot be splitted will be skipped 
                 par, val = item.split('=')
                 header_dict[par.strip().upper()] = val.strip()
             except:
