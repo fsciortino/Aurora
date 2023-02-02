@@ -57,6 +57,7 @@ Documentation contents
    aurora_req
    params
    atomic_data
+   facit
    citing
    contacts
    aurora

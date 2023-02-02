@@ -2146,4 +2146,5 @@ class aurora_sim:
         if plot:
             return reservoirs, (ax1, ax2)
         else:
+
             return reservoirs
