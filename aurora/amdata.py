@@ -1,11 +1,12 @@
-'''Tools to download, read and process data from the AMJUEL and HYDHEL databases, obtained directly from the eirene.de website.
+"""Tools to download, read and process data from the AMJUEL and HYDHEL databases, obtained directly from the eirene.de website.
 All reactions are read from the tex files of available documentation, parsed to form Python dictionaries that are stored in a 
 json file.
 
 Contributors: T. Lunt, F. Sciortino (MPI-IPP)
-'''
+"""
 import numpy as np
 import matplotlib.pyplot as plt
+
 plt.ion()
 import sys, os
 import requests
@@ -26,9 +27,10 @@ vnfdTn = [
     ["n2max=", "nmax", 1e6, 1e25],
 ]
 
+
 class reactions_database:
-    '''Class to read and evaluate rates from the AMJUEL and HYDHEL databases.
-    '''
+    """Class to read and evaluate rates from the AMJUEL and HYDHEL databases."""
+
     def __init__(self, fn=None):
         self.db = None
         self.c = None
@@ -42,23 +44,21 @@ class reactions_database:
 
         # load database (download and parse automatically if needed)
         self.open_database()
-        
+
     def open_database(self):
 
-        json_filepath = local_path + os.sep + 'amjuel_hydhel_database.json'
+        json_filepath = local_path + os.sep + "amjuel_hydhel_database.json"
 
         # if not available, create json file containing all reactions in python dictionary form
         if not os.path.exists(json_filepath):
-            
+
             # populate dictionary with all AMJUEL+HYDHEL reactions
             database = {}
             database.update(parse_amjuel())
             database.update(parse_hydhel())
 
             # store locally as json file
-            json.dump(
-                database, open(json_filepath, 'w'), indent=4, sort_keys=True
-            )
+            json.dump(database, open(json_filepath, "w"), indent=4, sort_keys=True)
 
         self.db = json.load(open(json_filepath))
 
@@ -140,7 +140,7 @@ class reactions_database:
 
             f = logx * 0.0  # create an empty array of the same size than x
             for i in range(9):
-                f += self.c[i] * logx ** i
+                f += self.c[i] * logx**i
             return np.exp(f) * self.factor
 
         elif params.count(",") == 1:  # double-polynomial fits
@@ -155,8 +155,8 @@ class reactions_database:
             for ix in range(9):
                 fy = logy * 0.0
                 for iy in range(9):
-                    fy += self.c[iy, ix] * logy ** iy
-                f += fy * logx ** ix
+                    fy += self.c[iy, ix] * logy**iy
+                f += fy * logx**ix
 
             return np.exp(f) * self.factor
 
@@ -166,42 +166,72 @@ class reactions_database:
             )
 
 
-
-
 class h_am_pecs:
-    '''Analysis of atomic and molecular emission for H-isotope spectral lines (Lyman, Balmer, etc.)
-    '''
+    """Analysis of atomic and molecular emission for H-isotope spectral lines (Lyman, Balmer, etc.)"""
+
     def __init__(self):
         self.rdb = reactions_database()
 
         # add reactions selection for Balmer lines
         self.RR = {
-            'balmer': ["AMJUEL,12,2_1_5a",  # H(3)/H 
-                       "AMJUEL,12,2_1_8a",  # H(3)/H+ 
-                       "AMJUEL,12,2_2_5a",  # H(3)/H2
-                       "AMJUEL,12,2_2_14a", # H(3)/H2+
-                       "AMJUEL,12,2_0c",    # H2+/H2
-                       "AMJUEL,12,7_2a",    # H(3)/H-
-                       "AMJUEL,11,7_0a",    # H-/H2
-                       "AMJUEL,12,2_2_15a", # H(3)/Hll3+
-                       "AMJUEL,11,4_0a"     # H3+/H2/H2+/ne
+            "balmer": [
+                "AMJUEL,12,2_1_5a",  # H(3)/H
+                "AMJUEL,12,2_1_8a",  # H(3)/H+
+                "AMJUEL,12,2_2_5a",  # H(3)/H2
+                "AMJUEL,12,2_2_14a",  # H(3)/H2+
+                "AMJUEL,12,2_0c",  # H2+/H2
+                "AMJUEL,12,7_2a",  # H(3)/H-
+                "AMJUEL,11,7_0a",  # H-/H2
+                "AMJUEL,12,2_2_15a",  # H(3)/Hll3+
+                "AMJUEL,11,4_0a",  # H3+/H2/H2+/ne
             ],
-            'lyman': [ ], # TODO
-            'paschen': [ ], # TODO
+            "lyman": [],  # TODO
+            "paschen": [],  # TODO
         }
-        
+
         # spontaneous emission coeffs for n=2 to 1, 3 to 1, ... 16 to 1
         self.A_vals = {
-            'lyman': [4.699e8, 5.575e7, 1.278e7, 4.125e6, 1.644e6, 7.568e5, 3.869e5, 2.143e5,
-                      1.263e5, 7.834e4, 5.066e4, 3.393e4, 2.341e4, 1.657e4, 1.200e4],
-            'balmer': [4.41e7, 8.42e6, 2.53e6, 9.732e5, 4.389e5, 2.215e5, 1.216e5, 7.122e4,
-                       4.397e4, 2.83e4, 18288.8, 12249.1, 8451.26, 5981.95, 4332.13],
-            'paschen': [] # TODO                       
+            "lyman": [
+                4.699e8,
+                5.575e7,
+                1.278e7,
+                4.125e6,
+                1.644e6,
+                7.568e5,
+                3.869e5,
+                2.143e5,
+                1.263e5,
+                7.834e4,
+                5.066e4,
+                3.393e4,
+                2.341e4,
+                1.657e4,
+                1.200e4,
+            ],
+            "balmer": [
+                4.41e7,
+                8.42e6,
+                2.53e6,
+                9.732e5,
+                4.389e5,
+                2.215e5,
+                1.216e5,
+                7.122e4,
+                4.397e4,
+                2.83e4,
+                18288.8,
+                12249.1,
+                8451.26,
+                5981.95,
+                4332.13,
+            ],
+            "paschen": [],  # TODO
         }
-        
-    def load_pec(self, ne, Te, ni, nh, nh2,
-                 series='balmer', choice='alpha', plot=False):
-        '''Read PECs for a chosen H-isotope line.
+
+    def load_pec(
+        self, ne, Te, ni, nh, nh2, series="balmer", choice="alpha", plot=False
+    ):
+        """Read PECs for a chosen H-isotope line.
 
         Parameters
         ----------
@@ -234,50 +264,54 @@ class h_am_pecs:
             Contribution to emissivity from molecular ionized H2 (H2+)
         c5 : array
             Contribution to emissivity from atomic neutral charged H2 (H2-)
-        '''
-        ins = {'ne': np.atleast_1d(ne),
-               'Te': np.atleast_1d(Te),
-               'ni': np.atleast_1d(ni),
-               'nh': np.atleast_1d(nh),
-               'nh2': np.atleast_1d(nh2)}
+        """
+        ins = {
+            "ne": np.atleast_1d(ne),
+            "Te": np.atleast_1d(Te),
+            "ni": np.atleast_1d(ni),
+            "nh": np.atleast_1d(nh),
+            "nh2": np.atleast_1d(nh2),
+        }
         for key in ins:
             try:
-                assert ins[key].shape == ins['ne'].shape
+                assert ins[key].shape == ins["ne"].shape
             except:
-                raise ValueError(f'Input shape of {key} array is not the same as the ne array!')
-        
+                raise ValueError(
+                    f"Input shape of {key} array is not the same as the ne array!"
+                )
+
         # changing final reaction letter
         sub = {"alpha": "a", "beta": "c", "gamma": "d", "delta": "e"}
 
         RR = copy.deepcopy(self.RR[series])
         for i in [0, 1, 2, 3, 5, 7]:  # only cross sections specific to Halpha
             RR[i] = "AMJUEL" + RR[i].split("AMJUEL")[1].replace("a", sub[choice])
-        
+
         # select Einstein Aki coefficients
-        ind = {'alpha': 0, 'beta': 1, 'gamma': 2, 'delta': 3}
+        ind = {"alpha": 0, "beta": 1, "gamma": 2, "delta": 3}
         a0 = self.A_vals[series][ind[choice]]
 
         # calculate rates
-        rates = np.zeros((len(RR), *ins['ne'].shape))
+        rates = np.zeros((len(RR), *ins["ne"].shape))
         for j, R in enumerate(RR):
             self.rdb.select_reaction(R)
-            rates[j, :] = self.rdb.reaction(ins['ne'], ins['Te'])
+            rates[j, :] = self.rdb.reaction(ins["ne"], ins["Te"])
 
-        c1 = a0 * rates[0, :] * ins['nh']
-        c2 = a0 * rates[1, :] * ins['ni']
-        c3 = a0 * rates[2, :] * ins['nh2']
-        c4 = a0 * rates[3, :] * rates[4, :] * ins['nh2']
-        c5 = a0 * rates[5, :] * rates[6, :] * ins['nh2']
+        c1 = a0 * rates[0, :] * ins["nh"]
+        c2 = a0 * rates[1, :] * ins["ni"]
+        c3 = a0 * rates[2, :] * ins["nh2"]
+        c4 = a0 * rates[3, :] * rates[4, :] * ins["nh2"]
+        c5 = a0 * rates[5, :] * rates[6, :] * ins["nh2"]
         ct = c1 + c2 + c3 + c4 + c5
 
         if plot:
             fig, ax = plt.subplots(2, 1, sharex=True)
-            ax[0].plot(ins['Te'], ct)
-            ax[1].plot(ins['Te'], c1 / ct, label="H")
-            ax[1].plot(ins['Te'], c2 / ct, label="H+")
-            ax[1].plot(ins['Te'], c3 / ct, label="H2")
-            ax[1].plot(ins['Te'], c4 / ct, label="H2+")
-            ax[1].plot(ins['Te'], c5 / ct, label="H2-")
+            ax[0].plot(ins["Te"], ct)
+            ax[1].plot(ins["Te"], c1 / ct, label="H")
+            ax[1].plot(ins["Te"], c2 / ct, label="H+")
+            ax[1].plot(ins["Te"], c3 / ct, label="H2")
+            ax[1].plot(ins["Te"], c4 / ct, label="H2+")
+            ax[1].plot(ins["Te"], c5 / ct, label="H2-")
             ax[1].legend()
             ax[1].set_yscale("log")
             ax[1].set_ylim((1e-3, 1e0))
@@ -364,11 +398,11 @@ def parse_hydhel():
     # download and store tex file to disk
     link = "http://www.eirene.de/hydhel.tex"
     r = requests.get(link)
-    with open(local_path+os.sep+"hydhel.tex", "wb") as f:
+    with open(local_path + os.sep + "hydhel.tex", "wb") as f:
         f.write(r.content)
 
     # now read the tex file back in for consistency
-    hh=open(local_path+os.sep+'hydhel.tex').read()
+    hh = open(local_path + os.sep + "hydhel.tex").read()
 
     database = {}
     report = "HYDHEL"
@@ -469,13 +503,13 @@ def parse_amjuel():
     # first download the databases
     link = "http://www.eirene.de/amjuel.tex"
     r = requests.get(link)
-    with open(local_path+os.sep+"amjuel.tex", "wb") as f:
+    with open(local_path + os.sep + "amjuel.tex", "wb") as f:
         f.write(r.content)
 
     report = "AMJUEL"
 
     # open file back
-    aj=open(local_path+os.sep+'amjuel.tex').read()
+    aj = open(local_path + os.sep + "amjuel.tex").read()
 
     headers = aj.split("\section{H.")[1:]
 
@@ -514,9 +548,7 @@ def parse_amjuel():
                 read_variables(block, reaction, vnfdTn)
 
             # the symbol . is used by json/fson to address a child element
-            database[
-                "%s,%i,%s" % (report, ih, nam.replace(".", "_"))
-            ] = reaction
+            database["%s,%i,%s" % (report, ih, nam.replace(".", "_"))] = reaction
 
     for ih in [2, 8, 11]:
         for S in headers[ih].split("\subsection{")[1:]:
@@ -553,10 +585,6 @@ def parse_amjuel():
                     read_variables(block, reaction, vnfdEnergy)
 
                 # the symbol . is used by json/fson to address a child element
-                database[
-                    "%s,%i,%s" % (report, ih, nam.replace(".", "_"))
-                ] = reaction
+                database["%s,%i,%s" % (report, ih, nam.replace(".", "_"))] = reaction
 
     return database
-
-

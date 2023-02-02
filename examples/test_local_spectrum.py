@@ -21,15 +21,17 @@ logTe, fz = aurora.get_frac_abundances(
     atom_data, np.array([ne_cm3,]), np.array([Te_eV,]), plot=False)
 
 # now add spectra
-out = aurora.get_local_spectrum(filepath, 'H', ne_cm3, Te_eV,
+out = aurora.get_local_spectrum(filepath,  ne_cm3, Te_eV,
                                 # H0+ cannot recombine, so first element is 0
                                 ion_exc_rec_dens=[0.0, fz[0,0], fz[0,1]])
-
+plt.title('The whole H spectrum')
 # The plot above covers a large wavelength range. Reduce it to focus on near-UV
 trs = aurora.read_adf15(filepath)
 trs = trs.loc[trs['lambda [A]']<2000]
 
 # now pass transitions pandas DataFrame with reduced number of lines:
-out = aurora.get_local_spectrum(trs, 'H', ne_cm3, Te_eV,
+out = aurora.get_local_spectrum(trs,  ne_cm3, Te_eV,
                                 ion_exc_rec_dens=[0.0, fz[0,0], fz[0,1]])
 
+
+plt.title('Lyman 

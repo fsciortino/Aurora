@@ -212,7 +212,7 @@ You should get something that looks like this:
 Ionization equilibrium
 ----------------------
 
-It may be useful to compare and contrast the charge state distributions obtained from an Aurora run with the distributions predicted by pure ionization equilibium, i.e. by atomic physics only, with no trasport. To do this, we only need some kinetic profiles, which for this example we will load from the sample `input.gacode` file available in the "examples" directory:::
+It may be useful to compare and contrast the charge state distributions obtained from an Aurora run with the distributions predicted by pure ionization equilibium, i.e. by atomic physics only, with no trasport. To do this, we only need some kinetic profiles, which for this example we will load from the sample `input.gacode` file available in the "examples" directory::
 
   import omfit_gapy
   inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
@@ -223,7 +223,7 @@ Recall that Aurora generally uses CGS units, so we need to convert electron dens
   ne_vals = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
   Te_vals = inputgacode['Te']*1e3  # keV --> eV
 
-Here we also defined a `rhop` grid from the poloidal flux values in the `inputgacode` dictionary. We can then use the :py:func:`~aurora.atomic.get_atom_data` function to read atomic effective ionization ("scd") and recombination ("acd") from the default ADAS files listed in :py:func:`~aurora.adas_files.adas_files_dict`. In this example, we are going to focus on calcium ions:::
+Here we also defined a `rhop` grid from the poloidal flux values in the `inputgacode` dictionary. We can then use the :py:func:`~aurora.atomic.get_atom_data` function to read atomic effective ionization ("scd") and recombination ("acd") from the default ADAS files listed in :py:func:`~aurora.adas_files.adas_files_dict`. In this example, we are going to focus on calcium ions::
 
   atom_data = aurora.get_atom_data('Ca',['scd','acd'])
 
@@ -231,7 +231,10 @@ In ionization equilibrium, all ionization and recombination processes will be pe
 
   Te, fz = aurora.get_frac_abundances(atom_data, ne_vals, Te_vals, rho=rhop, plot=True)
 
-The :py:func:`~aurora.atomic.get_frac_abundances` function returns the log-10 of the electron temperature on the same grid as the fractional abundances, given by the `fz` parameter (dimensions: space, charge state). This same function can be used to both compute radiation profiles of fractional abundances or to compute fractional abundances as a function of scanned parameters `ne` and/or `Te`. An additional argument of `ne_tau` (units of :math:`m^{-3}\cdot s`) can be used to approximately model the effect of transport on ionization balance.
+The :py:func:`~aurora.atomic.get_frac_abundances` function returns the log-10 of the electron temperature on the same grid as the fractional abundances, given by the `fz` parameter (dimensions: space, charge state). This same function can be used to both compute radiation profiles of fractional abundances or to compute fractional abundances as a function of scanned parameters `ne` and/or `Te`.
+
+Additionally, the function :py:func:`~aurora.atomic.get_atomic_relax_time` allows one to obtain the relaxation time of the ionization equilibrium for a given species, which permits an assessment of the time scales for atomic vs transport effects. The effect of transport can be mimicked by passing a `tau_s` parameter, representing a typical (global) particle residence time. This capability can be used, for example, to explore how sensitive the ionization balance is to transport, but it can of course only provide a very approximate assessment.
+
 
 .. figure:: figs/W_Ca_frac_abundances_superstaging_new.jpg
     :width: 500
