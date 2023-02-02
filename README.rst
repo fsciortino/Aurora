@@ -19,7 +19,7 @@ Aurora: a modern toolbox for impurity transport, neutrals and radiation modeling
 .. image:: https://anaconda.org/conda-forge/aurorafusion/badges/downloads.svg   
     :target: https://anaconda.org/conda-forge/aurorafusion
 
-Aurora is a package to simulate heavy-ion transportm neutrals and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model, thoroughly benchmarked with the widely-adopted STRAHL code. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. A simple interface to atomic data for fusion plasmas makes it a convenient tool for spectroscopy and integrated modeling. Aurora's code is mostly written in Python 3 and Fortran 90. An experimental Julia interface has also been added. 
+Aurora is a package to simulate heavy-ion transportm neutrals and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model, thoroughly benchmarked with the widely-adopted STRAHL code. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. A simple interface to atomic data for fusion plasmas makes it a convenient tool for spectroscopy and integrated modeling. Aurora's code is mostly written in Python 3 and Fortran 90. 
 
 Documentation is available at https://aurora-fusion.readthedocs.io.
 
@@ -60,12 +60,6 @@ or use the makefile in the package directory to build the Fortran code using
     make clean; make
    
 Note that the makefile will not install any of the dependencies, listed in the `requirements.txt` file in the main directory. You can use this file to quickly install dependencies within a Python virtual environment, or install each dependency one at a time.
-
-The Julia version of the code is not built by default. If you have Julia installed on your system, you can do  
-
-    make julia
-
-from the main package directory. This will build a Julia `sysimage` to speed up access of Julia source code from Python, but it is not strictly necessary. See the documentation to read about interfacing Python and Julia. 
 
 
 Atomic data
