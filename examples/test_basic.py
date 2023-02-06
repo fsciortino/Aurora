@@ -38,8 +38,8 @@ n_alpha1 = 2
 n_alpha2 = 0.5
 
 rhop = kp["Te"]["rhop"] = kp["ne"]["rhop"] = np.linspace(0, 1, 100)
-kp["ne"]["vals"] = (n_core - n_edge) * (1 - rhop ** n_alpha1) ** n_alpha2 + n_edge
-kp["Te"]["vals"] = (T_core - T_edge) * (1 - rhop ** T_alpha1) ** T_alpha2 + T_edge
+kp["ne"]["vals"] = (n_core - n_edge) * (1 - rhop**n_alpha1) ** n_alpha2 + n_edge
+kp["Te"]["vals"] = (T_core - T_edge) * (1 - rhop**T_alpha1) ** T_alpha2 + T_edge
 
 # set impurity species and sources rate
 imp = namelist["imp"] = "Ar"

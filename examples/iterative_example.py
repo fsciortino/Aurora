@@ -80,10 +80,10 @@ n_alpha2 = 0.5
 
 rhop = kp["Te"]["rhop"] = kp["ne"]["rhop"] = np.linspace(0, 1, 100)
 ne_cm3 = kp["ne"]["vals"] = (n_core - n_edge) * (
-    1 - rhop ** n_alpha1
+    1 - rhop**n_alpha1
 ) ** n_alpha2 + n_edge
 Te_eV = kp["Te"]["vals"] = (T_core - T_edge) * (
-    1 - rhop ** T_alpha1
+    1 - rhop**T_alpha1
 ) ** T_alpha2 + T_edge
 nd_cm3 = copy.deepcopy(ne_cm3)
 
@@ -91,7 +91,7 @@ nd_cm3 = copy.deepcopy(ne_cm3)
 #
 # Update background every n_rep iterations, each of dt [s] length
 n_rep = 5
-dt = 1e-6 #1e-4
+dt = 1e-6  # 1e-4
 
 # Total time to run [s] -- will be approximated by nearest multiplier of n_rep*dt
 sim_time = 5e-3
@@ -120,7 +120,7 @@ time_decay = 1e10 * np.exp(
     -namelist["explicit_source_time"] / 0.02
 )  # decay over 20ms time scale
 gaussian_rhop = 1e9 * np.exp(
-    -((namelist["explicit_source_rhop"] - 0.5) ** 2) / (2 * 0.1 ** 2)
+    -((namelist["explicit_source_rhop"] - 0.5) ** 2) / (2 * 0.1**2)
 )
 namelist["explicit_source_vals"] = gaussian_rhop[None, :] * time_decay[:, None]
 
@@ -232,7 +232,7 @@ aurora.slider_plot(
 
 # show evolution of Te, including starting condition
 _Te_all = np.array(Te_all).T
-Te_arr = np.reshape(_Te_all, (1, len(rhop), len(time_grid[::5])+1))
+Te_arr = np.reshape(_Te_all, (1, len(rhop), len(time_grid[::5]) + 1))
 aurora.slider_plot(
     rhop,
     time_grid[::5],

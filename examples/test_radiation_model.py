@@ -37,8 +37,8 @@ n_alpha1 = 2
 n_alpha2 = 0.5
 
 rhop = np.linspace(0, 1, 100)
-ne_cm3 = (n_core - n_edge) * (1 - rhop ** n_alpha1) ** n_alpha2 + n_edge
-Te_eV = (T_core - T_edge) * (1 - rhop ** T_alpha1) ** T_alpha2 + T_edge
+ne_cm3 = (n_core - n_edge) * (1 - rhop**n_alpha1) ** n_alpha2 + n_edge
+Te_eV = (T_core - T_edge) * (1 - rhop**T_alpha1) ** T_alpha2 + T_edge
 
 # choice of ion and fractional abundance wrt electron density:
 ion = "Ar"

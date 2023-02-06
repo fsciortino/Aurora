@@ -44,9 +44,9 @@ n_alpha1 = 2
 n_alpha2 = 0.5
 
 rhop = kp["Te"]["rhop"] = kp["ne"]["rhop"] = np.linspace(0, 1, 100)
-ne_cm3 = (n_core - n_edge) * (1 - rhop ** n_alpha1) ** n_alpha2 + n_edge
+ne_cm3 = (n_core - n_edge) * (1 - rhop**n_alpha1) ** n_alpha2 + n_edge
 kp["ne"]["vals"] = ne_cm3[None, :]
-Te_eV = (T_core - T_edge) * (1 - rhop ** T_alpha1) ** T_alpha2 + T_edge
+Te_eV = (T_core - T_edge) * (1 - rhop**T_alpha1) ** T_alpha2 + T_edge
 kp["Te"]["vals"] = Te_eV[None, :]
 
 # set impurity species and sources rate
@@ -79,7 +79,7 @@ time_grid, save_grid = aurora.grids_utils.create_time_grid(
 
 # set time-independent transport coefficients (flat D=1 m^2/s, V=-2 cm/s)
 D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
-V_z = -2e2 * asim.rhop_grid ** 10  # cm/s, increasing towards the edge
+V_z = -2e2 * asim.rhop_grid**10  # cm/s, increasing towards the edge
 
 # plot transport coefficients
 fig, ax = plt.subplots(2, 1, sharex=True, figsize=(8, 8))
@@ -170,7 +170,7 @@ out_fvn, axs = asim.check_conservation(plot=True, axs=axs)
 #           Compare all algorithmic choices at last time slice
 #
 ############################################################################
-labels = [fr"{imp}$^{{{str(i)}}}$" for i in np.arange(0, nz_3.shape[1])]
+labels = [rf"{imp}$^{{{str(i)}}}$" for i in np.arange(0, nz_3.shape[1])]
 colors = plt.cm.rainbow(np.linspace(0, 1, nz.shape[1]))
 fig = plt.figure()
 fig.set_size_inches(10, 7, forward=True)
