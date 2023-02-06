@@ -9,7 +9,7 @@ Paper/presentation in `Plasma Physics & Fusion Energy <https://iopscience.iop.or
 Overview
 --------
 
-Aurora is a package to simulate heavy-ion transport and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model which inherits many of the methods from the historical STRAHL code and has been thoroughly benchmarked with it. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. Aurora's code is mostly written in Python 3 and Fortran 90. A Julia interface has also recently been added. The package enables radiation calculations using ADAS atomic rates, which can easily be applied to the output of Aurora's own forward model, or coupled with other 1D, 2D or 3D transport codes. 
+Aurora is a package to simulate heavy-ion transport and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model which inherits many of the methods from the historical STRAHL code and has been thoroughly benchmarked with it. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. The package includes a public release of the Fast and Accurate Collisional Impurity Transport (FACIT) model for the calculation of neoclassical diffusion and convection coefficients in tokamak plasmas. Aurora's code is mostly written in Python 3 and Fortran 90. A Julia interface has also recently been added. The package enables radiation calculations using ADAS atomic rates, which can easily be applied to the output of Aurora's own forward model, or coupled with other 1D, 2D or 3D transport codes. 
 
 .. figure:: figs/guido_reni_aurora.jpg
     :align: center
@@ -34,6 +34,8 @@ The package includes Python functionality to create inputs and read/plot outputs
 Aurora provides convenient interfaces to load a default namelist via :py:func:`~aurora.default_nml`, modify it as required and then pass the resulting namelist dictionary into the simulation setup. This is in the :py:class:`~aurora.core.aurora_sim` class, which allows creation of radial and temporal grids, interpolation of atomic rates, preparation of parallel loss rates at the edge, etc.
 
 The :py:mod:`aurora.atomic` library provides functions to load and interpolate atomic rates from ADAS ADF-11 files, as well as from ADF-15 photon emissivity coefficients (PEC) files. PEC data can alternatively be computed using the collisional-radiative model of ColRadPy, using methods in :py:mod:`aurora.radiation`.
+
+Aurora also includes a Python version of the FACIT code, described in the Tutorials section of this documentation, which allows users to rapidly estimate neoclassical impurity transport coefficients. This capability is particularly useful in integrated transport modeling, as well as in experimental inference of impurity transport coefficients.
 
 A number of standard tests and examples are provided using a real set of Alcator C-Mod kinetic profiles and geometry. In order to interface with EFIT gEQDSK files, Aurora makes use of the `omfit_eqdsk <https://pypi.org/project/omfit-eqdsk/>`__ package, which offers flexibility to work with data from many devices worldwide. Users may easily substitute this dependence with different magnetic reconstruction packages and/or postprocessing interfaces, if required. Interfacing Aurora with several file formats used throughout the fusion community to store kinetic profiles is simple. 
 
