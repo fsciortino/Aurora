@@ -423,7 +423,7 @@ Aurora includes tools to read OEDGE input files and read/postprocess its results
 Neoclassical transport with FACIT
 ---------------------------------
 
-The FACIT model can be used in Aurora to calculate charge-dependent collisional transport coefficients analytically for the impurity species of interest. FACIT takes kinetic profiles and some magnetic geometry quantities as inputs, which shall be described shortly, and outputs the collisional diffusion coefficient :math:`D_z` [:math:`m^2/s`] and convective velocity :math:`V_z` [:math:`m/s]` that can then be given as an input for :py:func:`~aurora.core.run_aurora()`.
+The FACIT model can be used in Aurora to calculate charge-dependent collisional transport coefficients analytically for the impurity species of interest. FACIT takes kinetic profiles and some magnetic geometry quantities as inputs, which shall be described shortly, and outputs the collisional diffusion coefficient :math:`D_z` [:math:`m^2/s`] and convective velocity :math:`V_z` [:math:`m/s]` that can then be given as an input for :py:meth:`~aurora.core.aurora_sim.run_aurora`.
 
 An example of a standalone call to FACIT is provided in `examples/facit.py`, from which profiles of the transport coefficients are obtained: 
 
@@ -435,14 +435,16 @@ An example of a standalone call to FACIT is provided in `examples/facit.py`, fro
     Example of neoclassical W transport coefficients calculated with FACIT.
 
 
-A complete description of the inputs and outputs of the model is provided in the documentation of the :py:`~aurora.facit.FACIT` class.
+A complete description of the inputs and outputs of the model is provided in the documentation of the :py:class:`~aurora.facit.FACIT` class.
 
 Note that FACIT provides the individual Pfirsch-Schüter, Banana-Plateau and classical collisional flux components, facilitating additional analysis of the physical processes involved in the transport.
 
 An important feature of FACIT is the description of the effects of rotation on neoclassical transport across collisionality regimes, particularly relevant when heavy impurities like tungsten are analyzed. Rotation is described by the main ion Mach number :math:`M_i(r) = v_\varphi/v_{ti} = \Omega R_0/\sqrt{2 T_i/m_i}` and the `rotation_model` flag. These effects can typically be ignored for light impurities (from experience, the impact of rotation on Argon is small but potentially non-negligible).
 
 .. warning::
-   If `rotation_model=2`, then the flux surface contours :math:`R(r,\theta)`, :math:`Z(r,\theta)` that are inputs of FACIT should have a radial discretization equal to the `rho` coordinate in which FACIT will be evaluated. If they are not given as inputs, circular geometry will be assumed internally.::
+   If `rotation_model=2`, then the flux surface contours :math:`R(r,\theta)`, :math:`Z(r,\theta)` that are inputs of FACIT should have a radial discretization equal to the `rho` coordinate in which FACIT will be evaluated. If they are not given as inputs, circular geometry will be assumed internally.
+
+   ::
 
      # The full example on how to run FACIT in Aurora is given in the folder examples/facit_basic.py
      # in the following only the initialization of the transport coefficients, the magnetic geometry and the main call to FACIT are given 
