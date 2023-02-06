@@ -35,12 +35,12 @@ def get_source_time_history(namelist, Raxis_cm, time):
     Parameters
     ----------
     namelist : dict
-        Aurora namelist dictionary. The field namelist['source_type'] specifies how the 
+        Aurora namelist dictionary. The field namelist['source_type'] specifies how the
         source function is being specified -- see the notes below.
     Raxis_cm : float
-        Major radius at the magnetic axis [cm]. This is needed to normalize the 
+        Major radius at the magnetic axis [cm]. This is needed to normalize the
         source such that it is treated as toroidally symmetric -- a necessary
-        idealization for 1.5D simulations. 
+        idealization for 1.5D simulations.
     time : array (nt,), optional
         Time array the source should be returned on.
 
@@ -53,32 +53,32 @@ def get_source_time_history(namelist, Raxis_cm, time):
     -----
     There are 4 options to describe the time-dependence of the source:
 
-    #. namelist['source_type'] == 'file': in this case, a simply formatted 
+    #. namelist['source_type'] == 'file': in this case, a simply formatted
     source file, with one time point and corresponding and source amplitude on each
-    line, is read in. This can describe an arbitrary time dependence, e.g. 
-    as measured from an experimental diagnostic. 
+    line, is read in. This can describe an arbitrary time dependence, e.g.
+    as measured from an experimental diagnostic.
 
-    #. namelist['source_type'] == 'interp': the time history for the source is 
+    #. namelist['source_type'] == 'interp': the time history for the source is
     provided by the user within the 'explicit_source_time' and 'explicit_source_vals'
     fields of the namelist dictionary and this data is simply interpolated.
 
-    #. namelist['source_type'] == 'const': in this case, a constant source 
-    (e.g. a gas puff) is simulated. It is recommended to run the simulation for 
-    >100ms in order to see self-similar charge state profiles in time. 
+    #. namelist['source_type'] == 'const': in this case, a constant source
+    (e.g. a gas puff) is simulated. It is recommended to run the simulation for
+    >100ms in order to see self-similar charge state profiles in time.
 
     #. namelist['source_type'] == 'step': this allows the creation of a source
-    that suddenly appears and suddenly stops, i.e. a rectangular "step". The 
-    duration of this step is given by namelist['step_source_duration']. Multiple 
+    that suddenly appears and suddenly stops, i.e. a rectangular "step". The
+    duration of this step is given by namelist['step_source_duration']. Multiple
     step times can be given as a list in namelist['src_step_times']; the amplitude
     of the source at each step is given in namelist['src_step_rates']
 
     #. namelist['source_type'] == 'synth_LBO': this produces a model source from a LBO
-    injection, given by a convolution of a gaussian and an exponential. The required 
+    injection, given by a convolution of a gaussian and an exponential. The required
     parameters in this case are inside a namelist['LBO'] dictionary:
-    namelist['LBO']['t_start'], namelist['LBO']['t_rise'], namelist['LBO']['t_fall'], 
-    namelist['LBO']['n_particles']. The "n_particles" parameter corresponds to the 
+    namelist['LBO']['t_start'], namelist['LBO']['t_rise'], namelist['LBO']['t_fall'],
+    namelist['LBO']['n_particles']. The "n_particles" parameter corresponds to the
     amplitude of the source (the number of particles corresponding to the integral over
-    the source function. 
+    the source function.
 
     """
     imp = namelist["imp"]
@@ -97,9 +97,9 @@ def get_source_time_history(namelist, Raxis_cm, time):
 
     elif namelist["source_type"] == "const":
         # constant source
-        src_times = copy.deepcopy(time)
-        src_rates = np.ones(len(time)) * namelist["source_rate"]
-        src_rates[0] = 0.0  # start with 0
+        src_times = [-np.inf, np.inf]
+        src_rates = [namelist["source_rate"], namelist["source_rate"]]
+        # src_rates[0] = 0.0  # start with 0
 
     elif namelist["source_type"] == "step":
         # Create the time-dependent step source
@@ -138,20 +138,18 @@ def get_source_time_history(namelist, Raxis_cm, time):
     circ = 2 * np.pi * Raxis_cm
 
     # For ease of comparison with STRAHL, shift source by one time step
-
-    source_time_history = np.r_[source[1:], 0] / circ
+    source_time_history = np.r_[source[1:], source[-1]] / circ
     if all(source_time_history == 0):
-        raise Exception('Impurity source is zero within the simulation range')
-
+        raise Exception("Impurity source is zero within the simulation range")
 
     return np.asfortranarray(source_time_history)
 
 
 def write_source(t, s, shot, imp="Ca"):
-    """Write a STRAHL source file. 
-        
-    This will overwrite any {imp}flx{shot}.dat locally. 
-        
+    """Write a STRAHL source file.
+
+    This will overwrite any {imp}flx{shot}.dat locally.
+
     Parameters
     ----------
     t : array of float, (`n`,)
@@ -169,7 +167,9 @@ def write_source(t, s, shot, imp="Ca"):
         Content of the source file written to {imp}flx{shot}.dat
 
     """
-    contents = "{.d}\n".format(len(t),)
+    contents = "{.d}\n".format(
+        len(t),
+    )
     for tv, sv in zip(t, s):
         contents += "    {5.5f}    {5.5e}\n".format(tv, sv)
 
@@ -180,13 +180,13 @@ def write_source(t, s, shot, imp="Ca"):
 
 
 def read_source(filename):
-    """Read a STRAHL source file from {imp}flx{shot}.dat locally. 
-    
+    """Read a STRAHL source file from {imp}flx{shot}.dat locally.
+
     Parameters
     ----------
-    filename : str 
-        Location of the file containing the STRAHL source file. 
-    
+    filename : str
+        Location of the file containing the STRAHL source file.
+
     Returns
     -------
     t : array of float, (`n`,)
@@ -210,7 +210,7 @@ def read_source(filename):
 
 
 def lbo_source_function(t_start, t_rise, t_fall, n_particles=1.0, time_vec=None):
-    """ Model for the expected shape of the time-dependent source function,
+    """Model for the expected shape of the time-dependent source function,
     using a convolution of a gaussian and an exponential decay.
 
     Parameters
@@ -256,7 +256,7 @@ def lbo_source_function(t_start, t_rise, t_fall, n_particles=1.0, time_vec=None)
         tind = slice(*time_vec.searchsorted([ts - 3 * tr, ts + 6 * tf]))
         T = time_vec[tind]
         source[tind] = np.exp(
-            (1 - 4 * tf * (T - ts) / tr ** 2) / (4 * (tf / tr) ** 2)
+            (1 - 4 * tf * (T - ts) / tr**2) / (4 * (tf / tr) ** 2)
         ) * (erfc((T - ts) / tr - 1 / (2 * tf / tr)) - 2)
 
         # scale source to correspond to the given total number of particles
@@ -281,18 +281,18 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
     Parameters
     ----------
     namelist : dict
-        Aurora namelist. Only elements referring to the spatial distribution and energy of 
-        source atoms are accessed. 
+        Aurora namelist. Only elements referring to the spatial distribution and energy of
+        source atoms are accessed.
     rvol_grid : array (nr,)
         Radial grid in volume-normalized coordinates [cm]
     pro_grid : array (nr,)
-        Normalized first derivatives of the radial grid in volume-normalized coordinates. 
+        Normalized first derivatives of the radial grid in volume-normalized coordinates.
     S_rates : array (nr,nt)
         Ionization rate of neutral impurity over space and time.
     Ti_eV : array, optional (nt,nr)
-        Background ion temperature, only used if source_width_in=source_width_out=0.0 and 
-        imp_source_energy_eV<=0, in which case the source impurity neutrals are taken to 
-        have energy equal to the local Ti [eV]. 
+        Background ion temperature, only used if source_width_in=source_width_out=0.0 and
+        imp_source_energy_eV<=0, in which case the source impurity neutrals are taken to
+        have energy equal to the local Ti [eV].
 
     Returns
     -------
@@ -377,7 +377,7 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
             omega_c = 1.602e-19 / 1.601e-27 * namelist["Baxis"] / namelist["main_ion_A"]
             dt = (rvol_grid[i_src] - rvol_grid) / v
             pp = dt * omega_c
-            non_redep = pp ** 2 / (1.0 + pp ** 2)
+            non_redep = pp**2 / (1.0 + pp**2)
             source_rad_prof *= non_redep
 
     # total ion source

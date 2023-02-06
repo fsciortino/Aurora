@@ -29,14 +29,14 @@ import matplotlib.pyplot as plt
 plt.ion()
 from scipy import constants
 import warnings, copy
-from scipy import constants
 from collections import OrderedDict
 import pandas as pd
 
 from . import atomic
 from . import adas_files
 from . import plot_tools
-    
+
+
 def compute_rad(
     imp,
     nz,
@@ -51,15 +51,15 @@ def compute_rad(
     spectral_brem_flag=False,
 ):
     """Calculate radiation terms corresponding to a simulation result. The nz,ne,Te,n0,Ti,ni arrays
-    are normally assumed to be given as a function of (time,nZ,space), but time and space may 
+    are normally assumed to be given as a function of (time,nZ,space), but time and space may
     be substituted by other coordinates (e.g. R,Z)
-    
+
     Result can be conveniently plotted with a time-slider using, for example
 
     .. code-block:: python
 
         aurora.slider_plot(rhop,time, res['line_rad'].transpose(1,2,0)/1e6,
-            xlabel=r'$\\rho_p$', ylabel='time [s]', 
+            xlabel=r'$\\rho_p$', ylabel='time [s]',
             zlabel=r'$P_{rad}$ [$MW$]',
             plot_sum=True,
             labels=[f'Ca$^{{{str(i)}}}$' for i in np.arange(res['line_rad'].shape[1])])
@@ -82,12 +82,12 @@ def compute_rad(
         This is only used if thermal_cx_rad_flag=True.
     Ti : array (time,space) [eV]
         Main ion temperature (assumed of hydrogen-isotopes). This is only used
-        if thermal_cx_rad_flag=True. If not set, Ti is taken equal to Te. 
+        if thermal_cx_rad_flag=True. If not set, Ti is taken equal to Te.
     adas_files_sub : dict
         Dictionary containing ADAS file names for radiation calculations, possibly including keys
         "plt","prb","prc","pls","prs","pbs","brs"
-        Any file names that are needed and not provided will be searched in the 
-        :py:meth:`~aurora.adas_files.adas_files_dict` dictionary. 
+        Any file names that are needed and not provided will be searched in the
+        :py:meth:`~aurora.adas_files.adas_files_dict` dictionary.
     prad_flag : bool, optional
         If True, total radiation is computed (for each charge state and their sum)
     sxr_flag : bool, optional
@@ -100,46 +100,46 @@ def compute_rad(
     Returns
     -------
     res : dict
-        Dictionary containing radiation terms, depending on the activated flags. 
+        Dictionary containing radiation terms, depending on the activated flags.
 
     Notes
     -----
     The structure of the "res" dictionary is as follows.
-    
+
     If prad_flag=True,
-    
+
     res['line_rad'] : array (nt,nZ,nr)- from ADAS "plt" files
         Excitation-driven line radiation for each impurity charge state.
     res['cont_rad'] : array (nt,nZ,nr)- from ADAS "prb" files
         Continuum and line power driven by recombination and bremsstrahlung for impurity ions.
-    res['brems'] : array (nt,nr)- analytic formula. 
-        Bremsstrahlung produced by electron scarrering at fully ionized impurity 
-        This is only an approximate calculation and is more accurately accounted for in the 
+    res['brems'] : array (nt,nr)- analytic formula.
+        Bremsstrahlung produced by electron scarrering at fully ionized impurity
+        This is only an approximate calculation and is more accurately accounted for in the
         'cont_rad' component.
     res['thermal_cx_cont_rad'] : array (nt,nZ,nr)- from ADAS "prc" files
         Radiation deriving from charge transfer from thermal neutral hydrogen to impurity ions.
         Returned only if thermal_cx_rad_flag=True.
     res['tot'] : array (nt,nZ,nr)
-        Total unfilted radiation, summed over all charge states, given by the sum of all known 
+        Total unfilted radiation, summed over all charge states, given by the sum of all known
         radiation components.
-    
+
     If sxr_flag=True,
 
     res['sxr_line_rad'] : array (nt,nZ,nr)- from ADAS "pls" files
         Excitation-driven line radiation for each impurity charge state in the SXR range.
     res['sxr_cont_rad'] : array (nt,nZ,nr)- from ADAS "prs" files
         Continuum and line power driven by recombination and bremsstrahlung for impurity ions
-        in the SXR range. 
+        in the SXR range.
     res['sxr_brems'] : array (nt,nZ,nr)- from ADAS "pbs" files
         Bremsstrahlung produced by electron scarrering at fully ionized impurity in the SXR range.
     res['sxr_tot'] : array (nt,nZ,nr)
-        Total radiation in the SXR range, summed over all charge states, given by the sum of all known 
-        radiation components in the SXR range. 
+        Total radiation in the SXR range, summed over all charge states, given by the sum of all known
+        radiation components in the SXR range.
 
     If spectral_brem_flag,
 
     res['spectral_brems'] : array (nt,nZ,nr) -- from ADAS "brs" files
-        Bremsstrahlung at a specific wavelength, depending on provided "brs" file. 
+        Bremsstrahlung at a specific wavelength, depending on provided "brs" file.
     """
     res = {}
 
@@ -299,10 +299,10 @@ def sync_rad(B_T, ne_cm3, Te_eV, r_min, R_maj):
 
     References
     -----------------
-    
+
     .. [1] Trubnikov, JETP Lett. 16 25 (1972)
     .. [2] Zohm et al., Journal of Fusion Energy (2019) 38:3-10
-    
+
     """
     return (
         1.32e-7
@@ -327,7 +327,7 @@ def radiation_model(
 ):
     """Model radiation from a fixed-impurity-fraction model or from detailed impurity density
     profiles for the chosen ion. This method acts as a wrapper for :py:func:`~aurora.compute_rad`,
-    calculating radiation terms over the radius and integrated over the plasma cross section. 
+    calculating radiation terms over the radius and integrated over the plasma cross section.
 
     Parameters
     ----------
@@ -340,36 +340,36 @@ def radiation_model(
     Te_eV : array (nr,)
         Electron temperature in eV
     geqdsk : dict, optional
-        EFIT gfile as returned after postprocessing by the :py:mod:`omfit_classes.omfit_eqdsk` 
+        EFIT gfile as returned after postprocessing by the :py:mod:`omfit_classes.omfit_eqdsk`
         package (OMFITgeqdsk class).
     adas_files_sub : dict
         Dictionary containing ADAS file names for forward modeling and/or radiation calculations.
         Possibly useful keys include
         "scd","acd","ccd","plt","prb","prc","pls","prs","pbs","brs"
-        Any file names that are needed and not provided will be searched in the 
-        :py:meth:`~aurora.adas_files.adas_files_dict` dictionary. 
+        Any file names that are needed and not provided will be searched in the
+        :py:meth:`~aurora.adas_files.adas_files_dict` dictionary.
     n0_cm3 : array (nr,), optional
-        Background ion density (H,D or T). If provided, charge exchange (CX) 
-        recombination is included in the calculation of charge state fractional 
+        Background ion density (H,D or T). If provided, charge exchange (CX)
+        recombination is included in the calculation of charge state fractional
         abundances.
     Ti_eV : array (nr,), optional
-        Background ion density (H,D or T). This is only used if CX recombination is 
-        requested, i.e. if n0_cm3 is not None. If not given, Ti is set equal to Te. 
+        Background ion density (H,D or T). This is only used if CX recombination is
+        requested, i.e. if n0_cm3 is not None. If not given, Ti is set equal to Te.
     nz_cm3 : array (nr,nz), optional
-        Impurity charge state densities in :math:`cm^{-3}` units. Fractional abundancies can 
+        Impurity charge state densities in :math:`cm^{-3}` units. Fractional abundancies can
         alternatively be specified via the :param:frac parameter for a constant-fraction
-        impurity model across the radius. If provided, nz_cm3 is used. 
+        impurity model across the radius. If provided, nz_cm3 is used.
     frac : float, optional
-        Fractional abundance, with respect to ne, of the chosen impurity. 
+        Fractional abundance, with respect to ne, of the chosen impurity.
         The same fraction is assumed across the radial profile. If left to None,
-        nz_cm3 must be given. 
+        nz_cm3 must be given.
     plot : bool, optional
-        If True, plot a number of diagnostic figures. 
+        If True, plot a number of diagnostic figures.
 
     Returns
     -------
     res : dict
-        Dictionary containing results of radiation model.  
+        Dictionary containing results of radiation model.
 
     """
     if nz_cm3 is None:
@@ -499,7 +499,7 @@ def radiation_model(
         # ax.plot(rhop, out['brems_dens'].sum(0)/1e6, label=r'$P_{brems}$')
         ax.plot(rhop, out["rad_tot_dens"] / 1e6, label=r"$P_{rad,tot}$")
         ax.set_xlabel(r"$\rho_p$")
-        ax.set_ylabel(fr"$P_{{rad}}$ {imp} [$MW/m^3$]")
+        ax.set_ylabel(rf"$P_{{rad}}$ {imp} [$MW/m^3$]")
         ax.legend().set_draggable(True)
 
         # plot cumulative power in MW
@@ -509,7 +509,7 @@ def radiation_model(
         # ax.plot(rhop, out['brems'].sum(0)/1e6, label=r'$P_{brems}$')
         ax.plot(rhop, out["rad_tot"] / 1e6, label=r"$P_{rad,tot}$")
         ax.set_xlabel(r"$\rho_p$")
-        ax.set_ylabel(fr"$P_{{rad}}$ {imp} [MW]")
+        ax.set_ylabel(rf"$P_{{rad}}$ {imp} [MW]")
         fig.suptitle("Cumulative power")
         ax.legend().set_draggable(True)
         plt.tight_layout()
@@ -527,9 +527,9 @@ def radiation_model(
         for cs in np.arange(out["line_rad_dens"].shape[0]):
             ls = next(ls_cycle)
             a_plot.plot(rhop, out["line_rad_dens"][cs, :] / 1e6, ls)
-            a_legend.plot([], [], ls, label=imp + fr"$^{{{cs}+}}$")
+            a_legend.plot([], [], ls, label=imp + rf"$^{{{cs}+}}$")
         a_plot.set_xlabel(r"$\rho_p$")
-        a_plot.set_ylabel(fr"$P_{{rad}}^{{line}}$ {imp} [$MW/m^3$]")
+        a_plot.set_ylabel(rf"$P_{{rad}}^{{line}}$ {imp} [$MW/m^3$]")
         ncol_leg = 2 if out["line_rad_dens"].shape[0] < 25 else 3
         leg = a_legend.legend(
             loc="center right", fontsize=11, ncol=ncol_leg
@@ -540,29 +540,29 @@ def radiation_model(
         fig, ax = plt.subplots()
         ax.plot(rhop, out["Z_avg"])
         ax.set_xlabel(r"$\rho_p$")
-        ax.set_ylabel(fr"$\langle Z \rangle$ \ {imp}")
+        ax.set_ylabel(rf"$\langle Z \rangle$ \ {imp}")
         plt.tight_layout()
 
     return out
 
 
 def get_main_ion_dens(ne_cm3, ions, rhop_plot=None):
-    """Estimate the main ion density via quasi-neutrality. 
-    This requires subtracting from ne the impurity charge state density times Z for each 
-    charge state of every impurity present in the plasma in significant amounts. 
-    
+    """Estimate the main ion density via quasi-neutrality.
+    This requires subtracting from ne the impurity charge state density times Z for each
+    charge state of every impurity present in the plasma in significant amounts.
+
     Parameters
     ----------
     ne_cm3 : array (time,space)
         Electron density in :math:`cm^{-3}`
     ions : dict
-        Dictionary with keys corresponding to the atomic symbol of each impurity under 
-        consideration. The values in ions[key] should correspond to the charge state 
-        densities for the selected impurity ion in :math:`cm^{-3}`, with shape 
-        (time,nZ,space). 
+        Dictionary with keys corresponding to the atomic symbol of each impurity under
+        consideration. The values in ions[key] should correspond to the charge state
+        densities for the selected impurity ion in :math:`cm^{-3}`, with shape
+        (time,nZ,space).
     rhop_plot : array (space), optional
-        rhop radial grid on which densities are given. If provided, plot densities of 
-        all species at the last time slice over this radial grid. 
+        rhop radial grid on which densities are given. If provided, plot densities of
+        all species at the last time slice over this radial grid.
 
     Returns
     -------
@@ -589,7 +589,6 @@ def get_main_ion_dens(ne_cm3, ions, rhop_plot=None):
 
     return ni_cm3
 
-
 def read_adf15(path, order=1):
     """Read photon emissivity coefficients (PECs) from an ADAS ADF15 file.
 
@@ -597,7 +596,7 @@ def read_adf15(path, order=1):
     available within the chosen ADF15 file.
 
     PECs are provided in the form of an interpolant that will evaluate the log10 of the PEC at
-    a desired electron density and temperature. The power-10 exponentiation of this PEC has 
+    a desired electron density and temperature. The power-10 exponentiation of this PEC has
     units of :math:`photons \cdot cm^3/s`.
 
     Units for interpolation: :math:`cm^{-3}` for density; :math:`eV` for temperature.
@@ -614,9 +613,9 @@ def read_adf15(path, order=1):
     pandas.DataFrame:
         Parsed data from the given ADF15 file, including an interpolation function
         for the log-10 of the PEC of each spectral line.
-        See the examples below for advice on using this form of output for plotting and 
+        See the examples below for advice on using this form of output for plotting and
         further analysis.
-    
+
     Examples
     --------
     To plot the Lyman-alpha photon emissivity coefficients for H (or its isotopes), one can use:
@@ -624,7 +623,7 @@ def read_adf15(path, order=1):
     >>> import aurora
     >>> filename = 'pec96#h_pju#h0.dat'
     >>> # fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
-    >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')  
+    >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')
     >>> # load all transitions provided in the chosen ADF15 file:
     >>> trs = aurora.read_adf15(path)
     >>> # select the excitation-driven component of the Lyman-alpha transition:
@@ -637,12 +636,12 @@ def read_adf15(path, order=1):
     >>> trs['type']=='excit' # 'excit', 'recom' or 'chexc'
 
     Since the output of `aurora.radiation.read_adf15` is a pandas DataFrame, its contents
-    can be indexed in a variety of ways, e.g. one can select a line based on the 
+    can be indexed in a variety of ways, e.g. one can select a line based on the
     ADAS "ISEL" indices and plot it using
     >>> aurora.plot_pec(trs.loc[(trs['isel']==1)])
     or simply
     >>> aurora.plot_pec(trs.iloc[0])
-    Spectral lines are ordered by ISEL numbers -1 (Python indexing!), so using the 
+    Spectral lines are ordered by ISEL numbers -1 (Python indexing!), so using the
     `iloc` method of a pandas DataFrame allows effective indexing by ISEL numbers.
 
     The log-10 of the PEC interpolation function can be used as
@@ -661,152 +660,158 @@ def read_adf15(path, order=1):
 
     Notes
     -----
-    This function expects the format of PEC files produced via the ADAS 
+    This function expects the format of PEC files produced via the ADAS
     adas810 or adas218 routines.
 
     """
     # find out whether file is metastable resolved
-    meta_resolved = path.split("#")[-2][-1] == "r"
-    if meta_resolved:
-        print("Identified metastable-resolved PEC file")
-
     with open(path, "r") as f:
         lines = f.readlines()
-    cs = path.split("#")[-1].split(".dat")[0]
+    # cs = path.split("#")[-1].split(".dat")[0]
 
-    header = lines.pop(0)
+    header = lines.pop(0).split()
     # Get the expected number of lines by reading the header:
-    num_lines = int(header.split()[0])
-    
+    num_lines = int(header[0])
+    spec = header[1].strip("/")
+    Z = int(''.join(header[2:-3]).strip(':'))
+
     log10pec_dict = {}
-    for i in range(0, num_lines):
+    for i in range(num_lines):
 
         while "isel" not in lines[0].lower():
             # eliminate variable number of label lines at the top
             _ = lines.pop(0)
-        
+
         # Get the wavelength, number of densities and number of temperatures
         # from the first line of the entry:
         l = lines.pop(0)
+ 
+        header_dict = {}
 
-        # prevent issues with inconsistent spacing/characters
-        l = l.replace('/', ' /').replace('=', ' = ')
-        if l.find('TYPE') == -1:
-            l = l.replace('type', 'TYPE')
+        header = l.split('/')
 
-        header = l.split()
+        header0 = header[0].split()
+        header_dict['lam'] = float(header0[0].strip('A'))
+        num_den = np.int_(header0[-2])
+        num_temp = np.int_(header0[-1])
 
-        # sometimes the wavelength and its units are not separated:
-        try:
-            header = [hh.split("A")[0] for hh in header]
-        except:
-            # lam and A are separated. Delete 'A' unit.
-            header = np.delete(header, 1)
-
-        lam = float(header[0])
-
-        if header[1] == "":
-            # 2nd element was empty -- annoyingly, this happens sometimes
-            num_den = int(header[2])
-            num_temp = int(header[3])
-        else:
-            num_den = int(header[1])
-            num_temp = int(header[2])
-
-        if meta_resolved:
-            # index of metastable state
-            INDM = int(header[-3].split("/")[0].split("=")[-1])
+        for item in header[1:]:
+            try:
+                #the parameters which cannot be splitted will be skipped 
+                par, val = item.split('=')
+                header_dict[par.strip().upper()] = val.strip()
+            except:
+                pass
+ 
 
         # Get the densities:
         dens = []
         while len(dens) < num_den:
             dens += [float(v) for v in lines.pop(0).split()]
-        dens = np.asarray(dens)
-
-        # get ISEL index
-        isel = int(header[-1])
-        log10pec_dict[isel] = {}
+        dens = np.array(dens)
 
         # Get the temperatures:
         temp = []
         while len(temp) < num_temp:
             temp += [float(v) for v in lines.pop(0).split()]
-        temp = np.asarray(temp)
+        temp = np.array(temp)
 
         # Get the PEC's:
         PEC = []
-        while len(PEC) < num_den:
-            PEC.append([])
-            while len(PEC[-1]) < num_temp:
-                PEC[-1] += [float(v) for v in lines.pop(0).split()]
-        PEC = np.asarray(PEC)
-        
+        while len(PEC) < num_den * num_temp:
+            PEC += [float(v) for v in lines.pop(0).split()]
+        PEC = np.reshape(PEC, (num_den, num_temp))
+
         # interpolate PEC on log dens,temp scales
+         # interpolation of log10(PEC) to avoid issues at low ne or Te
         pec_fun = RectBivariateSpline(
             np.log10(dens),
             np.log10(temp),
-            np.log10(PEC),  # interpolation of log10(PEC) to avoid issues at low ne or Te
+            np.log10( PEC), 
             kx=order,
             ky=order,
         )
 
+        # get ISEL index
+        isel = int(header_dict["ISEL"])
+
         # simple indexing for each line, with different indices for different upper-state
         # populating mechanisms for the same spectral line
-        log10pec_dict[isel]['log10 PEC fun'] = pec_fun
-        log10pec_dict[isel]['dens pnts'] = dens
-        log10pec_dict[isel]['temp pnts'] = temp
-        log10pec_dict[isel]['PEC pnts'] = PEC
-        log10pec_dict[isel]['lambda [A]'] = lam
-        log10pec_dict[isel]['type'] = header[header.index(r'/TYPE')+2]
+        log10pec_dict[isel] = OrderedDict()
+        log10pec_dict[isel]["log10 PEC fun"] = pec_fun
+        log10pec_dict[isel]["dens pnts"] = dens
+        log10pec_dict[isel]["temp pnts"] = temp
+        log10pec_dict[isel]["PEC pnts"] = PEC
+        log10pec_dict[isel]["lambda [A]"] = header_dict["lam"]
+        log10pec_dict[isel]["type"] = header_dict["TYPE"].lower()
+        # for meta resolved files
+        INDM = header_dict.get("INDM", "1")
+        if "T" in INDM:
+            INDM = 1
+        log10pec_dict[isel]["INDM"] = int(INDM)
 
     # attempt to parse info at end of file:
     try:
         out = parse_adf15_spec(lines, num_lines)
     except:
         # save only basic info for each line, since parsing of end of file failed
-        d = {'isel': [int(iselval) for iselval in log10pec_dict.keys()]}
-        d['lambda [A]'] = [float(log10pec_dict[i]['lambda [A]']) for i in log10pec_dict]
-        d['type'] = [log10pec_dict[i]['type'].lower() for i in log10pec_dict]
+        d = {"isel": list(log10pec_dict.keys())}
+        d["lambda [A]"] = [val["lambda [A]"] for val in log10pec_dict.values()]
+        d["type"] = [val["type"] for val in log10pec_dict.values()]
         out = pd.DataFrame(data=d)
-        
+
+    out.attrs["Z"] = Z
+    out.attrs["element"] = spec
+
     # add log10pec interpolants to pandas DataFrame or dictionary
-    out['log10 PEC fun'] = [log10pec_dict[i]['log10 PEC fun'] for i in log10pec_dict]
+    out["log10 PEC fun"] = [val["log10 PEC fun"] for val in log10pec_dict.values()]
+    # metastate index
+    out["indm"] = [val["INDM"] for val in log10pec_dict.values()]
 
     # store original data as well as its density and temperature grids
-    out['dens pnts'] = [log10pec_dict[i]['dens pnts'] for i in log10pec_dict]
-    out['temp pnts'] = [log10pec_dict[i]['temp pnts'] for i in log10pec_dict]
-    out['PEC pnts'] = [log10pec_dict[i]['PEC pnts'] for i in log10pec_dict]
+    out["dens pnts"] = [val["dens pnts"] for val in log10pec_dict.values()]
+    out["temp pnts"] = [val["temp pnts"] for val in log10pec_dict.values()]
+    out["PEC pnts"] = [val["PEC pnts"] for val in log10pec_dict.values()]
 
+    # safety checks for populating process nomenclature -- often inconsistent
+    out.type.where(~out.type.str.startswith("ion"), "ioniz", inplace=True)
+    out.type.where(~out.type.str.startswith("rec"), "recom", inplace=True)
+    out.type.where(~out.type.str.startswith("exc"), "excit", inplace=True)
+    out.type.where(~out.type.str.startswith("dr"), "drsat", inplace=True)
+    out.type.where(~out.type.str.startswith("cx"), "chexc", inplace=True)
     return out
+ 
+
 
 def _find_adf15_spacing(l):
-    l = l.replace('\n',' ')
+    l = l.replace("\n", " ")
     splitvals = []
     for elem in l.split():
-        for m in re.finditer(' '+elem,l):
-            pair = [m.start(), m.end()+1] # read additional end character
+        for m in re.finditer(" " + elem, l):
+            pair = [m.start(), m.end() + 1]  # read additional end character
             if pair not in splitvals:
                 splitvals.append(pair)
     # re-order pairs
-    idx = np.argsort(np.array(splitvals)[:,0])
+    idx = np.argsort(np.array(splitvals)[:, 0])
     splitvals = np.array(splitvals)[idx]
 
     # ensure uniqueness
-    vals = np.unique(np.array(splitvals)[:,0])
+    vals = np.unique(np.array(splitvals)[:, 0])
     sv = [splitvals[0]]
     for row in splitvals[1:]:
-        if row[0] not in np.array(sv)[:,0]:
+        if row[0] not in np.array(sv)[:, 0]:
             sv.append(row)
         else:
-            ind = np.argmin(np.abs(row[0] - np.array(sv)[:,0]))
-            if row[1] > np.array(sv)[ind,1]:
+            ind = np.argmin(np.abs(row[0] - np.array(sv)[:, 0]))
+            if row[1] > np.array(sv)[ind, 1]:
                 sv[ind][1] = row[1]
 
-    splitvals = splitvals[np.unique(np.array(splitvals)[:,0], return_index=True)[1]]
+    splitvals = splitvals[np.unique(np.array(splitvals)[:, 0], return_index=True)[1]]
     return splitvals
 
+
 def parse_adf15_configs(path):
-    '''Parse ADF15 file to identify electron configurations and 
+    """Parse ADF15 file to identify electron configurations and
     energies used to produce Photon Emissivity Coefficients (PECs)
     in the same file.
 
@@ -819,62 +824,65 @@ def parse_adf15_configs(path):
     -------
     pandas.DataFrame:
         DataFrame containing information about all electron configurations
-        used for PEC calculations.  
+        used for PEC calculations.
 
     Notes
     -----
     The format of ADAS ADF15 files has varied over time; consequently, it is
     surprisingly difficult to figure out parsing methods that work for all files.
-    If this function fails on one of your files, please report this via a Github 
+    If this function fails on one of your files, please report this via a Github
     issue and one of the Aurora core developers will help adapting the parser.
-    '''
+    """
     with open(path, "r") as f:
         lines = f.readlines()
-        
+
     # try to parse info on configurations
     out = {}
     while True:
         try:
             l = lines.pop(0)
         except IndexError:
-            raise ValueError('Could not detect energy levels and electron configurations in the file')
-        if 'energy levels' in l:
+            raise ValueError(
+                "Could not detect energy levels and electron configurations in the file"
+            )
+        if "energy levels" in l:
             # start collecting info on configurations
             break
 
-    _ = lines.pop(0) # ----
-    _ = lines.pop(0) # \n
+    _ = lines.pop(0)  # ----
+    _ = lines.pop(0)  # \n
     headers_line = lines.pop(0)[2:]
-    _ll = lines.pop(0)[2:] # ----
+    _ll = lines.pop(0)[2:]  # ----
     splitvals = _find_adf15_spacing(_ll)
 
     headers = []
     for sv in splitvals:
-        headers.append(headers_line[sv[0]:sv[1]].strip())
+        headers.append(headers_line[sv[0] : sv[1]].strip())
 
     for key in headers:
         out[key.lower()] = []
 
     while True:
-        l = lines.pop(0)[2:] # .strip()
-        if l == '':
+        l = lines.pop(0)[2:]  # .strip()
+        if l == "":
             break
 
-        for sv,header in zip(splitvals,headers):
-            out[header.lower()].append(l[sv[0]:sv[1]].strip())
+        for sv, header in zip(splitvals, headers):
+            out[header.lower()].append(l[sv[0] : sv[1]].strip())
 
     # some type conversions:
-    out['lv'] = np.array(out['lv'], dtype=int)
-    out['energy (cm^-1)'] = np.array(out['energy (cm^-1)'], dtype=float)
+    out["lv"] = np.array(out["lv"], dtype=int)
+    out["energy (cm^-1)"] = np.array(out["energy (cm^-1)"], dtype=float)
     for key in out:
         out[key] = np.array(out[key])
 
     # return as a pandas DataFrame
     return pd.DataFrame(data=out)
 
+
 def parse_adf15_spec(lines, num_lines):
-    '''Parse full description of provided rates from an ADF15 file.
-    
+    """Parse full description of provided rates from an ADF15 file.
+
     Parameters
     ----------
     lines : list or None
@@ -884,87 +892,97 @@ def parse_adf15_spec(lines, num_lines):
 
     Returns
     -------
-    dict : 
+    dict :
         Dictionary containing information about all loaded transitions.
-    '''
-    # collect info on transitions        
+    """
+    # collect info on transitions
     while True:
         l = lines.pop(0)
-        if ('isel' in l.lower()) and ('transition' in l.lower()) and ('type' in l.lower()):
+        if (
+            ("isel" in l.lower())
+            and ("transition" in l.lower())
+            and ("type" in l.lower())
+        ):
             break
-        
+
     hh = l[2:].split()
-    
+
     l1 = lines.pop(0)[2:]
 
-    if '--' in l1:
+    if "--" in l1:
         splitvals = _find_adf15_spacing(l1)
         headers = hh
     else:
         # double header
-        l2 = lines.pop(0)[2:] # .strip() #.replace('\n',' ')
+        l2 = lines.pop(0)[2:]  # .strip() #.replace('\n',' ')
         splitvals = np.array(_find_adf15_spacing(l2))
         # ensure uniqueness
         headers2 = l1.split()
-        headers = ['tmp',]*len(splitvals)
-        for ii,ss in enumerate(headers2):
-            headers[-len(headers2)+ii] = ss
-        headers[:len(hh)+1] = hh
+        headers = [
+            "tmp",
+        ] * len(splitvals)
+        for ii, ss in enumerate(headers2):
+            headers[-len(headers2) + ii] = ss
+        headers[: len(hh) + 1] = hh
     headers = [head.lower() for head in headers]
 
     d = {}
     for key in headers:
         d[key.lower()] = []
 
-    for i in range(1, num_lines+1): # not python indexing
+    for i in range(1, num_lines + 1):  # not python indexing
         l = lines.pop(0)[2:]
 
-        if (l[splitvals[1][0]-1]!=' ') and (l[splitvals[1][0]]=='.'): # no space before beginning of lam
+        if (l[splitvals[1][0] - 1] != " ") and (
+            l[splitvals[1][0]] == "."
+        ):  # no space before beginning of lam
             # wavelength field invasion into isel column
-            d['isel'].append(int(float(l.split('.')[0])))
-            lam_int = l.split('.')[1]
-            lam_digit = l.split('.')[2].split()[0]                
-            d[headers[1]].append(float(lam_int+'.'+lam_digit))
+            d["isel"].append(int(float(l.split(".")[0])))
+            lam_int = l.split(".")[1]
+            lam_digit = l.split(".")[2].split()[0]
+            d[headers[1]].append(float(lam_int + "." + lam_digit))
         else:
-            d['isel'].append(int(float(l[splitvals[0][0]:splitvals[0][1]])))
-            d[headers[1]].append(float(l[splitvals[1][0]:splitvals[1][1]]))
-            
-        for sv,header in zip(splitvals[2:],headers[2:]):
-            d[header].append(l[sv[0]:sv[1]])
+            d["isel"].append(int(float(l[splitvals[0][0] : splitvals[0][1]])))
+            d[headers[1]].append(float(l[splitvals[1][0] : splitvals[1][1]]))
+
+        for sv, header in zip(splitvals[2:], headers[2:]):
+            d[header].append(l[sv[0] : sv[1]])
 
         # sanity check: line number must match
         try:
-            assert d['isel'][-1]==i
+            assert d["isel"][-1] == i
         except:
-            raise ValueError(f'Some issue with file parsing for ISEL={i+1}')
-            
+            raise ValueError(f"Some issue with file parsing for ISEL={i+1}")
+
     # make wavelengths into floats and change nomenclature
-    d['lambda [A]'] = np.array(d[headers[1]], dtype=float)
-    if headers[1]!='lambda [A]': del d[headers[1]]
-    
+    d["lambda [A]"] = np.array(d[headers[1]], dtype=float)
+    if headers[1] != "lambda [A]":
+        del d[headers[1]]
+
     # ensure consistency of labels across files
-    d['type'] = np.array([val.lower().strip() for val in d['type']])
+    d["type"] = np.array([val.lower().strip() for val in d["type"]])
 
     # return as a pandas DataFrame
     return pd.DataFrame(data=d)
 
+
 def plot_pec(transition, ax=None, plot_3d=False):
-    """Plot a single Photon Emissivity Coefficient dependency on electron density 
+    """Plot a single Photon Emissivity Coefficient dependency on electron density
     and temperature.
 
     Parameters
     ----------
-    transition : 
+    transition : pandas array with the PEC data
     ax : matplotlib axes instance
         If not None, plot on this set of axes.
     plot_3d : bool
-        Display PEC data as 3D plots rather than 2D ones.    
+        Display PEC data as 3D plots rather than 2D ones.
 
     Examples
     --------
     >>> filename = 'pec96#h_pju#h0.dat'
     Fetch file automatically, locally, from AURORA_ADAS_DIR, or directly from the web:
-    >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')  
+    >>> path = aurora.get_adas_file_loc(filename, filetype='adf15')
     Load all transitions provided in the chosen ADF15 file:
     >>> trs = aurora.read_adf15(path)
     Select the Lyman-alpha transition and plot its rates:
@@ -978,11 +996,11 @@ def plot_pec(transition, ax=None, plot_3d=False):
     if isinstance(transition, pd.core.frame.DataFrame):
         transition = transition.iloc[0]
 
-    dens = transition['dens pnts']
-    temp = transition['temp pnts']
-    PEC_pnts = transition['PEC pnts']
-    pec_fun = transition['log10 PEC fun']
-        
+    dens = transition["dens pnts"]
+    temp = transition["temp pnts"]
+    PEC_pnts = transition["PEC pnts"]
+    pec_fun = transition["log10 PEC fun"]
+
     # plot PEC values over ne,Te grid given by ADAS, showing interpolation validity
     NE, TE = np.meshgrid(dens, temp)
     PEC_eval = 10 ** pec_fun.ev(np.log10(NE), np.log10(TE)).T
@@ -1003,15 +1021,16 @@ def plot_pec(transition, ax=None, plot_3d=False):
 
         # plot interpolation surface
         ax1.plot_surface(DENS, TEMP, PEC_eval.T, alpha=0.5)
+        ax1.set_xscale("log")
 
-        if 'PEC pnts' in transition:
+        if "PEC pnts" in transition:
             # overplot ADAS data points
             ax1.scatter(DENS.ravel(), TEMP.ravel(), PEC_pnts.T.ravel(), color="b")
 
         if ax is None:
             ax1.set_xlabel("$log_{10}(n_e)$ [cm$^{-3}$]")
             ax1.set_ylabel("$log_{10}(T_e)$ [eV]")
-            ax1.set_zlabel("PEC [photons $\cdot cm^3/s$]")
+            ax1.set_zlabel("PEC [photons $\cdot \mathrm{cm^3/s}$]")
 
     else:
         # plot in 2D
@@ -1021,25 +1040,94 @@ def plot_pec(transition, ax=None, plot_3d=False):
         for ine in np.arange(PEC_pnts.shape[0]):
             ls = next(ls_cycle)
             (l,) = ax1.plot(temp, PEC_eval[ine, :], ls, label=labels[ine])
-            if 'PEC pnts' in transition:
-                ax1.plot(temp, PEC_pnts[ine, :], ls, marker="o", mfc=l.get_color(), ms=5.0)
+            if "PEC pnts" in transition:
+                ax1.plot(
+                    temp, PEC_pnts[ine, :], ls, marker="o", mfc=l.get_color(), ms=5.0
+                )
         ax1.set_xlabel(r"$T_e$ [eV]")
-        ax1.set_ylabel("PEC [photons $\cdot cm^3/s$]")
+        ax1.set_ylabel("PEC [photons $\cdot \mathrm{cm^3/s}$]")
         ax1.set_yscale("log")
+        ax1.set_xscale("log")
 
         ax1.legend(loc="best").set_draggable(True)
 
-    ax1.set_title(f'{transition["isel"]}, {transition["lambda [A]"]} A, {transition["type"]}')
+    ax1.set_title(
+        f' ISEL={transition["isel"]}, LAM={transition["lambda [A]"]} A, TYP={transition["type"]}'
+    )
     plt.tight_layout()
 
+
+def get_photon_emissivity(
+    adf15, lam, ne_cm3, Te_eV, imp_density, n0_cm3=0, meta_ind=None
+):
+    r"""Evaluate PEC coefficients and return all components of intensity saved in an ADF15 file in units of :math:`ph/s`.
+
+    Parameters
+    ----------
+    adf15  : PandasFrame
+        ADF15 PEC coefficients
+    ne_cm3 : array (nr)
+        Profile of electron density, in units of :math:`cm^{-3}`.
+    Te_eV : array (nr)
+        Profile of electron temperature, in units of :math:`eV`.
+
+    imp_density : list or 2D array (nstate, nr)
+        Density of all impurity states. These which are not needed can be set to None
+
+    n0_cm3 : array, optional
+        Local density of atomic neutral hydrogen isotopes. This is only used if the provided
+        ADF15 file contains charge exchange contributions.
+    meta_ind: list (nstate), optional
+        indexes of metastates corresponding to imp_density
+
+    Returns
+    -------
+    intensity: dict of arrays (nr)
+        arrays of line emissivity in ph/s units
+    """
+
+    line_emiss_dict = {}
+
+    if meta_ind is None:
+        # assume that the data are not metastable resolved
+        meta_ind = [(z, 1) for z in range(len(imp_density))]
+
+    source = {"ioniz": -1, "excit": 0, "recom": 1, "chexc": 1, "drsat": 1}
+    Z = adf15.attrs["Z"]
+    lne = np.log10(ne_cm3)
+    lte = np.log10(Te_eV)
+
+    line_emiss = {}  # ph/s
+
+    trs_line = adf15.loc[adf15["lambda [A]"] == lam]
+    for typ in trs_line["type"].unique():
+
+        line_emiss[typ] = np.zeros_like(ne_cm3)
+        trs_line_type = trs_line.loc[trs_line["type"] == typ]
+
+        for m in trs_line_type["indm"]:
+            log10pec_fun = trs_line_type.loc[trs_line_type["indm"] == m][
+                "log10 PEC fun"
+            ].iloc[0]
+
+            emiss = 10 ** log10pec_fun.ev(lne, lte)
+            emiss *= imp_density[meta_ind.index((Z + source[typ], m))]
+
+            if typ == "chexc":
+                emiss *= n0_cm3
+            else:
+                emiss *= ne_cm3
+            # sum contributions from all metastables
+            line_emiss[typ] += emiss
+
+    return line_emiss
 
 
 def get_local_spectrum(
     adf15_file,
-    ion,
     ne_cm3,
     Te_eV,
-    ion_exc_rec_dens=[0,1,0],
+    ion_exc_rec_dens=[0, 1, 0],
     Ti_eV=None,
     n0_cm3=0.0,
     dlam_A=0.0,
@@ -1050,8 +1138,8 @@ def get_local_spectrum(
 ):
     r"""Plot spectrum based on the lines contained in an ADAS ADF15 file
     at specific values of electron density and temperature. Charge state densities
-    can be given explicitely, or alternatively charge state fractions will be automatically 
-    computed from ionization equilibrium (no transport). 
+    can be given explicitely, or alternatively charge state fractions will be automatically
+    computed from ionization equilibrium (no transport).
 
     Parameters
     ----------
@@ -1059,31 +1147,29 @@ def get_local_spectrum(
         Path on disk to the ADAS ADF15 file of interest or dictionary returned when calling the :py:func:`~aurora.radiation.read_adf15`
         with this file path as an argument. All wavelengths and radiating components in the file or dictionary
         will be read/processed.
-    ion : str
-        Atomic symbol of ion of interest, e.g. 'Ar'
     ne_cm3 : float
         Local value of electron density, in units of :math:`cm^{-3}`.
     Te_eV : float
-        Local value of electron temperature, in units of :math:`eV`. This is used to evaluate 
+        Local value of electron temperature, in units of :math:`eV`. This is used to evaluate
         local values of photon emissivity coefficients.
     ion_exc_rec_dens : list of 3 floats
-        Density of ionizing, excited and recombining charge states that may contribute to 
-        emission from the given ADF15 file. In the absence of charge state densities from 
-        particle transport modeling, these scalars may be taken from the output of 
+        Density of ionizing, excited and recombining charge states that may contribute to
+        emission from the given ADF15 file. In the absence of charge state densities from
+        particle transport modeling, these scalars may be taken from the output of
         :py:func:`aurora.atomic.get_frac_abundances`.
         Default is [0,1,0], which means that only excitation components are considered.
     Ti_eV : float
-        Local value of ion temperature, in units of :math:`eV`. This is used to represent the 
+        Local value of ion temperature, in units of :math:`eV`. This is used to represent the
         effect of Doppler broadening. If left to None, it is internally set equal to `Te_eV`.
     n0_cm3 : float, optional
         Local density of atomic neutral hydrogen isotopes. This is only used if the provided
         ADF15 file contains charge exchange contributions.
     dlam_A : float or 1D array
-        Doppler shift in A. This can either be a scalar or an array of the same shape as the 
+        Doppler shift in A. This can either be a scalar or an array of the same shape as the
         output wavelength array. For the latter option, it is recommended to call this function
-        twice to find the wave_final_A array first.         
+        twice to find the wave_final_A array first.
     plot_spec_tot : bool
-        If True, plot total spectrum (sum over all components) from given ADF15 file. 
+        If True, plot total spectrum (sum over all components) from given ADF15 file.
     plot_all_lines : bool
         If True, plot all individual lines, rather than just the profiles due to different atomic processes.
         If more than 50 lines are included, a down-selection is automatically made to avoid excessive
@@ -1096,7 +1182,7 @@ def get_local_spectrum(
     Returns
     -------
     wave_final_A : 1D array
-        Array of wavelengths in units of :math:`\r{A}` on which the total spectrum is returned. 
+        Array of wavelengths in units of :math:`\r{A}` on which the total spectrum is returned.
     spec_ion : 1D array
         Spectrum from ionizing components of the input ADF15 file as a function of wave_final_A.
     spec_exc : 1D array
@@ -1115,7 +1201,7 @@ def get_local_spectrum(
     Including ionizing, excited and recombining charge states allows for a complete description
     of spectral lines that may derive from various atomic processes in a plasma.
 
-    Doppler broadening depends on the local ion temperature and mass of the emitting species. 
+    Doppler broadening depends on the local ion temperature and mass of the emitting species.
     It is modeled here using
 
     .. math::
@@ -1134,7 +1220,7 @@ def get_local_spectrum(
 
         \Delta \lambda_v = \lambda \cdot \left( 1 - \frac{v\cdot \cos(\alpha)}{c}\right)
 
-    where :math:`v` is the plasma velocity and :math:`\alpha` is the angle between the line-of-sight 
+    where :math:`v` is the plasma velocity and :math:`\alpha` is the angle between the line-of-sight
     and the direction of plasma rotation.
 
     Refs: S. Loch's and C. Johnson's PhD theses.
@@ -1142,7 +1228,7 @@ def get_local_spectrum(
     Minimal Working Example
     -----------------------
     Plot spectrum in one of the neutral H ADF15 files
-    >>> filepath = aurora.get_adas_file_loc('pec96#h_pju#h0.dat', filetype='adf15')  
+    >>> filepath = aurora.get_adas_file_loc('pec96#h_pju#h0.dat', filetype='adf15')
     >>> trs = aurora.read_adf15(filepath)
     >>> Te_eV = 80.; ne_cm3 = 1e14  # local ne [:math:`cm^{-3}`]and Te [:math:`eV`]
     >>> out = aurora.get_local_spectrum(filepath, 'H', ne_cm3, Te_eV) # defaults to excitation-only
@@ -1170,30 +1256,29 @@ def get_local_spectrum(
     from omfit_classes.utils_math import atomic_element
 
     # get nuclear charge Z and atomic mass number A
-    out = atomic_element(symbol=ion)
+    out = atomic_element(symbol=trs.attrs["element"])
     spec = list(out.keys())[0]
-    ion_Z = int(out[spec]["Z"])
     ion_A = int(out[spec]["A"])
+    ion_Z = int(out[spec]["Z"])
 
-    nlines = len(trs['isel'])
-    wave_A = np.array(trs['lambda [A]'])
+    Z = trs.attrs["Z"]
 
-    # safety checks for populating process nomenclature -- often inconsistent
-    trs.type.where(~trs.type.str.startswith('ion'), 'ioniz', inplace=True)
-    trs.type.where(~trs.type.str.startswith('rec'), 'recom', inplace=True)
-    trs.type.where(~trs.type.str.startswith('exc'), 'excit', inplace=True)
-    trs.type.where(~trs.type.str.startswith('dr'), 'drsat', inplace=True)
-    trs.type.where(~trs.type.str.startswith('cx'), 'chexc', inplace=True)
+    nlines = len(trs["isel"])
+    wave_A = np.array(trs["lambda [A]"])
 
-    # now interpolate all rates on chosen ne and Te values
-    pec = {}
-    for typ in ["ioniz", "excit", "recom", "chexc", "drsat"]:
-        _trs_type = trs.loc[trs['type']==typ]
-        pec[typ] = np.zeros(nlines)
-        for ii,lam in enumerate(trs['lambda [A]']):
-            if lam in np.array(_trs_type['lambda [A]']):
-                log10pec_fun = _trs_type.loc[trs['lambda [A]']==lam]['log10 PEC fun'].iloc[0]
-                pec[typ][ii] = 10**log10pec_fun.ev(np.log10(ne_cm3), np.log10(Te_eV))
+    # populate ion density list requited by get_photon_emissivity function
+    imp_density = [None] * (ion_Z + 1)
+    for i, d in enumerate(ion_exc_rec_dens):
+        if 0 <= Z + i - 1 < ion_Z + 1:
+            imp_density[Z + i - 1] = d
+
+    line_emiss = []
+    for ii, lam in enumerate(trs["lambda [A]"]):
+        line_emiss.append(
+            get_photon_emissivity(trs, lam, ne_cm3, Te_eV, imp_density, n0_cm3)
+        )
+
+    from scipy.constants import e, m_p, c
 
     # Doppler broadening
     mass = constants.m_p * ion_A
@@ -1204,100 +1289,57 @@ def get_local_spectrum(
     )
 
     # set a variable delta lambda based on the width of the broadening
-    _dlam_A = wave_A ** 2 / constants.c * dnu_g * 5  # 5 standard deviations
+    _dlam_A = wave_A**2 / constants.c * dnu_g * 5  # 5 standard deviations
 
     lams_profs_A = np.linspace(wave_A - _dlam_A, wave_A + _dlam_A, 100, axis=1)
 
-    theta_tmp = (
-        1.0 / (np.sqrt(np.pi) * dnu_g[:, None]) * np.exp(
-            -(
-                (
-                    (constants.c / lams_profs_A - constants.c / wave_A[:, None])
-                    / dnu_g[:, None]
-                )**2
-            )
-        )
-    )
-    
-    # Normalize Gaussian profile
-    theta = np.einsum(
-        "ij,i->ij", theta_tmp, 1.0 / np.trapz(theta_tmp, x=lams_profs_A, axis=1)
+    # Gaussian profiles of the lines
+    theta = np.exp(
+        -(((constants.c / lams_profs_A - c / wave_A[:, None]) / dnu_g[:, None]) ** 2)
     )
 
-    wave_final_A = np.linspace(np.min(lams_profs_A), np.max(lams_profs_A), 100000)
+    # Normalize Gaussian profile
+    theta /= np.sqrt(np.pi) * dnu_g[:, None] * wave_A[:, None] ** 2 / constants.c
+
+    # non-equally spaced wavelenght
+    wave_final_A = np.unique(lams_profs_A)
 
     if (plot_all_lines or plot_spec_tot) and ax is None:
         fig, ax = plt.subplots()
 
-
     # contributions to spectrum
-    source = {"ioniz": 0, "excit": 1, "recom": 2, "chexc": 2, "drsat": 2}
-    spec_ion = np.zeros_like(wave_final_A)
     spec = {}
     spec_tot = np.zeros_like(wave_final_A)
+    colors = {"ioniz": "r", "excit": "b", "recom": "g", "drsat": "m", "chexc": "c"}
+    for ii in np.arange(lams_profs_A.shape[0]):
+        line_shape = interp1d(
+            lams_profs_A[ii], theta[ii], bounds_error=False, fill_value=0.0
+        )(wave_final_A)
+        for typ, intens in line_emiss[ii].items():
+            comp = intens * line_shape
+            if typ not in spec:
+                spec[typ] = np.zeros_like(comp)
 
-    for typ, c in zip(
-        ["ioniz", "excit", "recom", "drsat", "chexc"], ["r", "b", "g", "m", "c"]
-    ):
-        spec[typ] = np.zeros_like(wave_final_A)
-        for ii in np.arange(lams_profs_A.shape[0]):
-            comp = interp1d(
-                lams_profs_A[ii, :],
-                ne_cm3 * ion_exc_rec_dens[source[typ]] * pec[typ][ii] * theta[ii, :],
-                bounds_error=False,
-                fill_value=0.0,
-            )(wave_final_A)
-            if plot_all_lines and pec[typ][ii] > np.max(pec[typ]) / 1000:
-                ax.plot(wave_final_A + dlam_A, comp, c=c)
+            if plot_all_lines and intens > np.max([l[typ] for l in line_emiss]) / 1000:
+                ax.plot(lams_profs_A[ii] + dlam_A, intens * theta[ii], c=colors[typ])
+
             spec[typ] += comp
-        spec_tot += spec[typ]
+            spec_tot += comp
 
+    labels = {
+        "ioniz": "ionization",
+        "excit": "excitation",
+        "recom": "radiative recomb",
+        "drsat": "dielectronic recomb",
+        "chexc": "charge exchange recomb",
+    }
     if plot_spec_tot:
         # plot contributions from different processes
-        ax.plot(
-            wave_final_A + dlam_A,
-            spec["ioniz"],
-            c="r",
-            ls="--",
-            label="" if no_leg else "ionization",
-        )
-        ax.plot(
-            wave_final_A + dlam_A,
-            spec["excit"],
-            c="b",
-            ls="--",
-            label="" if no_leg else "excitation",
-        )
-        ax.plot(
-            wave_final_A + dlam_A,
-            spec["recom"],
-            c="g",
-            ls="--",
-            label="" if no_leg else "radiative recomb",
-        )
-        ax.plot(
-            wave_final_A + dlam_A,
-            spec["drsat"],
-            c="m",
-            ls="--",
-            label="" if no_leg else "dielectronic recomb",
-        )
-        ax.plot(
-            wave_final_A + dlam_A,
-            spec["chexc"],
-            c="c",
-            ls="--",
-            label="" if no_leg else "charge exchange recomb",
-        )
+        for t, spectrum in spec.items():
+            ax.plot(wave_final_A + dlam_A, spectrum, "--", c=colors[t], label=labels[t])
 
         # total envelope
-        ax.plot(
-            wave_final_A + dlam_A,
-            spec_tot,
-            c="k",
-            ls="--",
-            label="" if no_leg else "total",
-        )
+        ax.plot(wave_final_A + dlam_A, spec_tot, "k-", label="total")
 
     if plot_all_lines or plot_spec_tot:
         if not no_leg:
@@ -1310,12 +1352,12 @@ def get_local_spectrum(
     # return Doppler-shifted wavelength if dlam_A was given as non-zero
     return (
         wave_final_A + dlam_A,
-        spec["ioniz"],
-        spec["excit"],
-        spec["recom"],
-        spec["drsat"],
-        spec["chexc"],
-        ax
+        spec.get("ioniz", None),
+        spec.get("excit", None),
+        spec.get("recom", None),
+        spec.get("drsat", None),
+        spec.get("chexc", None),
+        ax,
     )
 
 
@@ -1341,45 +1383,45 @@ def get_cooling_factors(
     ne_cm3 : 1D array
         Electron density [:math:`cm^{-3}`], used to find charge state fractions at ionization equilibrium.
     Te_eV : 1D array
-        Electron temperature [:math:`eV`] at which cooling factors should be obtained. 
+        Electron temperature [:math:`eV`] at which cooling factors should be obtained.
     n0_cm3 : 1D array or float
-        Background H/D/T neutral density [:math:`cm^{-3}`] used to account for charge exchange 
-        when calculating ionization equilibrium. 
+        Background H/D/T neutral density [:math:`cm^{-3}`] used to account for charge exchange
+        when calculating ionization equilibrium.
         If left to 0, charge exchange effects are not included.
     ion_resolved : bool
         If True, cooling factors are returned for each charge state. If False, they are summed over charge states.
-        The latter option is useful for modeling where charge states are assumed to be in ionization equilibrium 
+        The latter option is useful for modeling where charge states are assumed to be in ionization equilibrium
         (no transport). Default is False.
     superstages : list or 1D array
         List of superstages to consider. An empty list (default) corresponds to the inclusion of all charge states.
         Note that when ion_resolved=False, cooling coefficients are independent of whether superstages are being used or not.
     line_rad_file : str or None
-        Location of ADAS ADF11 file containing line radiation data. This can be a PLT (unfiltered) or 
-        PLS (filtered) file. If left to None, the default file given in :py:func:`~aurora.adas_files.adas_files_dict` 
+        Location of ADAS ADF11 file containing line radiation data. This can be a PLT (unfiltered) or
+        PLS (filtered) file. If left to None, the default file given in :py:func:`~aurora.adas_files.adas_files_dict`
         will be used.
     cont_rad_file : str or None
-        Location of ADAS ADF11 file containing recombination and bremsstrahlung radiation data. 
-        This can be a PRB (unfiltered) or PRS (filtered) file. 
-        If left to None, the default file given in :py:func:`~aurora.adas_files.adas_files_dict` 
+        Location of ADAS ADF11 file containing recombination and bremsstrahlung radiation data.
+        This can be a PRB (unfiltered) or PRS (filtered) file.
+        If left to None, the default file given in :py:func:`~aurora.adas_files.adas_files_dict`
         will be used.
     sxr : bool
         If True, line radiation, recombination and bremsstrahlung radiation are taken to be from SXR-filtered
-        ADAS ADF11 files, rather than from unfiltered files. 
+        ADAS ADF11 files, rather than from unfiltered files.
     plot : bool
         If True, plot all radiation components, summed over charge states.
     ax : matplotlib.Axes instance
-        If provided, plot results on these axes. 
-    
+        If provided, plot results on these axes.
+
     Returns
     -------
     line_rad_tot : 1D array
-        Cooling coefficient from line radiation [:math:`W\cdot m^3`]. 
-        Depending on whether :param:`sxr`=True or False, this indicates filtered 
+        Cooling coefficient from line radiation [:math:`W\cdot m^3`].
+        Depending on whether :param:`sxr`=True or False, this indicates filtered
         or unfiltered radiation, respectively.
     cont_rad_tot : 1D array
-        Cooling coefficient from continuum radiation [:math:`W\cdot m^3`]. 
+        Cooling coefficient from continuum radiation [:math:`W\cdot m^3`].
         Depending on whether `sxr`=True or False, this indicates filtered
-        or unfiltered radiation, respectively. 
+        or unfiltered radiation, respectively.
 
     """
     files = ["scd", "acd"]
@@ -1522,7 +1564,7 @@ def get_cooling_factors(
 
 
 def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mult=[]):
-    """Display all photon emissivity coefficients from the given list of ADF15 files 
+    """Display all photon emissivity coefficients from the given list of ADF15 files
     and (optionally) compare to a set of chosen wavelengths, given in units of Angstrom.
 
     Parameters
@@ -1530,23 +1572,23 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
     pec_files : str or list of str
         Path to a single ADF15 file or a list of files.
     lines : dict, list or 1D array
-        Lines to overplot with the loaded PECs to consider overlap within spectrum. 
-        This argument may be a dictionary, with keys corresponding to line names and 
-        values corresponding to wavelengths (in units of Angstrom). If provided as a 
+        Lines to overplot with the loaded PECs to consider overlap within spectrum.
+        This argument may be a dictionary, with keys corresponding to line names and
+        values corresponding to wavelengths (in units of Angstrom). If provided as a
         list or array, this is assumed to contain only wavelengths in Angstrom.
     Te_eV : float
         Single value of electron temperature at which PECs should be evaluated [:math:`eV`].
     ne_cm3 : float
         Single value of electron density at which PECs should be evaluated [:math:`cm^{-3}`].
     mult : list or array
-        Multiplier to apply to lines from each PEC file. This could be used for example to 
-        rescale the results of multiple ADF15 files by the expected fractional abundance or 
+        Multiplier to apply to lines from each PEC file. This could be used for example to
+        rescale the results of multiple ADF15 files by the expected fractional abundance or
         density of each element/charge state.
 
     Notes
     --------
-    To attempt identification of spectral lines, one can load a set of ADF15 files, 
-    calculate approximate fractional abundances at equilibrium and overplot expected 
+    To attempt identification of spectral lines, one can load a set of ADF15 files,
+    calculate approximate fractional abundances at equilibrium and overplot expected
     emissivities in a few steps::
 
     >>> pec_files = ['mypecs1','mypecs2','mypecs3']
@@ -1561,7 +1603,7 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
     >>> Te_eV=500; ne_cm3=5e13 # eV and cm^{-3}
     >>> filepath = aurora.get_adas_file_loc('pec96#he_pju#he0.dat', filetype='adf15')
     >>> aurora.adf15_line_identification(filepath, Te_eV=Te_eV, ne_cm3=ne_cm3)
-    
+
     """
 
     fig = plt.figure(figsize=(10, 7))
@@ -1575,9 +1617,13 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
     ymax = -np.inf
 
     if isinstance(pec_files, str):
-         # only a single file was given as input
-        pec_files = [pec_files,]
-        mult = [1,]
+        # only a single file was given as input
+        pec_files = [
+            pec_files,
+        ]
+        mult = [
+            1,
+        ]
 
     if len(mult) and len(pec_files) != len(mult):
         raise ValueError("Different number of ADF15 files and multipliers detected!")
@@ -1585,16 +1631,16 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
     cols = iter(plt.cm.rainbow(np.linspace(0, 1, len(pec_files))))
 
     # use different line styles for different populating processes
-    proc_ls = {'ioniz': 'o-.', 'excit': 'o-', 'recom': 'o--'}
-    
+    proc_ls = {"ioniz": "o-.", "excit": "o-", "recom": "o--"}
+
     def _plot_line(tr, mult_val, ymin, ymax, c):
-        log10pec_fun = tr['log10 PEC fun'].iloc[0]
-        lam = tr['lambda [A]'].iloc[0]
-        typ = tr['type'].iloc[0]
-        
-        _pec = (
-            mult_val * 10 ** log10pec_fun.ev(np.log10(ne_cm3), np.log10(Te_eV)) #[0, 0]
-        )
+        log10pec_fun = tr["log10 PEC fun"].iloc[0]
+        lam = tr["lambda [A]"].iloc[0]
+        typ = tr["type"].iloc[0]
+
+        _pec = mult_val * 10 ** log10pec_fun.ev(
+            np.log10(ne_cm3), np.log10(Te_eV)
+        )  # [0, 0]
         if _pec > 1e-20:  # plot only stronger lines
             ymin = min(_pec, ymin)
             ymax = max(_pec, ymax)
@@ -1611,10 +1657,10 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
         c = next(cols)
 
         # now plot all lines
-        for isel in trs['isel']:
-            ymin, ymax = _plot_line(trs.loc[trs['isel']==isel], _mult, ymin, ymax, c)
+        for isel in trs["isel"]:
+            ymin, ymax = _plot_line(trs.loc[trs["isel"] == isel], _mult, ymin, ymax, c)
 
-        lams += list(trs['lambda [A]'])
+        lams += list(trs["lambda [A]"])
         if len(pec_files) > 1:
             a_legend.plot([], [], c=c, label=pec_file.split("/")[-1])
 
@@ -1637,9 +1683,9 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
                 ax.axvline(wvl, c="k", lw=2.0)
                 a_id.text(wvl, 0.1, str(i), rotation=90)  # , clip_on=True)
 
-    a_legend.plot([], [], proc_ls['ioniz'], label="PEC ionization")
-    a_legend.plot([], [], proc_ls['excit'], label="PEC excitation")
-    a_legend.plot([], [], proc_ls['recom'], label="PEC recombination")
+    a_legend.plot([], [], proc_ls["ioniz"], label="PEC ionization")
+    a_legend.plot([], [], proc_ls["excit"], label="PEC excitation")
+    a_legend.plot([], [], proc_ls["recom"], label="PEC recombination")
 
     if len(pec_files) == 1:
         # show path of single file that was passed
@@ -1651,8 +1697,8 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
 
 
 def adf04_files():
-    """Collection of trust-worthy ADAS ADF04 files. 
-    This function will be moved and expanded in ColRadPy in the near future. 
+    """Collection of trust-worthy ADAS ADF04 files.
+    This function will be moved and expanded in ColRadPy in the near future.
     """
     files = {}
     files["Ca"] = {}
@@ -1707,9 +1753,9 @@ def get_colradpy_pec_prof(
     plot=True,
 ):
     """Compute radial profile for Photon Emissivity Coefficients (PEC) for lines within the chosen
-    wavelength range using the ColRadPy package. This is an alternative to the option of using 
-    the :py:func:`~aurora.radiation.read_adf15` function to read PEC data from an ADAS ADF-15 file and 
-    interpolate results on ne,Te grids. 
+    wavelength range using the ColRadPy package. This is an alternative to the option of using
+    the :py:func:`~aurora.radiation.read_adf15` function to read PEC data from an ADAS ADF-15 file and
+    interpolate results on ne,Te grids.
 
     Parameters
     ----------
@@ -1734,7 +1780,7 @@ def get_colradpy_pec_prof(
     prec_threshold : float
         Minimum value of PECs to be considered, in :math:`photons \cdot cm^3/s`
     pec_units : int
-        If 1, results are given in :math:`photons \cdot cm^3/s`; if 2, they are given in :math:`W.cm^3`. 
+        If 1, results are given in :math:`photons \cdot cm^3/s`; if 2, they are given in :math:`W.cm^3`.
         Default is 2.
     plot : bool
         If True, plot lines profiles and total.
@@ -1742,7 +1788,7 @@ def get_colradpy_pec_prof(
     Returns
     -------
     pec_tot_prof : array (nr,)
-        Radial profile of PEC intensity, in units of :math:`photons \cdot cm^3/s` (if pec_units=1) or 
+        Radial profile of PEC intensity, in units of :math:`photons \cdot cm^3/s` (if pec_units=1) or
         :math:`W \cdot cm^3` (if pec_units=2).
     """
     try:
@@ -1798,9 +1844,9 @@ def get_colradpy_pec_prof(
     if plot:
         fig, ax = plt.subplots()
         for ll in np.arange(len(lam_sel_nm)):
-            ax.plot(rhop, pecs_sel[ll, :], label=fr"$\lambda={lam_sel_nm[ll]:.5f}$ nm")
+            ax.plot(rhop, pecs_sel[ll, :], label=rf"$\lambda={lam_sel_nm[ll]:.5f}$ nm")
         ax.plot(rhop, pec_tot_prof, lw=3.0, c="k", label="Total")
-        fig.suptitle(fr"$\lambda={lam_nm} \pm {lam_width_nm/2.}$ nm")
+        fig.suptitle(rf"$\lambda={lam_nm} \pm {lam_width_nm/2.}$ nm")
         ax.set_xlabel(r"$\rho_p$")
         ax.set_ylabel("PEC [W cm$^3$]" if phot2energy else "PEC [ph cm$^3$ s$^{-1}$]")
         ax.legend(loc="best").set_draggable(True)

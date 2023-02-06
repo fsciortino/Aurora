@@ -34,36 +34,36 @@ adas_data_dir = (
 
 def get_adas_file_loc(filename, filetype="adf11"):
     """Find location of requested atomic data file for the indicated ion.
-    Accepts all ADAS "derived" data file types 
+    Accepts all ADAS "derived" data file types
     (adf11, adf12, adf13, adf15, adf21, adf22).
     The search proceeds with the following attempts, in this order:
 
-    #. If the file is available in Aurora/adas_data/*filetype*, with filetype given by the user, 
+    #. If the file is available in Aurora/adas_data/*filetype*, with filetype given by the user,
        always use this data.
 
-    #. If the input filename is actually a full path to the file on the local system, use this file 
+    #. If the input filename is actually a full path to the file on the local system, use this file
        and copy it to Aurora/aurora/adas_data/actual_filename, where actual_filename is the file
-       name rather than the full path. 
+       name rather than the full path.
 
-    #. If the environmental variable "AURORA_ADAS_DIR" is defined, attempt to find the file there, 
+    #. If the environmental variable "AURORA_ADAS_DIR" is defined, attempt to find the file there,
        under adf11/ and adf15/ directories. AURORA_ADAS_DIR may for example be the path to a central
        repository of ADAS files for Aurora on a cluster where not everyone may have write-permissions.
        For this option, files are not copied at all.
 
-    #. Attempt to fetch the file remotely via open.adas.ac.uk and save it in 
-       Aurora/aurora/adas_data/*filetype*/. 
+    #. Attempt to fetch the file remotely via open.adas.ac.uk and save it in
+       Aurora/aurora/adas_data/*filetype*/.
 
     Parameters
     ----------
     filename : str
         Name of the ADAS file of interest, e.g. 'plt89_ar.dat'.
     filetype : str
-        ADAS file type. Only derived data types are allowed, i.e. one of 
+        ADAS file type. Only derived data types are allowed, i.e. one of
         "adf11", "adf12", "adf13", "adf15", "adf21", "adf22"
     Returns
     -------
     file_loc : str
-        Full path to the requested file. 
+        Full path to the requested file.
     """
 
     def fetch_file(filename, filetype, loc):
@@ -75,47 +75,73 @@ def get_adas_file_loc(filename, filetype="adf11"):
 
         url = "https://open.adas.ac.uk/download/" + filetype + '/'
         if filetype == "adf11":
+<<<<<<< HEAD
             filename_mod = filename.split("_")[0] + '/' + filename
             
         elif filetype in ["adf12", "adf13", "adf21", "adf22"]:
             filename_mod = filename.replace("#","][").split("_")[0] +\
                            '/' + filename.replace("#", "][")
+=======
+            filename_mod = filename.split("_")[0] + os.sep + filename
+
+        elif filetype in ["adf12", "adf13", "adf21", "adf22"]:
+            filename_mod = (
+                filename.replace("#", "][").split("_")[0]
+                + os.sep
+                + filename.replace("#", "][")
+            )
+>>>>>>> 997de10e0cdc83820aae995f1a31272a75ad546b
 
         elif filetype == "adf15":
-            
+
             if filename.startswith("pec"):
                 # more standard format, the following patterns should work fine:
                 num = filename[3:5]
                 spec = filename.split("#")[1].split("_")[0]
-                filename_mod = filename.replace("#", "][").replace("_", f"/pec{num}][{spec}_")
+                filename_mod = filename.replace("#", "][").replace(
+                    "_", f"/pec{num}][{spec}_"
+                )
             elif filename.startswith("transport"):
                 # different link format for files with "transport" name:
                 filename_mod = "transport/" + filename.replace("#", "][")
             else:
                 # patterns may be different, attempt simple guess:
+<<<<<<< HEAD
                 filename_mod = filename.split("_")[0] + '/' + filename.replace("#", "][")
                 
+=======
+                filename_mod = (
+                    filename.split("_")[0] + os.sep + filename.replace("#", "][")
+                )
+>>>>>>> 997de10e0cdc83820aae995f1a31272a75ad546b
         else:
             raise ValueError(
-                "ADAS file type/format not recognized.\n"+\
-                "Could not find it or download it automatically!"
+                "ADAS file type/format not recognized.\n"
+                + "Could not find it or download it automatically!"
             )
+<<<<<<< HEAD
         r = requests.get(url + '/' + filename_mod)
             
+=======
+        
+        r = requests.get(url + os.sep + filename_mod)
+
+
+>>>>>>> 997de10e0cdc83820aae995f1a31272a75ad546b
         if len(r.text) < 1000:
             # OPEN-ADAS reports short URL error text rather than an error code
             raise ValueError(f"Could not fetch file {filename} from ADAS!")
-        
+
         with open(loc, "wb") as f:
-            f.write(r.content) 
-            
-    if filename == 'none':
+            f.write(r.content)
+
+    if filename == "none":
         # user doesn't want to load this file
-        return 
-    
-    elif os.path.exists(adas_data_dir+filetype+os.sep+filename):
+        return
+
+    elif os.path.exists(adas_data_dir + filetype + os.sep + filename):
         # file is available in adas_data:
-        return adas_data_dir+filetype+os.sep+filename
+        return adas_data_dir + filetype + os.sep + filename
 
     elif os.path.exists(filename):
         # user gave a complete filepath. Don't copy the file from the original location
@@ -141,21 +167,20 @@ def get_adas_file_loc(filename, filetype="adf11"):
         return loc
 
 
-
 def adas_files_dict():
     """Selections for ADAS files for Aurora runs and radiation calculations.
-    This function can be called to fetch a set of default files, which can then be modified (e.g. to 
-    use a new file for a specific SXR filter) before running a calculation. 
+    This function can be called to fetch a set of default files, which can then be modified (e.g. to
+    use a new file for a specific SXR filter) before running a calculation.
 
     Returns
     -------
     files : dict
         Dictionary with keys equal to the atomic symbols of many of the most common ions of
-        interest in fusion research. For each ion, a sub-dictionary contains recommended file 
-        names for the relevant ADAS data types. Not all files types are available for all ions. 
-        Files types are usually a subset of 
+        interest in fusion research. For each ion, a sub-dictionary contains recommended file
+        names for the relevant ADAS data types. Not all files types are available for all ions.
+        Files types are usually a subset of
         'acd','scd','prb','plt','ccd','prc','pls','prs','fis','brs','pbs',prc'
-        Refer to :py:func:`~aurora.atomic.get_adas_file_types` for a description of the meaning of 
+        Refer to :py:func:`~aurora.atomic.get_adas_file_types` for a description of the meaning of
         each file.
     """
 
@@ -178,7 +203,7 @@ def adas_files_dict():
     files["He"]["scd"] = "scd96_he.dat"
     files["He"]["prb"] = "prb96_he.dat"
     files["He"]["plt"] = "plt96_he.dat"
-    files["He"]["ccd"] = "ccd96_he.dat"
+    files["He"]["ccd"] = "ccd89_he.dat"
     files["He"]["pls"] = "pls_He_14.dat"
     files["He"]["prs"] = "prs_He_14.dat"
     files["He"]["fis"] = "sxrfil14.dat"

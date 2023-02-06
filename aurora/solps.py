@@ -39,36 +39,36 @@ from . import coords
 
 
 class solps_case:
-    """Read SOLPS output, either from 
-    
-    #. output files on disk 
+    """Read SOLPS output, either from
+
+    #. output files on disk
 
     #. an MDS+ tree
 
     If arguments are provided with no keys, it is assumed that paths to b2fstate andd b2fgmtry
     are being provided (option #1). If keyword arguments are provided instead, we first check
-    whether `b2fstate_path` and `b2fgmtry_path` are being given (option #1) or `solps_id` is 
+    whether `b2fstate_path` and `b2fgmtry_path` are being given (option #1) or `solps_id` is
     given to load results from MDS+ (option #2). Other keyword arguments can be provided to
     specify the MDS+ server and tree to use (defaults are for AUG), and to provide a gEQDSK file.
-    
+
     Parameters
     ----------
     b2fstate_path : str (option #1)
-        Path to SOLPS b2fstate output file. 
+        Path to SOLPS b2fstate output file.
     b2fgmtry_path : str (option #1)
         Path to SOLPS b2fgmtry output file.
     solps_id : str or int (option #2)
-        Integer identifying the SOLPS run/shot to load from MDS+. 
+        Integer identifying the SOLPS run/shot to load from MDS+.
     server : str, optional (option #2)
         MDS+ server to load SOLPS results. Default is 'solps-mdsplus.aug.ipp.mpg.de:8001'.
     tree : str (option #2)
         Name of MDS+ tree to load data from. Default is 'solps'.
     geqdsk : str, optional (option #1 and #2)
         Path to the geqdsk to load from disk.
-        Users may also directly provide an instance of the 
+        Users may also directly provide an instance of the
         `omfit_classes.omfit_geqdsk.OMFITgeqdsk` class that contains the processed gEQDSK file.
-        If not provided, the code tries to reconstruct a geqdsk based on the experiment name and 
-        time of analysis stored in the SOLPS output. If set to None, no geqdsk is loaded and 
+        If not provided, the code tries to reconstruct a geqdsk based on the experiment name and
+        time of analysis stored in the SOLPS output. If set to None, no geqdsk is loaded and
         functionality related to the geqdsk is not used.
 
     Notes
@@ -249,7 +249,7 @@ class solps_case:
         Parameters
         ----------
         varname : str
-            Name of SOLPS variable, e.g. ne,te,ti,dab2,etc. 
+            Name of SOLPS variable, e.g. ne,te,ti,dab2,etc.
         """
         if hasattr(self, varname):
             return getattr(self, varname)
@@ -418,8 +418,7 @@ class solps_case:
                 self.eirene_species["ion"][ss] = ion
 
     def load_mesh_extra(self):
-        """Load the mesh.extra file.
-        """
+        """Load the mesh.extra file."""
         with open(
             os.path.dirname(self.b2fgmtry_path) + os.sep + "mesh.extra", "r"
         ) as f:
@@ -439,7 +438,7 @@ class solps_case:
         Returns
         -------
         out : dict
-            Dictionary containing a subdictionary with keys for each loaded field. 
+            Dictionary containing a subdictionary with keys for each loaded field.
         """
         out = {}
 
@@ -531,7 +530,7 @@ class solps_case:
         Returns
         -------
         out : dict
-            Dictionary for each loaded file containing a subdictionary with keys for each loaded field from each file. 
+            Dictionary for each loaded file containing a subdictionary with keys for each loaded field from each file.
         """
         out = {}
 
@@ -580,8 +579,7 @@ class solps_case:
         return out
 
     def load_eirene_mesh(self):
-        """Load EIRENE nodes from the fort.33 file and triangulation from the fort.34 file
-        """
+        """Load EIRENE nodes from the fort.33 file and triangulation from the fort.34 file"""
         nodes = np.fromfile(
             os.path.dirname(self.b2fgmtry_path) + os.sep + "fort.33", sep=" "
         )
@@ -628,8 +626,7 @@ class solps_case:
         self.WC = Wall_Collection
 
     def get_b2_patches(self):
-        """Get polygons describing B2 grid as a mp.collections.PatchCollection object.
-        """
+        """Get polygons describing B2 grid as a mp.collections.PatchCollection object."""
         xx = self.data("crx").transpose(2, 1, 0)
         yy = self.data("cry").transpose(2, 1, 0)
         NY = int(self.data("ny"))
@@ -654,8 +651,10 @@ class solps_case:
             patches, False, fc="w", edgecolor="k", linewidth=0.1
         )
 
-    def plot2d_b2(self, vals, ax=None, scale="log", label="", lb=None, ub=None, **kwargs):
-        """Method to plot 2D fields on B2 grids. 
+    def plot2d_b2(
+        self, vals, ax=None, scale="log", label="", lb=None, ub=None, **kwargs
+    ):
+        """Method to plot 2D fields on B2 grids.
         Colorbars are set to be manually adjustable, allowing variable image saturation.
 
         Parameters
@@ -729,8 +728,17 @@ class solps_case:
         ax.set_ylabel("Z [m]")
         ax.axis("scaled")
 
-    def plot2d_eirene(self, vals, ax=None, scale="log", label="", lb=None, ub=None,
-        replace_zero=True, **kwargs):
+    def plot2d_eirene(
+        self,
+        vals,
+        ax=None,
+        scale="log",
+        label="",
+        lb=None,
+        ub=None,
+        replace_zero=True,
+        **kwargs,
+    ):
         """Method to plot 2D fields from EIRENE.
 
         Parameters
@@ -802,50 +810,49 @@ class solps_case:
         cid = cbar.connect()
 
     def plot_solps_2d_overview(self):
-        '''Display 2D views of most important SOLPS outputs.
-        '''
-        imp = self.solps.b2_species[2]['A']
-        
-        fig, axs = plt.subplots(2,4, figsize=(15,8))
-        self.plot2d_b2(self.data('ne'), ax = axs[0,0],
-                             label=r'$n_e$ [m$^{-3}$]')
-        self.plot2d_b2(self.data('te')/constants.e, ax = axs[0,1],
-                             label=r'$T_e$ [eV]')
-        self.plot2d_b2(self.data('ti')/constants.e, ax = axs[0,2],
-                             label=r'$T_i$ [eV]')
-        self.plot2d_b2(self.data('dab2')[0], ax = axs[0,3],
-                             label=r'$n_{DI}$ [m$^{-3}$]')
-        self.plot2d_b2(self.data('dab2')[1], ax = axs[1,0],
-                             label=fr'$n_{{{imp}I}}$ [m$^{-3}$]')
-        self.plot2d_b2(self.data('na')[3], ax = axs[1,1],
-                             label=fr'$n_{{{imp}II}}$ [m$^{-3}$]')
-        self.plot2d_b2(self.data('na')[4], ax = axs[1,2],
-                             label=fr'$n_{{{imp}III}}$ [m$^{-3}$]')
-        self.plot2d_b2(self.data('na')[5], ax = axs[1,3],
-                             label=fr'$n_{{{imp}IV}}$ [m$^{-3}$]')
+        """Display 2D views of most important SOLPS outputs."""
+        imp = self.solps.b2_species[2]["A"]
+
+        fig, axs = plt.subplots(2, 4, figsize=(15, 8))
+        self.plot2d_b2(self.data("ne"), ax=axs[0, 0], label=r"$n_e$ [m$^{-3}$]")
+        self.plot2d_b2(self.data("te") / constants.e, ax=axs[0, 1], label=r"$T_e$ [eV]")
+        self.plot2d_b2(self.data("ti") / constants.e, ax=axs[0, 2], label=r"$T_i$ [eV]")
+        self.plot2d_b2(self.data("dab2")[0], ax=axs[0, 3], label=r"$n_{DI}$ [m$^{-3}$]")
+        self.plot2d_b2(
+            self.data("dab2")[1], ax=axs[1, 0], label=rf"$n_{{{imp}I}}$ [m$^{-3}$]"
+        )
+        self.plot2d_b2(
+            self.data("na")[3], ax=axs[1, 1], label=rf"$n_{{{imp}II}}$ [m$^{-3}$]"
+        )
+        self.plot2d_b2(
+            self.data("na")[4], ax=axs[1, 2], label=rf"$n_{{{imp}III}}$ [m$^{-3}$]"
+        )
+        self.plot2d_b2(
+            self.data("na")[5], ax=axs[1, 3], label=rf"$n_{{{imp}IV}}$ [m$^{-3}$]"
+        )
         plt.tight_layout()
-        
+
     def get_radial_prof(self, vals, dz_mm=5, theta=0, label="", plot=False):
-        """Extract radial profiles of a quantity "quant" from the SOLPS run. 
-        This function returns profiles on the low- (LFS) and high-field-side (HFS) midplane, 
-        as well as flux surface averaged (FSA) ones. 
+        """Extract radial profiles of a quantity "quant" from the SOLPS run.
+        This function returns profiles on the low- (LFS) and high-field-side (HFS) midplane,
+        as well as flux surface averaged (FSA) ones.
 
         Parameters
         ----------
         vals : array (self.data('ny'), self.data('nx'))
             Data array for a variable of interest.
         dz_mm : float
-            Vertical range [mm] over which quantity should be averaged near the midplane. 
+            Vertical range [mm] over which quantity should be averaged near the midplane.
             Mean and standard deviation of profiles on the LFS and HFS will be returned based on
             variations of atomic neutral density within this vertical span.
             Note that this does not apply to the FSA calculation. Default is 5 mm.
         theta : float (0-360)
-            Poloidal angle [degrees] at which to take radial profile, measured from 
+            Poloidal angle [degrees] at which to take radial profile, measured from
             0 degrees at Outer Midplane. Default is 0 degrees
         label : string
             Optional string label for plot and legend. Default is empty ('')
         plot : bool
-            If True, plot radial profiles. 
+            If True, plot radial profiles.
 
         Returns
         -------
@@ -858,14 +865,14 @@ class solps_case:
         prof_LFS : 1D array
             Mean LFS midpane profile on rhop_LFS grid.
         prof_LFS_std : 1D array
-            Standard deviation of LFS midplane profile on the rhop_LFS grid, based on variations 
-            within +/-`dz_mm`/2 millimeters from the midplane. 
+            Standard deviation of LFS midplane profile on the rhop_LFS grid, based on variations
+            within +/-`dz_mm`/2 millimeters from the midplane.
         rhop_HFS : 1D array
             Sqrt of poloidal flux grid on which the midplane HFS profile (prof_HFS) is given.
         prof_HFS : 1D array
             Mean HFS midplane profile on rhop_HFS grid.
         prof_HFS_std : 1D array
-            Standard deviation of HFS midplane profile on rhop_HFS grid, based on variations 
+            Standard deviation of HFS midplane profile on rhop_HFS grid, based on variations
             within +/-`dz_mm`/2 millimeters from the midplane.
         """
 
@@ -1011,11 +1018,11 @@ class solps_case:
     def get_poloidal_prof(
         self, vals, plot=False, label="", rhop=1.0, topology="LSN", ax=None
     ):
-        """Extract poloidal profile of a quantity "quant" from the SOLPS run. 
+        """Extract poloidal profile of a quantity "quant" from the SOLPS run.
         This function returns a profile of the specified quantity at the designated radial coordinate
         (rhop=1 by default) as a function of the poloidal angle, theta.
 
-        Note that double nulls ('DN') are not yet handled. 
+        Note that double nulls ('DN') are not yet handled.
 
         Parameters
         ----------
@@ -1026,7 +1033,7 @@ class solps_case:
         label : string
             Label for plot
         rhop : float
-            Radial coordinate, in rho_p, at which to take poloidal surface. Default is 1 (LCFS)            
+            Radial coordinate, in rho_p, at which to take poloidal surface. Default is 1 (LCFS)
         ax : matplotlib axes instance
             Axes on which poloidal profile should be plotted. If not given, a new set of axes is created.
             This is useful to possibly overplot profiles at different radii.
@@ -1037,10 +1044,10 @@ class solps_case:
             Poloidal grid measured in degrees from LFS midplane on which prof_rhop is given
         prof_rhop : 1D array
             Mean poloidal profile at rhop on theta_rhop grid.
-            
+
         prof_rhop_std : 1D array
-            Standard deviation of poloidal profile at rhop on the theta_rhop grid, based on variations 
-            within +/-`dr_mm`/2 millimeters from the surface at rhop. 
+            Standard deviation of poloidal profile at rhop on the theta_rhop grid, based on variations
+            within +/-`dr_mm`/2 millimeters from the surface at rhop.
         """
         if self.DN:
             raise ValueError(
@@ -1128,7 +1135,7 @@ class solps_case:
                     # plot black dashed lines at key angles that help in visualization
                     ax.axvline(x=ang, c="k", ls="--")
 
-            ax.semilogy(theta_prof, pol_prof, ".", label=fr"$\rho_p={rhop}$")
+            ax.semilogy(theta_prof, pol_prof, ".", label=rf"$\rho_p={rhop}$")
             ax.set_xlabel(r"$\theta$ [${}^\circ$]")
             ax.set_ylabel(label)
             ax.legend(loc="best").set_draggable(True)
@@ -1137,21 +1144,21 @@ class solps_case:
         return poloidal_prof
 
     def find_gfile(self):
-        """Identify the name of the gEQDSK file from the directory where 
-        b2fgmtry is also located. 
+        """Identify the name of the gEQDSK file from the directory where
+        b2fgmtry is also located.
         """
         for filename in os.path.dirname(self.b2fgmtry_path):
             if filename.startswith("g"):  # assume only 1 file starts with 'g'
                 return filename
 
     def plot_radial_summary(self, ls="o-b"):
-        """Plot a summary of radial profiles (ne, Te, Ti, nn, nm), 
+        """Plot a summary of radial profiles (ne, Te, Ti, nn, nm),
         at the inner and outer targets, as well as the outer midplane.
 
         Parameters
         ----------
         ls : str
-            
+
         """
         out = {}
         for v in ["nx", "ny", "ns", "imp", "omp", "sep", "dsrad", "ne", "te", "ti"]:
@@ -1188,7 +1195,7 @@ class solps_case:
 
     def find_xpoint(self):
         """Find location of the x-point in (R,Z) coordinates by using the fact
-        that it is the only vertex shared by 8 cells. 
+        that it is the only vertex shared by 8 cells.
         """
         vertices = {}
         for ny in range(int(self.data("ny"))):
@@ -1205,9 +1212,9 @@ class solps_case:
         self.xpoint = np.array([float(val) for val in xpoint.split()])
 
     def get_3d_path(self, pnt1, pnt2, npt=501, plot=False, ax=None):
-        """Given 2 points in 3D Cartesian coordinates, returns discretized 
-        R,Z coordinates along the segment that connects them. 
-        
+        """Given 2 points in 3D Cartesian coordinates, returns discretized
+        R,Z coordinates along the segment that connects them.
+
         Parameters
         ----------
         pnt1 : array (3,)
@@ -1217,7 +1224,7 @@ class solps_case:
         npt : int, optional
             Number of points to use for the path discretization.
         plot : bool, optional
-            If True, display  displaying result. Default is False. 
+            If True, display  displaying result. Default is False.
         ax : matplotlib axes instance, optional
             If provided, draw 3d path on these axes. Default is to create
             a new figure and also draw the B2.5 grid polygons.
@@ -1283,7 +1290,7 @@ class solps_case:
         method : {'linear','nearest','cubic'}, optional
             Method of interpolation.
         plot : bool, optional
-            If True, display variation of the `field` quantity as a function of the LOS 
+            If True, display variation of the `field` quantity as a function of the LOS
             path length from point `pnt1`.
         ax : matplotlib axes, optional
             Instance of figure axes to use for plotting. If None, a new figure is created.
@@ -1323,26 +1330,26 @@ class solps_case:
 def apply_mask(triang, geqdsk, max_mask_len=0.4, mask_up=False, mask_down=False):
     """Function to apply basic masking to a matplolib triangulation. This type of masking
     is useful to avoid having triangulation edges going outside of the true simulation
-    grid. 
+    grid.
 
     Parameters
     ----------
     triang : instance of matplotlib.tri.triangulation.Triangulation
-        Matplotlib triangulation object for the (R,Z) grid. 
+        Matplotlib triangulation object for the (R,Z) grid.
     geqdsk : dict
-        Dictionary containing gEQDSK file values as processed by `omfit_classes.omfit_eqdsk`. 
+        Dictionary containing gEQDSK file values as processed by `omfit_classes.omfit_eqdsk`.
     max_mask_len : float
         Maximum length [m] of segments within the triangulation. Segments longer
-        than this value will not be plotted. This helps avoiding triangulation 
+        than this value will not be plotted. This helps avoiding triangulation
         over regions where no data should be plotted, beyond the actual simulation
         grid.
     mask_up : bool
-        If True, values in the upper vertical half of the mesh are masked. 
+        If True, values in the upper vertical half of the mesh are masked.
         Default is False.
     mask_down : bool
-        If True, values in the lower vertical half of the mesh are masked. 
+        If True, values in the lower vertical half of the mesh are masked.
         Default is False.
-      
+
     Returns
     -------
     triang : instance of matplotlib.tri.triangulation.Triangulation
@@ -1355,7 +1362,7 @@ def apply_mask(triang, geqdsk, max_mask_len=0.4, mask_up=False, mask_down=False)
     # Find triangles with sides longer than max_mask_len
     xtri = x[triangles] - np.roll(x[triangles], 1, axis=1)
     ytri = y[triangles] - np.roll(y[triangles], 1, axis=1)
-    maxi = np.max(np.sqrt(xtri ** 2 + ytri ** 2), axis=1)
+    maxi = np.max(np.sqrt(xtri**2 + ytri**2), axis=1)
     cond_maxd = maxi > max_mask_len
 
     # second condition: mask upper and/or lower part of the grid
@@ -1383,7 +1390,7 @@ def apply_mask(triang, geqdsk, max_mask_len=0.4, mask_up=False, mask_down=False)
 
 
 def get_fort44_info(NDX, NDY, NATM, NMOL, NION, NSTRA, NCL, NPLS, NSTS, NLIM):
-    """Collection of labels and dimensions for all fort.44 variables, as collected in the 
+    """Collection of labels and dimensions for all fort.44 variables, as collected in the
     SOLPS-ITER 2020 manual.
     """
 
@@ -1701,7 +1708,7 @@ def get_fort44_info(NDX, NDY, NATM, NMOL, NION, NSTRA, NCL, NPLS, NSTS, NLIM):
 
 
 def get_fort46_info(NTRII, NATM, NMOL, NION):
-    """Collection of labels and dimensions for all fort.46 variables, as collected in the 
+    """Collection of labels and dimensions for all fort.46 variables, as collected in the
     SOLPS-ITER 2020 manual.
     """
 
@@ -1771,7 +1778,7 @@ def get_fort46_info(NTRII, NATM, NMOL, NION):
 
 
 def get_mdsmap():
-    """Load dictionary allowing a mapping of chosen variables with 
+    """Load dictionary allowing a mapping of chosen variables with
     SOLPS variable names on MDS+.
     """
     ident = "\IDENT::TOP:"
@@ -1798,7 +1805,8 @@ def get_mdsmap():
         "solpsversion": ident + "SOLPSVERSION",
         "directory": ident + "directory",
         "exp": ident + "EXP",
-        "time": ident + "TIME",  # Experiment time point derived from the b2md_namelist in b2md.dat
+        "time": ident
+        + "TIME",  # Experiment time point derived from the b2md_namelist in b2md.dat
         "shot": ident + "SHOT",  # experimental shot number that was simulated
         # Dimensions
         "nx": snaptopdims + "NX",  # grid size in pol direction

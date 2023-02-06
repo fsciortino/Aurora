@@ -33,8 +33,8 @@ from scipy.constants import e as q_electron, m_p
 def line_int_weights(
     R_path, Z_path, rhop_path, dist_path, R_axis=None, rhop_out=None, CF_lam=None
 ):
-    """Obtain weights for line integration on a rhop grid, given the 3D path of line integration in the (R,Z,Phi) 
-    coordinates, as well as the value of sqrt of normalized poloidal flux at each point along the path. 
+    """Obtain weights for line integration on a rhop grid, given the 3D path of line integration in the (R,Z,Phi)
+    coordinates, as well as the value of sqrt of normalized poloidal flux at each point along the path.
 
     Parameters
     ----------
@@ -43,17 +43,17 @@ def line_int_weights(
     Z_path : array (np,)
         Values of the Z coordinate [m] along the line integration path.
     rhop_path : array (np,)
-        Values of the rhop coordinate along the line integration path. 
+        Values of the rhop coordinate along the line integration path.
     dist_path : array (np,)
-        Vector starting from 0 to the maximum distance [m] considered along the line integration. 
+        Vector starting from 0 to the maximum distance [m] considered along the line integration.
     R_axis : float
         R value at the magnetic axis [m]. Only used for centrifugal asymmetry effects if CF_lam is not None.
     rhop_out : array (nr,)
-        The sqrt of normalized poloidal flux grid on which weights should be computed. If left to None, an 
-        equally-spaced grid with 201 points from the magnetic axis to the LCFS is used. 
+        The sqrt of normalized poloidal flux grid on which weights should be computed. If left to None, an
+        equally-spaced grid with 201 points from the magnetic axis to the LCFS is used.
     CF_lam : array (nr,)
         Centrifugal (CF) asymmetry exponential factor, returned by the :py:func:`~aurora.synth_diags.centrifugal_asym`
-        function. If provided, this is taken to be on an input rhop_out grid. If left to None, no CF asymmetry is considered. 
+        function. If provided, this is taken to be on an input rhop_out grid. If left to None, no CF asymmetry is considered.
     """
     if rhop_out is None:
         rhop_out = np.linspace(0, 1, 201)
@@ -81,7 +81,7 @@ def line_int_weights(
             fill_value=0,
         )(rhop_path)
 
-        asym = np.exp(interp_lam * (R_path ** 2 - R_axis ** 2))
+        asym = np.exp(interp_lam * (R_path**2 - R_axis**2))
     else:
         asym = 1.0
 
@@ -105,7 +105,7 @@ def centrifugal_asymmetry(
     nz=None,
     geqdsk=None,
 ):
-    r"""Estimate impurity poloidal asymmetry effects from centrifugal forces. 
+    r"""Estimate impurity poloidal asymmetry effects from centrifugal forces.
 
     The result of this function is :math:`\lambda`, defined such that
 
@@ -114,10 +114,10 @@ def centrifugal_asymmetry(
        n(r,\theta) = n_0(r) \times \exp\left(\lambda(\rho) (R(r,\theta)^2- R_0^2)\right)
 
 
-    See Odstrcil et al. 2018 Plasma Phys. Control. Fusion 60 014003 for details on centrifugal asymmetries. 
-    Also see  Appendix A of Angioni et al 2014 Nucl. Fusion 54 083028 for details on these should also be 
-    accounted for when comparing transport coefficients used in Aurora (on a rvol grid) to coefficients used 
-    in codes that use other coordinate systems (e.g. based on rmid). 
+    See Odstrcil et al. 2018 Plasma Phys. Control. Fusion 60 014003 for details on centrifugal asymmetries.
+    Also see  Appendix A of Angioni et al 2014 Nucl. Fusion 54 083028 for details on these should also be
+    accounted for when comparing transport coefficients used in Aurora (on a rvol grid) to coefficients used
+    in codes that use other coordinate systems (e.g. based on rmid).
 
     Parameters
     ----------
@@ -125,34 +125,34 @@ def centrifugal_asymmetry(
         Sqrt of normalized poloidal flux grid.
     Rlfs : array (nr,)
         Major radius on the Low Field Side (LFS), at points corresponding to rhop values
-    omega : array (nt,nr) or (nr,) [ rad/s ] 
+    omega : array (nt,nr) or (nr,) [ rad/s ]
         Toroidal rotation on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
     Zeff : array (nt,nr), (nr,) or float
         Effective plasma charge on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
         Alternatively, users may give Zeff as a float (taken constant over time and space).
     A_imp : float
         Impurity ion atomic mass number (e.g. 40 for Ca)
-    Z_imp : array (nr, ) or int 
-        Charge state of the impurity of interest. This can be an array, giving the expected charge state at every 
-        radial position, or just a float. 
+    Z_imp : array (nr, ) or int
+        Charge state of the impurity of interest. This can be an array, giving the expected charge state at every
+        radial position, or just a float.
     Te : array (nr,nt)
         Electron temperature (eV)
     Ti : array (nr, nt)
         Background ion temperature (eV)
     main_ion_A : int, optional
-        Background ion atomic mass number. Default is 2 for D. 
+        Background ion atomic mass number. Default is 2 for D.
     plot : bool
-        If True, plot asymmetry factor :math:`\lambda` vs. radius and show the predicted 2D impurity density distribution 
+        If True, plot asymmetry factor :math:`\lambda` vs. radius and show the predicted 2D impurity density distribution
         at the last time point.
     nz : array (nr,nZ)
         Impurity charge state densities (output of Aurora at a specific time slice), only used for 2D plotting.
     geqdsk : dict
-        Dictionary containing the `omfit_classes.omfit_eqdsk` reading of the EFIT g-file. 
+        Dictionary containing the `omfit_classes.omfit_eqdsk` reading of the EFIT g-file.
 
     Returns
     -------
     CF_lam : array (nr,)
-        Asymmetry factor, defined as :math:`\lambda` in the expression above. 
+        Asymmetry factor, defined as :math:`\lambda` in the expression above.
     """
     if omega.ndim == 1:
         omega = omega[None, :]  # take constant in time

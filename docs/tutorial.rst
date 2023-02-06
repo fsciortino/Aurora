@@ -3,8 +3,8 @@ Tutorial
 
 Assuming that you have Aurora already installed on your system, we're now ready to move forward. Some basic Aurora functionality is demonstrated in the `examples` package directory, where users may find a number of useful scripts. Here, we go through some of the same examples and methods.
 
-Running Aurora simulations
---------------------------
+Core impurity transport simulations
+-----------------------------------
 
 If Aurora is correctly installed, you should be able to do::
 
@@ -212,7 +212,7 @@ You should get something that looks like this:
 Ionization equilibrium
 ----------------------
 
-It may be useful to compare and contrast the charge state distributions obtained from an Aurora run with the distributions predicted by pure ionization equilibium, i.e. by atomic physics only, with no trasport. To do this, we only need some kinetic profiles, which for this example we will load from the sample `input.gacode` file available in the "examples" directory:::
+It may be useful to compare and contrast the charge state distributions obtained from an Aurora run with the distributions predicted by pure ionization equilibium, i.e. by atomic physics only, with no trasport. To do this, we only need some kinetic profiles, which for this example we will load from the sample `input.gacode` file available in the "examples" directory::
 
   import omfit_gapy
   inputgacode = omfit_gapy.OMFITgacode('example.input.gacode')
@@ -223,7 +223,7 @@ Recall that Aurora generally uses CGS units, so we need to convert electron dens
   ne_vals = inputgacode['ne']*1e13 # 1e19 m^-3 --> cm^-3
   Te_vals = inputgacode['Te']*1e3  # keV --> eV
 
-Here we also defined a `rhop` grid from the poloidal flux values in the `inputgacode` dictionary. We can then use the :py:func:`~aurora.atomic.get_atom_data` function to read atomic effective ionization ("scd") and recombination ("acd") from the default ADAS files listed in :py:func:`~aurora.adas_files.adas_files_dict`. In this example, we are going to focus on calcium ions:::
+Here we also defined a `rhop` grid from the poloidal flux values in the `inputgacode` dictionary. We can then use the :py:func:`~aurora.atomic.get_atom_data` function to read atomic effective ionization ("scd") and recombination ("acd") from the default ADAS files listed in :py:func:`~aurora.adas_files.adas_files_dict`. In this example, we are going to focus on calcium ions::
 
   atom_data = aurora.get_atom_data('Ca',['scd','acd'])
 
@@ -231,7 +231,10 @@ In ionization equilibrium, all ionization and recombination processes will be pe
 
   Te, fz = aurora.get_frac_abundances(atom_data, ne_vals, Te_vals, rho=rhop, plot=True)
 
-The :py:func:`~aurora.atomic.get_frac_abundances` function returns the log-10 of the electron temperature on the same grid as the fractional abundances, given by the `fz` parameter (dimensions: space, charge state). This same function can be used to both compute radiation profiles of fractional abundances or to compute fractional abundances as a function of scanned parameters `ne` and/or `Te`. An additional argument of `ne_tau` (units of :math:`m^{-3}\cdot s`) can be used to approximately model the effect of transport on ionization balance.
+The :py:func:`~aurora.atomic.get_frac_abundances` function returns the log-10 of the electron temperature on the same grid as the fractional abundances, given by the `fz` parameter (dimensions: space, charge state). This same function can be used to both compute radiation profiles of fractional abundances or to compute fractional abundances as a function of scanned parameters `ne` and/or `Te`.
+
+Additionally, the function :py:func:`~aurora.atomic.get_atomic_relax_time` allows one to obtain the relaxation time of the ionization equilibrium for a given species, which permits an assessment of the time scales for atomic vs transport effects. The effect of transport can be mimicked by passing a `tau_s` parameter, representing a typical (global) particle residence time. This capability can be used, for example, to explore how sensitive the ionization balance is to transport, but it can of course only provide a very approximate assessment.
+
 
 .. figure:: figs/W_Ca_frac_abundances_superstaging_new.jpg
     :width: 500
@@ -420,7 +423,11 @@ Aurora includes tools to read OEDGE input files and read/postprocess its results
 Neoclassical transport with FACIT
 ---------------------------------
 
+<<<<<<< HEAD
 The FACIT model can be used in Aurora to calculate charge-dependent collisional transport coefficients analytically for the impurity species of interest. FACIT takes kinetic profiles and some magnetic geometry quantities as inputs, which shall be described shortly, and outputs the collisional diffusion coefficient :math:`D_z [m^2/s]` and convective velocity :math:`V_z[m/s]` that can then be given as an input for :py:func:`run_aurora()`.
+=======
+The FACIT model can be used in Aurora to calculate charge-dependent collisional transport coefficients analytically for the impurity species of interest. FACIT takes kinetic profiles and some magnetic geometry quantities as inputs, which shall be described shortly, and outputs the collisional diffusion coefficient :math:`D_z` [:math:`m^2/s`] and convective velocity :math:`V_z` [:math:`m/s]` that can then be given as an input for :py:meth:`~aurora.core.aurora_sim.run_aurora`.
+>>>>>>> 997de10e0cdc83820aae995f1a31272a75ad546b
 
 An example of a standalone call to FACIT is provided in `examples/facit.py`, from which profiles of the transport coefficients are obtained: 
 
@@ -432,6 +439,7 @@ An example of a standalone call to FACIT is provided in `examples/facit.py`, fro
     Example of neoclassical W transport coefficients calculated with FACIT.
 
 
+<<<<<<< HEAD
 A complete description of the inputs and outputs of the model is provided in the documentation of the :py:`FACIT` class in `facit.py`.
 
 Note that FACIT provides the individual Pfirsch-Schüter, Banana-Plateau and classical collisional flux components, facilitating additional analysis of the physical processes involved in the transport.
@@ -515,4 +523,82 @@ In addition to the collisional transport coefficients calculated with FACIT, we 
    `Fajardo et al 2022 Plasma Phys. Control. Fusion 64 055017 <https://iopscience.iop.org/article/10.1088/1361-6587/ac5b4d>`_,
    and finally the description of the effects of rotation across collisionality regimes is presented in
    `Fajardo et al 2023 Plasma Phys. Control. Fusion 65 <https://iopscience.iop.org/article/10.1088/1361-6587/acb0fc>`_.
+=======
+A complete description of the inputs and outputs of the model is provided in the documentation of the :py:class:`~aurora.facit.FACIT` class.
+
+Note that FACIT provides the individual Pfirsch-Schüter, Banana-Plateau and classical collisional flux components, facilitating additional analysis of the physical processes involved in the transport.
+
+An important feature of FACIT is the description of the effects of rotation on neoclassical transport across collisionality regimes, particularly relevant when heavy impurities like tungsten are analyzed. Rotation is described by the main ion Mach number :math:`M_i(r) = v_\varphi/v_{ti} = \Omega R_0/\sqrt{2 T_i/m_i}` and the `rotation_model` flag. These effects can typically be ignored for light impurities (from experience, the impact of rotation on Argon is small but potentially non-negligible).
+
+.. warning::
+   If `rotation_model=2`, then the flux surface contours :math:`R(r,\theta)`, :math:`Z(r,\theta)` that are inputs of FACIT should have a radial discretization equal to the `rho` coordinate in which FACIT will be evaluated. If they are not given as inputs, circular geometry will be assumed internally.
+
+   ::
+
+     # The full example on how to run FACIT in Aurora is given in the folder examples/facit_basic.py
+     # in the following only the initialization of the transport coefficients, the magnetic geometry and the main call to FACIT are given 
+    
+     # initialize transport coefficients
+     # note that to be able to give charge-dependent Dz and Vz,
+     # one has to give also time dependence (see documentation of aurora.core.run_aurora())
+
+     times_DV = np.array([0])
+     nz_init  = np.zeros((asim.rvol_grid.size, asim.Z_imp+1))
+    
+     D_z = np.zeros((asim.rvol_grid.size, times_DV.size, asim.Z_imp+1)) # space, time, nZ
+     V_z = np.zeros(D_z.shape)
+
+     # flux surface contours (when rotation_model = 2)
+     RV, ZV = aurora.rhoTheta2RZ(geqdsk, rhop, theta, coord_in='rhop', n_line=201)
+     RV, ZV = RV.T, ZV.T
+   
+     # call to FACIT for each charge state
+     for j, tj in enumerate(times_DV):
+
+         for i, zi in enumerate(range(asim.Z_imp + 1)):
+
+             if zi != 0:
+                 Nz     = nz_init[:idxsep+1,i]*1e6 # in 1/m**3
+                 gradNz = np.gradient(Nz, roa*amin)
+
+                 fct = aurora.FACIT(roa,
+		                    zi, asim.A_imp,
+				    asim.main_ion_Z, asim.main_ion_A,
+				    Ti, Ni, Nz, Machi, Zeff,
+				    gradTi, gradNi, gradNz,
+				    amin/R0, B0, R0, qmag,
+				    rotation_model = rotation_model, Te_Ti = TeovTi,
+				    RV = RV, ZV = ZV)
+            
+		 D_z[:idxsep+1,j,i] = fct.Dz*100**2 # convert to cm**2/s
+		 V_z[:idxsep+1,j,i] = fct.Vconv*100 # convert to cm/s
+
+   
+.. warning::
+   FACIT uses lengths in :math:`[m]`, NOT :math:`[cm]`. In particular, input densities should be given in :math:`[m^{-3}]` and the output transport coefficients `Dz` and `Vconv` should be converted from :math:`[m^2/s]` and :math:`[m/s]` to :math:`[cm^2/s]` and :math:`[cm/s]`, respectively. 
+
+In addition to the collisional transport coefficients calculated with FACIT, we can add a turbulent component to the total diffusion and convection, imposed by hand as in previous sections of this tutorial. In this example, we fix an approximate position for a pedestal top at :math:`\rho_{pol} \approx 0.9`, and assume that turbulence is suppresed inside the pedestal.::
+  
+  Dz_an = np.zeros(D_z.shape) # space, time, nZ
+  Vz_an = np.zeros(D_z.shape)
+  
+  # estimate pedestal top position and find radial index of separatrix
+  rped   = 0.90
+  idxped = np.argmin(np.abs(rped - asim.rhop_grid))
+  idxsep = np.argmin(np.abs(1.0 - asim.rhop_grid))
+  
+  # core turbulent transport coefficients
+  Dz_an[:idxped,:,:] = 1e4  # cm^2/s
+  Vz_an[:idxped,:,:] = -1e2 # cm/s
+  
+  # SOL transport coefficients
+  Dz_an[idxsep:,:,:] = 1e4  # cm^2
+  Vz_an[idxsep:,:,:] = -1e2 # cm/s
+  
+  D_z += Dz_an
+  V_z += Vz_an
+
+.. note::
+   FACIT is distributed within Aurora. The following papers contain the derivation of the model: the self-consistent calculation of the Pfirsch-Schlüter flux and the poloidal asymmetries of heavy impurities at high collisionality is given in `Maget et al 2022 Plasma Phys. Control. Fusion 64 069501 <https://iopscience.iop.org/article/10.1088/1361-6587/ac63e0>`_, while the extension to arbitrary collisionality and inclusion of the Banana-Plateau flux in the poloidally-symmetric (non-rotating) limit is obtained in `Fajardo et al 2022 Plasma Phys. Control. Fusion 64 055017 <https://iopscience.iop.org/article/10.1088/1361-6587/ac5b4d>`_, and finally the description of the effects of rotation across collisionality regimes is presented in `Fajardo et al 2023 Plasma Phys. Control. Fusion 65 <https://iopscience.iop.org/article/10.1088/1361-6587/acb0fc>`_. Please cite these papers when using FACIT.
+>>>>>>> 997de10e0cdc83820aae995f1a31272a75ad546b
    

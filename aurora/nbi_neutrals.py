@@ -39,7 +39,7 @@ from . import atomic
 def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
     """Compute charge exchange recombination for a given impurity with neutral beam components,
     obtaining rates in [:math:`s^{-1}`] units. This method expects all neutral components to be given in a
-    dictionary with a structure that is independent of NBI model (i.e. coming from FIDASIM, NUBEAM, 
+    dictionary with a structure that is independent of NBI model (i.e. coming from FIDASIM, NUBEAM,
     pencil calculations, etc.).
 
     Parameters
@@ -47,26 +47,26 @@ def get_neutrals_fsa(neutrals, geqdsk, debug_plots=True):
     neutrals : dict
         Dictionary containing fields
         {"beams","names","R","Z", beam1, beam2, etc.}
-        Here beam1,beam2,etc. are the names in neutrals["beams"]. "names" are the names of each 
-        beam component, e.g. 'fdens','hdens','halo', etc., ordered according to "names". 
-        "R","Z" are the major radius and vertical coordinates [cm] on which neutral density components are 
+        Here beam1,beam2,etc. are the names in neutrals["beams"]. "names" are the names of each
+        beam component, e.g. 'fdens','hdens','halo', etc., ordered according to "names".
+        "R","Z" are the major radius and vertical coordinates [cm] on which neutral density components are
         given in elements such as
 
         .. code-block:: python
-            
+
             neutrals[beams[0]]["n=0"][name_idx]
 
-        It is currently assumed that n=0,1 and 2 beam components are provided by the user. 
+        It is currently assumed that n=0,1 and 2 beam components are provided by the user.
 
     geqdsk : dictionary output of `omfit_classes.omfit_eqdsk.OMFITgeqdsk` class
-        gEQDSK post-processed dictionary, as given by `omfit_classes.omfit_eqdsk`. 
+        gEQDSK post-processed dictionary, as given by `omfit_classes.omfit_eqdsk`.
     debug_plots : bool, optional
-        If True, various plots are displayed. 
+        If True, various plots are displayed.
 
     Returns
     -------
     neut_fsa : dict
-        Dictionary of flux-surface-averaged (FSA) neutral densities, in the same units as in the input. 
+        Dictionary of flux-surface-averaged (FSA) neutral densities, in the same units as in the input.
         Similarly to the input "neutrals", this dictionary has a structure like
 
         .. code-block:: python
@@ -210,33 +210,33 @@ def get_NBI_imp_cxr_q(
     rhop_kp : array-like
         Sqrt of poloidal flux radial coordinate for Ti profiles.
     times_kp : array-like
-        Time base on which Ti_eV is given [s]. 
+        Time base on which Ti_eV is given [s].
     Ti_eV : array-like
         Ion temperature profile on the rhop_kp, times_kp bases, in units of :math:`eV`.
     ne_cm3 : array-like
         Electron density profile on the rhop_kp, times_kp bases, in units of :math:`cm^{-3}`.
     include_fast : bool, optional
-        If True, include CXR rates from fast NBI neutrals. Default is True. 
+        If True, include CXR rates from fast NBI neutrals. Default is True.
     include_halo : bool, optional
-        If True, include CXR rates from themral NBI halo neutrals. Default is True. 
+        If True, include CXR rates from themral NBI halo neutrals. Default is True.
     debug_plots : bool, optional
-        If True, plot several plots to assess the quality of the calculation. 
+        If True, plot several plots to assess the quality of the calculation.
 
     Returns
     -------
     rates : dict
-        Dictionary containing CXR rates from NBI neutrals. This dictionary has analogous form to the 
-        :py:meth:`get_neutrals_fsa` function, e.g. we have 
+        Dictionary containing CXR rates from NBI neutrals. This dictionary has analogous form to the
+        :py:meth:`get_neutrals_fsa` function, e.g. we have
 
         .. code-block:: python
-    
+
             rates[beam][f'n={n_level}']['halo']
 
-        Rates are on a radial grid corresponding to the input neut_fsa['rhop']. 
+        Rates are on a radial grid corresponding to the input neut_fsa['rhop'].
 
     Notes
     -----
-    For details on inputs and outputs, it is recommendeded to look at the internal plotting functions. 
+    For details on inputs and outputs, it is recommendeded to look at the internal plotting functions.
 
     """
     m_bckg = neut_fsa["m_bckg"]  # amu
@@ -361,7 +361,7 @@ def get_NBI_imp_cxr_q(
         a1.plot(rhop, rates["cxr_total"], lss)
         a2.plot([], [], lss, label=f"CXR total")
         a1.set_xlabel(r"$\rho_p$")
-        a1.set_ylabel(fr"CXR rate (q={q}) [$s^{{-1}}$]")
+        a1.set_ylabel(rf"CXR rate (q={q}) [$s^{{-1}}$]")
         a2.legend(fontsize=14)
         a2.axis("off")
         fig.tight_layout()
@@ -372,10 +372,10 @@ def get_NBI_imp_cxr_q(
 def beam_grid(uvw_src, axis, max_radius=255.0):
     """Method to obtain the 3D orientation of a beam with respect to the device.
     The uvw_src and (normalized) axis arrays may be obtained from the d3d_beams method
-    of fidasim_lib.py in the FIDASIM module in OMFIT. 
+    of fidasim_lib.py in the FIDASIM module in OMFIT.
 
-    This is inspired by `beam_grid` in fidasim_lib.py of the FIDASIM module (S. Haskey) 
-    in OMFIT. 
+    This is inspired by `beam_grid` in fidasim_lib.py of the FIDASIM module (S. Haskey)
+    in OMFIT.
     """
 
     pos = uvw_src + 100 * axis
@@ -396,8 +396,8 @@ def beam_grid(uvw_src, axis, max_radius=255.0):
     # axis so that x=0 is at a radius of max_radius
     a = axis[0] ** 2 + axis[1] ** 2
     b = 2 * (uvw_src[0] * axis[0] + uvw_src[1] * axis[1])
-    c = uvw_src[0] ** 2 + uvw_src[1] ** 2 - max_radius ** 2
-    t = (-b - sqrt(b ** 2 - 4 * a * c)) / (2 * a)
+    c = uvw_src[0] ** 2 + uvw_src[1] ** 2 - max_radius**2
+    t = (-b - sqrt(b**2 - 4 * a * c)) / (2 * a)
     origin = uvw_src + t * axis
     return alpha, beta, gamma, origin
 
@@ -438,7 +438,7 @@ def uvw_xyz(u, v, w, origin, R):
     columns. The resulting array has the same number of rows as
     the first array and the same number of columns as the second
     array.
-    
+
     See uvw_to_xyz in fidasim.f90
     """
     u, v, w = np.atleast_1d(u), np.atleast_1d(v), np.atleast_1d(w)
@@ -469,7 +469,7 @@ def xyz_uvw(x, y, z, origin, R):
     columns. The resulting array has the same number of rows as
     the first array and the same number of columns as the second
     array.
-    
+
     See xyz_to_uvw in fidasim.f90
     """
     x, y, z = np.atleast_1d(x), np.atleast_1d(y), np.atleast_1d(z)
@@ -491,7 +491,7 @@ def xyz_uvw(x, y, z, origin, R):
 
 
 def bt_rate_maxwell_average(sigma_fun, Ti_keV, E_beam, m_bckg, m_beam, n_level):
-    """Calculates Maxwellian reaction rate for a beam with atomic mass "m_beam", 
+    """Calculates Maxwellian reaction rate for a beam with atomic mass "m_beam",
     energy "E_beam", firing into a target with atomic mass "m_bckg" and temperature "T".
 
     The "sigma_fun" argument must be a function for a specific charge and n-level of the beam particles.
@@ -534,7 +534,7 @@ def bt_rate_maxwell_average(sigma_fun, Ti_keV, E_beam, m_bckg, m_beam, n_level):
 
     # beam/target reduced mass:
     ared = m_bckg * m_beam / (m_bckg + m_beam)
-    dE = (13.6e-3) / (n_level ** 2)  # hydrogen ionization potential
+    dE = (13.6e-3) / (n_level**2)  # hydrogen ionization potential
 
     v_therm = np.sqrt(2.0 * T_per_amu * 1.0e3 * consts.e / consts.m_p) * 1e2
 
@@ -576,7 +576,7 @@ def tt_rate_maxwell_average(sigma_fun, Ti_keV, m_i, m_n, n_level):
     """Calculates Maxwellian reaction rate for an interaction between two thermal populations,
     assumed to be of neutrals (mass m_n) and background ions (mass m_i).
 
-    The 'sigma_fun' argument must be a function for a specific charge and n-level of the neutral 
+    The 'sigma_fun' argument must be a function for a specific charge and n-level of the neutral
     particles. This allows evaluation of atomic rates for charge exchange interactions between thermal
     beam halos and background ions.
 
@@ -589,7 +589,7 @@ def tt_rate_maxwell_average(sigma_fun, Ti_keV, m_i, m_n, n_level):
         background ion and halo temperature [keV]
     m_i: float
         mass of background ions [amu]
-    m_n: float 
+    m_n: float
         mass of neutrals [amu]
     n_level: int
         n-level of beam. This is used to evaluate the hydrogen ionization potential,
@@ -619,7 +619,7 @@ def tt_rate_maxwell_average(sigma_fun, Ti_keV, m_i, m_n, n_level):
         * np.exp(-erel / Ti_keV)
     )
 
-    dE = (13.6e-3) / (n_level ** 2)  # hydrogen ionization potential
+    dE = (13.6e-3) / (n_level**2)  # hydrogen ionization potential
     sigma = np.zeros_like(Erel)
 
     for ie in np.arange(len(vz)):  # loop over vz
