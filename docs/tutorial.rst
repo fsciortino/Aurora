@@ -423,9 +423,9 @@ Aurora includes tools to read OEDGE input files and read/postprocess its results
 Neoclassical transport with FACIT
 ---------------------------------
 
-The FACIT model can be used in Aurora to calculate charge-dependent collisional transport coefficients analytically for the impurity species of interest. FACIT takes kinetic profiles and some magnetic geometry quantities as inputs, which shall be described shortly, and outputs the collisional diffusion coefficient :math:`D_z` [:math:`m^2/s`] and convective velocity :math:`V_z` [:math:`m/s]` that can then be given as an input for :py:meth:`~aurora.core.aurora_sim.run_aurora`.
+The FACIT model can be used in Aurora to calculate charge-dependent collisional transport coefficients analytically for the impurity species of interest. FACIT takes kinetic profiles and some magnetic geometry quantities (which shall be described shortly) as inputs, and outputs the collisional diffusion coefficient :math:`D_z` [:math:`m^2/s`] and convective velocity :math:`V_z` [:math:`m/s]` which can then be given as an input for :py:meth:`~aurora.core.aurora_sim.run_aurora`.
 
-An example of a standalone call to FACIT is provided in `examples/facit.py`, from which profiles of the transport coefficients are obtained: 
+An example of a standalone call to FACIT is provided in `aurora/facit.py`, from which profiles of the transport coefficients are obtained: 
 
 .. figure:: figs/facit_standalone_example.png
     :align: center
@@ -444,16 +444,12 @@ An important feature of FACIT is the description of the effects of rotation on n
 .. warning::
    If `rotation_model=2`, then the flux surface contours :math:`R(r,\theta)`, :math:`Z(r,\theta)` that are inputs of FACIT should have a radial discretization equal to the `rho` coordinate in which FACIT will be evaluated. If they are not given as inputs, circular geometry will be assumed internally.
 
-   ::
-
-     # The full example on how to run FACIT in Aurora is given in the folder examples/facit_basic.py
-     # in the following only the initialization of the transport coefficients, the magnetic geometry and the main call to FACIT are given 
-    
-     # initialize transport coefficients
-     # note that to be able to give charge-dependent Dz and Vz,
-     # one has to give also time dependence (see documentation of aurora.core.run_aurora())
+A full example on how to run FACIT in Aurora is given `examples/facit_basic.py`. The following code shows the initialization of the transport coefficients, the magnetic geometry and the main call to FACIT looped over each charge state of the impurity species:::
 
      times_DV = np.array([0])
+     # note that to be able to give charge-dependent Dz and Vz,
+     # one has to give also time dependence (see documentation of aurora.core.run_aurora()),
+     # so a dummy time dimension with only one element is introduced here
      nz_init  = np.zeros((asim.rvol_grid.size, asim.Z_imp+1))
     
      D_z = np.zeros((asim.rvol_grid.size, times_DV.size, asim.Z_imp+1)) # space, time, nZ
@@ -486,9 +482,9 @@ An important feature of FACIT is the description of the effects of rotation on n
 
    
 .. warning::
-   FACIT uses lengths in :math:`[m]`, NOT :math:`[cm]`. In particular, input densities should be given in :math:`[m^{-3}]` and the output transport coefficients `Dz` and `Vconv` should be converted from :math:`[m^2/s]` and :math:`[m/s]` to :math:`[cm^2/s]` and :math:`[cm/s]`, respectively. 
+   FACIT uses lengths in :math:`[m]`, NOT :math:`[cm]`. In particular, input densities should be given in :math:`[m^{-3}]` and the output transport coefficients `Dz` and `Vconv` should be converted back from :math:`[m^2/s]` and :math:`[m/s]` to :math:`[cm^2/s]` and :math:`[cm/s]`, respectively, before passing them to :py:meth:`~aurora.core.aurora_sim.run_aurora`. 
 
-In addition to the collisional transport coefficients calculated with FACIT, we can add a turbulent component to the total diffusion and convection, imposed by hand as in previous sections of this tutorial. In this example, we fix an approximate position for a pedestal top at :math:`\rho_{pol} \approx 0.9`, and assume that turbulence is suppresed inside the pedestal.::
+In addition to the collisional transport coefficients calculated with FACIT, we can add a turbulent component to the total diffusion and convection, imposed by hand as in previous sections of this tutorial. In this example, we fix an approximate position for a pedestal top at :math:`\rho_{pol} \approx 0.9`, and assume that turbulence is suppresed inside the pedestal:::
   
   Dz_an = np.zeros(D_z.shape) # space, time, nZ
   Vz_an = np.zeros(D_z.shape)
