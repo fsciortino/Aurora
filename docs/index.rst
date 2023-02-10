@@ -64,6 +64,7 @@ Documentation contents
    atomic_data
    surface_data
    external_codes
+   facit
    citing
    contacts
    aurora

@@ -576,3 +576,103 @@ Finally, similarly as it is done for `reservoirs`, the time traces concerning th
   PWI_traces = asim.PWI_time_traces(plot = False)
 
 The names of the various fields in `PWI_traces` should be self-explanatory.
+
+
+Neoclassical transport with FACIT
+---------------------------------
+
+The FACIT model can be used in Aurora to calculate charge-dependent collisional transport coefficients analytically for the impurity species of interest. FACIT takes kinetic profiles and some magnetic geometry quantities as inputs, which shall be described shortly, and outputs the collisional diffusion coefficient :math:`D_z [m^2/s]` and convective velocity :math:`V_z[m/s]` that can then be given as an input for :py:func:`run_aurora()`.
+
+An example of a standalone call to FACIT is provided in `examples/facit.py`, from which profiles of the transport coefficients are obtained: 
+
+.. figure:: figs/facit_standalone_example.png
+    :align: center
+    :alt: example of W coefficients with FACIT
+    :figclass: align-center
+
+    Example of neoclassical W transport coefficients calculated with FACIT.
+
+
+A complete description of the inputs and outputs of the model is provided in the documentation of the :py:`FACIT` class in `facit.py`.
+
+Note that FACIT provides the individual Pfirsch-Schüter, Banana-Plateau and classical collisional flux components, facilitating additional analysis of the physical processes involved in the transport.
+
+An important feature of FACIT is the description of the effects of rotation on neoclassical transport across collisionality regimes, particularly relevant when heavy impurities like tungsten are analyzed. Rotation is described by the main ion Mach number :math:`M_i(r) = v_\varphi/v_{ti} = \Omega R_0/\sqrt{2 T_i/m_i}` and the :py:`rotation_model` flag. These effects can typically be ignored for light impurities (from experience, the impact of rotation on Argon is small but potentially non-negligible).
+
+.. warning::
+   If :py:`rotation_model=2`, then the flux surface contours :math:`R(r,\theta)`, :math:`Z(r,\theta)` that are inputs of FACIT should have a radial discretization equal to the :py:`rho` coordinate in which FACIT will be evaluated. If they are not given as inputs, circular geometry will be assumed internally.  
+
+::
+   # The full example on how to run FACIT in Aurora is given in the folder examples/facit_basic.py
+   # in the following only the initialization of the transport coefficients, the magnetic geometry and the main call to FACIT are given 
+    
+   # initialize transport coefficients
+   # note that to be able to give charge-dependent Dz and Vz,
+   # one has to give also time dependence (see documentation of aurora.core.run_aurora())
+
+   times_DV = np.array([0])
+   nz_init  = np.zeros((asim.rvol_grid.size, asim.Z_imp+1))
+    
+   D_z = np.zeros((asim.rvol_grid.size, times_DV.size, asim.Z_imp+1)) # space, time, nZ
+   V_z = np.zeros(D_z.shape)
+
+   # flux surface contours (when rotation_model = 2)
+   RV, ZV = aurora.rhoTheta2RZ(geqdsk, rhop, theta, coord_in='rhop', n_line=201)
+   RV, ZV = RV.T, ZV.T
+   
+   # call to FACIT for each charge state
+   for j, tj in enumerate(times_DV):
+
+       for i, zi in enumerate(range(asim.Z_imp + 1)):
+
+           if zi != 0:
+               Nz     = nz_init[:idxsep+1,i]*1e6 # in 1/m**3
+               gradNz = np.gradient(Nz, roa*amin)
+
+               fct = aurora.FACIT(roa,\
+                           zi, asim.A_imp,\
+                           asim.main_ion_Z, asim.main_ion_A,\
+                           Ti, Ni, Nz, Machi, Zeff, \
+                           gradTi, gradNi, gradNz, \
+                           amin/R0, B0, R0, qmag, \
+                           rotation_model = rotation_model, Te_Ti = TeovTi,\
+                           RV = RV, ZV = ZV)
+            
+               D_z[:idxsep+1,j,i] = fct.Dz*100**2 # convert to cm**2/s
+               V_z[:idxsep+1,j,i] = fct.Vconv*100 # convert to cm/s
+
+   
+.. warning::
+   Unlike Aurora, which uses lengths in :math:`[cm]`, FACIT uses lengths in :math:`[m]`. In particular, input densities should be given in :math:`[m^{-3}]` and the output transport coefficients :py:`fct.Dz` and :py:`fct.Vconv` should be converted from :math:`[m^2/s]` and :math:`[m/s]` to :math:`[cm^2/s]` and :math:`[cm/s]`, respectively. 
+
+In addition to the collisional transport coefficients calculated with FACIT, we can add a turbulent component to the total diffusion and convection, imposed by hand as in the `Running Aurora simulations` section of this tutorial. In this example, we fix an approximate position for a pedestal top at :math:`\rho_{pol} \approx 0.9`, and assume that turbulence is suppresed inside the pedestal.
+
+::
+   Dz_an = np.zeros(D_z.shape) # space, time, nZ
+   Vz_an = np.zeros(D_z.shape)
+
+   # estimate pedestal top position and find radial index of separatrix
+   rped   = 0.90
+   idxped = np.argmin(np.abs(rped - asim.rhop_grid))
+   idxsep = np.argmin(np.abs(1.0 - asim.rhop_grid))
+
+   # core turbulent transport coefficients
+   Dz_an[:idxped,:,:] = 1e4  # cm^2/s
+   Vz_an[:idxped,:,:] = -1e2 # cm/s
+
+   # SOL transport coefficients
+   Dz_an[idxsep:,:,:] = 1e4  # cm^2
+   Vz_an[idxsep:,:,:] = -1e2 # cm/s
+
+   D_z += Dz_an
+   V_z += Vz_an
+
+.. note::
+   FACIT is distributed within Aurora. The following papers contain the derivation of the model:
+   The self-consistent calculation of the Pfirsch-Schlüter flux and the poloidal asymmetries of heavy impurities at high collisionality is given in 
+   `Maget et al 2020 Plasma Phys. Control. Fusion 62 105001 <https://iopscience.iop.org/article/10.1088/1361-6587/aba7f9>`_,
+   `Maget et al 2022 Plasma Phys. Control. Fusion 64 069501 <https://iopscience.iop.org/article/10.1088/1361-6587/ac63e0>`_,
+   while the extension to arbitrary collisionality and inclusion of the Banana-Plateau flux in the poloidally-symmetric (non-rotating) limit is obtained in
+   `Fajardo et al 2022 Plasma Phys. Control. Fusion 64 055017 <https://iopscience.iop.org/article/10.1088/1361-6587/ac5b4d>`_,
+   and finally the description of the effects of rotation across collisionality regimes is presented in
+   `Fajardo et al 2023 Plasma Phys. Control. Fusion 65 <https://iopscience.iop.org/article/10.1088/1361-6587/acb0fc>`_.

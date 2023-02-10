@@ -33,4 +33,6 @@ from .oedge import *
 
 from .pwi import *
 
+from .facit import *
+
 aurora_dir = os.path.dirname(os.path.abspath(__file__))
