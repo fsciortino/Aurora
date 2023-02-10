@@ -110,7 +110,6 @@ def load_default_namelist():
         "mainwall_roughness": 1.0,
         "divwall_roughness": 1.0,
         "advanced_PWI": {
-            "advanced_PWI_flag": False,
             "main_wall_material": 'W',
             "div_wall_material": 'W',
             "background_mode": 'manual',

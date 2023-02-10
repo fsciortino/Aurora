@@ -1,5 +1,5 @@
-Aurora: a modern toolbox for particle transport and radiation modeling
-================================================================================
+Aurora: a modern toolbox for particle transport, plasma-wall interaction, neutrals and radiation modeling
+=========================================================================================================
 
 Github repo: https://github.com/fsciortino/Aurora                                                                            
 
@@ -9,7 +9,9 @@ Paper/presentation in `Plasma Physics & Fusion Energy <https://iopscience.iop.or
 Overview
 --------
 
-Aurora is a package to simulate heavy-ion transport and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model which inherits many of the methods from the historical STRAHL code and has been thoroughly benchmarked with it. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. Aurora's code is mostly written in Python 3 and Fortran 90. A Julia interface has also recently been added. The package enables radiation calculations using ADAS atomic rates, which can easily be applied to the output of Aurora's own forward model, or coupled with other 1D, 2D or 3D transport codes. 
+Aurora is a package to simulate heavy-ion transport, plasma-wall interaction (PWI), neutrals and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model for the plasma ions, thoroughly benchmarked with the widely-adopted STRAHL code, and a simple multi-reservoir particle balance model including neutrals recycling, pumping and interaction with the material surfaces of the simulated device. A simple interface to plot and process atomic and surface data for fusion plasmas makes it a convenient tool for spectroscopy, PWI and integrated modeling. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. The spectroscopic and PWI calculations can be not only applied to the output of Aurora's own forward model, but also coupled with other 1D, 2D or 3D transport codes.
+
+Aurora's code is mostly written in Python 3 and Fortran 90. A Julia interface has also recently been added.
 
 .. figure:: figs/guido_reni_aurora.jpg
     :align: center
@@ -27,13 +29,15 @@ What is Aurora useful for?
 --------------------------
 
 
-Aurora is useful for modeling of particle transport, impurities, neutrals and radiation in fusion plasmas.
+Aurora is useful for modeling of particle transport, impurities, plasma-wall interaction, neutrals and radiation in fusion plasmas.
 
-The package includes Python functionality to create inputs and read/plot outputs of impurity transport simulations. It was designed to be as efficient as possible in iterative workflows, where parameters (particularly diffusion and convection coefficients) are run through the forward model and repeatedly modified in order to match some experimental observations. For this reason, Aurora avoids any disk input-output (I/O) during operation. All data is kept in memory. 
+The package includes Python functionality to create inputs and read/plot outputs of impurity transport simulations. It was designed to be as efficient as possible in iterative workflows, where parameters (particularly the radial transport coefficients) are run through the forward model and repeatedly modified in order to match experimental observations. For this reason, Aurora avoids any disk input-output (I/O) during operation. All data is kept in memory. 
 
-Aurora provides convenient interfaces to load a default namelist via :py:func:`~aurora.default_nml`, modify it as required and then pass the resulting namelist dictionary into the simulation setup. This is in the :py:class:`~aurora.core.aurora_sim` class, which allows creation of radial and temporal grids, interpolation of atomic rates, preparation of parallel loss rates at the edge, etc.
+Aurora provides convenient interfaces to load a default namelist via :py:func:`~aurora.default_nml`, modify it as required and then pass the resulting namelist dictionary into the simulation setup. This is in the :py:class:`~aurora.core.aurora_sim` class, which allows creation of radial and temporal grids, interpolation of atomic rates and surface data, preparation of parallel loss rates at the edge, etc.. The function :py:func:`~aurora.transport_utils` contains tools to easily prepare the transport-related input parameters (diffusion and convection coefficients) for a run.
 
 The :py:mod:`aurora.atomic` library provides functions to load and interpolate atomic rates from ADAS ADF-11 files, as well as from ADF-15 photon emissivity coefficients (PEC) files. PEC data can alternatively be computed using the collisional-radiative model of ColRadPy, using methods in :py:mod:`aurora.radiation`.
+
+The :py:mod:`aurora.surface` library provides instead functions to load and interpolate TRIM-generated surface data, namely reflection coefficients, sputtering yields and implantation ranges.
 
 A number of standard tests and examples are provided using a real set of Alcator C-Mod kinetic profiles and geometry. In order to interface with EFIT gEQDSK files, Aurora makes use of the `omfit_eqdsk <https://pypi.org/project/omfit-eqdsk/>`__ package, which offers flexibility to work with data from many devices worldwide. Users may easily substitute this dependence with different magnetic reconstruction packages and/or postprocessing interfaces, if required. Interfacing Aurora with several file formats used throughout the fusion community to store kinetic profiles is simple. 
 
@@ -53,10 +57,13 @@ Documentation contents
    :maxdepth: 4
 
    install
-   tutorial
    aurora_req
+   model
    params
+   tutorial
    atomic_data
+   surface_data
+   external_codes
    citing
    contacts
    aurora

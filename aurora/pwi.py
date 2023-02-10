@@ -1,4 +1,5 @@
-"""This module includes the core class to set up simulations with :py:mod:`aurora`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.
+"""Extension of the core class :py:class:`~aurora.core.aurora_sim` including a more advanced model for Plasma Wall Interface (PWI) physics.
+Module provided by Antonello Zito.
 """
 # MIT License
 #
@@ -30,6 +31,7 @@ import pickle as pkl
 from copy import deepcopy
 from scipy.integrate import cumtrapz
 from scipy.linalg import solve_banded
+import pandas as pd
 import matplotlib.pyplot as plt
 from . import interp
 from . import atomic
@@ -40,11 +42,13 @@ from . import synth_diags
 from . import adas_files
 from . import surface
 from . import radiation
+from . import core
 
-
-class aurora_sim:
-    """Setup the input dictionary for an Aurora ion transport simulation from the given namelist.
-
+class aurora_sim_pwi(core.aurora_sim):
+    """Class to setup, run, and post-process 1.5D simulations of particle/impurity transport in
+    magnetically-confined plasmas with the inclusion of an advanced plasma-wall interaction (PWI) model.
+    This class inherits the :py:class:`~aurora.core.aurora_sim` class and adds additional methods
+    related to PWI modelling.
     Parameters
     ----------
     namelist : dict
@@ -54,82 +58,40 @@ class aurora_sim:
         EFIT gfile as returned after postprocessing by the :py:mod:`omfit_classes.omfit_eqdsk`
         package (OMFITgeqdsk class). If left to None (default), the minor and major radius must be
         indicated in the namelist in order to create a radial grid.
-
     """
-
+    
     def __init__(self, namelist, geqdsk=None):
-
-        if namelist is None:
-            # option useful for calls like omfit_classes.OMFITaurora(filename)
-            # A call like omfit_classes.OMFITaurora('test', namelist, geqdsk=geqdsk) is also possible
-            # to initialize the class as a dictionary.
-            return
-
-        # make sure that any changes in namelist will not propagate back to the calling function
+        
         self.namelist = deepcopy(namelist)
-        self.geqdsk = geqdsk  # if None, minor (rvol_lcfs) and major radius (Raxis_cm) must be in namelist
-        self.kin_profs = self.namelist["kin_profs"]
-        self.imp = namelist["imp"]
-
-        # import here to avoid issues when building docs or package
-        from omfit_classes.utils_math import atomic_element
-
-        # get nuclear charge Z and atomic mass number A
-        out = atomic_element(symbol=self.imp)
-        spec = list(out.keys())[0]
-        self.Z_imp = int(out[spec]["Z"])
-        self.A_imp = int(out[spec]["A"])
-
+        self.geqdsk = geqdsk
+        
         self.reload_namelist()
-
+        
         if "Raxis_cm" in self.namelist:
             self.Raxis_cm = self.namelist["Raxis_cm"]  # cm
         elif self.geqdsk is not None and "RMAXIS" in self.geqdsk:
             self.Raxis_cm = self.geqdsk["RMAXIS"] * 100.0  # cm
-
-        if self.geqdsk is not None and "BCENTR" in self.geqdsk:
-            self.namelist["Baxis"] = self.geqdsk["BCENTR"]
-        if (
-            "prompt_redep_flag" in self.namelist and self.namelist["prompt_redep_flag"]
-        ) and not hasattr(self, "Baxis"):
-            # need magnetic field to model prompt redeposition
-            raise ValueError(
-                "Missing magnetic field on axis! Please define this in the namelist"
-            )
-
-        # specify which atomic data files should be used -- use defaults unless user specified in namelist
-        atom_files = {}
-        atom_files["acd"] = self.namelist.get(
-            "acd", adas_files.adas_files_dict()[self.imp]["acd"]
-        )
-        atom_files["scd"] = self.namelist.get(
-            "scd", adas_files.adas_files_dict()[self.imp]["scd"]
-        )
-        if self.namelist.get("cxr_flag", False):
-            atom_files["ccd"] = self.namelist.get(
-                "ccd", adas_files.adas_files_dict()[self.imp]["ccd"]
-            )
-
-        if self.namelist.get("metastable_flag", False):
-            atom_files["qcd"] = self.namelist.get(
-                "qcd", adas_files.adas_files_dict()[self.imp].get("qcd", None)
-            )
-            atom_files["xcd"] = self.namelist.get(
-                "xcd", adas_files.adas_files_dict()[self.imp].get("xcd", None)
-            )
-
-        # now load ionization and recombination rates
-        self.atom_data = atomic.get_atom_data(self.imp, files=atom_files)
-
-        # allow for ion superstaging
-        self.superstages = self.namelist.get("superstages", [])
-
+        
         # set up radial and temporal grids
         self.setup_grids()
+        
+        # set up parameters for plasma-wall interaction model
+        self.setup_PWI_model()
+        
+        # inheritate all methods from main class core.py
+        super(aurora_sim_pwi, self).__init__(namelist, geqdsk)
+        
+        # consistency checks
+        if not self.phys_surfaces:
+            raise ValueError("Implementing the advanced PWI model requires defining the physical wall surface areas!") 
 
+        # # set up parameters for plasma-wall interaction model
+        # self.setup_PWI_model()
+      
         # set up kinetic profiles and atomic rates
         self.setup_kin_profs_depts()
-
+        
+    
     def reload_namelist(self, namelist=None):
         """(Re-)load namelist to update scalar variables."""
         if namelist is not None:
@@ -180,24 +142,244 @@ class aurora_sim:
         # To include divertor return flows but no recycling, set wall_recycling=0
         if not self.namelist["recycling_flag"]:
             self.wall_recycling = -1.0  # no divertor return flows
+    
+    
+    def setup_PWI_model(self):
+        """Method to set up Aurora inputs related to the advanced plasma-wall interaction model.
+        """
+        
+        # effective wall surfaces, accounting for roughness
+        self.surf_mainwall_eff = self.surf_mainwall*self.mainwall_roughness #cm^2
+        self.surf_divwall_eff = self.surf_divwall*self.divwall_roughness #cm^2
 
-    def save(self, filename):
-        """Save state of `aurora_sim` object."""
-        with open(filename, "wb") as f:
-            pkl.dump(self, f)
+        # Data for advanced PWI model for now available only for He as impurity and W as wall material
+       
+        if self.imp != 'He':
+            raise ValueError(f"Advanced PWI model not available for impurity {self.imp}!")
+        
+        # keys for fortran routine
+        if self.main_wall_material == 'W':
+            self.Z_main_wall = 74
+        else:
+            raise ValueError(f"Advanced PWI model not available for main wall material {self.main_wall_material}!")
+        if self.div_wall_material == 'W':
+            self.Z_div_wall = 74
+        else:
+            raise ValueError(f"Advanced PWI model not available for divertor wall material {self.div_wall_material}!")
+            
+        # List of background species
+        self.num_background_species = len(self.background_species)
+        
+        # calculate impact energies for simulated impurity and background species
+        #   onto main and divertor walls at each time step
+        self.energies_main_wall, self.energies_div_wall = self.get_impact_energy()
+        self.E0_main_wall_imp = self.energies_main_wall[0,:] # Index 0 --> simulated species
+        self.E0_div_wall_imp = self.energies_div_wall[0,:] # Index 0 --> simulated species
+        self.E0_main_wall_background = self.energies_main_wall[1:,:] # Indices > 1 --> background species
+        self.E0_div_wall_background = self.energies_div_wall[1:,:] # Indices > 1 --> background species
+        
+        # get angles of incidence
+        angle_imp = surface.incidence_angle(self.imp)
+        angle_background = np.zeros(len(self.background_species))
+        for i in range(0,len(self.background_species)):
+            angle_background[i] = surface.incidence_angle(self.background_species[i])
+        
+        # extract values for reflection coefficient of the simulated impurity at each time step
+        self.rn_main_wall = surface.reflection_coeff_fit(self.imp,
+                                                         self.main_wall_material,
+                                                         angle_imp,
+                                                         kind='rn',
+                                                         energies = self.E0_main_wall_imp)["data"]
+        self.rn_div_wall = surface.reflection_coeff_fit(self.imp,
+                                                        self.div_wall_material,
+                                                        angle_imp,
+                                                        kind='rn',
+                                                        energies = self.E0_div_wall_imp)["data"]
+        
+        # extract values for reflected energies of the simulated impurity at each time step
+        self.E_refl_main_wall = surface.calc_reflected_energy(self.imp,
+                                                              self.main_wall_material,
+                                                              angle_imp,
+                                                              energies = self.E0_main_wall_imp)["data"]
+        self.E_refl_div_wall = surface.calc_reflected_energy(self.imp,
+                                                             self.div_wall_material,
+                                                             angle_imp,
+                                                             energies = self.E0_div_wall_imp)["data"]
+        
+        # extract values for fluxes of background species onto main and divertor walls at each time step
+        self.fluxes_main_wall_background, self.fluxes_div_wall_background = self.get_background_fluxes()
+        
+        # extract values for impurity sputtering coefficient for the wall retention of the
+        #   simulated impurity at each time step
+        self.y_main_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
+        self.y_div_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
+        self.y_main_wall[0,:] = surface.impurity_sputtering_coeff_fit(self.imp, # Index 0 --> simulated species
+                                                                           self.imp, # simulated impurity itself as projectile
+                                                                           self.main_wall_material,
+                                                                           angle_imp,
+                                                                           energies = self.E0_main_wall_imp)["normalized_data"]
+        self.y_div_wall[0,:] = surface.impurity_sputtering_coeff_fit(self.imp, # Index 0 --> simulated species
+                                                                          self.imp, # simulated impurity itself as projectile
+                                                                          self.div_wall_material,
+                                                                          angle_imp,
+                                                                          energies = self.E0_div_wall_imp)["normalized_data"]
+        for i in range(0,len(self.background_species)):
+            self.y_main_wall[i+1,:] = surface.impurity_sputtering_coeff_fit(self.imp, # Indices > 1 --> background species
+                                                                               self.background_species[i], # background species as projectiles
+                                                                               self.main_wall_material,
+                                                                               angle_background[i],
+                                                                               energies = self.E0_main_wall_background[i,:])["normalized_data"]
+            self.y_div_wall[i+1,:] = surface.impurity_sputtering_coeff_fit(self.imp, # Indices > 1 --> background species
+                                                                              self.background_species[i], # background species as projectiles
+                                                                              self.div_wall_material,
+                                                                              angle_background[i],
+                                                                              energies = self.E0_div_wall_background[i,:])["normalized_data"]
+        
+        # extract values for the impurity sputtered energy at each time step
+        self.E_sput_main_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
+        self.E_sput_div_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
+        self.E_sput_main_wall[0,:] = surface.calc_imp_sputtered_energy(self.imp, # Index 0 --> simulated species
+                                                                         self.imp, # simulated impurity itself as projectile
+                                                                         self.main_wall_material,
+                                                                         energies = self.E0_main_wall_imp)["data"]
+        self.E_sput_div_wall[0,:] = surface.calc_imp_sputtered_energy(self.imp, # Index 0 --> simulated species
+                                                                        self.imp, # simulated impurity itself as projectile
+                                                                        self.div_wall_material,
+                                                                        energies = self.E0_div_wall_imp)["data"]
+        for i in range(0,len(self.background_species)):
+            self.E_sput_main_wall[i+1,:] = surface.calc_imp_sputtered_energy(self.imp, # Indices > 1 --> background species
+                                                                             self.background_species[i], # background species as projectiles
+                                                                             self.main_wall_material,
+                                                                             energies = self.E0_main_wall_background[i,:])["data"]
+            self.E_sput_div_wall[i+1,:] = surface.calc_imp_sputtered_energy(self.imp, # Indices > 1 --> background species
+                                                                            self.background_species[i], # background species as projectiles
+                                                                            self.div_wall_material,
+                                                                            energies = self.E0_div_wall_background[i,:])["data"]
+        
+        # extract the depth of the impurity implantation profile into main and divertor walls
+        self.implantation_depth_main_wall = surface.implantation_depth_fit(self.imp,
+                                                              self.main_wall_material,
+                                                              angle_imp,
+                                                              energies = self.characteristic_impact_energy_main_wall)["data"]
+        self.implantation_depth_div_wall = surface.implantation_depth_fit(self.imp,
+                                                             self.div_wall_material,
+                                                             angle_imp,
+                                                             energies = self.characteristic_impact_energy_div_wall)["data"]
+        
+        # extract saturation value of the density of the implanted impurity into main and divertor walls 
+        self.n_main_wall_sat = self.namelist['advanced_PWI']['n_main_wall_sat'] # m^-2
+        self.n_div_wall_sat = self.namelist['advanced_PWI']['n_div_wall_sat'] # m^-2   
+        
+        
+    def get_background_fluxes(self):
+        """Get the fluxes hitting main and divertor walls (for the background species), at all time
+        steps, for a simulation run, in the framework of the advanced PWI model.
 
-    def load(self, filename):
-        """Load `aurora_sim` object."""
-        with open(filename, "rb") as f:
-            obj = pkl.load(f)
-        self.__dict__.update(obj.__dict__)
+        Returns
+        -------
+        fluxes_main_wall : array (number of background species,time)
+                                  Particle fluxes of the background species onto the
+                                  main wall at each time of the simulation, in s^-1
+        fluxes_div_wall :  array (number of background species,time)
+                                  Particle fluxes of the background species onto the
+                                  divertor wall at each time of the simulation, in s^-1
+        
+        """
+        
+        fluxes_main_wall = np.zeros((len(self.background_species),len(self.time_out)))
+        fluxes_div_wall = np.zeros((len(self.background_species),len(self.time_out)))
+        
+        if self.background_mode == 'manual':
+        # manually imposed fluxes of all the background species over the entire time grid
+                    
+            if (len(self.background_species) != len(self.background_main_wall_fluxes) or len(self.background_species) != len(self.background_div_wall_fluxes)):
+                raise ValueError("Declared number of background species for advanced PWI model not consistent with declared number of background fluxes!")  
+                
+            # set wall fluxes of the background species to constant value over entire time grid
+                
+            for i in range(0,len(self.background_species)):
+                fluxes_main_wall[i,:] = np.full(len(self.time_out),self.background_main_wall_fluxes[i])
+                fluxes_div_wall[i,:] = np.full(len(self.time_out),self.background_div_wall_fluxes[i])
+                
 
-    def save_dict(self):
-        return self.__dict__
+        elif self.background_mode == 'files':
+        # fluxes of all the background species taken from aurora simulations performed
+        #   in advance, one for each background species, on the same time grid of the
+        #   current simulation
+            
+            if len(self.background_species) != len(self.background_files):
+                raise ValueError("Declared number of background species for advanced PWI model not consistent with declared number of background simulation files!")       
+            
+            # Wall fluxes for the background species
+            for i in range(0,len(self.background_species)):
+                
+                # Load background simulation data
+                reservoirs_background = pd.read_pickle(self.background_files[i])
+                
+                if len(reservoirs_background['total_flux_mainwall']) != len(self.time_out):
+                    raise ValueError("Time grids of current simulation and background simulations do not match!")       
+                
+                # Extract the fluxes
+                fluxes_main_wall[i,:] = reservoirs_background['total_flux_mainwall']
+                fluxes_div_wall[i,:] = reservoirs_background['total_flux_divwall']
+                
+        return fluxes_main_wall, fluxes_div_wall     
+        
+    def get_impact_energy(self):
+        """Calculate the impact energy of ion projectile (both simulated and background species)
+        hitting main and divertor wall, at all time steps, for a simulation run, in the framework
+        of the advanced PWI model.
 
-    def load_dict(self, aurora_dict):
-        self.__dict__.update(aurora_dict)
+        Returns
+        -------
+        impact_energy_main_wall : array (1+number of background species,time)
+                                  Impact energy of the ion projectiles of each species onto the
+                                  main wall at each time of the simulation, in eV
+        impact_energy_div_wall :  array (1+number of background species of species,time)
+                                  Impact energy of the ion projectiles of each species onto the
+                                  divertor wall at each time of the simulation, in eV
+        
+        """
+        
+        impact_energy_main_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
+        impact_energy_div_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
+                
+        # Impact energy for the simulated species itself (index 0)
+        # Single values
+        E0_main_wall = surface.get_impact_energy(self.Te_lim,
+                                                 self.imp,
+                                                 mode = 'sheath',
+                                                 Ti_over_Te = self.Ti_over_Te,
+                                                 gammai = self.gammai)
+        E0_div_wall = surface.get_impact_energy(self.Te_div,
+                                                self.imp,
+                                                mode = 'sheath',
+                                                Ti_over_Te = self.Ti_over_Te,
+                                                gammai = self.gammai)
+        # Same values over entire time grid
+        impact_energy_main_wall[0,:] = np.full(len(self.time_out),E0_main_wall)
+        impact_energy_div_wall[0,:] = np.full(len(self.time_out),E0_div_wall)
 
+        # Impact energies for the background species (indices 1+)
+        for i in range(1,len(self.background_species)+1):
+            # Single values
+            E0_main_wall_temp = surface.get_impact_energy(self.Te_lim,
+                                                          self.background_species[i-1],
+                                                          mode = 'sheath',
+                                                          Ti_over_Te = self.Ti_over_Te,
+                                                          gammai = self.gammai)
+            E0_div_wall_temp = surface.get_impact_energy(self.Te_div,
+                                                         self.background_species[i-1],
+                                                         mode = 'sheath',
+                                                         Ti_over_Te = self.Ti_over_Te,
+                                                         gammai = self.gammai)                
+            # Same values over entire time grid 
+            impact_energy_main_wall[i,:] = np.full(len(self.time_out),E0_main_wall_temp)
+            impact_energy_div_wall[i,:] = np.full(len(self.time_out),E0_div_wall_temp)
+        
+        return impact_energy_main_wall, impact_energy_div_wall
+        
+    
     def setup_grids(self):
         """Method to set up radial and temporal grids given namelist inputs."""
         if self.geqdsk is not None:
@@ -249,9 +431,11 @@ class aurora_sim:
         ones = np.ones((len(self.time_out),len(self.rvol_grid)))
         self.core_vol = grids_utils.vol_int(ones[:,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=self.rvol_lcfs)[0]
         self.plasma_vol = grids_utils.vol_int(ones[:,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=None)[0]
-
+        
+        
     def setup_kin_profs_depts(self):
-        """Method to set up Aurora inputs related to the kinetic background from namelist inputs."""
+        """Method to set up Aurora inputs related to the kinetic background from namelist inputs.
+        """
         # get kinetic profiles on the radial and (internal) temporal grids
         self._ne, self._Te, self._Ti, self._n0 = self.get_aurora_kin_profs()
 
@@ -296,6 +480,7 @@ class aurora_sim:
             )
             # Change units to particles/cm^3
             self.src_core = self.source_rad_prof / Sne0
+        
         else:
             # get time history and radial profiles separately
             source_time_history = source_utils.get_source_time_history(
@@ -317,8 +502,8 @@ class aurora_sim:
             self.src_core = self.source_rad_prof * source_time_history[None, :]
 
         self.src_core = np.asfortranarray(self.src_core)
-
-        # if wall_recycling>=0, return flows from the divertor are enabled
+        
+        # explicit source into the divertor
         if (
             self.wall_recycling >= 0
             and "source_div_time" in self.namelist
@@ -332,423 +517,142 @@ class aurora_sim:
         else:
             # no source into the divertor
             self.src_div = np.zeros_like(self.time_grid)
-
+        
         # total number of injected ions, used for a check of particle conservation
         self.total_source = np.pi * np.sum(
-            self.src_core * Sne0 * (self.rvol_grid / self.pro_grid)[:, None], 0
-        )  # sum over radius
+            self.src_core * Sne0 * (self.rvol_grid / self.pro_grid)[:, None], 0)  # sum over radius
         self.total_source += self.src_div  # units of particles/s/cm
         # NB: src_core [1/cm^3] and src_div [1/cm/s] have different units!
 
-        if self.wall_recycling >= 0:  # recycling activated
+        # recycling assumed to be activated
+        
+        # interpolate it on radial grid
+        if "rcl_prof_vals" in self.namelist and "rcl_prof_rhop" in self.namelist:
 
-            # if recycling radial profile is given, interpolate it on radial grid
-            if "rcl_prof_vals" in self.namelist and "rcl_prof_rhop" in self.namelist:
+            # Check that at least part of the recycling prof is within Aurora radial grid
+            if np.min(self.namelist["rcl_prof_rhop"]) < np.max(self.rhop_grid):
+                raise ValueError("Input recycling radial grid is too far out!")
 
-                # Check that at least part of the recycling prof is within Aurora radial grid
-                if np.min(self.namelist["rcl_prof_rhop"]) < np.max(self.rhop_grid):
-                    raise ValueError("Input recycling radial grid is too far out!")
+            rcl_rad_prof = interp1d(
+                self.namelist["rcl_prof_rhop"],
+                self.namelist["rcl_prof_vals"],
+                fill_value="extrapolate",
+            )(self.rhop_grid)
+            
+            # dummy source profiles for reflected and sputtered neutrals
+            #   passed to fortran routine but not used
+            rfl_rad_prof = rcl_rad_prof
+            spt_rad_prof = np.zeros((len(self.rvol_grid),len(self.background_species)+1))
+            for i in range(0,len(self.background_species)+1):
+                spt_rad_prof[:,i] = rcl_rad_prof[:,0]
+                
+            # set same profile for all times    
+            self.rcl_rad_prof = np.broadcast_to(
+                rcl_rad_prof, (rcl_rad_prof.shape[0], len(self.time_grid))
+            )
+            self.rfl_rad_prof = np.broadcast_to(
+                rfl_rad_prof, (rfl_rad_prof.shape[0], len(self.time_grid))
+            )
+            self.spt_rad_prof = np.zeros((len(self.rvol_grid),len(self.background_species)+1,len(self.time_grid)))
+            for i in range(0,len(self.background_species)+1):
+                for j in range(0,len(self.time_grid)):
+                    self.spt_rad_prof[:,i,j] = spt_rad_prof[:,i]
 
-                rcl_rad_prof = interp1d(
-                    self.namelist["rcl_prof_rhop"],
-                    self.namelist["rcl_prof_vals"],
-                    fill_value="extrapolate",
-                )(self.rhop_grid)
+        else:
+            
+            # Advanced PWI model: set recycling profiles to exponentially decay from the wall
+            #   with recycled neutrals having different energies depending on whether they
+            #   were reflected, promptly recycled or sputtered from the wall
 
-            else:
-                # set recycling prof to exp decay from wall
-                # use all time steps, specified neutral stage energy
-                nml_rcl_prof = {
-                    key: self.namelist[key]
-                    for key in [
+            # Source profile from promptly recycled particles from main wall:
+            #   assumed to have the energy specified in imp_recycling_energy_eV
+        
+            nml_rcl_prof = {
+                key: self.namelist[key]
+                for key in [
                         "imp_source_energy_eV",
                         "rvol_lcfs",
                         "source_cm_out_lcfs",
                         "imp",
                         "prompt_redep_flag",
+                        "Baxis",
                         "main_ion_A",
-                    ]
-                }
-                if (
-                    "prompt_redep_flag" in self.namelist
-                    and self.namelist["prompt_redep_flag"]
-                ):
-                    # only need Baxis for prompt redeposition model
-                    nml_rcl_prof["Baxis"] = self.namelist["Baxis"]
+                ]
+            }
+            nml_rcl_prof["source_width_in"] = 0
+            nml_rcl_prof["source_width_out"] = 0
+            
+            # set the energy of the recycled neutrals
+            nml_rcl_prof["imp_source_energy_eV"] = self.namelist["imp_recycling_energy_eV"]
+            
+            # set start of the recycling source at the wall boundary
+            nml_rcl_prof["source_cm_out_lcfs"] = self.namelist["bound_sep"]
 
-                nml_rcl_prof["source_width_in"] = 0
-                nml_rcl_prof["source_width_out"] = 0
+            # calculate the recycling profile
+            rcl_rad_prof = source_utils.get_radial_source(
+                nml_rcl_prof,  # namelist specifically to obtain exp decay from wall
+                self.rvol_grid,
+                self.pro_grid,
+                Sne0,
+                self._Ti,
+            )
+            
+            # set same profile for all times    
+            self.rcl_rad_prof = np.broadcast_to(
+                rcl_rad_prof, (rcl_rad_prof.shape[0], len(self.time_grid))
+            )
+            
+            # Source profile from reflected particles from main wall:
+            #   use the reflected energy from TRIM data
+            
+            nml_rfl_prof = nml_rcl_prof
+        
+            # set energy value in the reflection profile namelist
+            nml_rfl_prof["imp_source_energy_eV"] = self.E_refl_main_wall[0]
+            
+            # calculate the reflection profile
+            rfl_rad_prof = source_utils.get_radial_source(
+                nml_rfl_prof,  # namelist specifically to obtain exp decay from wall
+                self.rvol_grid,
+                self.pro_grid,
+                Sne0,
+                self._Ti,
+            )
+            
+            # set same profile for all times    
+            self.rfl_rad_prof = np.broadcast_to(
+                rfl_rad_prof, (rfl_rad_prof.shape[0], len(self.time_grid))
+            )
+            
                 
-                # set the energy of the recycled neutrals
-                nml_rcl_prof["imp_source_energy_eV"] = self.namelist["imp_recycling_energy_eV"]
-                    
-                # set start of the recycling source at the wall boundary
-                nml_rcl_prof["source_cm_out_lcfs"] = self.namelist["bound_sep"]
-
-                # NB: we assume here that the 0th time is a good representation of how recycling is radially distributed
-                rcl_rad_prof = source_utils.get_radial_source(
-                    nml_rcl_prof,  # namelist specifically to obtain exp decay from wall
+            # Source profile from sputtered particles from main wall:
+            #   use the sputtered energy from TRIM data
+            
+            # calculate the sputtering profiles from simulated and background species
+            spt_rad_prof = np.zeros((len(self.rvol_grid), len(self.background_species)+1))
+            
+            for j in range(0,len(self.background_species)+1):
+            
+                nml_spt_prof = nml_rcl_prof
+        
+                # set energy value in the sputtering profile namelist for the given projectile species
+                nml_spt_prof["imp_source_energy_eV"] = self.E_sput_main_wall[j,0]
+        
+                spt_rad_prof[:,j] = source_utils.get_radial_source(
+                    nml_spt_prof,  # namelist specifically to obtain exp decay from wall
                     self.rvol_grid,
                     self.pro_grid,
                     Sne0,
                     self._Ti,
-                )
-
-            self.rcl_rad_prof = np.broadcast_to(
-                rcl_rad_prof, (rcl_rad_prof.shape[0], len(self.time_grid))
-            )
-
-        else:
-            # dummy profile -- recycling is turned off
-            self.rcl_rad_prof = np.zeros((len(self.rhop_grid), len(self.time_grid)))
-
-    def interp_kin_prof(self, prof):
-        """Interpolate the given kinetic profile on the radial and temporal grids [units of s].
-        This function extrapolates in the SOL based on input options using the same methods as in STRAHL.
-        """
-        times = self.kin_profs[prof]["times"]
-
-        r_lcfs = np.interp(1, self.rhop_grid, self.rvol_grid)
-
-        # extrapolate profiles outside of LCFS by exponential decays
-        r = interp1d(self.rhop_grid, self.rvol_grid, fill_value="extrapolate")(
-            self.kin_profs[prof]["rhop"]
-        )
-
-        if self.kin_profs[prof]["fun"] == "interp":
-            if "decay" not in self.kin_profs[prof]:
-                # if decay length in the SOL was not given by the user, assume a decay length of 1cm
-                # print(
-                #    f"Namelist did not provide a {prof} decay length for the SOL. Setting it to 1cm."
-                # )
-                self.kin_profs[prof]["decay"] = np.ones(
-                    len(self.kin_profs[prof]["vals"])
-                )
-
-            data = interp.interp_quad(
-                r / r_lcfs,
-                self.kin_profs[prof]["vals"],
-                self.kin_profs[prof]["decay"],
-                r_lcfs,
-                self.rvol_grid,
-            )
-            data[data < 1.01] = 1
-
-        elif self.kin_profs[prof]["fun"] == "interpa":
-            data = interp.interpa_quad(
-                r / r_lcfs, self.kin_profs[prof]["vals"], r_lcfs, self.rvol_grid
-            )
-
-        # linear interpolation in time
-        if len(times) > 1:  # time-dept
-            data = interp1d(times, data, axis=0)(
-                np.clip(self.time_grid, *times[[0, -1]])
-            )
-
-        return data
-
-    def get_aurora_kin_profs(self, min_T=1.01, min_ne=1e10):
-        """Get kinetic profiles on radial and time grids."""
-        # ensure 2-dimensional inputs:
-        self.kin_profs["ne"]["vals"] = np.atleast_2d(self.kin_profs["ne"]["vals"])
-        self.kin_profs["Te"]["vals"] = np.atleast_2d(self.kin_profs["Te"]["vals"])
-
-        Te = self.interp_kin_prof("Te")
-        ne = self.interp_kin_prof("ne")
-
-        if "Ti" in self.kin_profs and "vals" in self.kin_profs["Ti"]:
-            self.kin_profs["Ti"]["vals"] = np.atleast_2d(self.kin_profs["Ti"]["vals"])
-            Ti = self.interp_kin_prof("Ti")
-        else:
-            Ti = Te
-
-        # get neutral background ion density
-        if self.namelist.get("cxr_flag", False):
-            n0 = self.interp_kin_prof("n0")
-        else:
-            n0 = None
-
-        # set minima in temperature and density
-        Te[Te < min_T] = min_T
-        Ti[Ti < min_T] = min_T
-        ne[ne < min_ne] = min_ne
-
-        # make sure that Te,ne,Ti and n0 have the same shape at this stage
-        ne, Te, Ti, n0 = np.broadcast_arrays(ne, Te, Ti, n0)
-
-        return ne, Te, Ti, n0
-
-    def set_time_dept_atomic_rates(self, superstages=[], metastables=False):
-        """Obtain time-dependent ionization and recombination rates for a simulation run.
-        If kinetic profiles are given as time-independent, atomic rates for each time slice
-        will be set to be the same.
-
-        Parameters
-        ----------
-        superstages : list or 1D array
-            Indices of charge states that should be kept as superstages.
-            The default is to have this as an empty list, in which case all charge states are kept.
-        metastables : bool
-            Load metastable resolved atomic data and rates. Default is False.
-
-        Attributes
-        ----------
-        Sne_rates : array (space, nZ(-super), time)
-            Effective ionization rates [s]. If superstages were indicated, these are the rates of superstages.
-        Rne_rates : array (space, nZ(-super), time)
-            Effective recombination rates [s]. If superstages were indicated, these are the rates of superstages.
-        Qne_rates : array (space, nZ(-super), time)
-            Cross-coupling coefficients, only computed if :param:`metastables`=True.
-        Xne_rates : array (space, nZ(-super), time)
-            Parent cross-coupling coefficients, only computed if :param:`metastables`=True.
-        """
-
-        # get electron impact ionization and radiative recombination rates in units of [s^-1]
-        out = atomic.get_cs_balance_terms(
-            self.atom_data,
-            ne_cm3=self._ne,
-            Te_eV=self._Te,
-            Ti_eV=self._Ti,
-            include_cx=self.namelist["cxr_flag"],
-            metastables=metastables,
-        )
-        out.pop(0)
-        Sne = out.pop(0)
-        Rne = out.pop(0)
-
-        # cache radiative & dielectronic recomb:
-        self.alpha_RDR_rates = Rne
-
-        if self.namelist["cxr_flag"]:
-            # Get an effective recombination rate by summing radiative & CX recombination rates
-            self.alpha_CX_rates = out.pop(0) * (self._n0 / self._ne)[:, None]
-            Rne = (
-                Rne + self.alpha_CX_rates
-            )  # inplace addition would change also self.alpha_RDR_rates
-
-        if self.namelist["nbi_cxr_flag"]:
-            # include charge exchange between NBI neutrals and impurities
-            self.nbi_cxr = interp1d(
-                self.namelist["nbi_cxr"]["rhop"],
-                self.namelist["nbi_cxr"]["vals"],
-                axis=0,
-                bounds_error=False,
-                fill_value=0.0,
-            )(self.rhop_grid)
-
-            Rne = Rne + self.nbi_cxr.T[None, :, :]
-
-        if len(superstages):
-            self.superstages, Rne, Sne, self.fz_upstage = atomic.superstage_rates(
-                Rne, Sne, superstages, save_time=self.save_time
-            )
-
-        # Sne and Rne for the Z+1 stage must be zero for the forward model.
-        # Use Fortran-ordered arrays for speed in forward modeling (both Fortran and Julia)
-        self.Sne_rates = np.zeros(
-            (Sne.shape[2], Sne.shape[1] + 1, self.time_grid.size), order="F"
-        )
-        self.Sne_rates[:, :-1] = Sne.T
-
-        self.Rne_rates = np.zeros(
-            (Rne.shape[2], Rne.shape[1] + 1, self.time_grid.size), order="F"
-        )
-        self.Rne_rates[:, :-1] = Rne.T
-
-        if metastables:
-            self.Qne_rates = out.pop(0).T
-            self.Xne_rates = out.pop(0).T
-
-    def get_par_loss_rate(self, trust_SOL_Ti=False):
-        """Calculate the parallel loss frequency on the radial and temporal grids [1/s].
-
-        Parameters
-        ----------
-        trust_SOL_Ti : bool
-            If True, the input Ti is trusted also in the SOL to calculate a parallel loss rate.
-            Often, Ti measurements in the SOL are unrealiable, so this parameter is set to False by default.
-
-        Returns
-        -------
-        dv : array (space,time)
-            Parallel loss rates in :math:`s^{-1}` units.
-            Values are zero in the core region and non-zero in the SOL.
-
-        """
-        # import here to avoid issues when building docs or package
-        from omfit_classes.utils_math import atomic_element
-
-        # background mass number (=2 for D)
-        self.main_element = self.namelist["main_element"]
-        out = atomic_element(symbol=self.namelist["main_element"])
-        spec = list(out.keys())[0]
-        self.main_ion_A = self.namelist["main_ion_A"] = int(out[spec]["A"])
-        self.main_ion_Z = self.namelist["main_ion_Z"] = int(out[spec]["Z"])
-
-        # factor for v = machnumber * sqrt((3T_i+T_e)k/m)
-        vpf = self.namelist["SOL_mach"] * np.sqrt(q_electron / m_p / self.main_ion_A)
-        # v[m/s]=vpf*sqrt(T[ev])
-
-        # number of points inside of LCFS
-        ids = self.rvol_grid.searchsorted(self.namelist["rvol_lcfs"], side="left")
-        idl = self.rvol_grid.searchsorted(
-            self.namelist["rvol_lcfs"] + self.namelist["lim_sep"], side="left"
-        )
-
-        # Calculate parallel loss frequency using different connection lengths in the SOL and in the limiter shadow
-        dv = np.zeros_like(self._Te.T)  # space x time
-
-        # Ti may not be reliable in SOL, replace it by Te
-        Ti = self._Ti if trust_SOL_Ti else self._Te
-
-        # open SOL
-        dv[ids:idl] = (
-            vpf
-            * np.sqrt(3.0 * Ti.T[ids:idl] + self._Te.T[ids:idl])
-            / self.namelist["clen_divertor"]
-        )
-
-        # limiter shadow
-        dv[idl:] = (
-            vpf
-            * np.sqrt(3.0 * Ti.T[idl:] + self._Te.T[idl:])
-            / self.namelist["clen_limiter"]
-        )
-
-        dv, _ = np.broadcast_arrays(dv, self.time_grid[None])
-
-        return np.asfortranarray(dv)
-    
-    def centrifugal_asym(self, omega, Zeff, plot=False):
-        """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the
-        :py:func:`~aurora.synth_diags.centrifugal_asymmetry` function docstring for details.
-
-        In this function, we use the average Z of the impurity species in the Aurora simulation result, using only
-        the last time slice to calculate fractional abundances. The CF lambda factor
-
-        Parameters
-        -----------------
-        omega : array (nt,nr) or (nr,) [ rad/s ]
-             Toroidal rotation on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
-        Zeff : array (nt,nr), (nr,) or float
-             Effective plasma charge on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
-             Alternatively, users may give Zeff as a float (taken constant over time and space).
-        plot : bool
-            If True, plot asymmetry factor :math:`\lambda` vs. radius
-
-        Returns
-        ------------
-        CF_lambda : array (nr,)
-            Asymmetry factor, defined as :math:`\lambda` in the :py:func:`~aurora.synth_diags.centrifugal_asymmetry` function
-            docstring.
-        """
-        # this method requires all charge states to be made available
-        try:
-            assert self.res[0].shape[1] == self.Z_imp + 1
-        except AssertionError:
-            raise ValueError(
-                "centrifugal_asym method requires all charge state densities to be availble! Unstage superstages."
-            )
-
-        fz = self.res[0][..., -1] / np.sum(self.res[0][..., -1], axis=1)[:, None]
-        Z_ave_vec = np.sum(fz * np.arange(self.Z_imp + 1)[None, :], axis=1)
-        _, self.Rlfs = grids_utils.get_HFS_LFS(self.geqdsk, rho_pol=self.rhop_grid)
-        self.CF_lambda = synth_diags.centrifugal_asymmetry(
-            self.rhop_grid,
-            self.Rlfs,
-            omega,
-            Zeff,
-            self.A_imp,
-            Z_ave_vec,
-            self.Te,
-            self.Ti,
-            main_ion_A=self.main_ion_A,
-            plot=plot,
-            nz=self.res[0][..., -1],
-            geqdsk=self.geqdsk,
-        ).mean(0)
-
-        return self.CF_lambda
-
-    def superstage_DV(self, D_z, V_z, times_DV=None, opt=1):
-        """Reduce the dimensionality of D and V time-dependent profiles for the case in which superstaging is applied.
-
-        Three options are currently available:
-
-        #. opt=1 gives a simple selection of D_z and V_z fields corresponding to each superstage index.
-
-        #. opt=2 averages D_z and V_z over the charge states that are part of each superstage.
-
-        #. opt=3 weights D_z and V_z corresponding to each superstage by the fractional abundances at ionization
-        equilibrium. This is mostly untested -- use with care!
-
-        Parameters
-        ---------
-        D_z: array, shape of (space,time,nZ)
-            Diffusion coefficients, in units of :math:`cm^2/s`.
-        V_z: array, shape of (space,time,nZ)
-            Convection coefficients, in units of :math:`cm/s`.
-
-        Returns
-        -------
-        Dzf: array, shape of (space,time,nZ-superstages)
-            Diffusion coefficients of superstages, in units of :math:`cm^2/s`.
-        Vzf: array, shape of (space,time,nZ-superstages)
-            Convection coefficients of superstages, in units of :math:`cm/s`.
-
-        """
-        # simple selection of elements corresponding to superstage
-        Dzf = D_z[:, :, self.superstages]
-        Vzf = V_z[:, :, self.superstages]
-
-        if opt == 1:
-            # see selection above
-            pass
-
-        elif opt == 2:
-            # average D,V over superstage
-
-            superstages = np.r_[self.superstages, self.Z_imp + 1]
-
-            for i in range(len(self.superstages)):
-                if superstages[i] + 1 != superstages[i + 1]:
-                    Dzf[:, :, i] = D_z[:, :, superstages[i] : superstages[i + 1]].mean(
-                        2
-                    )
-                    Vzf[:, :, i] = V_z[:, :, superstages[i] : superstages[i + 1]].mean(
-                        2
-                    )
-
-        elif opt == 3:
-            # weighted average of D and V
-            superstages = np.r_[self.superstages, self.Z_imp + 1]
-
-            # calculate fractional abundances inside of each superstage
-            for i in range(len(superstages) - 1):
-                if superstages[i] + 1 < superstages[i + 1]:
-                    # need to interpolate fz_upstage on time base of D and V -- do this only once
-                    if not hasattr(self, "fz_upstage_DV") or self.fz_upstage_DV.shape[
-                        2
-                    ] == len(times_DV):
-                        self.fz_upstage_DV = interp1d(
-                            self.time_grid, self.fz_upstage, axis=2
-                        )(times_DV)
-
-                    ind = slice(superstages[i], superstages[i + 1])
-                    Dzf[:, :, i] = np.sum(
-                        D_z[:, :, ind] * self.fz_upstage_DV[:, ind].transpose(0, 2, 1),
-                        2,
-                    )
-                    Vzf[:, :, i] = np.sum(
-                        V_z[:, :, ind] * self.fz_upstage_DV[:, ind].transpose(0, 2, 1),
-                        2,
-                    )
-
-        else:
-            raise ValueError("Unrecognized option for D and V superstaging!")
-
-        return Dzf, Vzf
-
+                )[:,0]
+                
+                # set same profile for all times
+                self.spt_rad_prof = np.zeros((len(self.rvol_grid),len(self.background_species)+1,len(self.time_grid)))
+                for i in range(0,len(self.background_species)+1):
+                    for j in range(0,len(self.time_grid)):
+                        self.spt_rad_prof[:,i,j] = spt_rad_prof[:,i]
+            
+            
     def run_aurora(
         self,
         D_z,
@@ -766,6 +670,7 @@ class aurora_sim:
         plot=False,
         plot_radiation=False,
         radial_coordinate = 'rho_vol',
+        plot_PWI = False,
     ):
         """Run a simulation using the provided diffusion and convection profiles as a function of space, time
         and potentially also ionization state. Users can give an initial state of each ion charge state as an input.
@@ -856,6 +761,8 @@ class aurora_sim:
             the total radiation time traces.
         radial_coordinate : string, optional
             Radial coordinate shown in the plot. Options: 'rho_vol' (default) or 'rho_pol'
+        plot_PWI : bool, optional
+            If True, plot time traces related to the plasma-wall interaction model
 
         Returns
         -------
@@ -1034,214 +941,105 @@ class aurora_sim:
 
         nt = len(self.time_out)
 
-        # NOTE: for both Fortran and Julia, use f_configuous arrays for speed
-        if use_julia:
-            
-            if self.div_recomb_ratio < 1.0 or self.pump_chamber or self.screening_eff > 0.0:
-                raise ValueError("Advanced recycling/pumping/PWI model not yet implemented in Julia!")
-            
-            # run Julia version of the code
-            from julia.api import Julia
+        # import here to avoid import when building documentation or package (negligible slow down)
+        from ._aurora import run as fortran_run
+        
+        # activate advanced PWI model in fortran main routines
+        self.advanced_PWI_flag = True
 
-            jl = Julia(
-                compiled_modules=False,
-                sysimage=os.path.dirname(os.path.realpath(__file__))
-                + "/../aurora.jl/sysimage.so",
-            )
-            from julia import aurora as aurora_jl
-
-            _res = aurora_jl.run(
-                nt,  # number of times at which simulation outputs results
-                times_DV,
-                D_z,
-                V_z,  # cm^2/s & cm/s    #(ir,nt_trans,nion)
-                self.par_loss_rate,  # time dependent
-                self.src_core,  # source profile in radius and time
-                self.rcl_rad_prof,  # recycling radial profile
-                self.Sne_rates,  # ioniz_rate,
-                self.Rne_rates,  # recomb_rate,
-                self.rvol_grid,
-                self.pro_grid,
-                self.qpr_grid,
-                self.mixing_radius,
-                self.decay_length_boundary,  # cm
-                self.time_grid,
-                self.saw_on,
-                self.save_time,
-                self.crash_width,  # dsaw width  [cm]
-                self.wall_recycling,
-                self.tau_div_SOL_ms * 1e-3,  # [s]
-                self.tau_pump_ms * 1e-3,  # [s]
-                self.tau_rcl_ret_ms * 1e-3,  # [s]
-                self.rvol_lcfs,
-                self.bound_sep,
-                self.lim_sep,
-                self.prox_param,
-                nz_init,
-                alg_opt,
-                evolneut,
-                self.src_div,
-            )
-        else:
-            # import here to avoid import when building documentation or package (negligible slow down)
-            from ._aurora import run as fortran_run
-
-            # advanced PWI model not used - dummy values for all related input variables to fortran routine
+        _res = fortran_run(
+            nt,  # number of times at which simulation outputs results
+            times_DV,
+            D_z,
+            V_z,  # cm^2/s & cm/s    #(ir,nt_trans,nion)
+            self.par_loss_rate, # parallel loss rate values in the SOL on the time grid
+            self.src_core, # radial source profile of externally injected neutrals in the plasma on the time grid
+            self.rcl_rad_prof, # radial source profile of promptly recycled neutrals in the plasma on the time grid
+            self.rfl_rad_prof, # radial source profile of reflected neutrals in the plasma on the time grid
+            self.spt_rad_prof, # radial source profile of sputtered neutrals in the plasma on the time grid
+            self.energetic_recycled_neutrals, # logic key for setting energetic reflected/sputtered neutrals
+            self.Sne_rates, # ionization rates in the plasma
+            self.Rne_rates, # recombination rates in the plasma
+            self.Raxis_cm, # major radius at the magnetic axis [cm]
+            self.rvol_grid, # radial grid values of rho_vol
+            self.pro_grid,
+            self.qpr_grid,
+            self.mixing_radius,
+            self.decay_length_boundary,
+            self.time_grid, # time grid values
+            self.saw_on, # logic key for sawteeth model
+            self.save_time,
+            self.crash_width,  # dsaw width [cm]
+            self.wall_recycling,
+            self.screening_eff, # screening coefficient
+            self.div_recomb_ratio, # divertor recombination coefficient
+            self.tau_div_SOL_ms * 1e-3,  # [s]
+            self.tau_pump_ms * 1e-3,  # [s]
+            self.tau_rcl_ret_ms * 1e-3,  # [s]
+            self.S_pump, # pumping speed in the dimensional pumping model [cm^3/s]
+            self.vol_div, # volume of the divertor neutrals reservoir [cm^3]
+            self.L_divpump, # conductance between divertor and pump neutrals reservoirs [cm^3/s]
+            self.vol_pump, # volume of the pump neutrals reservoirs[cm^3]
+            self.L_leak, # leakage conductance from pump neutrals reservoir towards plasma [cm^3/s]
+            self.surf_mainwall_eff, # effective main wall surface area [cm^2]
+            self.surf_divwall_eff, # effective divertor wall surface area [cm^2]
+            self.advanced_PWI_flag, # logic key for PWI model
+            self.Z_main_wall, # atomic number of the main wall material
+            self.Z_div_wall, # atomic number of the divertor wall material
+            self.rn_main_wall, # reflection coefficients for the simulated impurity at the main wall on the time grid
+            self.rn_div_wall, # reflection coefficients for the simulated impurity at the divertor wall on the time grid
+            self.fluxes_main_wall_background, # fluxes for each background species onto the main wall on the time grid [s^-1]
+            self.fluxes_div_wall_background, # fluxes for each background species onto the divertor wall on the time grid [s^-1]
+            self.y_main_wall, # sputtering yields from simulated impurity + background species from the main wall on the time grid
+            self.y_div_wall, # sputtering yields from simulated impurity + background species from the divertor wall on the time grid
+            self.implantation_depth_main_wall, # considered impurity implantation depth in the main wall [A]
+            self.implantation_depth_div_wall, # considered impurity implantation depth in the divertor wall [A]
+            self.n_main_wall_sat, # considered saturation value of the impurity implantation density into the main wall [m^-2]
+            self.n_div_wall_sat, # considered saturation value of the impurity implantation density into the divertor wall [m^-2]
+            self.rvol_lcfs,
+            self.bound_sep,
+            self.lim_sep,
+            self.prox_param,
+            rn_t0=nz_init,  # if omitted, internally set to 0's
+            ndiv_t0=ndiv_init,  # if omitted, internally set to 0       
+            npump_t0=npump_init,  # if omitted, internally set to 0     
+            nmainwall_t0=nmainwall_init,  # if omitted, internally set to 0     
+            ndivwall_t0=ndivwall_init,  # if omitted, internally set to 0  
+            alg_opt=alg_opt,
+            evolneut=evolneut,
+            src_div=self.src_div,
+        )
             
-            self.advanced_PWI_flag = False
-
-            self.rfl_rad_prof = self.rcl_rad_prof
-            self.spt_rad_prof = np.zeros((len(self.rvol_grid),len(self.background_species)+1,len(self.time_grid)))
-            for i in range(0,len(self.background_species)+1):
-                self.spt_rad_prof[:,i,:] = self.rcl_rad_prof
-
-            self.surf_mainwall_eff = self.surf_mainwall*self.mainwall_roughness #cm^2
-            self.surf_divwall_eff = self.surf_divwall*self.divwall_roughness #cm^2
-            
-            # keys for fortran routine
-            self.Z_main_wall = 0
-            self.Z_div_wall = 0
-            
-            # List of background species
-            self.num_background_species = len(self.background_species)
-            
-            # dummy values for reflection coefficients at each time step
-            self.rn_main_wall = np.zeros(len(self.time_out))
-            self.rn_div_wall = np.zeros(len(self.time_out))
-            
-            # dummy values for reflected energies at each time step
-            self.E_refl_main_wall = np.zeros(len(self.time_out))
-            self.E_refl_div_wall = np.zeros(len(self.time_out))
-            
-            # dummy values for background fluxes onto the walls at each time step
-            self.fluxes_main_wall_background = np.zeros((len(self.background_species),len(self.time_out)))
-            self.fluxes_div_wall_background = np.zeros((len(self.background_species),len(self.time_out)))
-            
-            # dummy values for impurity sputtering coefficients at each time step
-            self.y_main_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
-            self.y_div_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
-            
-            # dummy values for impurity sputtered energies at each time step
-            self.E_sput_main_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
-            self.E_sput_div_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
-            
-            # dummy values for impurity implantation depths into the walls
-            self.implantation_depth_main_wall = 0.0
-            self.implantation_depth_div_wall = 0.0
-            
-            # dummy values for impurity saturation densities into the walls
-            self.n_main_wall_sat = 0.0
-            self.n_div_wall_sat = 0.0
-
-            _res = fortran_run(
-                nt,  # number of times at which simulation outputs results
-                times_DV,
-                D_z,
-                V_z,  # cm^2/s & cm/s    #(ir,nt_trans,nion)
-                self.par_loss_rate, # parallel loss rate values in the SOL on the time grid
-                self.src_core, # radial source profile of externally injected neutrals in the plasma on the time grid
-                self.rcl_rad_prof, # radial source profile of promptly recycled neutrals in the plasma on the time grid
-                self.rfl_rad_prof, # radial source profile of reflected neutrals in the plasma on the time grid
-                self.spt_rad_prof, # radial source profile of sputtered neutrals in the plasma on the time grid
-                self.energetic_recycled_neutrals, # logic key for setting energetic reflected/sputtered neutrals
-                self.Sne_rates, # ionization rates in the plasma
-                self.Rne_rates, # recombination rates in the plasma
-                self.Raxis_cm, # major radius at the magnetic axis [cm]
-                self.rvol_grid, # radial grid values of rho_vol
-                self.pro_grid,
-                self.qpr_grid,
-                self.mixing_radius,
-                self.decay_length_boundary,
-                self.time_grid, # time grid values
-                self.saw_on, # logic key for sawteeth model
-                self.save_time,
-                self.crash_width,  # dsaw width [cm]
-                self.wall_recycling,
-                self.screening_eff, # screening coefficient
-                self.div_recomb_ratio, # divertor recombination coefficient
-                self.tau_div_SOL_ms * 1e-3,  # [s]
-                self.tau_pump_ms * 1e-3,  # [s]
-                self.tau_rcl_ret_ms * 1e-3,  # [s]
-                self.S_pump, # pumping speed in the dimensional pumping model [cm^3/s]
-                self.vol_div, # volume of the divertor neutrals reservoir [cm^3]
-                self.L_divpump, # conductance between divertor and pump neutrals reservoirs [cm^3/s]
-                self.vol_pump, # volume of the pump neutrals reservoirs[cm^3]
-                self.L_leak, # leakage conductance from pump neutrals reservoir towards plasma [cm^3/s]
-                self.surf_mainwall_eff, # effective main wall surface area [cm^2]
-                self.surf_divwall_eff, # effective divertor wall surface area [cm^2]
-                self.advanced_PWI_flag, # logic key for PWI model
-                self.Z_main_wall, # atomic number of the main wall material
-                self.Z_div_wall, # atomic number of the divertor wall material
-                self.rn_main_wall, # reflection coefficients for the simulated impurity at the main wall on the time grid
-                self.rn_div_wall, # reflection coefficients for the simulated impurity at the divertor wall on the time grid
-                self.fluxes_main_wall_background, # fluxes for each background species onto the main wall on the time grid [s^-1]
-                self.fluxes_div_wall_background, # fluxes for each background species onto the divertor wall on the time grid [s^-1]
-                self.y_main_wall, # sputtering yields from simulated impurity + background species from the main wall on the time grid
-                self.y_div_wall, # sputtering yields from simulated impurity + background species from the divertor wall on the time grid
-                self.implantation_depth_main_wall, # considered impurity implantation depth in the main wall [A]
-                self.implantation_depth_div_wall, # considered impurity implantation depth in the divertor wall [A]
-                self.n_main_wall_sat, # considered saturation value of the impurity implantation density into the main wall [m^-2]
-                self.n_div_wall_sat, # considered saturation value of the impurity implantation density into the divertor wall [m^-2]
-                self.rvol_lcfs,
-                self.bound_sep,
-                self.lim_sep,
-                self.prox_param,
-                rn_t0=nz_init,  # if omitted, internally set to 0's
-                ndiv_t0=ndiv_init,  # if omitted, internally set to 0       
-                npump_t0=npump_init,  # if omitted, internally set to 0     
-                nmainwall_t0=nmainwall_init,  # if omitted, internally set to 0     
-                ndivwall_t0=ndivwall_init,  # if omitted, internally set to 0  
-                alg_opt=alg_opt,
-                evolneut=evolneut,
-                src_div=self.src_div,
-            )
             
         # add output fields in a dictionary
         self.res = {}
         
-        if use_julia: # advanced recycling/pumping/PWI model not implemented yet in Julia --> self.res contains less elements
-            
-            (
-                self.res['nz'],
-                self.res['N_mainwall'],
-                self.res['N_div'],
-                self.res['N_self.res'],
-                self.res['N_mainret'],
-                self.res['N_tsu'],
-                self.res['N_dsu'],
-                self.res['N_dsul'],
-                self.res['rclb_rate'],
-                self.res['rclw_rate'],
-            ) = _res
-        
-        else: # advanced recycling/pumping/PWI model fully implemented in Fortran
-        
-            (
-                self.res['nz'],
-                self.res['N_mainwall'],
-                self.res['N_divwall'],
-                self.res['N_div'],
-                self.res['N_pump'],
-                self.res['N_out'],
-                self.res['N_mainret'],
-                self.res['N_divret'],
-                self.res['N_tsu'],
-                self.res['N_dsu'],
-                self.res['N_dsul'],
-                self.res['rcld_rate'],
-                self.res['rcld_refl_rate'],
-                self.res['rcld_recl_rate'],
-                self.res['rcld_impl_rate'],
-                self.res['rcld_sput_rate'],
-                self.res['rclb_rate'],
-                self.res['rcls_rate'],
-                self.res['rclp_rate'],
-                self.res['rclw_rate'],
-                self.res['rclw_refl_rate'],
-                self.res['rclw_recl_rate'],
-                self.res['rclw_impl_rate'],
-                self.res['rclw_sput_rate']
-            ) = _res
+        (
+            self.res['nz'],
+            self.res['N_mainwall'],
+            self.res['N_divwall'],
+            self.res['N_div'],
+            self.res['N_pump'],
+            self.res['N_out'],
+            self.res['N_mainret'],
+            self.res['N_divret'],
+            self.res['N_tsu'],
+            self.res['N_dsu'],
+            self.res['N_dsul'],
+            self.res['rcld_rate'],
+            self.res['rcld_refl_rate'],
+            self.res['rcld_recl_rate'],
+            self.res['rcld_impl_rate'],
+            self.res['rcld_sput_rate'],
+            self.res['rclb_rate'],
+            self.res['rcls_rate'],
+            self.res['rclp_rate'],
+            self.res['rclw_rate'],
+            self.res['rclw_refl_rate'],
+            self.res['rclw_recl_rate'],
+            self.res['rclw_impl_rate'],
+            self.res['rclw_sput_rate']
+        ) = _res
         
         if plot:
             
@@ -1300,6 +1098,10 @@ class aurora_sim:
         
             # check particle conservation by summing over simulation reservoirs
             _ = self.reservoirs_time_traces(plot=True)
+            
+        # Plot PWI model
+        if plot_PWI:
+            _ = self.PWI_time_traces(plot = True)
 
         if len(self.superstages) and unstage:
             # "unstage" superstages to recover estimates for density of all charge states
@@ -1319,428 +1121,8 @@ class aurora_sim:
             self.res = nz_unstaged, *self.res[1:]
 
         return self.res
-
-    def run_aurora_steady_analytic(self, D_z, V_z):
-        """Evaluate the analytic steady state solution of the transport equation.
-        Small differences in absolute densities from the full time-dependent, multi-reservoir Aurora solutions
-        can be caused by recycling and divertor models, which are not included here.
-
-        Parameters
-        ----------
-        D_z: array, shape of (space,nZ) or (space,)
-            Diffusion coefficients, in units of :math:`cm^2/s`. This may be given as a function of space only or (space,nZ).
-            No time dependence is allowed in this function. Here, nZ indicates the number of charge states.
-            Note that it is assumed that radial profiles are already on the self.rvol_grid radial grid.
-        V_z: array, shape of (space,nZ) or (space,)
-            Convection coefficients, in units of :math:`cm/s`. This may be given as a function of space only or (space,nZ).
-            No time dependence is allowed in this function. Here, nZ indicates the number of charge states.
-        """
-        if self.ne.shape[0] > 1 or self.Te.shape[0] > 1:
-            raise ValueError(
-                "This method is designed to operate with time-independent background profiles!"
-            )
-
-        if len(self.superstages) > 0:
-            raise Exception("Superstages are not yet suported by analytical solver")
-
-        if D_z.shape != V_z.shape:
-            raise ValueError("Shape of D and V must be the same")
-
-        if D_z.ndim > 2:
-            raise ValueError(
-                "This method is designed to operate with time-independent transport coefficients"
-            )
-
-        if D_z.ndim == 2:
-            # make sure that transport coefficients were given as a function of space and nZ, not time!
-            assert (
-                D_z.shape[0] == len(self.rhop_grid) and D_z.shape[1] == self.Z_imp + 1
-            )
-            D_z = D_z[:, 1:]
-            V_z = V_z[:, 1:]
-
-        def between_grid(arr, axis=0):
-            # calculate value in between grid points
-            sl = (slice(None),) * axis
-            return (arr[sl + (slice(1, None),)] + arr[sl + (slice(None, -1),)]) / 2.0
-
-        # prepare inputs
-        D_btw = between_grid(D_z, 0).T  # input D profile btw the spatial grids
-        v_btw = between_grid(V_z, 0).T  # input v profile btw the spatial grids
-
-        par_loss_rate = between_grid(
-            self.par_loss_rate[:, 0] / 100
-        )  # convert in the 1/s/cm units
-
-        del_r = np.diff(self.rvol_grid)
-        r_btw = between_grid(self.rvol_grid)
-        self.rhop_btw = between_grid(self.rhop_grid)
-
-        nr = len(r_btw)
-
-        # diagonal of matrices for recombination, ionisation and parallel flux
-        r_z = between_grid(self.Rne_rates.T[0, :-1], 1)
-        s_z = between_grid(self.Sne_rates.T[0, :-1], 1)
-        p_z = par_loss_rate * r_btw
-
-        # in case that metastable resolved atomics data are used
-        metastables = self.namelist.get("metastable_flag", False)
-        if metastables:
-            q_z = between_grid(self.Qne_rates.T[0], 1)
-            x_z = between_grid(self.Xne_rates.T[0], 1)
-
-            x_meta_ind = self.atom_data["xcd"].meta_ind
-            q_meta_ind = self.atom_data["qcd"].meta_ind
-
-        s_meta_ind = self.atom_data["scd"].meta_ind
-        r_meta_ind = self.atom_data["acd"].meta_ind
-
-        # number of metastables for each ion (ones if data are unresolved)
-        Mmeta = self.atom_data["scd"].metastables
-        # index of each metastable
-        meta_ind = [(z, m + 1) for z, M in enumerate(Mmeta) for m in range(M)]
-        n_state = len(meta_ind)
-
-        # uvec
-        exp_diag = np.exp(cumtrapz(v_btw / D_btw, r_btw, initial=0, axis=-1))
-        exp_diag /= exp_diag[..., [-1]]
-
-        exp_Dr = 1 / (exp_diag * D_btw * r_btw)  # diagonal of the matrix
-        lam = self.decay_length_boundary
-        edge_factor = 1 / (1 / lam + v_btw[..., [-1]] / D_btw[..., [-1]])  # units of m
-
-        # calculate spatial integrals
-        del_r_up = np.tri(nr + 1, nr, -1) * (del_r * r_btw)
-        del_r_down = np.tri(nr, nr + 1).T * del_r
-
-        def apply_integral(prof, i):
-            # charge independent transport coefficients
-            i = ... if D_btw.ndim == 1 else i - 1
-            # the first cumulative trapezoid integral
-            a = del_r_up * prof
-            a = between_grid(a)
-            a *= exp_Dr[i, :, None]
-            # the second cumulative trapezoid integral
-            a = np.dot(del_r_down, a)
-            a = between_grid(a)
-            # incorporate edge boundary condition with decay length lambda
-            a += a[-1] / del_r[-1] * edge_factor[i]
-            a *= exp_diag[i, :, None]
-            return a
-
-        R_z = {i: apply_integral(r, i[0]) for i, r in zip(r_meta_ind, r_z)}
-        S_z = {i: apply_integral(s, i[0]) for i, s in zip(s_meta_ind, s_z)}
-
-        if D_z.ndim == 2:
-            P_z = [apply_integral(p_z, z) for z in range(self.Z_imp + 1)]
-        else:
-            P_z = [apply_integral(p_z, 0)] * (self.Z_imp + 1)
-
-        if metastables:
-            Q_z = {i: apply_integral(q, i[0]) for i, q in zip(q_meta_ind, q_z)}
-            X_z = {i: apply_integral(x, i[0]) for i, x in zip(x_meta_ind, x_z)}
-
-        # radial integral of the source used to calculate total impurity density profile
-        nz_0 = np.zeros((n_state, nr))
-        nimp0 = between_grid(self.src_core[:, 0])
-
-        # metastable distributon of neutral influx is unknow
-        meta_source = (1, 1)
-        nz_0[meta_ind.index(meta_source)] = np.dot(S_z[meta_source + (1,)], nimp0)
-
-        source_mtx = np.zeros([n_state, n_state, nr, nr])
-        for i, (z, m) in enumerate(meta_ind):
-            # paraell looses are on diagonal
-            source_mtx[i, i] -= P_z[z]
-
-            if z < self.Z_imp:  # for non-fully stripped species
-                for g in range(1, Mmeta[z + 1] + 1):
-                    source_mtx[i, i] -= S_z[(z + 1, m, g)]
-                    j = meta_ind.index((z + 1, g))
-                    source_mtx[i, j] += R_z[(z + 1, m, g)]
-
-            if z > 0:  # for ionised species
-                for g in range(1, Mmeta[z - 1] + 1):
-                    source_mtx[i, i] -= R_z[(z, g, m)]
-                    j = meta_ind.index((z - 1, g))
-                    source_mtx[i, j] += S_z[(z, g, m)]
-
-            if not metastables:
-                continue
-
-            # cross-coupling of the metastables
-            for g in range(1, Mmeta[z] + 1):
-                if g == m:
-                    continue
-                j = meta_ind.index((z, g))
-                # cross-coupling coefficients important at lower Te
-                source_mtx[i, j] += Q_z[(z + 1, m, g)]
-                source_mtx[i, i] -= Q_z[(z + 1, g, m)]
-
-                # Beringer 1989 is not including the parent cross coupling coefficients!
-                # cross-coupling between parents via recombination to excited states
-                # of the z-times ionised ion followed by re-ionisation to a different metastable
-                # BUG when included, the summed ion metastable stage profiles disagree with unresolved profile
-                # if g > m and z > 0:
-                # source_mtx[i,j] += X_z[(z, g, m)] #BUG not yet sure about the order of m,g indexes
-                # if g < m and z > 0:
-                # source_mtx[i,i] -= X_z[(z, g, m)]
-
-        # reshape to 2D matrix
-        source_mtx = source_mtx.swapaxes(1, 2).reshape(nr * n_state, nr * n_state)
-
-        if not metastables:
-            # faster inversion if the matrix is block diagonal
-            # convert source_mtx matrix to band diagonal form
-            n_diags = 2 * nr
-            source_mtx_diag = np.zeros((1 + 2 * n_diags, nr * n_state))
-            for i, d in enumerate(range(n_diags, -n_diags - 1, -1)):
-                source_mtx_diag[
-                    i, np.maximum(0, d) : nr * n_state + np.minimum(0, d)
-                ] = np.diagonal(source_mtx, d)
-
-            # calculate eye( ) - source_mtx
-            mtx_solv_diag = source_mtx_diag
-            mtx_solv_diag *= -1
-            mtx_solv_diag[n_diags] += 1
-
-            # solve band matrix
-            nz_steady = solve_banded(
-                (n_diags, n_diags), mtx_solv_diag, nz_0.flatten()
-            ).reshape(-1, nr)
-
-        else:
-            # standart numpy solver for a square matrix
-            A = np.eye(nr * n_state) - source_mtx
-            # slowest step
-            nz_steady = np.linalg.solve(A, nz_0.flatten()).reshape(-1, nr)
-
-        return meta_ind, nz_steady
-
-    def run_aurora_steady(
-        self,
-        D_z,
-        V_z,
-        nz_init=None,
-        unstage=False,
-        alg_opt=1,
-        evolneut=False,
-        use_julia=False,
-        tolerance=0.01,
-        max_sim_time=100,
-        dt=1e-4,
-        dt_increase=1.05,
-        n_steps=100,
-        plot=False,
-        radial_coordinate = 'rho_vol',
-    ):
-        """Run an Aurora simulation until reaching steady state profiles. This method calls :py:meth:`~aurora.core.run_aurora`
-        checking at every iteration whether profile shapes are still changing within a given fractional tolerance.
-        Note that this method differs from :py:meth:`~aurora.core.run_aurora_steady_analytic` in that it runs time-dependent
-        simulations until reaching steady-state, rather than using an analytic solution for steady-state profiles.
-
-        Parameters
-        ----------
-        D_z: array, shape of (space,nZ) or (space,)
-            Diffusion coefficients, in units of :math:`cm^2/s`. This may be given as a function of space only or (space,nZ).
-            No time dependence is allowed in this function. Here, nZ indicates the number of charge states.
-            Note that it is assumed that radial profiles are already on the self.rvol_grid radial grid.
-        V_z: array, shape of (space,nZ) or (space,)
-            Convection coefficients, in units of :math:`cm/s`. This may be given as a function of space only or (space,nZ).
-            No time dependence is allowed in this function. Here, nZ indicates the number of charge states.
-        nz_init: array, shape of (space, nZ)
-            Impurity charge states at the initial time of the simulation. If left to None, this is
-            internally set to an array of 0's.
-        unstage : bool, optional
-            If a list of superstages are provided in the namelist, this parameter sets whether the
-            output should be "unstaged". See docs for :py:meth:`~aurora.core.run_aurora` for details.
-        alg_opt : int, optional
-            If `alg_opt=1`, use the finite-volume algorithm proposed by Linder et al. NF 2020.
-            If `alg_opt=0`, use the older finite-differences algorithm in the 2018 version of STRAHL.
-        evolneut : bool, optional
-            If True, evolve neutral impurities based on their D,V coefficients. Default is False.
-            See docs for :py:meth:`~aurora.core.run_aurora` for details.
-        use_julia : bool, optional
-            If True, run the Julia pre-compiled version of the code. See docs for :py:meth:`~aurora.core.run_aurora` for details.
-        tolerance : float
-            Fractional tolerance in charge state profile shapes. This method reports charge state density profiles obtained when
-            the discrepancy between normalized profiles at adjacent time steps varies by less than this tolerance fraction.
-        max_sim_time : float
-            Maximum time in units of seconds for which simulations should be run if a steady state is not found.
-        dt : float
-            Initial time step to apply, in units of seconds. This can be increased by a multiplier given by :param:`dt_increase`
-            after each time step.
-        dt_increase : float
-            Multiplier for time steps.
-        n_steps : int
-            Number of time steps (>2) before convergence is checked.
-        plot : bool
-            If True, plot time evolution of charge state density profiles to show convergence.
-        radial_coordinate : string, optional
-            Radial coordinate shown in the plot. Options: 'rho_vol' (default) or 'rho_pol'
-        """
-
-        if n_steps < 2:
-            raise ValueError("n_steps must be greater than 2!")
-
-        if self.ne.shape[0] > 1:
-            raise ValueError(
-                "This method is designed to operate with time-independent background profiles!"
-            )
-
-        if D_z.ndim > 2 or V_z.ndim > 2:
-            raise ValueError(
-                "This method is designed to operate with time-independent D and V profiles!"
-            )
-
-        # set constant timesource
-        self.namelist["source_type"] = "const"
-        # self.namelist["source_rate"] = 1.0
-
-        # build timing dictionary
-        self.namelist["timing"] = {
-            "dt_start": [dt, dt],
-            "dt_increase": [dt_increase, 1.0],
-            "steps_per_cycle": [1, 1],
-            "times": [0.0, max_sim_time],
-        }
-
-        # prepare radial and temporal grid
-        self.setup_grids()
-
-        # update kinetic profile dependencies to get everything to the right shape
-        self.setup_kin_profs_depts()
-
-        times_DV = None
-        if D_z.ndim == 2:
-            # make sure that transport coefficients were given as a function of space and nZ, not time!
-            assert (
-                D_z.shape[0] == len(self.rhop_grid) and D_z.shape[1] == self.Z_imp + 1
-            )
-            assert (
-                V_z.shape[0] == len(self.rhop_grid) and V_z.shape[1] == self.Z_imp + 1
-            )
-
-            D_z = D_z[:, None]  # (ir,nt_trans,nion)
-            V_z = V_z[:, None]
-
-        sim_steps = 0
-
-        time_grid = self.time_grid.copy()
-        time_out = self.time_out.copy()
-        save_time = self.save_time.copy()
-        par_loss_rate = self.par_loss_rate.copy()
-        rcl_rad_prof = self.rcl_rad_prof.copy()
-        src_core = self.src_core.copy()
-        Sne_rates = self.Sne_rates.copy()
-        Rne_rates = self.Rne_rates.copy()
-        saw_on = self.saw_on.copy()
-        src_div = self.src_div.copy()
-        nz_all = None if nz_init is None else nz_init
-        while sim_steps < len(time_grid):
-
-            self.time_grid = self.time_out = time_grid[sim_steps : sim_steps + n_steps]
-            self.save_time = save_time[sim_steps : sim_steps + n_steps]
-            self.par_loss_rate = par_loss_rate[:, sim_steps : sim_steps + n_steps]
-            self.rcl_rad_prof = rcl_rad_prof[:, sim_steps : sim_steps + n_steps]
-            self.src_core = src_core[:, sim_steps : sim_steps + n_steps]
-            self.Sne_rates = Sne_rates[:, :, sim_steps : sim_steps + n_steps]
-            self.Rne_rates = Rne_rates[:, :, sim_steps : sim_steps + n_steps]
-            self.saw_on = saw_on[sim_steps : sim_steps + n_steps]
-            self.src_div = src_div[sim_steps : sim_steps + n_steps]
-
-            sim_steps += n_steps
-
-            # get charge state densities from latest time step
-            if nz_all is None:
-                nz_init = None
-            else:
-                nz_init = nz_all[:, :, -1] if nz_all.ndim == 3 else nz_all
-
-            nz_new = self.run_aurora(
-                D_z,
-                V_z,
-                times_DV,
-                nz_init=nz_init,
-                unstage=unstage,
-                alg_opt=alg_opt,
-                evolneut=evolneut,
-                use_julia=use_julia,
-                plot=False,
-            )['nz']
-
-            if nz_all is None:
-                nz_all = np.dstack((np.zeros_like(nz_new[:, :, [0]]), nz_new))
-                nz_init = np.zeros_like(nz_new[:, :, 0])
-            else:
-                nz_all = np.dstack((nz_all, nz_new))
-
-            # check if normalized profiles have converged
-            if (
-                np.linalg.norm(nz_new[:, :, -1] - nz_init)
-                / (np.linalg.norm(nz_init) + 1e-99)
-                < tolerance
-            ):
-                break
-
-        # store final time grids
-        self.time_grid = time_grid[:sim_steps]
-        # identical because steps_per_cycle is fixed to 1
-        self.time_out = time_grid[:sim_steps]
-        self.save_time = save_time[:sim_steps]
-
-        if plot:
-            
-            if radial_coordinate == 'rho_vol':
-                x = self.rvol_grid
-                xlabel = r"$r_V$ [cm]"
-                x_line=self.rvol_lcfs
-            elif radial_coordinate == 'rho_pol':
-                x = self.rhop_grid
-                xlabel=r'$\rho_p$'
-                x_line = 1
-            
-            # plot charge state distributions over radius and time
-            plot_tools.slider_plot(
-                x,
-                self.time_grid,
-                nz_all.transpose(1, 0, 2),
-                xlabel=xlabel,
-                ylabel="time [s]",
-                zlabel=f'$n_{{{self.imp}}}$ [cm$^{{-3}}$]',
-                plot_title = f'{self.imp} density profiles',
-                labels=[str(i) for i in np.arange(0, nz_all.shape[1])],
-                plot_sum=True,
-                x_line=x_line,
-                zlim = True,
-            )
-
-        if sim_steps >= len(time_grid):
-            raise ValueError(
-                f"Could not reach convergence before {max_sim_time:.3f}s of simulated time!"
-            )
-
-        # compute effective particle confinement time from latest few time steps
-        circ = 2 * np.pi * self.Raxis_cm  # cm
-        zvol = circ * np.pi * self.rvol_grid / self.pro_grid
-
-        wh = self.rhop_grid <= 1
-        var_volint = np.nansum(nz_new[wh, :, -2] * zvol[wh, None])
-
-        # compute effective particle confinement time
-        source_time_history = grids_utils.vol_int(
-            self.src_core.T,
-            self.rvol_grid,
-            self.pro_grid,
-            self.Raxis_cm,
-            rvol_max=self.rvol_lcfs,
-        )
-        self.tau_imp = (
-            var_volint / source_time_history[-2]
-        )  # avoid last time point because source may be 0 there
-
-        return nz_new[:, :, -1]
-
+    
+    
     def calc_Zeff(self):
         """Compute Zeff from each charge state density, using the result of an AURORA simulation.
         The total Zeff change over time and space due to the simulated impurity can be simply obtained by summing
@@ -1908,9 +1290,7 @@ class aurora_sim:
         
         # main wall reservoir
         if self.namelist["phys_surfaces"]:
-            reservoirs["particle_density_stuck_at_main_wall"] = (N_mainwall * circ)/(self.surf_mainwall*self.mainwall_roughness)
             reservoirs["particle_density_retained_at_main_wall"] = (N_mainret * circ)/(self.surf_mainwall*self.mainwall_roughness)
-        reservoirs["particles_stuck_at_main_wall"] = N_mainwall * circ
         reservoirs["particles_retained_at_main_wall"] = N_mainret * circ
 
         # flux towards divertor targets and backflow/leakage rates
@@ -1925,9 +1305,7 @@ class aurora_sim:
         
         # divertor wall reservoir
         if self.namelist["phys_surfaces"]:
-            reservoirs["particle_density_stuck_at_div_wall"] = (N_divwall * circ)/(self.surf_divwall*self.divwall_roughness)
             reservoirs["particle_density_retained_at_div_wall"] = (N_divret * circ)/(self.surf_divwall*self.divwall_roughness)
-        reservoirs["particles_stuck_at_div_wall"] = N_divwall * circ
         reservoirs["particles_retained_at_div_wall"] = N_divret * circ
         
         # particles pumped away
@@ -1998,12 +1376,10 @@ class aurora_sim:
             ax1[1, 1].set_title('Main wall recycling rate', loc='right', fontsize = 11)
 
             if self.namelist["phys_surfaces"]:
-                ax1[1, 2].plot(self.time_out, reservoirs["particle_density_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
                 ax1[1, 2].plot(self.time_out, reservoirs["particle_density_retained_at_main_wall"],
                     label="Particles retained", color = light_grey)
                 ax1[1, 2].set_ylabel('[$\mathrm{cm}^{-2}$]')              
             else:
-                ax1[1, 2].plot(self.time_out, reservoirs["particles_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
                 ax1[1, 2].plot(self.time_out, reservoirs["particles_retained_at_main_wall"],
                     label="Particles retained", color = light_grey)
                 ax1[1, 2].set_ylabel('[#]')  
@@ -2033,12 +1409,10 @@ class aurora_sim:
             ax1[2, 1].set_title('Divertor wall recycling rate', loc='right', fontsize = 11)
             
             if self.namelist["phys_surfaces"]:
-                ax1[2, 2].plot(self.time_out, reservoirs["particle_density_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
                 ax1[2, 2].plot(self.time_out, reservoirs["particle_density_retained_at_div_wall"],
                     label="Particles retained", color = grey)
                 ax1[2, 2].set_ylabel('[$\mathrm{cm}^{-2}$]')              
             else:
-                ax1[2, 2].plot(self.time_out, reservoirs["particles_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
                 ax1[2, 2].plot(self.time_out, reservoirs["particles_retained_at_div_wall"],
                     label="Particles retained", color = grey)
                 ax1[2, 2].set_ylabel('[#]')   
@@ -2111,8 +1485,6 @@ class aurora_sim:
             ax2.plot(self.time_out, reservoirs["particles_in_divertor"], label="Particles in the divertor chamber", color = green)
             if self.namelist["pump_chamber"]:
                 ax2.plot(self.time_out, reservoirs["particles_in_pump"], label="Particles in the pump chamber", color = light_green)
-            ax2.plot(self.time_out, reservoirs["particles_stuck_at_main_wall"]+reservoirs["particles_retained_at_main_wall"], label="Particles stored at the main wall", color = light_grey)
-            ax2.plot(self.time_out, reservoirs["particles_stuck_at_div_wall"]+reservoirs["particles_retained_at_div_wall"], label="Particles stored at the divertor wall", color = grey)
             ax2.plot(self.time_out, reservoirs["particles_pumped"], label="Particles pumped away", color = red, linestyle = 'dashed')
             ax2.plot(self.time_out, reservoirs["integ_source"], label="Integrated source", color = red, linestyle = 'dotted')
             ax2.plot(self.time_out, reservoirs["total"], label="Total particles in the system", color = 'black')
@@ -2134,3 +1506,368 @@ class aurora_sim:
             return reservoirs, (ax1, ax2)
         else:
             return reservoirs
+        
+        
+    def PWI_time_traces(self, plot=True, ylim = True, axs=None):
+        """Return and plot data regarding the plasma-wall interaction in the simulation.
+
+        Parameters
+        ----------
+        plot : bool, optional
+            If True, plot time traces of various quantities related to the plasma-wall interaction.
+        axs : 2-tuple or array
+            Array-like structure containing two matplotlib.Axes instances: the first one
+            for the time traces referred to the main wall, the second one for the time traces
+            referred to the divertor wall
+
+        Returns
+        -------
+        PWI_traces : dict
+            Dictionary containing various quantities related to the plasma-wall interaction.
+        axs : matplotlib.Axes instances, only returned if plot=True
+            Array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
+            See optional input argument.
+        """
+        
+        # get colors for plots
+        colors = plot_tools.load_color_codes_reservoirs()
+        blue,light_blue,green,light_green,grey,light_grey,red,light_red = colors
+        colors_PWI = plot_tools.load_color_codes_PWI()
+        reds, blues, light_blues, greens = colors_PWI
+        
+        nz = self.res['nz']
+        N_mainwall = self.res['N_mainwall']
+        N_divwall = self.res['N_divwall']
+        N_div = self.res['N_div']
+        N_pump = self.res['N_pump']
+        N_out = self.res['N_out']
+        N_mainret = self.res['N_mainret']
+        N_divret = self.res['N_divret']
+        N_tsu = self.res['N_tsu']
+        N_dsu = self.res['N_dsu']
+        N_dsul = self.res['N_dsul']
+        rcld_rate = self.res['rcld_rate']
+        rcld_refl_rate = self.res['rcld_refl_rate']
+        rcld_recl_rate = self.res['rcld_recl_rate']
+        rcld_impl_rate = self.res['rcld_impl_rate']
+        rcld_sput_rate = self.res['rcld_sput_rate']
+        rclb_rate = self.res['rclb_rate']
+        rcls_rate = self.res['rcls_rate']
+        rclp_rate = self.res['rclp_rate']
+        rclw_rate = self.res['rclw_rate']
+        rclw_refl_rate = self.res['rclw_refl_rate']
+        rclw_recl_rate = self.res['rclw_recl_rate']
+        rclw_impl_rate = self.res['rclw_impl_rate']
+        rclw_sput_rate = self.res['rclw_sput_rate']
+        
+        nz = nz.transpose(2, 1, 0)  # time,nZ,space
+
+        # factor to account for cylindrical geometry:
+        circ = 2 * np.pi * self.Raxis_cm  # cm
+        
+        # list of background species
+        background_species = self.background_species
+        
+        # saturation densities in cm^-2
+        n_main_wall_sat = self.n_main_wall_sat/1e4
+        n_div_wall_sat = self.n_div_wall_sat/1e4
+
+        # collect all the relevant quantities for the PWI model
+        PWI_traces = {}
+        
+        # main wall
+        
+        # main wall impurity content
+        PWI_traces["impurity_content_mainwall"] = ((N_mainret * circ)/(self.surf_mainwall*self.mainwall_roughness))/n_main_wall_sat
+        # impurity flux towards main wall
+        PWI_traces["impurity_flux_mainwall"] = N_tsu * circ + N_dsul * circ
+        # impurity impact energy at main wall
+        PWI_traces["impurity_impact_energy_mainwall"] = self.E0_main_wall_imp.T
+        # impurity reflection coefficient at main wall
+        PWI_traces["impurity_reflection_coeff_mainwall"] = self.rn_main_wall
+        # impurity reflection energy at main wall
+        PWI_traces["impurity_reflection_energy_mainwall"] = self.E_refl_main_wall
+        # fluxes of background species
+        PWI_traces["background_fluxes_mainwall"] = self.fluxes_main_wall_background.T
+        # impact energies of background species at main wall
+        PWI_traces["background_impact_energies_mainwall"] = self.E0_main_wall_background.T
+        # impurity sputtering yields at main wall
+        PWI_traces["impurity_sputtering_yields_mainwall"] = self.y_main_wall.T
+        # impurity sputtering energies at main wall
+        PWI_traces["impurity_sputtering_energies_mainwall"] = self.E_sput_main_wall.T
+        # impurity reflection rate from main wall
+        PWI_traces["impurity_reflection_rate_mainwall"] = rclw_refl_rate * circ
+        # impurity prompt recycling rate from main wall
+        PWI_traces["impurity_prompt_recycling_rate_mainwall"] = rclw_recl_rate * circ
+        # impurity implantation rate into main wall
+        PWI_traces["impurity_implantation_rate_mainwall"] = rclw_impl_rate * circ
+        # impurity release rate from main wall
+        PWI_traces["impurity_sputtering_rates_mainwall"] = np.zeros((len(self.time_out),len(background_species)+1))
+        for i in range(0,len(background_species)+1):
+            PWI_traces["impurity_sputtering_rates_mainwall"][:,i] = rclw_sput_rate[i,:] * circ
+        PWI_traces["impurity_sputtering_rate_total_mainwall"] = PWI_traces["impurity_sputtering_rates_mainwall"].sum(axis=1)
+
+        # divertor wall
+        
+        # divertor wall impurity content
+        PWI_traces["impurity_content_divwall"] = ((N_divret * circ)/(self.surf_divwall*self.divwall_roughness))/n_div_wall_sat
+        # impurity flux towards divertor wall
+        PWI_traces["impurity_flux_divwall"] = (N_dsu * circ + rcls_rate * circ)*(1-self.div_recomb_ratio)
+        # impurity impact energy at divertor wall
+        PWI_traces["impurity_impact_energy_divwall"] = self.E0_div_wall_imp.T
+        # impurity reflection coefficient at divertor wall
+        PWI_traces["impurity_reflection_coeff_divwall"] = self.rn_div_wall
+        # impurity reflection energy at divertor wall
+        PWI_traces["impurity_reflection_energy_divwall"] = self.E_refl_div_wall
+        # fluxes of background species
+        PWI_traces["background_fluxes_divwall"] = self.fluxes_div_wall_background.T
+        # impact energies of background species at divertor wall
+        PWI_traces["background_impact_energies_divwall"] = self.E0_div_wall_background.T
+        # impurity sputtering yields at divertor wall
+        PWI_traces["impurity_sputtering_yields_divwall"] = self.y_div_wall.T
+        # impurity sputtering energies at divertor wall
+        PWI_traces["impurity_sputtering_energies_divwall"] = self.E_sput_div_wall.T 
+        # impurity reflection rate from divertor wall
+        PWI_traces["impurity_reflection_rate_divwall"] = rcld_refl_rate * circ
+        # impurity prompt recycling rate from divertor wall
+        PWI_traces["impurity_prompt_recycling_rate_divwall"] = rcld_recl_rate * circ
+        # impurity implantation rate into divertor wall
+        PWI_traces["impurity_implantation_rate_divwall"] = rcld_impl_rate * circ
+        # impurity release rate from divertor wall
+        PWI_traces["impurity_sputtering_rates_divwall"] = np.zeros((len(self.time_out),len(background_species)+1))
+        for i in range(0,len(background_species)+1):
+            PWI_traces["impurity_sputtering_rates_divwall"][:,i] = rcld_sput_rate[i,:] * circ
+        PWI_traces["impurity_sputtering_rate_total_divwall"] = PWI_traces["impurity_sputtering_rates_divwall"].sum(axis=1)
+
+        if plot:
+            # -------------------------------------------------
+            # plot time histories for the main wall:
+            if axs is None:
+                fig, ax1 = plt.subplots(nrows=3, ncols=5, sharex=True, figsize=(20, 12))
+            else:
+                ax1 = axs[0]
+                
+            fig.suptitle('Plasma - main wall interaction time traces',fontsize=18)
+
+            ax1[0, 0].plot(self.time_out, PWI_traces["impurity_content_mainwall"], color = grey)
+            if ylim:
+                ax1[0, 0].set_ylim(0,1)
+            ax1[0, 0].set_ylabel(f'$C_{{{self.imp}}}$/$C_{{{self.imp},sat}}$')
+            ax1[0, 0].set_title(f"Retained {self.imp} content into wall", loc='right', fontsize = 11)
+
+            ax1[0, 1].plot(self.time_out, PWI_traces["impurity_flux_mainwall"], color = light_blues[0])
+            if ylim:
+                ax1[0, 1].set_ylim(0,np.max(PWI_traces["impurity_flux_mainwall"])*1.15)
+            ax1[0, 1].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax1[0, 1].set_title(f"{self.imp} flux towards wall", loc='right', fontsize = 11)
+
+            ax1[0, 2].plot(self.time_out, PWI_traces["impurity_impact_energy_mainwall"], color = reds[0])
+            if ylim:
+                ax1[0, 2].set_ylim(0,np.max(PWI_traces["impurity_impact_energy_mainwall"])*1.15)
+            ax1[0, 2].set_ylabel('[$\mathrm{eV}$]') 
+            ax1[0, 2].set_title(f"Mean {self.imp} impact energy", loc='right', fontsize = 11)
+
+            ax1[0, 3].plot(self.time_out, PWI_traces["impurity_reflection_coeff_mainwall"], color = blues[0])
+            if ylim:
+                ax1[0, 3].set_ylim(np.min(PWI_traces["impurity_reflection_coeff_mainwall"])/1.08,min(np.max(PWI_traces["impurity_reflection_coeff_mainwall"])*1.08,1))
+            ax1[0, 3].set_ylabel('$R_N$')  
+            ax1[0, 3].set_title(f"Mean {self.imp} reflection coeff. on {self.main_wall_material}", loc='right', fontsize = 11)
+            
+            ax1[0, 4].plot(self.time_out, PWI_traces["impurity_reflection_energy_mainwall"], color = reds[0])
+            if ylim:
+                ax1[0, 4].set_ylim(0,np.max(PWI_traces["impurity_reflection_energy_mainwall"])*1.15)
+            ax1[0, 4].set_ylabel('[$\mathrm{eV}$]') 
+            ax1[0, 4].set_title(f"Mean energy of reflected {self.imp}", loc='right', fontsize = 11)
+
+            for i in range(0,len(background_species)):
+                ax1[1, 1].plot(self.time_out, PWI_traces["background_fluxes_mainwall"][:,i], label=f"{background_species[i]} flux", color = light_blues[i+1])
+            if ylim:
+                ax1[1, 1].set_ylim(0,np.max(PWI_traces["background_fluxes_mainwall"])*1.15)
+            ax1[1, 1].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax1[1, 1].set_title("Background fluxes towards wall", loc='right', fontsize = 11)
+            ax1[1, 1].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            for i in range(0,len(background_species)):
+                ax1[1, 2].plot(self.time_out, PWI_traces["background_impact_energies_mainwall"][:,i], label=f"{background_species[i]}", color = reds[i+1])
+            if ylim:
+                ax1[1, 2].set_ylim(0,np.max(PWI_traces["background_impact_energies_mainwall"])*1.15)
+            ax1[1, 2].set_ylabel('[$\mathrm{eV}$]')
+            ax1[1, 2].set_title("Mean background fluxes impact energy", loc='right', fontsize = 11)
+            ax1[1, 2].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            ax1[1, 3].plot(self.time_out, PWI_traces["impurity_sputtering_yields_mainwall"][:,0], label=f"from {self.imp}", color = blues[0])
+            for i in range(0,len(background_species)):
+                ax1[1, 3].plot(self.time_out, PWI_traces["impurity_sputtering_yields_mainwall"][:,i+1], label=f"from {background_species[i]}", color = blues[i+1])
+            if ylim:
+                ax1[1, 3].set_ylim(0,np.max(PWI_traces["impurity_sputtering_yields_mainwall"])*1.15)
+            ax1[1, 3].set_ylabel(f'$Y_{{{self.imp}}}$/$C_{{{self.imp},wall}}$')
+            ax1[1, 3].set_title(f"Mean {self.imp} sputtering yields from {self.main_wall_material}", loc='right', fontsize = 11)
+            ax1[1, 3].legend(loc="best", fontsize = 9).set_draggable(True)
+            
+            ax1[1, 4].plot(self.time_out, PWI_traces["impurity_sputtering_energies_mainwall"][:,0], label=f"from {self.imp}", color = reds[0])
+            for i in range(0,len(background_species)):
+                ax1[1, 4].plot(self.time_out, PWI_traces["impurity_sputtering_energies_mainwall"][:,i+1], label=f"from {background_species[i]}", color = reds[i+1])
+            if ylim:
+                ax1[1, 4].set_ylim(0,np.max(PWI_traces["impurity_sputtering_energies_mainwall"])*1.15)
+            ax1[1, 4].set_ylabel('[$\mathrm{eV}$]')
+            ax1[1, 4].set_title(f"Mean energy of sputtered {self.imp}", loc='right', fontsize = 11)
+            ax1[1, 4].legend(loc="best", fontsize = 9).set_draggable(True)   
+            
+            ax1[2, 0].plot(self.time_out, PWI_traces["impurity_implantation_rate_mainwall"], label="Total absorption rate", color = greens[0])
+            ax1[2, 0].plot(self.time_out, PWI_traces["impurity_sputtering_rate_total_mainwall"], label="Total release rate", color = blues[0])
+            ax1[2, 0].plot(self.time_out, PWI_traces["impurity_implantation_rate_mainwall"]-PWI_traces["impurity_sputtering_rate_total_mainwall"], label="Balance", color = 'black')
+            ax1[2, 0].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax1[2, 0].set_title(f"{self.imp} wall balance", loc='right', fontsize = 11)
+            ax1[2, 0].legend(loc="best", fontsize = 9).set_draggable(True)
+            
+            ax1[2, 1].plot(self.time_out, PWI_traces["impurity_reflection_rate_mainwall"], color = blues[0])
+            if ylim:
+                ax1[2, 1].set_ylim(0,np.max(PWI_traces["impurity_reflection_rate_mainwall"])*1.15)
+            ax1[2, 1].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax1[2, 1].set_title(f"{self.imp} reflection rate from wall", loc='right', fontsize = 11)
+
+            ax1[2, 2].plot(self.time_out, PWI_traces["impurity_prompt_recycling_rate_mainwall"], color = blues[0])
+            if ylim:
+                ax1[2, 2].set_ylim(0,np.max(PWI_traces["impurity_prompt_recycling_rate_mainwall"])*1.15)
+            ax1[2, 2].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax1[2, 2].set_title(f"{self.imp} prompt recycling rate from wall", loc='right', fontsize = 11)
+            
+            ax1[2, 3].plot(self.time_out, PWI_traces["impurity_implantation_rate_mainwall"], color = blues[0])
+            if ylim:
+                ax1[2, 3].set_ylim(0,np.max(PWI_traces["impurity_implantation_rate_mainwall"])*1.15)
+            ax1[2, 3].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax1[2, 3].set_title(f"{self.imp} implantation rate into wall", loc='right', fontsize = 11)
+            
+            ax1[2, 4].plot(self.time_out, PWI_traces["impurity_sputtering_rates_mainwall"][:,0], label=f"from {self.imp}", color = blues[0])
+            for i in range(0,len(background_species)):
+                ax1[2, 4].plot(self.time_out, PWI_traces["impurity_sputtering_rates_mainwall"][:,i+1], label=f"from {background_species[i]}", color = blues[i+1])
+            if ylim:
+                ax1[2, 4].set_ylim(0,np.max(PWI_traces["impurity_sputtering_rates_mainwall"])*1.15)
+            ax1[2, 4].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax1[2, 4].set_title(f"{self.imp} sputtering rates from wall", loc='right', fontsize = 11)
+            ax1[2, 4].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            for ii in [0, 1, 2, 3, 4]:
+                ax1[2, ii].set_xlabel('$\mathrm{time}$ [$\mathrm{s}$]')
+            ax1[2, 0].set_xlim(self.time_out[[0, -1]])
+            
+            plt.tight_layout()
+            
+            # -------------------------------------------------
+            # plot time histories for the divertor wall:
+            if axs is None:
+                fig, ax2 = plt.subplots(nrows=3, ncols=5, sharex=True, figsize=(20, 12))
+            else:
+                ax2 = axs[0]
+                
+            fig.suptitle('Plasma - divertor wall interaction time traces',fontsize=18)
+
+            ax2[0, 0].plot(self.time_out, PWI_traces["impurity_content_divwall"], color = grey)
+            if ylim:
+                ax2[0, 0].set_ylim(0,1)
+            ax2[0, 0].set_ylabel(f'$C_{{{self.imp}}}$/$C_{{{self.imp},sat}}$')
+            ax2[0, 0].set_title(f"Retained {self.imp} content into wall", loc='right', fontsize = 11)
+
+            ax2[0, 1].plot(self.time_out, PWI_traces["impurity_flux_divwall"], color = light_blues[0])
+            if ylim:
+                ax2[0, 1].set_ylim(0,np.max(PWI_traces["impurity_flux_divwall"])*1.15)
+            ax2[0, 1].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax2[0, 1].set_title(f"{self.imp} flux towards wall", loc='right', fontsize = 11)
+
+            ax2[0, 2].plot(self.time_out, PWI_traces["impurity_impact_energy_divwall"], color = reds[0])
+            if ylim:
+                ax2[0, 2].set_ylim(0,np.max(PWI_traces["impurity_impact_energy_divwall"])*1.15)
+            ax2[0, 2].set_ylabel('[$\mathrm{eV}$]')
+            ax2[0, 2].set_title(f"Mean {self.imp} impact energy", loc='right', fontsize = 11)
+
+            ax2[0, 3].plot(self.time_out, PWI_traces["impurity_reflection_coeff_divwall"], color = blues[0])
+            if ylim:
+                ax2[0, 3].set_ylim(np.min(PWI_traces["impurity_reflection_coeff_divwall"])/1.08,min(np.max(PWI_traces["impurity_reflection_coeff_divwall"])*1.08,1))
+            ax2[0, 3].set_ylabel('$R_N$')  
+            ax2[0, 3].set_title(f"Mean {self.imp} reflection coeff. on {self.div_wall_material}", loc='right', fontsize = 11)
+            
+            ax2[0, 4].plot(self.time_out, PWI_traces["impurity_reflection_energy_divwall"], color = reds[0])
+            if ylim:
+                ax2[0, 4].set_ylim(0,np.max(PWI_traces["impurity_reflection_energy_divwall"])*1.15)
+            ax2[0, 4].set_ylabel('[$\mathrm{eV}$]') 
+            ax2[0, 4].set_title(f"Mean energy of reflected {self.imp}", loc='right', fontsize = 11)
+
+            for i in range(0,len(background_species)):
+                ax2[1, 1].plot(self.time_out, PWI_traces["background_fluxes_divwall"][:,i], label=f"{background_species[i]} flux", color = light_blues[i+1])
+            if ylim:
+                ax2[1, 1].set_ylim(0,np.max(PWI_traces["background_fluxes_divwall"])*1.15)
+            ax2[1, 1].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax2[1, 1].set_title("Background fluxes towards wall", loc='right', fontsize = 11)
+            ax2[1, 1].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            for i in range(0,len(background_species)):
+                ax2[1, 2].plot(self.time_out, PWI_traces["background_impact_energies_divwall"][:,i], label=f"{background_species[i]}", color = reds[i+1])
+            if ylim:
+                ax2[1, 2].set_ylim(0,np.max(PWI_traces["background_impact_energies_divwall"])*1.15)
+            ax2[1, 2].set_ylabel('[$\mathrm{eV}$]')
+            ax2[1, 2].set_title("Mean background fluxes impact energy", loc='right', fontsize = 11)
+            ax2[1, 2].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            ax2[1, 3].plot(self.time_out, PWI_traces["impurity_sputtering_yields_divwall"][:,0], label=f"from {self.imp}", color = blues[0])
+            for i in range(0,len(background_species)):
+                ax2[1, 3].plot(self.time_out, PWI_traces["impurity_sputtering_yields_divwall"][:,i+1], label=f"from {background_species[i]}", color = blues[i+1])
+            if ylim:
+                ax2[1, 3].set_ylim(0,np.max(PWI_traces["impurity_sputtering_yields_divwall"])*1.15)
+            ax2[1, 3].set_ylabel(f'$Y_{{{self.imp}}}$/$C_{{{self.imp},wall}}$')
+            ax2[1, 3].set_title(f"Mean {self.imp} sputtering yields from {self.div_wall_material}", loc='right', fontsize = 11)
+            ax2[1, 3].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            ax2[1, 4].plot(self.time_out, PWI_traces["impurity_sputtering_energies_divwall"][:,0], label=f"from {self.imp}", color = reds[0])
+            for i in range(0,len(background_species)):
+                ax2[1, 4].plot(self.time_out, PWI_traces["impurity_sputtering_energies_divwall"][:,i+1], label=f"from {background_species[i]}", color = reds[i+1])
+            if ylim:
+                ax2[1, 4].set_ylim(0,np.max(PWI_traces["impurity_sputtering_energies_divwall"])*1.15)
+            ax2[1, 4].set_ylabel('[$\mathrm{eV}$]')
+            ax2[1, 4].set_title(f"Mean energy of sputtered {self.imp}", loc='right', fontsize = 11)
+            ax2[1, 4].legend(loc="best", fontsize = 9).set_draggable(True)  
+
+            ax2[2, 0].plot(self.time_out, PWI_traces["impurity_implantation_rate_divwall"], label="Total absorption rate", color = greens[0])
+            ax2[2, 0].plot(self.time_out, PWI_traces["impurity_sputtering_rate_total_divwall"], label="Total release rate", color = blues[0])
+            ax2[2, 0].plot(self.time_out, PWI_traces["impurity_implantation_rate_divwall"]-PWI_traces["impurity_sputtering_rate_total_divwall"], label="Balance", color = 'black')
+            ax2[2, 0].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax2[2, 0].set_title(f"{self.imp} wall balance", loc='right', fontsize = 11)
+            ax2[2, 0].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            ax2[2, 1].plot(self.time_out, PWI_traces["impurity_reflection_rate_divwall"], color = blues[0])
+            if ylim:
+                ax2[2, 1].set_ylim(0,np.max(PWI_traces["impurity_reflection_rate_divwall"])*1.15)
+            ax2[2, 1].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax2[2, 1].set_title(f"{self.imp} reflection rate from wall", loc='right', fontsize = 11)
+
+            ax2[2, 2].plot(self.time_out, PWI_traces["impurity_prompt_recycling_rate_divwall"], color = blues[0])
+            if ylim:
+                ax2[2, 2].set_ylim(0,np.max(PWI_traces["impurity_prompt_recycling_rate_divwall"])*1.15)
+            ax2[2, 2].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax2[2, 2].set_title(f"{self.imp} prompt recycling rate from wall", loc='right', fontsize = 11)
+            
+            ax2[2, 3].plot(self.time_out, PWI_traces["impurity_implantation_rate_divwall"], color = blues[0])
+            if ylim:
+                ax2[2, 3].set_ylim(0,np.max(PWI_traces["impurity_implantation_rate_divwall"])*1.15)
+            ax2[2, 3].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax2[2, 3].set_title(f"{self.imp} implantation rate into wall", loc='right', fontsize = 11)
+            
+            ax2[2, 4].plot(self.time_out, PWI_traces["impurity_sputtering_rates_divwall"][:,0], label=f"from {self.imp}", color = blues[0])
+            for i in range(0,len(background_species)):
+                ax2[2, 4].plot(self.time_out, PWI_traces["impurity_sputtering_rates_divwall"][:,i+1], label=f"from {background_species[i]}", color = blues[i+1])
+            if ylim:
+                ax2[2, 4].set_ylim(0,np.max(PWI_traces["impurity_sputtering_rates_divwall"])*1.15)
+            ax2[2, 4].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax2[2, 4].set_title(f"{self.imp} sputtering rates from wall", loc='right', fontsize = 11)
+            ax2[2, 4].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            for ii in [0, 1, 2, 3, 4]:
+                ax2[2, ii].set_xlabel('$\mathrm{time}$ [$\mathrm{s}$]')
+            ax2[2, 0].set_xlim(self.time_out[[0, -1]])  
+            
+            plt.tight_layout()
+
+        if plot:
+            return PWI_traces, (ax1, ax2)
+        else:
+            return PWI_traces             
+            

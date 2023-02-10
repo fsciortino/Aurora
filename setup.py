@@ -67,14 +67,14 @@ install_requires = open("requirements.txt").read().split("\n")
 setup(
     name=package_name,
     version=get_version("aurora/__init__.py"),
-    description="Aurora package for particle transport, radiation and neutrals in magnetically-confined plasmas",
+    description="Aurora package for particle transport, plasma-wall interaction, neutrals and radiation in magnetically-confined plasmas",
     long_description=long_description,
     # long_description_content_type='text/markdown',
     url="https://github.com/fsciortino/Aurora",
     author="F. Sciortino",
     author_email="sciortino@psfc.mit.edu",
     packages=["aurora"],
-    keywords="particle and impurity transport, neutrals, radiation, magnetic confinement fusion",
+    keywords="particle and impurity transport, plasma-wall interaction, neutrals, radiation, magnetic confinement fusion",
     package_dir={"aurora": "aurora"},
     package_data={"aurora": package_data},
     data_files=[

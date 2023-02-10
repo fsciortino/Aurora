@@ -1,10 +1,9 @@
 """Functions to provide TRIM-generated files for plasma-surface interaction modelling in Aurora.
+Module provided by Antonello Zito.
 """
 # MIT License
 #
 # Copyright (c) 2021 Francesco Sciortino
-#
-# Module provided by Antonello Zito
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal

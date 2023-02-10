@@ -1,11 +1,10 @@
 """Collection of classes and functions for loading, interpolation and processing of surface data. 
 Refer also to the trim_files.py script. 
+Module provided by Antonello Zito.
 """
 # MIT License
 #
 # Copyright (c) 2021 Francesco Sciortino
-#
-# Module provided by Antonello Zito
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal

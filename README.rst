@@ -1,5 +1,5 @@
-Aurora: a modern toolbox for impurity transport, neutrals and radiation modeling
-================================================================================
+Aurora: a modern toolbox for impurity transport, plasma-wall interaction, neutrals and radiation modeling
+=========================================================================================================
 
 .. image:: https://badge.fury.io/py/aurorafusion.svg
     :target: https://badge.fury.io/py/aurorafusion
@@ -19,7 +19,9 @@ Aurora: a modern toolbox for impurity transport, neutrals and radiation modeling
 .. image:: https://anaconda.org/conda-forge/aurorafusion/badges/downloads.svg   
     :target: https://anaconda.org/conda-forge/aurorafusion
 
-Aurora is a package to simulate heavy-ion transportm neutrals and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model, thoroughly benchmarked with the widely-adopted STRAHL code. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. A simple interface to atomic data for fusion plasmas makes it a convenient tool for spectroscopy and integrated modeling. Aurora's code is mostly written in Python 3 and Fortran 90. An experimental Julia interface has also been added. 
+Aurora is a package to simulate heavy-ion transport, plasma-wall interaction (PWI), neutrals and radiation in magnetically-confined plasmas. It includes a 1.5D impurity transport forward model for the plasma ions, thoroughly benchmarked with the widely-adopted STRAHL code, and a simple multi-reservoir particle balance model including neutrals recycling, pumping and interaction with the material surfaces of the simulated device. A simple interface to plot and process atomic and surface data for fusion plasmas makes it a convenient tool for spectroscopy, PWI and integrated modeling. It also offers routines to analyze neutral states of hydrogen isotopes, both from the edge of fusion plasmas and from neutral beam injection. The spectroscopic and PWI calculations can be not only applied to the output of Aurora's own forward model, but also coupled with other 1D, 2D or 3D transport codes.
+
+Aurora's code is mostly written in Python 3 and Fortran 90. An experimental Julia interface has also been added. 
 
 Documentation is available at https://aurora-fusion.readthedocs.io.
 
@@ -27,7 +29,7 @@ Documentation is available at https://aurora-fusion.readthedocs.io.
 Development 
 -----------
 
-The code is developed and maintained by F. Sciortino (MPI-IPP) in collaboration with T. Odstrcil (GA), D. Fajardo (MPI-IPP), A. Cavallaro (MIT) and R. Reksoatmodjo (W&M), with support from O. Linder (MPI-IPP), C. Johnson (U. Auburn), D. Stanczak (IPPLM) and S. Smith (GA). The STRAHL documentation provided by R.Dux (MPI-IPP) was extremely helpful to guide the initial development of Aurora.
+The code is developed and maintained by F. Sciortino (MPI-IPP) in collaboration with T. Odstrcil (GA), A. Zito (MPI-IPP), D. Fajardo (MPI-IPP), A. Cavallaro (MIT) and R. Reksoatmodjo (W&M), with support from O. Linder (MPI-IPP), C. Johnson (U. Auburn), D. Stanczak (IPPLM) and S. Smith (GA). The STRAHL documentation provided by R.Dux (MPI-IPP) was extremely helpful to guide the initial development of Aurora.
 
 New contributors are more than welcome! Please get in touch at francesco.sciortino-at-ipp.mpg.de or open a pull-request via Github. 
 
@@ -79,6 +81,13 @@ within their Linux environment (or analogous). If an ADAS files that is not avai
 
 Several ADAS formats can currently be managed -- please see the docs. Please contact the authors to request and/or suggest expansions of current capabilities.
 
+
+Surface data
+-----------
+
+Aurora also contains an interface to read and plot plasma-material interaction data, for the most fusion-relevant ion species and wall materials, namely concerning reflection, sputtering and implantation of plasma ions from/into wall materials. The data were generated with the TRIM.SP Monte Carlo program. 
+
+Please contact the authors to request and/or suggest expansions of current capabilities.
 
 
 License
