@@ -1,7 +1,7 @@
-'''Example of Aurora simulation of core impurity transport for a W7-X case.
+"""Example of Aurora simulation of core impurity transport for a W7-X case.
 
 Note that this example assumes that the user can access a number of private routines. Please email francesco.sciortino@ipp.mpg.de and thilo.romba@ipp.mpg.de if these are of interest.
-'''
+"""
 
 import os, sys
 import numpy as np
@@ -12,34 +12,34 @@ sys.path.append("../")
 import aurora
 
 # choose W7-X shot number and get VMEC ID of reference equilibrium
-shot = '20180920.042'
-#vmecID, _ = geometry_routines.get_reference_equilibrium(shot)
-vmecID = 'w7x_ref_348'  # fixed for this example
+shot = "20180920.042"
+# vmecID, _ = geometry_routines.get_reference_equilibrium(shot)
+vmecID = "w7x_ref_348"  # fixed for this example
 
-vmec = Client('http://esb.ipp-hgw.mpg.de:8280/services/vmec_v5?wsdl')
+vmec = Client("http://esb.ipp-hgw.mpg.de:8280/services/vmec_v5?wsdl")
 aminor = max(vmec.service.getReffProfile(vmecID))
 
 # read in default Aurora namelist
 namelist = aurora.default_nml.load_default_namelist()
 
 # now adapt for W7-X run
-namelist['K'] = 10
-namelist['dr_0'] = 0.3
-namelist['dr_1'] = 0.05
-namelist['rvol_lcfs'] = aminor * 100.0 #cm
-namelist['bound_sep'] = 3.0
+namelist["K"] = 10
+namelist["dr_0"] = 0.3
+namelist["dr_1"] = 0.05
+namelist["rvol_lcfs"] = aminor * 100.0  # cm
+namelist["bound_sep"] = 3.0
 namelist["source_cm_out_lcfs"] = 0.0
 namelist["lim_sep"] = 2.0
-namelist["clen_divertor"] = 1000.0 
+namelist["clen_divertor"] = 1000.0
 namelist["clen_lim"] = 1.0
-namelist["shot"] = shot    
+namelist["shot"] = shot
 namelist["time"] = None
 
 # magnetic axis at phi=0
 pnt3d = vmec.service.getMagneticAxis(vmecID, 0.0)
-namelist['Raxis_cm'] = float(pnt3d.x1[0]) * 100.0 # cm
+namelist["Raxis_cm"] = float(pnt3d.x1[0]) * 100.0  # cm
 B3d = vmec.service.magneticField(vmecID, pnt3d)
-namelist['Baxis'] = np.sqrt(B3d.x1[0]**2+B3d.x2[0]**2+B3d.x3[0]**2)
+namelist["Baxis"] = np.sqrt(B3d.x1[0] ** 2 + B3d.x2[0] ** 2 + B3d.x3[0] ** 2)
 
 # save kinetic profiles on a rhop (sqrt of norm. pol. flux) grid
 # parameterization f=(f_center-f_edge)*(1-rhop**alpha1)**alpha2 + f_edge
@@ -54,8 +54,8 @@ n_alpha1 = 2
 n_alpha2 = 0.5
 
 rhop = kp["Te"]["rhop"] = kp["ne"]["rhop"] = np.linspace(0, 1, 100)
-kp["ne"]["vals"] = (n_core - n_edge) * (1 - rhop ** n_alpha1) ** n_alpha2 + n_edge
-kp["Te"]["vals"] = (T_core - T_edge) * (1 - rhop ** T_alpha1) ** T_alpha2 + T_edge
+kp["ne"]["vals"] = (n_core - n_edge) * (1 - rhop**n_alpha1) ** n_alpha2 + n_edge
+kp["Te"]["vals"] = (T_core - T_edge) * (1 - rhop**T_alpha1) ** T_alpha2 + T_edge
 
 # set impurity species and sources rate
 imp = namelist["imp"] = "Ar"

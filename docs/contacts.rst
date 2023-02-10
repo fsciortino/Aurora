@@ -3,7 +3,7 @@ Questions and contributions
 
 For any questions on Aurora, to brainstorm on possible applications or request changes to the code, please contact francesco.sciortino-at-ipp.mpg.de.
 
-The code is developed and maintained by F. Sciortino (MPI-IPP) in collaboration with T. Odstrcil (GA) and contributions by A. Zito (MPI-IPP), A. Cavallaro (MIT), C. Johnson (ORNL), O. Linder (MPI-IPP), R. Reksoatmodjo (W&M), A. Rosenthal (MIT), D. Vezinet (CEA). For an updated list of contributors, please see the Github contributors list. 
+The code is developed and maintained by F. Sciortino (MPI-IPP) in collaboration with T. Odstrcil (GA) and contributions by A. Zito (MPI-IPP), D. Fajardo (MPI-IPP), A. Cavallaro (MIT), C. Johnson (ORNL), O. Linder (MPI-IPP), R. Reksoatmodjo (W&M), A. Rosenthal (MIT), D. Vezinet (CEA). For an updated list of contributors, please see the Github contributors list. 
 
 The great wisdom (and patience) of S. Smith (GA) has allowed this code to be effectively shared and documented. Finally, the STRAHL documentation provided by R.Dux (MPI-IPP) was extremely helpful to guide code development.
 

@@ -36,8 +36,8 @@ n_alpha2 = 0.5
 
 # now define kinetic profiles
 rhop = np.linspace(0, 1, 100)
-ne_cm3 = (n_core - n_edge) * (1 - rhop ** n_alpha1) ** n_alpha2 + n_edge
-Te_eV = (T_core - T_edge) * (1 - rhop ** T_alpha1) ** T_alpha2 + T_edge
+ne_cm3 = (n_core - n_edge) * (1 - rhop**n_alpha1) ** n_alpha2 + n_edge
+Te_eV = (T_core - T_edge) * (1 - rhop**T_alpha1) ** T_alpha2 + T_edge
 
 # get charge state distributions from ionization equilibrium for Ca
 atom_data = aurora.atomic.get_atom_data(ion, ["scd", "acd", "ccd"])
@@ -49,7 +49,7 @@ _Te, fz = aurora.atomic.get_frac_abundances(
 
 # include effect of CX with a given (here, arbitrary) density of neutrals
 n0_by_ne = (
-    1e-2 * np.exp(rhop ** 5 - 1)
+    1e-2 * np.exp(rhop**5 - 1)
 ) ** 2  # arbitrary, exponentially decreasing from LCFS
 _Te, fz = aurora.atomic.get_frac_abundances(
     atom_data,

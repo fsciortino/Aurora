@@ -42,8 +42,8 @@ n_alpha1 = 2
 n_alpha2 = 0.5
 
 rhop = kp["Te"]["rhop"] = kp["ne"]["rhop"] = np.linspace(0, 1, 100)
-kp["ne"]["vals"] = (n_core - n_edge) * (1 - rhop ** n_alpha1) ** n_alpha2 + n_edge
-kp["Te"]["vals"] = (T_core - T_edge) * (1 - rhop ** T_alpha1) ** T_alpha2 + T_edge
+kp["ne"]["vals"] = (n_core - n_edge) * (1 - rhop**n_alpha1) ** n_alpha2 + n_edge
+kp["Te"]["vals"] = (T_core - T_edge) * (1 - rhop**T_alpha1) ** T_alpha2 + T_edge
 
 # set impurity species and sources rate
 imp = namelist["imp"] = "Ar"
@@ -66,7 +66,15 @@ D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
 V_z = 0.0 * np.ones(len(asim.rvol_grid))  # cm/s
 
 # run Aurora forward model and plot results
-out = asim.run_aurora(D_z, V_z, times_DV=[1.0,], unstage=True, plot=plot)
+out = asim.run_aurora(
+    D_z,
+    V_z,
+    times_DV=[
+        1.0,
+    ],
+    unstage=True,
+    plot=plot,
+)
 
 
 ########
@@ -77,8 +85,8 @@ namelist["superstages"] = superstages
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
 # run Aurora forward model and plot results
-outs = asim.run_aurora(D_z, V_z, times_DV=[1.0,], unstage=True, plot=plot)
 
+outs = asim.run_aurora(D_z, V_z, times_DV=[1.0,], unstage=True, plot=plot)
 
 # compare at last slice
 ls_cycle = aurora.get_ls_cycle()
