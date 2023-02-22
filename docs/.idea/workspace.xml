@@ -2,20 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="247e225e-ceea-42e6-accd-689833c61a7f" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../README.rst" beforeDir="false" afterPath="$PROJECT_DIR$/../README.rst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../aurora/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/../aurora/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../aurora/atomic.py" beforeDir="false" afterPath="$PROJECT_DIR$/../aurora/atomic.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../aurora/core.py" beforeDir="false" afterPath="$PROJECT_DIR$/../aurora/core.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../aurora/default_nml.py" beforeDir="false" afterPath="$PROJECT_DIR$/../aurora/default_nml.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../aurora/surface.py" beforeDir="false" afterPath="$PROJECT_DIR$/../aurora/surface.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../aurora/trim_files.py" beforeDir="false" afterPath="$PROJECT_DIR$/../aurora/trim_files.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/atomic_data.rst" beforeDir="false" afterPath="$PROJECT_DIR$/atomic_data.rst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/aurora.rst" beforeDir="false" afterPath="$PROJECT_DIR$/aurora.rst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../aurora/pwi.py" beforeDir="false" afterPath="$PROJECT_DIR$/../aurora/pwi.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/citing.rst" beforeDir="false" afterPath="$PROJECT_DIR$/citing.rst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/contacts.rst" beforeDir="false" afterPath="$PROJECT_DIR$/contacts.rst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.rst" beforeDir="false" afterPath="$PROJECT_DIR$/index.rst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/params.rst" beforeDir="false" afterPath="$PROJECT_DIR$/params.rst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tutorial.rst" beforeDir="false" afterPath="$PROJECT_DIR$/tutorial.rst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/../setup.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

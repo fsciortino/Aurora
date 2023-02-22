@@ -145,8 +145,8 @@ class aurora_sim:
                 setattr(self, parameter, self.namelist[parameter])
         
         # consistency checks for divertor parameters
-        if self.screening_eff < 0.0 or self.screening_eff > 1.0:
-            raise ValueError("screening_eff must be between 0.0 and 1.0!") 
+        if self.div_neut_screen < 0.0 or self.div_neut_screen > 1.0:
+            raise ValueError("div_neut_screen must be between 0.0 and 1.0!") 
         if self.div_recomb_ratio < 0.0 or self.div_recomb_ratio > 1.0:
             raise ValueError("div_recomb_ratio must be between 0.0 and 1.0!") 
          
@@ -618,57 +618,7 @@ class aurora_sim:
         dv, _ = np.broadcast_arrays(dv, self.time_grid[None])
 
         return np.asfortranarray(dv)
-    
-    def centrifugal_asym(self, omega, Zeff, plot=False):
-        """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the
-        :py:func:`~aurora.synth_diags.centrifugal_asymmetry` function docstring for details.
 
-        In this function, we use the average Z of the impurity species in the Aurora simulation result, using only
-        the last time slice to calculate fractional abundances. The CF lambda factor
-
-        Parameters
-        -----------------
-        omega : array (nt,nr) or (nr,) [ rad/s ]
-             Toroidal rotation on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
-        Zeff : array (nt,nr), (nr,) or float
-             Effective plasma charge on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
-             Alternatively, users may give Zeff as a float (taken constant over time and space).
-        plot : bool
-            If True, plot asymmetry factor :math:`\lambda` vs. radius
-
-        Returns
-        ------------
-        CF_lambda : array (nr,)
-            Asymmetry factor, defined as :math:`\lambda` in the :py:func:`~aurora.synth_diags.centrifugal_asymmetry` function
-            docstring.
-        """
-        # this method requires all charge states to be made available
-        try:
-            assert self.res[0].shape[1] == self.Z_imp + 1
-        except AssertionError:
-            raise ValueError(
-                "centrifugal_asym method requires all charge state densities to be availble! Unstage superstages."
-            )
-
-        fz = self.res[0][..., -1] / np.sum(self.res[0][..., -1], axis=1)[:, None]
-        Z_ave_vec = np.sum(fz * np.arange(self.Z_imp + 1)[None, :], axis=1)
-        _, self.Rlfs = grids_utils.get_HFS_LFS(self.geqdsk, rho_pol=self.rhop_grid)
-        self.CF_lambda = synth_diags.centrifugal_asymmetry(
-            self.rhop_grid,
-            self.Rlfs,
-            omega,
-            Zeff,
-            self.A_imp,
-            Z_ave_vec,
-            self.Te,
-            self.Ti,
-            main_ion_A=self.main_ion_A,
-            plot=plot,
-            nz=self.res[0][..., -1],
-            geqdsk=self.geqdsk,
-        ).mean(0)
-
-        return self.CF_lambda
 
     def superstage_DV(self, D_z, V_z, times_DV=None, opt=1):
         """Reduce the dimensionality of D and V time-dependent profiles for the case in which superstaging is applied.
@@ -901,22 +851,22 @@ class aurora_sim:
                  with a divertor wall.
             rcld_refl_rate : array (nt,)
                  Reflected flux from the divertor wall [:math:`cm^{-1} s^{-1}`].
-                 Not empty only if :param:`div_recomb_ratio` < 1.0 AND advanced PWI model used.
+                 Not empty only if :param:`div_recomb_ratio` < 1.0 AND full PWI model used.
             rcld_recl_rate : array (nt,)
                  Promptly recycled flux from the divertor wall [:math:`cm^{-1} s^{-1}`].
-                 Not empty only if :param:`div_recomb_ratio` < 1.0 AND advanced PWI model used.
+                 Not empty only if :param:`div_recomb_ratio` < 1.0 AND full PWI model used.
             rcld_impl_rate : array (nt,)
                  Implanted flux into the divertor wall reservoir [:math:`cm^{-1} s^{-1}`]
-                 Not empty only if :param:`div_recomb_ratio` < 1.0 AND advanced PWI model used.
+                 Not empty only if :param:`div_recomb_ratio` < 1.0 AND full PWI model used.
             rcld_sput_rate : array (1+background_species,nt,)
                  Sputtered fluxes from the divertor wall reservoir, one for each sputtering species 
                  [:math:`cm^{-1} s^{-1}`]. Not empty only if :param:`div_recomb_ratio` < 1.0 AND
-                 advanced PWI model used.
+                 full PWI model used.
             rclb_rate : array (nt,)
                  Backflow from the divertor neutrals reservoir reaching the plasma [:math:`cm^{-1} s^{-1}`]
             rcls_rate : array (nt,)
                  Screened backflow from the divertor neutrals reservoir [:math:`cm^{-1} s^{-1}`].
-                 Not empty only if :param:`screening_eff` > 0.0.
+                 Not empty only if :param:`div_neut_screen` > 0.0.
             rclp_rate : array (nt,)
                  Leakage from the pump neutrals reservoir [:math:`cm^{-1} s^{-1}`].
                  Not empty only if :param:`pump_chamber` = True.
@@ -924,16 +874,16 @@ class aurora_sim:
                  Total recycled flux from the main wall reservoir [:math:`cm^{-1} s^{-1}`]
             rclw_refl_rate : array (nt,)
                  Reflected flux from the main wall [:math:`cm^{-1} s^{-1}`].
-                 Not empty only if advanced PWI model used.
+                 Not empty only if full PWI model used.
             rclw_recl_rate : array (nt,)
                  Promptly recycled flux from the main wall [:math:`cm^{-1} s^{-1}`].
-                 Not empty only if advanced PWI model used.
+                 Not empty only if full PWI model used.
             rclw_impl_rate : array (nt,)
                  Implanted flux into the main wall reservoir [:math:`cm^{-1} s^{-1}`]
-                 Not empty only if advanced PWI model used.
+                 Not empty only if full PWI model used.
             rclw_sput_rate : array (1+background_species,nt,)
                  Sputtered fluxes from the main wall reservoir, one for each sputtering species 
-                 [:math:`cm^{-1} s^{-1}`]. Not empty only if advanced PWI model used.
+                 [:math:`cm^{-1} s^{-1}`]. Not empty only if full PWI model used.
         """
         D_z, V_z = np.asarray(D_z), np.asarray(V_z)
 
@@ -1037,8 +987,8 @@ class aurora_sim:
         # NOTE: for both Fortran and Julia, use f_configuous arrays for speed
         if use_julia:
             
-            if self.div_recomb_ratio < 1.0 or self.pump_chamber or self.screening_eff > 0.0:
-                raise ValueError("Advanced recycling/pumping/PWI model not yet implemented in Julia!")
+            if self.div_recomb_ratio < 1.0 or self.pump_chamber or self.div_neut_screen > 0.0:
+                raise ValueError("Full recycling/pumping/PWI model not yet implemented in Julia!")
             
             # run Julia version of the code
             from julia.api import Julia
@@ -1086,9 +1036,9 @@ class aurora_sim:
             # import here to avoid import when building documentation or package (negligible slow down)
             from ._aurora import run as fortran_run
 
-            # advanced PWI model not used - dummy values for all related input variables to fortran routine
+            # full PWI model not used - dummy values for all related input variables to fortran routine
             
-            self.advanced_PWI_flag = False
+            self.full_PWI_flag = False
 
             self.rfl_rad_prof = self.rcl_rad_prof
             self.spt_rad_prof = np.zeros((len(self.rvol_grid),len(self.background_species)+1,len(self.time_grid)))
@@ -1157,7 +1107,7 @@ class aurora_sim:
                 self.save_time,
                 self.crash_width,  # dsaw width [cm]
                 self.wall_recycling,
-                self.screening_eff, # screening coefficient
+                self.div_neut_screen, # screening coefficient
                 self.div_recomb_ratio, # divertor recombination coefficient
                 self.tau_div_SOL_ms * 1e-3,  # [s]
                 self.tau_pump_ms * 1e-3,  # [s]
@@ -1169,7 +1119,7 @@ class aurora_sim:
                 self.L_leak, # leakage conductance from pump neutrals reservoir towards plasma [cm^3/s]
                 self.surf_mainwall_eff, # effective main wall surface area [cm^2]
                 self.surf_divwall_eff, # effective divertor wall surface area [cm^2]
-                self.advanced_PWI_flag, # logic key for PWI model
+                self.full_PWI_flag, # logic key for PWI model
                 self.Z_main_wall, # atomic number of the main wall material
                 self.Z_div_wall, # atomic number of the divertor wall material
                 self.rn_main_wall, # reflection coefficients for the simulated impurity at the main wall on the time grid
@@ -1199,7 +1149,7 @@ class aurora_sim:
         # add output fields in a dictionary
         self.res = {}
         
-        if use_julia: # advanced recycling/pumping/PWI model not implemented yet in Julia --> self.res contains less elements
+        if use_julia: # full recycling/pumping/PWI model not implemented yet in Julia --> self.res contains less elements
             
             (
                 self.res['nz'],
@@ -1214,7 +1164,7 @@ class aurora_sim:
                 self.res['rclw_rate'],
             ) = _res
         
-        else: # advanced recycling/pumping/PWI model fully implemented in Fortran
+        else: # full recycling/pumping/PWI model fully implemented in Fortran
         
             (
                 self.res['nz'],
@@ -1826,33 +1776,8 @@ class aurora_sim:
         # get colors for plots
         colors = plot_tools.load_color_codes_reservoirs()
         blue,light_blue,green,light_green,grey,light_grey,red,light_red = colors
-        
-        nz = self.res['nz']
-        N_mainwall = self.res['N_mainwall']
-        N_divwall = self.res['N_divwall']
-        N_div = self.res['N_div']
-        N_pump = self.res['N_pump']
-        N_out = self.res['N_out']
-        N_mainret = self.res['N_mainret']
-        N_divret = self.res['N_divret']
-        N_tsu = self.res['N_tsu']
-        N_dsu = self.res['N_dsu']
-        N_dsul = self.res['N_dsul']
-        rcld_rate = self.res['rcld_rate']
-        rcld_refl_rate = self.res['rcld_refl_rate']
-        rcld_recl_rate = self.res['rcld_recl_rate']
-        rcld_impl_rate = self.res['rcld_impl_rate']
-        rcld_sput_rate = self.res['rcld_sput_rate']
-        rclb_rate = self.res['rclb_rate']
-        rcls_rate = self.res['rcls_rate']
-        rclp_rate = self.res['rclp_rate']
-        rclw_rate = self.res['rclw_rate']
-        rclw_refl_rate = self.res['rclw_refl_rate']
-        rclw_recl_rate = self.res['rclw_recl_rate']
-        rclw_impl_rate = self.res['rclw_impl_rate']
-        rclw_sput_rate = self.res['rclw_sput_rate']
 
-        nz = nz.transpose(2, 1, 0)  # time,nZ,space
+        nz = self.res['nz'].transpose(2, 1, 0)  # time,nZ,space
 
         # factor to account for cylindrical geometry:
         circ = 2 * np.pi * self.Raxis_cm  # cm
@@ -1872,14 +1797,14 @@ class aurora_sim:
             rvol_max=None,
         )
 
-        reservoirs["total"] = all_particles + (N_mainwall + N_divwall + N_div + N_pump + N_out + N_mainret + N_divret) * circ
+        reservoirs["total"] = all_particles + (self.res['N_mainwall'] + self.res['N_divwall'] + self.res['N_div'] + self.res['N_pump'] + self.res['N_out'] + self.res['N_mainret'] + self.res['N_divret']) * circ
 
         # main fluxes
         reservoirs["source"] = self.total_source*circ
         reservoirs["plasma_source"] = self.total_source*circ
-        reservoirs["wall_source"] = rclw_rate * circ
-        reservoirs["divertor_source"] = rclb_rate * circ + rclp_rate * circ
-        reservoirs["plasma_removal_rate"] = - N_dsu * circ - N_tsu * circ - N_dsul * circ       
+        reservoirs["wall_source"] = self.res['rclw_rate'] * circ
+        reservoirs["divertor_source"] = self.res['rclb_rate'] * circ + self.res['rclp_rate'] * circ
+        reservoirs["plasma_removal_rate"] = - self.res['N_dsu'] * circ - self.res['N_tsu'] * circ - self.res['N_dsul'] * circ       
         reservoirs["net_plasma_flow"] = reservoirs["plasma_source"] + reservoirs["wall_source"] + reservoirs["divertor_source"] + reservoirs["plasma_removal_rate"]
 
         # integrated source over time
@@ -1892,46 +1817,46 @@ class aurora_sim:
         
         # divertor and pump neutrals reservoirs
         if self.namelist["phys_volumes"]:
-            reservoirs["particle_density_in_divertor"] = (N_div * circ)/self.vol_div
+            reservoirs["particle_density_in_divertor"] = (self.res['N_div'] * circ)/self.vol_div
             if self.namelist["pump_chamber"]:
-                reservoirs["particle_density_in_pump"] = (N_pump * circ)/self.vol_pump
-        reservoirs["particles_in_divertor"] = N_div * circ
-        reservoirs["particles_in_pump"] = N_pump * circ
+                reservoirs["particle_density_in_pump"] = (self.res['N_pump'] * circ)/self.vol_pump
+        reservoirs["particles_in_divertor"] = self.res['N_div'] * circ
+        reservoirs["particles_in_pump"] = self.res['N_pump'] * circ
         
         # fluxes towards main wall
-        reservoirs["edge_loss"] = N_tsu * circ
-        reservoirs["limiter_loss"] = N_dsul * circ
+        reservoirs["edge_loss"] = self.res['N_tsu'] * circ
+        reservoirs["limiter_loss"] = self.res['N_dsul'] * circ
         reservoirs["total_flux_mainwall"] = reservoirs["edge_loss"] + reservoirs["limiter_loss"]
         
         # recycling rates from main wall
-        reservoirs["mainwall_recycling"] = rclw_rate * circ
+        reservoirs["mainwall_recycling"] = self.res['rclw_rate'] * circ
         
         # main wall reservoir
         if self.namelist["phys_surfaces"]:
-            reservoirs["particle_density_stuck_at_main_wall"] = (N_mainwall * circ)/(self.surf_mainwall*self.mainwall_roughness)
-            reservoirs["particle_density_retained_at_main_wall"] = (N_mainret * circ)/(self.surf_mainwall*self.mainwall_roughness)
-        reservoirs["particles_stuck_at_main_wall"] = N_mainwall * circ
-        reservoirs["particles_retained_at_main_wall"] = N_mainret * circ
+            reservoirs["particle_density_stuck_at_main_wall"] = (self.res['N_mainwall'] * circ)/(self.surf_mainwall*self.mainwall_roughness)
+            reservoirs["particle_density_retained_at_main_wall"] = (self.res['N_mainret'] * circ)/(self.surf_mainwall*self.mainwall_roughness)
+        reservoirs["particles_stuck_at_main_wall"] = self.res['N_mainwall'] * circ
+        reservoirs["particles_retained_at_main_wall"] = self.res['N_mainret'] * circ
 
         # flux towards divertor targets and backflow/leakage rates
-        reservoirs["parallel_loss"] = N_dsu * circ
-        reservoirs["divertor_backflow"] = rclb_rate * circ
-        reservoirs["screened_divertor_backflow"] = rcls_rate * circ
-        reservoirs["pump_leakage"] = rclp_rate * circ
+        reservoirs["parallel_loss"] = self.res['N_dsu'] * circ
+        reservoirs["divertor_backflow"] = self.res['rclb_rate'] * circ
+        reservoirs["screened_divertor_backflow"] = self.res['rcls_rate'] * circ
+        reservoirs["pump_leakage"] = self.res['rclp_rate'] * circ
         reservoirs["total_flux_divwall"] = (reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*(1-self.div_recomb_ratio)
         
         # recycling rates from divertor wall
-        reservoirs["divwall_recycling"] = rcld_rate * circ    
+        reservoirs["divwall_recycling"] = self.res['rcld_rate'] * circ    
         
         # divertor wall reservoir
         if self.namelist["phys_surfaces"]:
-            reservoirs["particle_density_stuck_at_div_wall"] = (N_divwall * circ)/(self.surf_divwall*self.divwall_roughness)
-            reservoirs["particle_density_retained_at_div_wall"] = (N_divret * circ)/(self.surf_divwall*self.divwall_roughness)
-        reservoirs["particles_stuck_at_div_wall"] = N_divwall * circ
-        reservoirs["particles_retained_at_div_wall"] = N_divret * circ
+            reservoirs["particle_density_stuck_at_div_wall"] = (self.res['N_divwall'] * circ)/(self.surf_divwall*self.divwall_roughness)
+            reservoirs["particle_density_retained_at_div_wall"] = (self.res['N_divret'] * circ)/(self.surf_divwall*self.divwall_roughness)
+        reservoirs["particles_stuck_at_div_wall"] = self.res['N_divwall'] * circ
+        reservoirs["particles_retained_at_div_wall"] = self.res['N_divret'] * circ
         
         # particles pumped away
-        reservoirs["particles_pumped"] = N_out * circ
+        reservoirs["particles_pumped"] = self.res['N_out'] * circ
         reservoirs["pumping_rate"] = np.zeros(len(self.time_out))
         for i in range(1,len(self.time_out)):
             reservoirs["pumping_rate"][i] = (reservoirs["particles_pumped"][i]-reservoirs["particles_pumped"][i-1])/(self.time_out[i]-self.time_out[i-1])
@@ -2045,14 +1970,14 @@ class aurora_sim:
             ax1[2, 2].set_title('Divertor wall reservoir', loc='right', fontsize = 11)
             ax1[2, 2].legend(loc="best", fontsize = 9).set_draggable(True)
             
-            if self.screening_eff > 0.0:
+            if self.div_neut_screen > 0.0:
                 ax1[3, 0].plot(self.time_out, reservoirs["divertor_backflow"]+reservoirs["screened_divertor_backflow"],
                            label="Tot. backflow rate", color = green) 
                 ax1[3, 0].plot(self.time_out, reservoirs["divertor_backflow"],
                            label="Backflow to core", color = blue) 
                 ax1[3, 0].plot(self.time_out, reservoirs["screened_divertor_backflow"],
                            label="Screened backflow", color = light_blue) 
-            elif self.screening_eff == 0.0:
+            elif self.div_neut_screen == 0.0:
                 ax1[3, 0].plot(self.time_out, reservoirs["divertor_backflow"]+reservoirs["screened_divertor_backflow"],
                            label="Backflow rate", color = green)
             if ylim:
@@ -2135,3 +2060,55 @@ class aurora_sim:
         else:
 
             return reservoirs
+
+
+    def centrifugal_asym(self, omega, Zeff, plot=False):
+         """Estimate impurity poloidal asymmetry effects from centrifugal forces. See notes the
+         :py:func:`~aurora.synth_diags.centrifugal_asymmetry` function docstring for details.
+
+         In this function, we use the average Z of the impurity species in the Aurora simulation result, using only
+         the last time slice to calculate fractional abundances. The CF lambda factor
+
+         Parameters
+         -----------------
+         omega : array (nt,nr) or (nr,) [ rad/s ]
+              Toroidal rotation on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
+         Zeff : array (nt,nr), (nr,) or float
+              Effective plasma charge on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
+              Alternatively, users may give Zeff as a float (taken constant over time and space).
+         plot : bool
+             If True, plot asymmetry factor :math:`\lambda` vs. radius
+
+         Returns
+         ------------
+         CF_lambda : array (nr,)
+             Asymmetry factor, defined as :math:`\lambda` in the :py:func:`~aurora.synth_diags.centrifugal_asymmetry` function
+             docstring.
+         """
+         # this method requires all charge states to be made available
+         try:
+             assert self.res[0].shape[1] == self.Z_imp + 1
+         except AssertionError:
+             raise ValueError(
+                 "centrifugal_asym method requires all charge state densities to be availble! Unstage superstages."
+             )
+
+         fz = self.res[0][..., -1] / np.sum(self.res[0][..., -1], axis=1)[:, None]
+         Z_ave_vec = np.sum(fz * np.arange(self.Z_imp + 1)[None, :], axis=1)
+         _, self.Rlfs = grids_utils.get_HFS_LFS(self.geqdsk, rho_pol=self.rhop_grid)
+         self.CF_lambda = synth_diags.centrifugal_asymmetry(
+             self.rhop_grid,
+             self.Rlfs,
+             omega,
+             Zeff,
+             self.A_imp,
+             Z_ave_vec,
+             self.Te,
+             self.Ti,
+             main_ion_A=self.main_ion_A,
+             plot=plot,
+             nz=self.res[0][..., -1],
+             geqdsk=self.geqdsk,
+         ).mean(0)
+
+         return self.CF_lambda

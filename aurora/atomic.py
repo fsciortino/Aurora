@@ -735,7 +735,7 @@ def get_Z_mean(
         plt.tight_layout()
         plt.plot(x, Z_mean)
         
-    return [Te,] + [Z_mean,]
+    return Te, Z_mean
 
 
 def get_cs_balance_terms(

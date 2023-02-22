@@ -99,7 +99,7 @@ def load_default_namelist():
         "div_recomb_ratio": 1.0,
         "recycling_flag": False, 
         "tau_div_SOL_ms": 50.0,  # ms
-        "screening_eff": 0.0,
+        "div_neut_screen": 0.0,
         # --------------------
         # PLASMA-WALL INTERACTION
         "wall_recycling": 0.0,
@@ -109,7 +109,7 @@ def load_default_namelist():
         "surf_divwall": 1.0e4,  # cm^2
         "mainwall_roughness": 1.0,
         "divwall_roughness": 1.0,
-        "advanced_PWI": {
+        "full_PWI": {
             "main_wall_material": 'W',
             "div_wall_material": 'W',
             "background_mode": 'manual',

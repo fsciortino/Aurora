@@ -2,7 +2,7 @@
 !
 !Copyright (c) 2021 Francesco Sciortino
 !
-!Extended recycling model and advanced plasma-wall interaction model
+!Extended recycling model and full plasma-wall interaction model
 !provided by Antonello Zito
 !
 !Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -64,7 +64,7 @@ subroutine run(  &
   !     nt           integer
   !                    Number of time steps for the solution. Not needed for Python calls.
   !     species      integer
-  !                    Number of considered background species for the advanced PWI. Not needed for Python calls.
+  !                    Number of considered background species for the full PWI. Not needed for Python calls.
   !     nt_out       integer
   !                    Number of times at which the impurity densities shall be saved
   !     nt_trans     integer
@@ -83,13 +83,13 @@ subroutine run(  &
   !                    Radial source profile of externally injected neutrals neutrals over time [1/cm^3]
   !     rcl_rad_prof real*8 (ir, nt)
   !                    Normalized radial distribution of impurities re-entering the plasma after recycling
-  !                    (or prompt recycling, if the advanced PWI model is used) over time.
+  !                    (or prompt recycling, if the full PWI model is used) over time.
   !     rfl_rad_prof real*8 (ir, nt)
   !                    Normalized radial distribution of impurities re-entering the plasma after reflection
-  !                    (if the advanced PWI model is used) over time.
+  !                    (if the full PWI model is used) over time.
   !     spt_rad_prof real*8 (ir, 1+species, nt)
   !                    Normalized radial distribution of impurities re-entering the plasma after sputtering
-  !                    (if the advanced PWI model is used) over time.
+  !                    (if the full PWI model is used) over time.
   !     en_rec_neut  logical
   !                    Logic key for setting energetic reflected/sputtered neutrals 
   !     S_rates      real*8 (ir,nion,nt)
@@ -837,7 +837,7 @@ subroutine edge_model( &
 
   ! Permanent particle losses at the walls
   
-  ! Advanced plasma-wall interaction model activated: permanent wall reservoir not used
+  ! Full plasma-wall interaction model activated: permanent wall reservoir not used
   if (PWI) then
   
      Nmainwall = Nmainwall  ! permanent main wall reservoir always empty

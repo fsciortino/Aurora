@@ -535,7 +535,7 @@ Edge/divertor
    * - `tau_div_SOL_ms`
      - 50.0
      - Time scale for backflow from the divertor [ms].
-   * - `screening_eff`
+   * - `div_neut_screen`
      - 0.0
      - Screening efficiency for the backflow from the divertor. See detailed description below.  
      
@@ -549,11 +549,11 @@ A 1.5D transport model such as Aurora cannot accurately model edge transport. No
 
 * :math:`f_{rec}` = `div_recomb_ratio`: Fraction of the parallel impurity ion flow in the divertor SOL which recombines before reaching the divertor wall, i.e. which enters the divetor neutrals reservoir bypassing the divertor wall reservoir. By default this is 1.0, meaning that the default behavior for the parallel losses in the SOL is to directly enter the divertor neutrals reservoirs, namely the divertor wall is not used.
 
-* `recycling_flag`: If this is False, no recycling nor backflows between the plasma and the other reservoirs are allowed. Namely: 1) no recycling is applied to the walls, neither the simple model nor the advanced model, i.e. all the fluxes reaching the walls are permanently absorbed, and 2) no backflow from the divertor is allowed, namely all the particles entering the divertor neutrals reservoir can only be pumped. If this is True, then wall recycling is allowed (using the simple or the advanced plasma-wall interaction model, see following paragraph) as well as divertor backflow.
+* `recycling_flag`: If this is False, no recycling nor backflows between the plasma and the other reservoirs are allowed. Namely: 1) no recycling is applied to the walls, neither the simple model nor the full model, i.e. all the fluxes reaching the walls are permanently absorbed, and 2) no backflow from the divertor is allowed, namely all the particles entering the divertor neutrals reservoir can only be pumped. If this is True, then wall recycling is allowed (using the simple or the full plasma-wall interaction model, see following paragraph) as well as divertor backflow.
 
 * :math:`\tau_{div,ret}` = `tau_div_SOL_ms`: Divertor retention time, in ms, i.e. time scale for the loss of particles from the divertor neutrals reservoir, which will constitute a backflow travelling again towards the plasma. This is effective only if `recycling_flag` is True.
 
-* :math:`f_{screen}` = `screening_eff`: Screening efficiency for the backflow from the divertor, i.e. fraction of the flux lost from the divertor neutrals reservoir which is screened in the divertor SOL plasma and. Therefore, only a fraction :math:`1-f_{screen}` of such backflow will effectively return into the core, giving an additional neutrals source for the plasma, while the remaining fraction :math:`f_{screen}` gets directly to be a part of the SOL parallel flow towards the divertor. By default this is 0.0, meaning that the default behavior for the divertor backflow is to entirely re-enter the core plasma. This is effective only if `recycling_flag` is True.
+* :math:`f_{screen}` = `div_neut_screen`: Screening efficiency for the backflow from the divertor, i.e. fraction of the flux lost from the divertor neutrals reservoir which is screened in the divertor SOL plasma and. Therefore, only a fraction :math:`1-f_{screen}` of such backflow will effectively return into the core, giving an additional neutrals source for the plasma, while the remaining fraction :math:`f_{screen}` gets directly to be a part of the SOL parallel flow towards the divertor. By default this is 0.0, meaning that the default behavior for the divertor backflow is to entirely re-enter the core plasma. This is effective only if `recycling_flag` is True.
 
 The following sketch summarizes the composition of the various flows between edge and divertor.
 
@@ -597,52 +597,52 @@ Plasma-wall interaction
    * - `divwall_roughness`
      - 1.0
      - Roughness factor for divertor wall surface, multiplying its geometric surface area.
-   * - `advanced_PWI["main_wall_material"]`
+   * - `full_PWI["main_wall_material"]`
      - 'W'
      - Atomic symbol of the main wall material.
-   * - `advanced_PWI["div_wall_material"]`
+   * - `full_PWI["div_wall_material"]`
      - 'W'
      - Atomic symbol of the divertor wall material.
-   * - `advanced_PWI["background_species"]`
+   * - `full_PWI["background_species"]`
      - ['D']
      - List of atomic symbols of background species whose fluxes also reach the walls. See detailed description below.
-   * - `advanced_PWI["background_mode"]`
+   * - `full_PWI["background_mode"]`
      - 'manual'
      - One of ['manual','files'], way of imposing the wall fluxes of background species. See detailed description below.
-   * - `advanced_PWI["background_main_wall_fluxes"]`
+   * - `full_PWI["background_main_wall_fluxes"]`
      - [0]
      - List of constant values of background fluxes reaching the main wall [s^-1], if mode = 'manual'. See detailed description below.
-   * - `advanced_PWI["background_div_wall_fluxes"]`
+   * - `full_PWI["background_div_wall_fluxes"]`
      - [0]
      - List of constant values of background fluxes reaching the divertor wall [s^-1], if mode = 'manual'. See detailed description below. 
-   * - `advanced_PWI["background_files"]`
+   * - `full_PWI["background_files"]`
      - ['file/location']
      - List of simulation file locations for already simulated background species, if mode = 'files'. See detailed description below. 
-   * - `advanced_PWI["characteristic_impact_energy_main_wall"]`
+   * - `full_PWI["characteristic_impact_energy_main_wall"]`
      - 200
      - Impact energy to estimate impurity implantation depth into main wall [eV]. See detailed description below. 
-   * - `advanced_PWI["characteristic_impact_energy_div_wall"]`
+   * - `full_PWI["characteristic_impact_energy_div_wall"]`
      - 500
      - Impact energy to estimate impurity implantation depth into divertor wall [eV]. See detailed description below. 
-   * - `advanced_PWI["n_main_wall_sat"]`
+   * - `full_PWI["n_main_wall_sat"]`
      - 1.e+20
      - Impurity saturation density on main wall surface [m^-2]. See detailed description below. 
-   * - `advanced_PWI["n_div_wall_sat"]`
+   * - `full_PWI["n_div_wall_sat"]`
      - 1.e+20
      - Impurity saturation density on divertor wall surface [m^-2]. See detailed description below. 
-   * - `advanced_PWI["Te_lim"]`
+   * - `full_PWI["Te_lim"]`
      - 10
      - Electron temperature at the main wall surface [eV]. See detailed description below.. 
-   * - `advanced_PWI["Te_div"]`
+   * - `full_PWI["Te_div"]`
      - 30
      - Electron temperature at the divertor target surface [eV]. See detailed description below.  
-   * - `advanced_PWI["Ti_over_Te"]`
+   * - `full_PWI["Ti_over_Te"]`
      - 1.0
      - Ion/electron temperature ratio at the plasma-material interface. See detailed description below.
-   * - `advanced_PWI["gammai"]`
+   * - `full_PWI["gammai"]`
      - 2.0
      - Ion sheath heat transmission coefficient. See detailed description below.
-   * - `advanced_PWI["energetic_recycled_neutrals"]`
+   * - `full_PWI["energetic_recycled_neutrals"]`
      - False
      - If True, reflected and sputtered particles are emitted from the walls as energetic. See detailed description below. 
      
@@ -662,9 +662,9 @@ The following sketch summarizes the operating principles of the standard plasma-
 
     Standard PWI model. This holds for both main and divertor walls
 
-An experimental advanced plasma-wall interaction model has been also included in Aurora, which however is currently available only for the simulation of one single impurity (He) interacting with one single type of wall material (W). This provides a realistical description of wall retention which is based on actual plasma-surface interaction data, calculated by the Monte Carlo program TRIM.sp. Note that, using this model, there is not anymore a distinction between a "permanent" and a "dynamic" wall reservoirs, but only one single dynamic reservoir for retained particles (for both main and divertor walls) is considered.
+An experimental plasma-wall interaction model has been also included in Aurora, which however is currently available only for the simulation of one single impurity (He) interacting with one single type of wall material (W). This provides a realistical description of wall retention which is based on actual plasma-surface interaction data, calculated by the Monte Carlo program TRIM.sp. Note that, using this model, there is not anymore a distinction between a "permanent" and a "dynamic" wall reservoirs, but only one single dynamic reservoir for retained particles (for both main and divertor walls) is considered.
 
-For a correct estimation of the wall retention capabilities, the advanced PWI model requires to specify the effective surface areas over which plasma and walls interact. This is done by:
+For a correct estimation of the wall retention capabilities, the full PWI model requires to specify the effective surface areas over which plasma and walls interact. This is done by:
 
 * Setting the parameter `phys_surfaces` to True, which allows to work with surface densities :math:`\sigma`, i.e. in cm^-2, of retained imurities.
 
@@ -682,25 +682,25 @@ In this case, there will be three possible fates for the particles interacting w
 
 Once implanted in the wall, particles will stay there forever, unless an external factor contributes in making these be released: this is the `sputtering`, i.e. the erosion of the implanted particles from the material lattice after the bombardment of the surface with energetic ion fluxes. Therefore, knowing the calculated sputtering yields :math:`Y` of the impurities implanted into the lattice, the released flux of impurity particles from the surface will be proportional to the fluxes striking the surface. However, this will include not only the flux of the simulated impurity itself, but also the fluxes of main ion species and other possible impurities. Therefore, the values of such fluxes must be also specified.
 
-Since the plasma-surface interaction coefficients will depend on the kind of wall material, we will need to specify the main and divertor wall materials, specifying their atomic symbols through the parameters `advanced_PWI["main_wall_material"]` and `advanced_PWI[div_wall_material"]` respectively.
+Since the plasma-surface interaction coefficients will depend on the kind of wall material, we will need to specify the main and divertor wall materials, specifying their atomic symbols through the parameters `full_PWI["main_wall_material"]` and `full_PWI[div_wall_material"]` respectively.
 
-The atomic symbols of the non-simulated background species, whose fluxes towards the walls must be specified to properly calculate the sputtering of the simulated impurity, must be specified in the list `advanced_PWI["background_species"]`. The way of specifying these fluxes is through the parameter `advanced_PWI["mode"]`:
+The atomic symbols of the non-simulated background species, whose fluxes towards the walls must be specified to properly calculate the sputtering of the simulated impurity, must be specified in the list `full_PWI["background_species"]`. The way of specifying these fluxes is through the parameter `full_PWI["mode"]`:
 
-* If equal to 'manual', then the fluxes of all the background species are manually specified by the user in the lists `advanced_PWI["main_wall_fluxes"]` and `advanced_PWI["div_wall_fluxes"], respectively for main and divertor walls, in s^-1. The specified values will be set as constant for all steps of the time grid. Of course, all these lists must have the same length of `advanced_PWI["background_species"]`, with ordered elements.
+* If equal to 'manual', then the fluxes of all the background species are manually specified by the user in the lists `full_PWI["main_wall_fluxes"]` and `full_PWI["div_wall_fluxes"], respectively for main and divertor walls, in s^-1. The specified values will be set as constant for all steps of the time grid. Of course, all these lists must have the same length of `full_PWI["background_species"]`, with ordered elements.
 
-* If equal to 'files', then the fluxes of all the background species are taken from Aurora simulations performed in advance, one for each background species. Note that, for this option to work, the simulations of any background specied must had been performed on exactly the same time grid on which the current simulations is being performed. The absolute locations of the files containing the data of the background simulations will be contained in the list `advanced_PWI["files"]`. Aurora expect these to be pickle files containing a dictionary named `reservoirs`, which is exactly the same Python object as normally produced by a simulation (see tutorial for more details), which will contain the wall fluxes of the already simulated background species. Of course, the list of such files must have the same length of `advanced_PWI["background_species"]`, with ordered elements.
+* If equal to 'files', then the fluxes of all the background species are taken from Aurora simulations performed in advance, one for each background species. Note that, for this option to work, the simulations of any background specied must had been performed on exactly the same time grid on which the current simulations is being performed. The absolute locations of the files containing the data of the background simulations will be contained in the list `full_PWI["files"]`. Aurora expect these to be pickle files containing a dictionary named `reservoirs`, which is exactly the same Python object as normally produced by a simulation (see tutorial for more details), which will contain the wall fluxes of the already simulated background species. Of course, the list of such files must have the same length of `full_PWI["background_species"]`, with ordered elements.
 
 The relevant input parameters for specifying the amount of particles which can be retained in the walls are:
 
-* `advanced_PWI["characteristic_impact_energy_main_wall"]` and `advanced_PWI["characteristic_impact_energy_div_wall"]`: these are the "characteristic" impact energy of the simulated impurity onto main and divertor wall, respectively, over the lifetime of the simulated device, in eV. These values will be used to estimate the depth of the implantation profile of the simulated impurity, by reading the range values in the TRIM files, which is a needed information for converting the surface densities into absolute number of impurity particles dynamically stored in the walls.
+* `full_PWI["characteristic_impact_energy_main_wall"]` and `full_PWI["characteristic_impact_energy_div_wall"]`: these are the "characteristic" impact energy of the simulated impurity onto main and divertor wall, respectively, over the lifetime of the simulated device, in eV. These values will be used to estimate the depth of the implantation profile of the simulated impurity, by reading the range values in the TRIM files, which is a needed information for converting the surface densities into absolute number of impurity particles dynamically stored in the walls.
 
-* `advanced_PWI["n_main_wall_sat"]` and `advanced_PWI["n_div_wall_sat"]`: these are the saturation values for the surface density of the implanted impurity into the main and divertor wall surfaces respectively, in m^-2, which will give the maximum number of particles which the walls can accommodate.
+* `full_PWI["n_main_wall_sat"]` and `full_PWI["n_div_wall_sat"]`: these are the saturation values for the surface density of the implanted impurity into the main and divertor wall surfaces respectively, in m^-2, which will give the maximum number of particles which the walls can accommodate.
 
 The employed reflection and sputtering coefficients will strongly depend on the energy of the ion projectiles which trigger the various processes. Aurora calculates these energies, for any given type of projectile, after the knowledge of some relevant plasma temperature and with different assumptions:
 
-* Generally, the impact energy is calculated as the sum of ion kinetic energy + sheath acceleration. Therefore, the user will need to specify the electron temperature at the limiter through `advanced_PWI["Te_lim"]` and the electron temperature at the divertor target `advanced_PWI["Te_div"]`, in eV, to calculate these. Other parameters needed for such calculation are the ion/electron temperature ratio at the plasma-material interface, given through `advanced_PWI["Ti_over_Te"]`, and the ion sheath heat transmission coefficients, given through `advanced_PWI["gammai"]`.
+* Generally, the impact energy is calculated as the sum of ion kinetic energy + sheath acceleration. Therefore, the user will need to specify the electron temperature at the limiter through `full_PWI["Te_lim"]` and the electron temperature at the divertor target `full_PWI["Te_div"]`, in eV, to calculate these. Other parameters needed for such calculation are the ion/electron temperature ratio at the plasma-material interface, given through `full_PWI["Ti_over_Te"]`, and the ion sheath heat transmission coefficients, given through `full_PWI["gammai"]`.
 
-Finally, the energy of the neutrals released towards the plasma after recycling from the main wall is governed by the parameter `advanced_PWI["energetic_recycled_neutrals"]`:
+Finally, the energy of the neutrals released towards the plasma after recycling from the main wall is governed by the parameter `full_PWI["energetic_recycled_neutrals"]`:
 
 * If this is False, then all recycled neutrals, from any mechanisms, are emitted with the energy specified through `imp_recycling_energy_eV` (which might be often a thermal energy).
 
@@ -708,15 +708,15 @@ Finally, the energy of the neutrals released towards the plasma after recycling 
 
 Note the distinction between the energy of recycled neutrals is relevant only for recycling from the main wall; indeed, since neutrals recycled from the divertor wall are assumed to directly enter the divertor neutrals reservoir, the energy at which the latter are emitted loses significance.
 
-The following sketch summarizes the operating principles of the advanced plasma-wall interaction model.
+The following sketch summarizes the operating principles of the full plasma-wall interaction model.
 
 .. figure:: figs/aurora_model_PWI_advanced.png
     :align: center
     :width: 900
-    :alt: Advanced PWI model. This holds for both main and divertor walls
+    :alt: Full PWI model. This holds for both main and divertor walls
     :figclass: align-center 
 
-    Advanced PWI model. This holds for both main and divertor walls
+    Full PWI model. This holds for both main and divertor walls
 
 Pumping
 -------

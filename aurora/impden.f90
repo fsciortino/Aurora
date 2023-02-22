@@ -2,7 +2,7 @@
 !
 !Copyright (c) 2021 Francesco Sciortino
 !
-!Extended recycling model and advanced plasma-wall interaction model
+!Extended recycling model and full plasma-wall interaction model
 !provided by Antonello Zito
 !
 !Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -140,7 +140,7 @@ subroutine impden0(nion, ir, species, ra, rn, diff, conv, par_loss_rate, &
   
   ! Plasma-wall interaction
   
-  if (PWI) then   ! advanced plasma-wall interaction model: wall content and fluxes determined by reflection, sputtering and wall saturation level
+  if (PWI) then   ! full plasma-wall interaction model: wall content and fluxes determined by reflection, sputtering and wall saturation level
   
      if (rcl.ge.0) then
         rcls = (divold/taudiv)*(screen)
@@ -215,11 +215,11 @@ subroutine impden0(nion, ir, species, ra, rn, diff, conv, par_loss_rate, &
   ! sum radial sources from external source time history and recycling
   ! The radial profile of externally injected neutrals and recycled neutrals can be different,
   !   depending on the energy set to the recycling neutrals (and to the calculated reflection
-  !   and sputtering energies, if the advanced PWI model is used)
+  !   and sputtering energies, if the full PWI model is used)
   
   if (en_rec_neut) then
      
-     if (PWI) then   ! Advanced PWI model used --> reflected and sputtered neutrals are energetic
+     if (PWI) then   ! Full PWI model used --> reflected and sputtered neutrals are energetic
         rn(:,1) = src_prof   ! Add contribute of externally injected neutrals
         rn(:,1) = rn(:,1) + rfl_rad_prof*(rclw_refl)   ! Add contribute of energetic reflected neutrals
         rn(:,1) = rn(:,1) + rcl_rad_prof*(rclw_recl)   ! Add contribute of thermally recycled neutrals
@@ -483,7 +483,7 @@ subroutine impden1(nion, ir, species, ra, rn, diff, conv, par_loss_rate, &
   
   ! Plasma-wall interaction
   
-  if (PWI) then   ! advanced plasma-wall interaction model: wall content and fluxes determined by reflection, sputtering and wall saturation level
+  if (PWI) then   ! full plasma-wall interaction model: wall content and fluxes determined by reflection, sputtering and wall saturation level
   
      if (rcl.ge.0) then
         rcls = (divold/taudiv)*(screen)
@@ -558,11 +558,11 @@ subroutine impden1(nion, ir, species, ra, rn, diff, conv, par_loss_rate, &
   ! sum radial sources from external source time history and recycling
   ! The radial profile of externally injected neutrals and recycled neutrals can be different,
   !   depending on the energy set to the recycling neutrals (and to the calculated reflection
-  !   and sputtering energies, if the advanced PWI model is used)
+  !   and sputtering energies, if the full PWI model is used)
 
   if (en_rec_neut) then
      
-     if (PWI) then   ! Advanced PWI model used --> reflected and sputtered neutrals are energetic
+     if (PWI) then   ! Full PWI model used --> reflected and sputtered neutrals are energetic
         src = src_prof   ! Add contribute of externally injected neutrals
         src = src + rfl_rad_prof*(rclw_refl)   ! Add contribute of energetic reflected neutrals
         src = src + rcl_rad_prof*(rclw_recl)   ! Add contribute of thermally recycled neutrals
@@ -923,7 +923,7 @@ subroutine advanced_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species
      rclw, rclw_refl, rclw_recl, main_flux_impl, main_fluxes_sput, &
      rcld, rcld_refl, rcld_recl, div_flux_impl, div_fluxes_sput)
   ! -----------------------------------------------------------------------------------------|
-  !  Apply the advanced plasma-wall interaction model for the calculation of
+  !  Apply the full plasma-wall interaction model for the calculation of
   !    reflected, recycled and sputtered fluxes at the walls
   ! -----------------------------------------------------------------------------------------|
   implicit none

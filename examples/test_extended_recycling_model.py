@@ -61,7 +61,7 @@ namelist['tau_rcl_ret_ms'] = 2.0
     # effective wall retention time, i.e. time scale of particle release from main and divertor walls
     
 # set some options for edge/divertor transport
-namelist['screening_eff'] = 0.5
+namelist['div_neut_screen'] = 0.5
     # screening efficiency for the backflow from the divertor reservoir, i.e. fraction
     #   of lost flux from the divertor neutrals reservoir which is screened in the SOL/divertor plasma
     #   so, if this is > 0.0, a portion of the backflow gets back to be a part of the total parallel
@@ -81,7 +81,7 @@ namelist['div_recomb_ratio'] = 0.2
     #       whose equivalent for the main wall is rclw_rate
 namelist['tau_div_SOL_ms'] = 2.0
     # divertor retention time, i.e. time scale of particle loss from the divertor neutrals reservoir,
-    #   of which however only a fraction (1-screening_eff) effectively reaches the main plasma
+    #   of which however only a fraction (1-div_neut_screen) effectively reaches the main plasma
 
 # set some options for pumping
 namelist['phys_volumes'] = True

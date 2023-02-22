@@ -17,7 +17,7 @@ and by citing the following works:
     
 [3] A. Zito et al, 2023, "Modelling and interpretation of helium exhaust dynamics at the ASDEX Upgrade tokamak with full-tungsten wall", Nucl. Fusion, to be submitted
 
-     This paper explains the introduction of the extended multi-reservoir recyling and pumping model in Aurora, as well as the advanced plasma-wall interaction model, and their application to experiments.
+     This paper explains the introduction of the extended multi-reservoir recyling and pumping model in Aurora, as well as the full plasma-wall interaction model, and their application to experiments.
      
 If you use the FACIT neoclassical transport model in Aurora, please cite the following papers:
 
@@ -25,7 +25,7 @@ If you use the FACIT neoclassical transport model in Aurora, please cite the fol
 
 [5] D. Fajardo et al, 2022, "Analytical model for collisional impurity transport in tokamaks at arbitrary collisionality", Plasma Phys. Control. Fusion 64 055017, https://doi.org/10.1088/1361-6587/ac5b4d
 
-[6] D. Fajardo et al, 2023, "Analytical model for the combined effects of rotation and collisionality on neoclassical impurity transport", Plasma Phys. Control. Fusion 65, https://doi.org/10.1088/1361-6587/acb0fc
+[6] D. Fajardo et al, 2023, "Analytical model for the combined effects of rotation and collisionality on neoclassical impurity transport", Plasma Phys. Control. Fusion 65 035021, https://doi.org/10.1088/1361-6587/acb0fc
 
 Atomic and surface data
 -----------------------
@@ -38,7 +38,7 @@ If you use Aurora, you will likely need atomic rates of some sort. Aurora offers
 
 If you know the origin of the ADAS data that you are using, it would also be good to cite the specific works that resulted in the ADAS-distributed results. Other references for specific methods/data used in Aurora are shown in some docstrings.
 
-If you are also using the advanced plasma-wall interaction model, you will be interfacing with the data produced by the Monte Carlo program trim.sp. Information about trim.sp can be found at https://rmlmcfadden.github.io/ion-implantation/trimsp/ . To cite trim.sp, it would be reasonable to use
+If you are also using the full plasma-wall interaction model, you will be interfacing with the data produced by the Monte Carlo program trim.sp. Information about trim.sp can be found at https://rmlmcfadden.github.io/ion-implantation/trimsp/ . To cite trim.sp, it would be reasonable to use
 
 [9] W. Eckstein, 1991, "Computer Simulation of Ion-Solid Interactions". https://link.springer.com/book/10.1007/978-3-642-73513-4
 

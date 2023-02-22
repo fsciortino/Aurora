@@ -375,7 +375,7 @@ and a retention time for the divertor neutrals reservoir, i.e. the time scale fo
 We can also set more parameters for edge/divertor transport. For example, we can select the fraction of the parallel impurity flux towards the divertor which recombines before reaching the divertor wall, and the screening efficiency of the backflow from the divertor reservoir towards the plasma:::
 
   namelist['div_recomb_ratio'] = 0.2
-  namelist['screening_eff'] = 0.5
+  namelist['div_neut_screen'] = 0.5
 
 Finally, let's select also realistic parameters for the pumping model. Aurora allows to impose a physical volume for the divertor neutrals reservoir, through::
 
@@ -430,13 +430,13 @@ Finally, all the time traces concerning the multi-reservoir model might be also 
   reservoirs = asim.reservoirs_time_traces(plot = False)
 
 
-Using the advanced plasma-wall interaction model
+Using the full plasma-wall interaction model
 ------------------------------------------------
 
-Finally, let's try to couple the wall recyclng model in Aurora with the advanced plasma-wall interaction model, in which wall retention is simulated according to realistic reflection and sputtering coefficient and wall saturation densities and impact energy/angles of projectile ions.
+Finally, let's try to couple the wall recyclng model in Aurora with the full plasma-wall interaction model, in which wall retention is simulated according to realistic reflection and sputtering coefficient and wall saturation densities and impact energy/angles of projectile ions.
 
 .. note::
-    The advanced PWI model is currently only supported for He as impurity and W as wall material, with several other species as projectiles (D, He, B, N). Coefficients for other impurity-wall material-projectile combinations might be, however, easily calculated and implemented. Please contact the code developers if you are interested in some other specific combination of impurity-wall material-projectile.
+    The full PWI model is currently only supported for He as impurity and W as wall material, with several other species as projectiles (D, He, B, N). Coefficients for other impurity-wall material-projectile combinations might be, however, easily calculated and implemented. Please contact the code developers if you are interested in some other specific combination of impurity-wall material-projectile.
 
 We start by setting the some input parameters as in the previous tutorial: ::
 
@@ -472,7 +472,7 @@ Of course, the recycling needs to be activated: ::
   
 Let's also activate some features regarding edge/divertor transport, and pumping: ::
 
-  namelist['screening_eff'] = 0.5
+  namelist['div_neut_screen'] = 0.5
   namelist['div_recomb_ratio'] = 0.2  # ms
   namelist['tau_div_SOL_ms'] = 40.0  # ms
   namelist['phys_volumes'] = True
@@ -491,38 +491,38 @@ To properly account the number of particles stored in a wall material, we need t
 
 We will need now to specify some characteristics of both the walls. First of all, their bulk material: ::
 
-  namelist['advanced_PWI']['main_wall_material'] = 'W'
-  namelist['advanced_PWI']['div_wall_material'] = 'W'
+  namelist['full_PWI']['main_wall_material'] = 'W'
+  namelist['full_PWI']['div_wall_material'] = 'W'
 
 Then, a "saturation value"2 of implanted impurity surface density: ::
 
-  namelist['advanced_PWI']['n_main_wall_sat'] = 1e19  # m^-2
-  namelist['advanced_PWI']['n_div_wall_sat'] = 1e19  # m^-2
+  namelist['full_PWI']['n_main_wall_sat'] = 1e19  # m^-2
+  namelist['full_PWI']['n_div_wall_sat'] = 1e19  # m^-2
 
 and a "characteristic" impact energy of the simulated impurity onto the walls over the entire device lifetime, used by Aurora estimate the implantation depth of the impurity into the wall material: ::
 
-  namelist['advanced_PWI']['characteristic_impact_energy_main_wall'] = 200 # eV
-  namelist['advanced_PWI']['characteristic_impact_energy_div_wall'] = 500 # eV
+  namelist['full_PWI']['characteristic_impact_energy_main_wall'] = 200 # eV
+  namelist['full_PWI']['characteristic_impact_energy_div_wall'] = 500 # eV
 
 The last two couples of parameters together will be used to calculate the absolute maximum number of impurity particles which the walls can accomodate as reservoirs.
 
 Now, we should consider that, while the implantation of the impurity is only determined by the flux of the impurity itself hitting a wall surface (which is self-consistently simulated by Aurora), the successive through sputtering is determined by the bombardment of wall by not only the simulated impurity itself, but also by the main ion species in the background (and possibly other impurities present in the simulated experiment). Therefore, the user needs to manually specify the fluxes of all the other present "background species" towards the wall. We will need to do then: ::
 
-  namelist['advanced_PWI']['background_mode'] = 'manual'
-  namelist['advanced_PWI']['background_species'] = ['D']  # list of all background species
-  namelist['advanced_PWI']['background_main_wall_fluxes'] = [1e22]  # s^-1, list of fluxes to main wall for all background species
-  namelist['advanced_PWI']['background_div_wall_fluxes'] = [1e21]  # s^-1, list of fluxes to div. wall for all background species
+  namelist['full_PWI']['background_mode'] = 'manual'
+  namelist['full_PWI']['background_species'] = ['D']  # list of all background species
+  namelist['full_PWI']['background_main_wall_fluxes'] = [1e22]  # s^-1, list of fluxes to main wall for all background species
+  namelist['full_PWI']['background_div_wall_fluxes'] = [1e21]  # s^-1, list of fluxes to div. wall for all background species
 
 For determing the coefficient it is also important to calculate the impact energy of the various projectiles onto the wall surface. This is calculated by Aurora specifying the electron temperature at the plasma-material interface: ::
 
-  namelist['advanced_PWI']['Te_lim'] = 10.0 #  eV, main wall
-  namelist['advanced_PWI']['Te_div'] = 15.0 #  eV, div. wall
+  namelist['full_PWI']['Te_lim'] = 10.0 #  eV, main wall
+  namelist['full_PWI']['Te_div'] = 15.0 #  eV, div. wall
 
 Finally, let's also include the possibility of the recycled neutrals being re-emitted towards the plasma as energetic, with energies calculated from the plasma-material interaction coefficients: ::
 
-  namelist['advanced_PWI']['energetic_recycled_neutrals'] = True
+  namelist['full_PWI']['energetic_recycled_neutrals'] = True
 
-In order to properly activate the advanced PWI model, we do not call the main class :py:class:`~aurora.core.aurora_sim`, but the specifically adapted class :py:class:`~aurora.pwi.aurora_sim_pwi`::
+In order to properly activate the full PWI model, we do not call the main class :py:class:`~aurora.core.aurora_sim`, but the specifically adapted class :py:class:`~aurora.pwi.aurora_sim_pwi`::
 
   asim = aurora.pwi.aurora_sim_pwi(namelist, geqdsk=geqdsk)
 
@@ -539,10 +539,10 @@ The time traces will be similar as before.
 
 .. figure:: figs/tutorial_time_traces_PWI.png
     :align: center
-    :alt: Time traces from the extended multi-reservoir particle balance model with advanced PWI model
+    :alt: Time traces from the extended multi-reservoir particle balance model with full PWI model
     :figclass: align-center 
 
-    Time traces from the extended multi-reservoir particle balance model with advanced PWI model
+    Time traces from the extended multi-reservoir particle balance model with full PWI model
     
 We note that now there is not an artificial distinction between particles "stuck" and "retained" at the walls. Additionally, having defined actual surface areas for the walls, the particles retained in these are automatically shown in terms of surface densities rather than in absolute number of particles.
 
