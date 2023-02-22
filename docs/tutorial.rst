@@ -604,6 +604,9 @@ An important feature of FACIT is the description of the effects of rotation on n
 
 A full example on how to run FACIT in Aurora is given `examples/facit_basic.py`. The following code shows the initialization of the transport coefficients, the magnetic geometry and the main call to FACIT looped over each charge state of the impurity species:::
 
+     # note that to be able to give charge-dependent Dz and Vz,
+     # one has to give also time dependence (see documentation of aurora.core.run_aurora())
+
      times_DV = np.array([0])
      # note that to be able to give charge-dependent Dz and Vz,
      # one has to give also time dependence (see documentation of aurora.core.run_aurora()),
