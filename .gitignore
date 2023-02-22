@@ -50,4 +50,4 @@ junit
 
 # folder-related macbook files
 *.DS_Store
-docs/.idea/
+docs/.idea/*
