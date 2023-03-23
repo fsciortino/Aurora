@@ -254,24 +254,21 @@ def compute_rad(
         # SXR total radiation
         res["sxr_tot"] = res["sxr_line_rad"].sum(1) + res["sxr_cont_rad"].sum(1)
 
-    if (
-        spectral_brem_flag
-    ):  # spectral bremsstrahlung (i.e. brems at a specific wavelength)
+ 
+    if spectral_brem_flag:  
+        # spectral bremsstrahlung (i.e. brems at a specific wavelength)
 
         atom_data = atomic.get_atom_data(
             imp, files={"brs": adas_files_sub.get("brs", None)}
         )
-        x, y, tab = atom_data["brs"]
-        _brsne = atomic.interp_atom_prof(
-            (x, y, tab.T), None, logTe, x_multiply=True
-        )  # W
-
-        # interpolate on Z grid of impurity of interest
-        logZ_rep = np.log10(np.arange(Z_imp) + 1)
-        brsne = interp1d(x, _brsne, axis=1, copy=False, assume_sorted=True)(logZ_rep)
-
+        Z = np.arange(Z_imp) + 1
+        
+        # interpolate on Z grid of impurity of interest and Te grid
+        # bremstrahlug mW/nm/m^3/sr * cm^6 (for brs05235.dat file, some other files have a different units)
+        brs = atomic.interp_atom_prof(atom_data["brs"], np.log10(Z)[:,None,None], logTe, x_multiply=False) 
+ 
         # Note: no spectral bremsstrahlung from neutral stage
-        res["spectral_brems"] = nz[:, 1:] * brsne
+        res["spectral_brems"] = brs[:,0].swapaxes(0,1)*nz[:,1:]*ne[:,None]
 
     return res
 
