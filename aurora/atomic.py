@@ -723,7 +723,7 @@ def get_cs_balance_terms(
         cxne = interp_atom_prof(atom_data["ccd"], logne, logTi, x_multiply=True)
         # select appropriate number of charge states
         # this allows use of CCD files from higher-Z ions because of simple CX scaling
-        out.append(cxne[: Sne.shape[1]])
+        out.append(cxne[:, : Sne.shape[1]])
 
     if metastables:
         Qne = interp_atom_prof(atom_data["qcd"], logne, logTe, x_multiply=True)
