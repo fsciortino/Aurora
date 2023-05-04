@@ -446,6 +446,9 @@ An important feature of FACIT is the description of the effects of rotation on n
 
 A full example on how to run FACIT in Aurora is given `examples/facit_basic.py`. The following code shows the initialization of the transport coefficients, the magnetic geometry and the main call to FACIT looped over each charge state of the impurity species:::
 
+     # note that to be able to give charge-dependent Dz and Vz,
+     # one has to give also time dependence (see documentation of aurora.core.run_aurora())
+
      times_DV = np.array([0])
      # note that to be able to give charge-dependent Dz and Vz,
      # one has to give also time dependence (see documentation of aurora.core.run_aurora()),
@@ -506,5 +509,5 @@ In addition to the collisional transport coefficients calculated with FACIT, we 
   V_z += Vz_an
 
 .. note::
-   FACIT is distributed within Aurora. The following papers contain the derivation of the model: the self-consistent calculation of the Pfirsch-Schlüter flux and the poloidal asymmetries of heavy impurities at high collisionality is given in `Maget et al 2022 Plasma Phys. Control. Fusion 64 069501 <https://iopscience.iop.org/article/10.1088/1361-6587/ac63e0>`_, while the extension to arbitrary collisionality and inclusion of the Banana-Plateau flux in the poloidally-symmetric (non-rotating) limit is obtained in `Fajardo et al 2022 Plasma Phys. Control. Fusion 64 055017 <https://iopscience.iop.org/article/10.1088/1361-6587/ac5b4d>`_, and finally the description of the effects of rotation across collisionality regimes is presented in `Fajardo et al 2023 Plasma Phys. Control. Fusion 65 <https://iopscience.iop.org/article/10.1088/1361-6587/acb0fc>`_. Please cite these papers when using FACIT.
+   FACIT is distributed within Aurora. The following papers contain the derivation of the model: the self-consistent calculation of the Pfirsch-Schlüter flux and the poloidal asymmetries of heavy impurities at high collisionality is given in `Maget et al 2022 Plasma Phys. Control. Fusion 64 069501 <https://iopscience.iop.org/article/10.1088/1361-6587/ac63e0>`_, while the extension to arbitrary collisionality and inclusion of the Banana-Plateau flux in the poloidally-symmetric (non-rotating) limit is obtained in `Fajardo et al 2022 Plasma Phys. Control. Fusion 64 055017 <https://iopscience.iop.org/article/10.1088/1361-6587/ac5b4d>`_, and finally the description of the effects of rotation across collisionality regimes is presented in `Fajardo et al 2023 Plasma Phys. Control. Fusion 65 035021 <https://iopscience.iop.org/article/10.1088/1361-6587/acb0fc>`_. Please cite these papers when using FACIT.
    
