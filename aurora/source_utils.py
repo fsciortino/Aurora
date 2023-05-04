@@ -138,6 +138,7 @@ def get_source_time_history(namelist, Raxis_cm, time):
     circ = 2 * np.pi * Raxis_cm
 
     # For ease of comparison with STRAHL, shift source by one time step
+    # ??? is this correct?
     source_time_history = np.r_[source[1:], source[-1]] / circ
     if all(source_time_history == 0):
         raise Exception("Impurity source is zero within the simulation range")
@@ -300,6 +301,7 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
         Radial profile of the impurity neutral source for each time step.
     """
     r_src = namelist["rvol_lcfs"] + namelist["source_cm_out_lcfs"]
+    # number of time points
     nt = S_rates.shape[1]
     try:
         # TODO: invert order of dimensions of Ti_eV...
@@ -320,7 +322,7 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
 
     # source with FWHM=source_width_in inside and FWHM=source_width_out outside
     if namelist["source_width_in"] > 0.0 or namelist["source_width_out"] > 0.0:
-
+			# where does the np.log(2.0) come from, shouldn't it be 0.5 ???
         if namelist["source_width_in"] > 0.0:
             ff = np.log(2.0) / namelist["source_width_in"] ** 2
             source_rad_prof[:i_src] = np.exp(
@@ -351,12 +353,17 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
         out = atomic_element(symbol=namelist["imp"])
         spec = list(out.keys())[0]
         imp_ion_A = int(out[spec]["A"])
+        # velocity of neutrals at source
         v = -np.sqrt(2.0 * q_electron * E0 / (imp_ion_A * m_p)) * 100  # cm/s
+		  # velocity is negative because it goes inwards
 
         # integration of ne*S for atoms and calculation of ionization length for normalizing neutral density
+
+        # don't understand this yet???
         source_rad_prof[i_src] = (
             -0.0625 * S_rates[i_src] / pro_grid[i_src] / v[i_src]
         )  # 1/16
+        # going inward
         for i in np.arange(i_src - 1, 0, -1):
             source_rad_prof[i] = source_rad_prof[i + 1] + 0.25 * (
                 S_rates[i + 1] / pro_grid[i + 1] / v[i + 1]
@@ -364,6 +371,7 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
             )
 
         # prevents FloatingPointError: underflow encountered
+        #source can not be smaller than exp(-100)
         source_rad_prof[1:i_src] = np.exp(np.maximum(source_rad_prof[1:i_src], -100))
 
         # calculate relative density of neutrals
@@ -374,7 +382,10 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
 
         # remove promptly redeposited ions
         if namelist["prompt_redep_flag"]:
-            omega_c = 1.602e-19 / 1.601e-27 * namelist["Baxis"] / namelist["main_ion_A"]
+        		# replacing by actual constants here
+            #omega_c = 1.602e-19 / 1.601e-27 * namelist["Baxis"] / namelist["main_ion_A"]
+            # electron cyclotron frequency at the axis
+            omega_c = q_electron / m_p * namelist["Baxis"] / namelist["main_ion_A"]
             dt = (rvol_grid[i_src] - rvol_grid) / v
             pp = dt * omega_c
             non_redep = pp**2 / (1.0 + pp**2)
