@@ -78,6 +78,10 @@ class aurora_sim:
         self.Z_imp = int(out[spec]["Z"])
         self.A_imp = int(out[spec]["A"])
 
+        if "a" in self.namelist:
+            self.A_pl=self.namelist["A"]
+
+		  # load the namelist
         self.reload_namelist()
 
         if "Raxis_cm" in self.namelist:
@@ -107,7 +111,6 @@ class aurora_sim:
             atom_files["ccd"] = self.namelist.get(
                 "ccd", adas_files.adas_files_dict()[self.imp]["ccd"]
             )
-
         if self.namelist.get("metastable_flag", False):
             atom_files["qcd"] = self.namelist.get(
                 "qcd", adas_files.adas_files_dict()[self.imp].get("qcd", None)
@@ -130,6 +133,7 @@ class aurora_sim:
 
     def reload_namelist(self, namelist=None):
         """(Re-)load namelist to update scalar variables."""
+        # load a new namelist, otherwise load elements in self.namelist
         if namelist is not None:
             self.namelist = namelist
 
@@ -174,6 +178,7 @@ class aurora_sim:
         if self.geqdsk is not None:
             # Get r_V to rho_pol mapping
             rho_pol, _rvol = grids_utils.get_rhopol_rvol_mapping(self.geqdsk)
+            # rvol at the last closed flux surface
             rvol_lcfs = interp1d(rho_pol, _rvol)(1.0)
             self.rvol_lcfs = self.namelist["rvol_lcfs"] = np.round(
                 rvol_lcfs, 3
@@ -199,7 +204,7 @@ class aurora_sim:
             )
             self.rhop_grid[0] = 0.0  # enforce on axis
         else:
-            # use rho_vol = rvol/rvol_lcfs
+            # use rho_vol = rvol/rvol_lcfs, if no qeqdsk file available
             self.rhop_grid = self.rvol_grid / self.rvol_lcfs
 
         # ----------------
@@ -220,7 +225,7 @@ class aurora_sim:
     def setup_kin_profs_depts(self):
         """Method to set up Aurora inputs related to the kinetic background from namelist inputs."""
         # get kinetic profiles on the radial and (internal) temporal grids
-        self._ne, self._Te, self._Ti, self._n0 = self.get_aurora_kin_profs()
+        self._ne, self._Te, self._Ti, self._Tn, self._n0 = self.get_aurora_kin_profs()
 
         # store also kinetic profiles on output time grid
         if len(self._ne) > 1:  # all have the same shape now
@@ -231,6 +236,7 @@ class aurora_sim:
         self.ne = self._ne[save_time, :]
         self.Te = self._Te[save_time, :]
         self.Ti = self._Ti[save_time, :]
+        self.Tn = self._Tn[save_time, :]
         self.n0 = self._n0[save_time, :]
 
         # Get time-dependent parallel loss rate
@@ -261,7 +267,7 @@ class aurora_sim:
                 np.clip(self.rhop_grid, min(srho), max(srho)),
                 np.clip(self.time_grid, min(stime), max(stime)),
             )
-            # Change units to particles/cm^3
+            # Change units to particles/cm^3 by division through ionization rate
             self.src_core = self.source_rad_prof / Sne0
         else:
             # get time history and radial profiles separately
@@ -423,6 +429,13 @@ class aurora_sim:
         else:
             Ti = Te
 
+        if self.namelist.get("cxr_flag", False) and "Tn" in self.kin_profs and "vals" in self.kin_profs["Tn"]:
+            self.kin_profs["Tn"]["vals"] = np.atleast_2d(self.kin_profs["Tn"]["vals"])
+            Tn = self.interp_kin_prof("Tn")
+            Tn[Tn < min_T] = min_T
+        else:
+            Tn = None
+
         # get neutral background ion density
         if self.namelist.get("cxr_flag", False):
             n0 = self.interp_kin_prof("n0")
@@ -435,9 +448,9 @@ class aurora_sim:
         ne[ne < min_ne] = min_ne
 
         # make sure that Te,ne,Ti and n0 have the same shape at this stage
-        ne, Te, Ti, n0 = np.broadcast_arrays(ne, Te, Ti, n0)
+        ne, Te, Ti, Tn, n0 = np.broadcast_arrays(ne, Te, Ti, Tn, n0)
 
-        return ne, Te, Ti, n0
+        return ne, Te, Ti, Tn, n0
 
     def set_time_dept_atomic_rates(self, superstages=[], metastables=False):
         """Obtain time-dependent ionization and recombination rates for a simulation run.
@@ -470,6 +483,9 @@ class aurora_sim:
             ne_cm3=self._ne,
             Te_eV=self._Te,
             Ti_eV=self._Ti,
+            Tn_eV=self._Tn,
+            a_imp=self.A_imp,
+            a_pl=self.A_pl,
             include_cx=self.namelist["cxr_flag"],
             metastables=metastables,
         )
@@ -1573,7 +1589,7 @@ class aurora_sim:
         fz = self.res[0][..., -1] / np.sum(self.res[0][..., -1], axis=1)[:, None]
         Z_ave_vec = np.sum(fz * np.arange(self.Z_imp + 1)[None, :], axis=1)
         _, Rlfs = grids_utils.get_HFS_LFS(self.geqdsk, rho_pol=self.rhop_grid)
-        
+
         self.CF_lambda = synth_diags.centrifugal_asymmetry(
             self.rhop_grid,
             Rlfs,

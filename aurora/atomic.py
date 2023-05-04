@@ -1,5 +1,5 @@
-"""Collection of classes and functions for loading, interpolation and processing of atomic data. 
-Refer also to the adas_files.py script. 
+"""Collection of classes and functions for loading, interpolation and processing of atomic data.
+Refer also to the adas_files.py script.
 """
 # MIT License
 #
@@ -496,6 +496,9 @@ def get_frac_abundances(
     ne_cm3,
     Te_eV=None,
     Ti_eV=None,
+    Tn_eV=None,
+    a_imp=None,
+    a_pl=None,
     n0_by_ne=0.0,
     superstages=[],
     plot=True,
@@ -520,6 +523,12 @@ def get_frac_abundances(
         atomic data is used.
     Ti_eV : float or array, optional
         Bulk ion temperature in units of eV. If left to None, Ti is set to be equal to Te
+    Tn_eV : float or array
+        Neutral plasma atom temperature in units of eV, only needed for CX (weighted temperature of ions and neutrals interacting). If left to None, Ti used.
+    a_imp : int
+        Bulk ion mass in numbers of protons + neutrons (i.e. 2 for D), only needed for CX if neutral temperature is specified. If left to None, Ti is used for the CX rates.
+    a_pl : int
+        Neutral plasma atom mass in numbers of protons + neutrons (i.e. 2 for D), only needed for CX if neutral temperature is specified. If left to None, Ti is used for the CX rates.
     n0_by_ne: float or array, optional
         Ratio of background neutral hydrogen to electron density. If not 0, CX is considered.
     superstages : list or 1D array
@@ -548,13 +557,16 @@ def get_frac_abundances(
     _ne = np.ravel(ne_cm3)
     _Te = np.ravel(Te_eV) if Te_eV is not None else None
     _Ti = np.ravel(Ti_eV) if Ti_eV is not None else _Te
+    _Tn = np.ravel(Tn_eV) if Tn_eV is not None else None 
+    _a_imp = a_imp if a_imp is not None else None
+    _a_pl = a_pl if a_pl is not None else None
     _n0_by_ne = np.ravel(n0_by_ne)
     if superstages is None:
         superstages = []
 
     include_cx = False if not np.any(n0_by_ne) else True
 
-    out = get_cs_balance_terms(atom_data, _ne, _Te, _Ti, include_cx=include_cx)
+    out = get_cs_balance_terms(atom_data, _ne, _Te, _Ti, _Tn, _a_imp, _a_pl, include_cx=include_cx)
     Te, Sne, Rne = out[:3]
 
     Z_imp = Sne.shape[1]
@@ -661,7 +673,7 @@ def get_frac_abundances(
 
 
 def get_cs_balance_terms(
-    atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, include_cx=True, metastables=False
+    atom_data, ne_cm3=5e13, Te_eV=None, Ti_eV=None, Tn_eV=None, a_imp=None, a_pl=None, include_cx=True, metastables=False
 ):
     """Get S*ne, R*ne and cx*ne rates on the same logTe grid.
 
@@ -676,6 +688,12 @@ def get_cs_balance_terms(
         given in the atomic data is used.
     Ti_eV : float or array
         Bulk ion temperature in units of eV, only needed for CX. If left to None, Ti is set equal to Te.
+    Tn_eV : float or array
+        Neutral plasma atom temperature in units of eV, only needed for CX (weighted temperature of ions and neutrals interacting). If left to None, Ti used.
+    a_imp : int
+        Bulk ion mass in numbers of protons + neutrons (i.e. 2 for D), only needed for CX if neutral temperature is specified. If left to None, Ti is used for the CX rates.
+    a_pl : int
+        Neutral plasma atom mass in numbers of protons + neutrons (i.e. 2 for D), only needed for CX if neutral temperature is specified. If left to None, Ti is used for the CX rates.
     include_cx : bool
         If True, obtain charge exchange terms as well.
 
@@ -718,15 +736,23 @@ def get_cs_balance_terms(
     out = [Te_eV, Sne, Rne]
 
     if include_cx:
-        # this should be neutral temperature? or weighted Ti and T0 temperature?
-        logTi = np.log10(Ti_eV) if Ti_eV is not None else logTe
+        # weighted Ti and T0 temperature if possible (effective Temperature)
+        if Ti_eV is not None:
+            if Tn_eV is not None and a_imp is not None and a_pl is not None:
+        	       logTi = np.log10((a_imp*Tn_eV+a_pl*Ti_eV)/(a_imp+a_pl))
+        	   else: # use the ion temperature if masses and neutral temperature not available
+        	       logTi = np.log10(Ti_eV)
+        else:
+        logTi = logTe # if ion temperature also not available, use electron temperature
         cxne = interp_atom_prof(atom_data["ccd"], logne, logTi, x_multiply=True)
         # select appropriate number of charge states
         # this allows use of CCD files from higher-Z ions because of simple CX scaling
-        out.append(cxne[: Sne.shape[1]])
+        out.append(cxne[:, :Sne.shape[1]])
 
     if metastables:
+    	  # cross coupling coefficients
         Qne = interp_atom_prof(atom_data["qcd"], logne, logTe, x_multiply=True)
+        # parent cross coupling coefficients
         Xne = interp_atom_prof(atom_data["xcd"], logne, logTe, x_multiply=True)
         out += [Qne, Xne]
 
@@ -738,6 +764,9 @@ def get_atomic_relax_time(
     ne_cm3,
     Te_eV=None,
     Ti_eV=None,
+    Tn_eV=None,
+    a_imp=None,
+    a_pl=None,
     n0_by_ne=0.0,
     superstages=[],
     tau_s=np.inf,
@@ -769,6 +798,12 @@ def get_atomic_relax_time(
         Bulk ion temperature in units of eV, only needed for CX. If left to None, Ti is set equal to Te.
     n0_by_ne: float or array, optional
         Ratio of background neutral hydrogen to electron density. If set to 0, CX is not considered.
+    Tn_eV : float or array
+        Neutral plasma atom temperature in units of eV, only needed for CX (weighted temperature of ions and neutrals interacting). If left to None, Ti used.
+    a_imp : int
+        Bulk ion mass in numbers of protons + neutrons (i.e. 2 for D), only needed for CX if neutral temperature is specified. If left to None, Ti is used for the CX rates.
+    a_pl : int
+        Neutral plasma atom mass in numbers of protons + neutrons (i.e. 2 for D), only needed for CX if neutral temperature is specified. If left to None, Ti is used for the CX rates.
     superstages : list or 1D array
         Indices of charge states of chosen ion that should be included. If left empty, all ion stages
         are included. If only some indices are given, these are modeled as "superstages".
@@ -816,10 +851,13 @@ def get_atomic_relax_time(
     _Te = np.ravel(Te_eV) if Te_eV is not None else None
     _Ti = np.ravel(Ti_eV) if Ti_eV is not None else _Te
     _n0_by_ne = np.ravel(n0_by_ne)
+    _Tn = np.ravel(Tn_eV) if Tn_eV is not None else None 
+    _a_imp = a_imp if a_imp is not None else None
+    _a_pl = a_pl if a_pl is not None else None
 
     include_cx = False if not np.any(n0_by_ne) else True
 
-    out = get_cs_balance_terms(atom_data, _ne, _Te, include_cx=include_cx)
+    out = get_cs_balance_terms(atom_data, _ne, _Te, _Ti, _Tn, _a_imp, _a_pl, include_cx=include_cx)
 
     Te, Sne, Rne = out[:3]
     if include_cx:

@@ -320,6 +320,9 @@ def radiation_model(
     geqdsk,
     adas_files_sub={},
     n0_cm3=None,
+    Tn_eV=None,
+    a_imp=None,
+    a_pl=None,
     Ti_eV=None,
     nz_cm3=None,
     frac=None,
@@ -352,6 +355,12 @@ def radiation_model(
         Background ion density (H,D or T). If provided, charge exchange (CX)
         recombination is included in the calculation of charge state fractional
         abundances.
+    Tn_eV : float or array
+        Neutral plasma atom temperature in units of eV, only needed for CX (weighted temperature of ions and neutrals interacting). If left to None, Ti used.
+    a_imp : int 
+        Bulk ion mass in numbers of protons + neutrons (i.e. 2 for D), only needed for CX if neutral temperature is specified. If left to None, Ti is used for the CX rates.
+    a_pl : int 
+        Neutral plasma atom mass in numbers of protons + neutrons (i.e. 2 for D), only needed for CX if neutral temperature is specified. If left to None, Ti is used for the CX rates.
     Ti_eV : array (nr,), optional
         Background ion density (H,D or T). This is only used if CX recombination is
         requested, i.e. if n0_cm3 is not None. If not given, Ti is set equal to Te.
@@ -428,7 +437,11 @@ def radiation_model(
             _Te, out["fz"] = atomic.get_frac_abundances(
                 atom_data,
                 ne_cm3,
-                Te_eV,
+                Te_eV,  
+                Ti_eV=Ti_eV,
+                Tn_eV=Tn_eV,
+                a_imp=a_imp,
+                a_pl=a_pl,
                 rho=rhop,
                 plot=plot,
                 include_cx=True,
@@ -1366,6 +1379,9 @@ def get_cooling_factors(
     ne_cm3,
     Te_eV,
     n0_cm3=0.0,
+    Tn_eV=None,
+    a_imp=None,
+    a_pl=None,
     ion_resolved=False,
     superstages=[],
     line_rad_file=None,
@@ -1388,6 +1404,12 @@ def get_cooling_factors(
         Background H/D/T neutral density [:math:`cm^{-3}`] used to account for charge exchange
         when calculating ionization equilibrium.
         If left to 0, charge exchange effects are not included.
+    Tn_eV : float or array
+        Neutral plasma atom temperature in units of eV, only needed for CX (weighted temperature of ions and neutrals interacting). If left to None, Ti used.
+    a_imp : int
+        Bulk ion mass in numbers of protons + neutrons (i.e. 2 for D), only needed for CX if neutral temperature is specified. If left to None, Ti is used for the CX rates.
+    a_pl : int
+        Neutral plasma atom mass in numbers of protons + neutrons (i.e. 2 for D), only needed for CX if neutral temperature is specified. If left to None, Ti is used for the CX rates.
     ion_resolved : bool
         If True, cooling factors are returned for each charge state. If False, they are summed over charge states.
         The latter option is useful for modeling where charge states are assumed to be in ionization equilibrium
@@ -1433,7 +1455,7 @@ def get_cooling_factors(
         superstages = []
 
     _Te, fz = atomic.get_frac_abundances(
-        atom_data_eq, ne_cm3, Te_eV, plot=False, n0_by_ne=n0_cm3 / ne_cm3
+        atom_data_eq, ne_cm3, Te_eV, Ti_eV=Ti_eV, Tn_eV=Tn_eV, a_imp=a_imp, a_pl=a_pl,plot=False, n0_by_ne=n0_cm3 / ne_cm3
     )
 
     if superstages:
@@ -1442,6 +1464,10 @@ def get_cooling_factors(
             atom_data_eq,
             ne_cm3,
             Te_eV,
+            Ti_eV=Ti_eV,
+            Tn_eV=Tn_eV,
+            a_imp=a_imp,
+            a_pl=a_pl,
             plot=False,
             n0_by_ne=n0_cm3 / ne_cm3,
             superstages=superstages,
