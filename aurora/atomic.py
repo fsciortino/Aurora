@@ -862,7 +862,7 @@ def get_atomic_relax_time(
     Te, Sne, Rne = out[:3]
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
-        Rne += out[3] * _n0_by_ne
+        Rne += out[3] * _n0_by_ne[:, None]
 
     # Enable use of superstages
     if len(superstages):
