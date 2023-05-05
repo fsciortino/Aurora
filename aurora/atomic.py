@@ -739,8 +739,10 @@ def get_cs_balance_terms(
         # weighted Ti and T0 temperature if possible (effective Temperature)
         if Ti_eV is not None:
             if Tn_eV is not None and a_imp is not None and a_pl is not None:
-        	       logTi = np.log10((a_imp*Tn_eV+a_pl*Ti_eV)/(a_imp+a_pl))
-            else: # use the ion temperature if masses and neutral temperature not available
+        	       #replace neutral temperature by Ti temperature, where it is not available, otherwise use weighted temperature
+        	       T_finite=np.where(np.isfinite(Tn_eV), Tn_eV, Ti_eV)
+        	       logTi = np.log10((a_imp*T_finite+a_pl*Ti_eV)/(a_imp+a_pl))
+            else: # use the ion temperature if masses and/or neutral temperature not available
         	       logTi = np.log10(Ti_eV)
         else:
             logTi = logTe # if ion temperature also not available, use electron temperature
