@@ -740,10 +740,10 @@ def get_cs_balance_terms(
         if Ti_eV is not None:
             if Tn_eV is not None and a_imp is not None and a_pl is not None:
         	       logTi = np.log10((a_imp*Tn_eV+a_pl*Ti_eV)/(a_imp+a_pl))
-        	   else: # use the ion temperature if masses and neutral temperature not available
+            else: # use the ion temperature if masses and neutral temperature not available
         	       logTi = np.log10(Ti_eV)
         else:
-        logTi = logTe # if ion temperature also not available, use electron temperature
+            logTi = logTe # if ion temperature also not available, use electron temperature
         cxne = interp_atom_prof(atom_data["ccd"], logne, logTi, x_multiply=True)
         # select appropriate number of charge states
         # this allows use of CCD files from higher-Z ions because of simple CX scaling

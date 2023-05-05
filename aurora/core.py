@@ -78,9 +78,6 @@ class aurora_sim:
         self.Z_imp = int(out[spec]["Z"])
         self.A_imp = int(out[spec]["A"])
 
-        if "a" in self.namelist:
-            self.A_pl=self.namelist["A"]
-
 		  # load the namelist
         self.reload_namelist()
 
@@ -236,7 +233,7 @@ class aurora_sim:
         self.ne = self._ne[save_time, :]
         self.Te = self._Te[save_time, :]
         self.Ti = self._Ti[save_time, :]
-        self.Tn = self._Tn[save_time, :]
+        self.Tn = self._Tn[save_time, :] if self._Tn is not None else None
         self.n0 = self._n0[save_time, :]
 
         # Get time-dependent parallel loss rate
@@ -448,8 +445,10 @@ class aurora_sim:
         ne[ne < min_ne] = min_ne
 
         # make sure that Te,ne,Ti and n0 have the same shape at this stage
-        ne, Te, Ti, Tn, n0 = np.broadcast_arrays(ne, Te, Ti, Tn, n0)
-
+        if Tn is not None:
+            ne, Te, Ti, Tn, n0 = np.broadcast_arrays(ne, Te, Ti, Tn, n0)
+        else:
+            ne, Te, Ti, n0 = np.broadcast_arrays(ne, Te, Ti, n0)
         return ne, Te, Ti, Tn, n0
 
     def set_time_dept_atomic_rates(self, superstages=[], metastables=False):
@@ -485,7 +484,7 @@ class aurora_sim:
             Ti_eV=self._Ti,
             Tn_eV=self._Tn,
             a_imp=self.A_imp,
-            a_pl=self.A_pl,
+            a_pl=self.main_ion_A,
             include_cx=self.namelist["cxr_flag"],
             metastables=metastables,
         )
