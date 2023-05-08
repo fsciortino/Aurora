@@ -573,7 +573,7 @@ def get_frac_abundances(
 
     if include_cx:
         # Get an effective recombination rate by summing radiative & CX recombination rates
-        Rne += n0_by_ne[:, None] * out[3]
+        Rne += _n0_by_ne[:, None] * out[3]
 
     rate_ratio = np.hstack((np.ones_like(Te)[:, None], Sne / Rne))
     fz_full = np.cumprod(rate_ratio, axis=1)
