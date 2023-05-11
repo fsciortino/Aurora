@@ -234,7 +234,7 @@ class aurora_sim:
         self.Te = self._Te[save_time, :]
         self.Ti = self._Ti[save_time, :]
         self.Tn = self._Tn[save_time, :] if self._Tn is not None else None
-        self.n0 = self._n0[save_time, :]
+        self.n0 = self._n0[save_time, :] 
 
         # Get time-dependent parallel loss rate
         self.par_loss_rate = self.get_par_loss_rate()
@@ -437,7 +437,7 @@ class aurora_sim:
         if self.namelist.get("cxr_flag", False):
             n0 = self.interp_kin_prof("n0")
         else:
-            n0 = None
+            n0 = 0.0
 
         # set minima in temperature and density
         Te[Te < min_T] = min_T
@@ -445,10 +445,12 @@ class aurora_sim:
         ne[ne < min_ne] = min_ne
 
         # make sure that Te,ne,Ti and n0 have the same shape at this stage
-        if Tn is not None:
+        if self.namelist.get("cxr_flag", False) and Tn is not None:
             ne, Te, Ti, Tn, n0 = np.broadcast_arrays(ne, Te, Ti, Tn, n0)
         else:
             ne, Te, Ti, n0 = np.broadcast_arrays(ne, Te, Ti, n0)
+        #else:
+        #    ne, Te, Ti = np.broadcast_arrays(ne, Te, Ti)
         return ne, Te, Ti, Tn, n0
 
     def set_time_dept_atomic_rates(self, superstages=[], metastables=False):
@@ -1137,8 +1139,10 @@ class aurora_sim:
         max_sim_time=100,
         dt=1e-4,
         dt_increase=1.05,
+        keep_timing=False,
         n_steps=100,
         plot=False,
+        return_full_result=False
     ):
         """Run an Aurora simulation until reaching steady state profiles. This method calls :py:meth:`~aurora.core.run_aurora`
         checking at every iteration whether profile shapes are still changing within a given fractional tolerance.
@@ -1178,10 +1182,14 @@ class aurora_sim:
             after each time step.
         dt_increase : float
             Multiplier for time steps.
+        keep_timing : bool
+        		Don't change the timing in the namelist. By default false, such that timing is changed.
         n_steps : int
             Number of time steps (>2) before convergence is checked.
         plot : bool
             If True, plot time evolution of charge state density profiles to show convergence.
+        return_full_result: bool
+            Return the full final Aurora result, instead of just the final charge state densities. By default set to false.
         """
 
         if n_steps < 2:
@@ -1202,12 +1210,15 @@ class aurora_sim:
         # self.namelist["source_rate"] = 1.0
 
         # build timing dictionary
-        self.namelist["timing"] = {
-            "dt_start": [dt, dt],
-            "dt_increase": [dt_increase, 1.0],
-            "steps_per_cycle": [1, 1],
-            "times": [0.0, max_sim_time],
-        }
+        if not keep_timing:
+            self.namelist["timing"] = {
+                "dt_start": [dt, dt],
+                "dt_increase": [dt_increase, 1.0],
+                "steps_per_cycle": [1, 1],
+                "times": [0.0, max_sim_time],
+            }
+
+        max_sim_time=self.namelist["timing"]["times"][1]-self.namelist["timing"]["times"][0]
 
         # prepare radial and temporal grid
         self.setup_grids()
@@ -1240,11 +1251,25 @@ class aurora_sim:
         Rne_rates = self.Rne_rates.copy()
         saw_on = self.saw_on.copy()
         src_div = self.src_div.copy()
-        nz_all = None if nz_init is None else nz_init
-        while sim_steps < len(time_grid):
+        #nz_all = None if nz_init is None else nz_init
+        nz_all=None
 
-            self.time_grid = self.time_out = time_grid[sim_steps : sim_steps + n_steps]
+        N_wall_all=[]
+        N_div_all=[]
+        N_pump_all=[]
+        N_ret_all=[]
+        N_tsu_all=[]
+        N_dsu_all=[]
+        N_dsul_all=[]
+        rcld_rate_all=[]
+        rclw_rate_all=[]
+
+
+        while sim_steps < len(time_grid):
+				# update all time dependent parameters for Aurora run
+            self.time_grid = time_grid[sim_steps : sim_steps + n_steps]
             self.save_time = save_time[sim_steps : sim_steps + n_steps]
+            self.time_out=self.time_grid[self.save_time]
             self.par_loss_rate = par_loss_rate[:, sim_steps : sim_steps + n_steps]
             self.rcl_rad_prof = rcl_rad_prof[:, sim_steps : sim_steps + n_steps]
             self.src_core = src_core[:, sim_steps : sim_steps + n_steps]
@@ -1256,12 +1281,10 @@ class aurora_sim:
             sim_steps += n_steps
 
             # get charge state densities from latest time step
-            if nz_all is None:
-                nz_init = None
-            else:
+            if nz_all is not None:
                 nz_init = nz_all[:, :, -1] if nz_all.ndim == 3 else nz_all
 
-            nz_new = self.run_aurora(
+            result_new = self.run_aurora(
                 D_z,
                 V_z,
                 times_DV,
@@ -1271,13 +1294,28 @@ class aurora_sim:
                 evolneut=evolneut,
                 use_julia=use_julia,
                 plot=False,
-            )[0]
+            )
+
+            nz_new, N_wall_new, N_div_new, N_pump_new, N_ret_new, N_tsu_new, N_dsu_new, N_dsul_new, rcld_rate_new, rclw_rate_new = result_new
+
+            if nz_init is None:
+                nz_init = np.zeros_like(nz_new[:, :, 0])
 
             if nz_all is None:
-                nz_all = np.dstack((np.zeros_like(nz_new[:, :, [0]]), nz_new))
-                nz_init = np.zeros_like(nz_new[:, :, 0])
+                nz_all = nz_new#np.dstack((np.zeros_like(nz_new[:, :, [0]]), nz_new))
+                #nz_init = np.zeros_like(nz_new[:, :, 0])
             else:
                 nz_all = np.dstack((nz_all, nz_new))
+            N_wall_all=np.concatenate((N_wall_all,N_wall_new))
+            N_div_all=np.concatenate((N_div_all,N_div_new))
+            N_pump_all=np.concatenate((N_pump_all,N_pump_new))
+            N_ret_all=np.concatenate((N_ret_all,N_ret_new))
+            N_tsu_all=np.concatenate((N_tsu_all,N_tsu_new))
+            N_dsu_all=np.concatenate((N_dsu_all,N_dsu_new))
+            N_dsul_all=np.concatenate((N_dsul_all,N_dsul_new))
+            rcld_rate_all=np.concatenate((rcld_rate_all,rcld_rate_new))
+            rclw_rate_all=np.concatenate((rclw_rate_all,rclw_rate_new))
+
 
             # check if normalized profiles have converged
             if (
@@ -1287,11 +1325,19 @@ class aurora_sim:
             ):
                 break
 
-        # store final time grids
+        result_all = nz_all, N_wall_all, N_div_all, N_pump_all, N_ret_all, N_tsu_all, N_dsu_all, N_dsul_all, rcld_rate_all, rclw_rate_all
+
+        # store final time grids and other time dependent variables
         self.time_grid = time_grid[:sim_steps]
-        # identical because steps_per_cycle is fixed to 1
-        self.time_out = time_grid[:sim_steps]
         self.save_time = save_time[:sim_steps]
+        self.time_out=self.time_grid[self.save_time]
+        self.par_loss_rate=par_loss_rate[:,:sim_steps]
+        self.rcl_rad_prof=rcl_rad_prof[:,:sim_steps]
+        self.src_core=src_core[:,:sim_steps]
+        self.Sne_rates=Sne_rates[:, :,:sim_steps]
+        self.Rne_rates=Rne_rates[:, :,:sim_steps]
+        self.saw_on=saw_on[:sim_steps]
+        self.src_div=src_div[:sim_steps]
 
         if plot:
             # plot charge state distributions over radius and time
@@ -1326,11 +1372,15 @@ class aurora_sim:
             self.Raxis_cm,
             rvol_max=self.rvol_lcfs,
         )
+
         self.tau_imp = (
             var_volint / source_time_history[-2]
         )  # avoid last time point because source may be 0 there
 
-        return nz_new[:, :, -1]
+        if return_full_result==True:
+            return result_all
+        else:
+            return nz_new[:, :, -1]
 
     def calc_Zeff(self):
         """Compute Zeff from each charge state density, using the result of an AURORA simulation.
