@@ -823,8 +823,6 @@ class aurora_sim:
             rcld_rate_init=edge_vals_init['rcld_rate'] 
             rclw_rate_init=edge_vals_init['rclw_rate']
 
-        print(edge_vals_init)
-
         if D_z.ndim < 3:
             # set all charge states to have the same transport
             # num_cs = Z+1 - include elements for neutrals
@@ -1343,11 +1341,12 @@ class aurora_sim:
             if nz_all is None:
                 # initialize nz_all
                 nz_all = nz_new
+                for key in output_keys:
+                    final_out[key]=out[key]
             else:
                 nz_all = np.dstack((nz_all, nz_new[...,1:])) # don't save the first time step, this is the initial value and the last value of the previous round and is saved there
-            
-            for key in output_keys:
-                final_out[key]=np.concatenate((final_out[key], out[key][...,1:]))
+                for key in output_keys:
+                    final_out[key]=np.concatenate((final_out[key], out[key][...,1:]))
 
             if nz_init is None: # first iteration and no initial value was passed to the function - set nz_init to 0 for the evaluations further down
                 nz_init = np.zeros_like(nz_new[..., 0])
@@ -1491,7 +1490,6 @@ class aurora_sim:
 
         # collect all the relevant quantities for particle conservation
         out = {}
-
         # calculate total impurity density (summed over charge states)
         total_impurity_density = np.nansum(nz, axis=1)  # time, space
 
