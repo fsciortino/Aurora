@@ -531,8 +531,10 @@ class aurora_sim:
         self.Rne_rates = np.zeros(
             (Rne.shape[2], Rne.shape[1] + 1, self.time_grid.size), order="F"
         )
-        self.Rne_rates[:, :-1] = Rne.T
 
+        # if Rne_rates doesn't have the time dimension yet (due to constant kinetic profiles in time), it gets it here
+        self.Rne_rates[:, :-1] = Rne.T
+   
         if metastables:
             self.Qne_rates = out.pop(0).T
             self.Xne_rates = out.pop(0).T
@@ -682,6 +684,7 @@ class aurora_sim:
         V_z,
         times_DV=None,
         nz_init=None,
+        edge_vals_init=None,
         unstage=True,
         alg_opt=1,
         evolneut=False,
@@ -797,6 +800,31 @@ class aurora_sim:
             # default: start in a state with no impurity ions
             nz_init = np.zeros((len(self.rvol_grid), num_cs))
 
+        # extract edge values from structure, otherwise set to 0
+        if edge_vals_init is None:
+            # default: start with 0
+            N_wall_init=0.0 
+            N_div_init=0.0 
+            N_pump_init=0.0 
+            N_ret_init=0.0
+            N_tsu_init=0.0
+            N_dsu_init=0.0
+            N_dsul_init=0.0
+            rcld_rate_init=0.0
+            rclw_rate_init=0.0
+        else:
+            N_wall_init=edge_vals_init['N_wall'] 
+            N_div_init=edge_vals_init['N_div'] 
+            N_pump_init=edge_vals_init['N_pump'] 
+            N_ret_init=edge_vals_init['N_ret'] 
+            N_tsu_init=edge_vals_init['N_tsu']
+            N_dsu_init=edge_vals_init['N_dsu']
+            N_dsul_init=edge_vals_init['N_dsul']
+            rcld_rate_init=edge_vals_init['rcld_rate'] 
+            rclw_rate_init=edge_vals_init['rclw_rate']
+
+        print(edge_vals_init)
+
         if D_z.ndim < 3:
             # set all charge states to have the same transport
             # num_cs = Z+1 - include elements for neutrals
@@ -886,6 +914,15 @@ class aurora_sim:
                 self.lim_sep,
                 self.prox_param,
                 rn_t0=nz_init,  # if omitted, internally set to 0's
+                nwall_t0=N_wall_init, # if omitted, internally set to 0's
+                ndiv_t0=N_div_init, # if omitted, internally set to 0's
+                npump_t0=N_pump_init, # if omitted, internally set to 0's
+                nret_t0=N_ret_init, # if omitted, internally set to 0's
+                tsu_t0=N_tsu_init, # if omitted, internally set to 0's
+                dsu_t0=N_dsu_init, # if omitted, internally set to 0's
+                dsul_t0=N_dsul_init, # if omitted, internally set to 0's
+                rcldrate_t0=rcld_rate_init, # if omitted, internally set to 0's 
+                rclwrate_t0=rclw_rate_init, # if omitted, internally set to 0's
                 alg_opt=alg_opt,
                 evolneut=evolneut,
                 src_div=self.src_div,
@@ -1205,9 +1242,13 @@ class aurora_sim:
                 "This method is designed to operate with time-independent D and V profiles!"
             )
 
+        if keep_timing and not all(term==1 for term in self.namelist["timing"]["steps_per_cycle"]):
+            raise ValueError(
+                "This method is designed to operate with steps per cycle equal 1!"
+            )
+
         # set constant timesource
         self.namelist["source_type"] = "const"
-        # self.namelist["source_rate"] = 1.0
 
         # build timing dictionary
         if not keep_timing:
@@ -1241,54 +1282,55 @@ class aurora_sim:
 
         sim_steps = 0
 
-        time_grid = self.time_grid.copy()
-        time_out = self.time_out.copy()
-        save_time = self.save_time.copy()
-        par_loss_rate = self.par_loss_rate.copy()
-        rcl_rad_prof = self.rcl_rad_prof.copy()
-        src_core = self.src_core.copy()
-        Sne_rates = self.Sne_rates.copy()
-        Rne_rates = self.Rne_rates.copy()
-        saw_on = self.saw_on.copy()
-        src_div = self.src_div.copy()
-        #nz_all = None if nz_init is None else nz_init
+        input_keys=['time_grid', 'save_time', 'par_loss_rate', 'rcl_rad_prof', 'src_core', 'Sne_rates', 'Rne_rates', 'saw_on', 'src_div']
+        output_keys=['N_wall', 'N_div', 'N_pump', 'N_ret', 'N_tsu', 'N_dsu', 'N_dsul', 'rcld_rate', 'rclw_rate']
+
+        # save the important input variables beforehand in full time length
+        inputs_save_dict={}
+        for key in input_keys:
+            inputs_save_dict[key]=getattr(self,key).copy()
         nz_all=None
 
-        N_wall_all=[]
-        N_div_all=[]
-        N_pump_all=[]
-        N_ret_all=[]
-        N_tsu_all=[]
-        N_dsu_all=[]
-        N_dsul_all=[]
-        rcld_rate_all=[]
-        rclw_rate_all=[]
+        # initialize empty final result dictionary
+        final_out={}
+        for key in output_keys:
+            final_out[key]=[]
 
+        # initialize the convergence measure
+        conv_meas_all=[]
 
-        while sim_steps < len(time_grid):
-				# update all time dependent parameters for Aurora run
-            self.time_grid = time_grid[sim_steps : sim_steps + n_steps]
-            self.save_time = save_time[sim_steps : sim_steps + n_steps]
+        # initialize empty temporary result dictionary
+        out={}
+
+        while sim_steps < len(inputs_save_dict['time_grid']):
+			# update all time dependent parameters for Aurora run
+            for key in input_keys:
+                if sim_steps==0:
+                    setattr(self, key, inputs_save_dict[key][..., sim_steps : sim_steps + n_steps])
+                else:
+                    setattr(self, key, inputs_save_dict[key][..., sim_steps-1 : sim_steps + n_steps])
+                # always simulate one time step more, which is the initial value, just not in the first round
+            
             self.time_out=self.time_grid[self.save_time]
-            self.par_loss_rate = par_loss_rate[:, sim_steps : sim_steps + n_steps]
-            self.rcl_rad_prof = rcl_rad_prof[:, sim_steps : sim_steps + n_steps]
-            self.src_core = src_core[:, sim_steps : sim_steps + n_steps]
-            self.Sne_rates = Sne_rates[:, :, sim_steps : sim_steps + n_steps]
-            self.Rne_rates = Rne_rates[:, :, sim_steps : sim_steps + n_steps]
-            self.saw_on = saw_on[sim_steps : sim_steps + n_steps]
-            self.src_div = src_div[sim_steps : sim_steps + n_steps]
 
             sim_steps += n_steps
 
             # get charge state densities from latest time step
             if nz_all is not None:
                 nz_init = nz_all[:, :, -1] if nz_all.ndim == 3 else nz_all
+                # initialize edge values
+                edge_vals_init={}
+                for key in output_keys:
+                    edge_vals_init[key]=final_out[key][-1]
+            else:
+                edge_vals_init=None
 
-            result_new = self.run_aurora(
+            result = self.run_aurora(
                 D_z,
                 V_z,
                 times_DV,
                 nz_init=nz_init,
+                edge_vals_init=edge_vals_init,
                 unstage=unstage,
                 alg_opt=alg_opt,
                 evolneut=evolneut,
@@ -1296,48 +1338,40 @@ class aurora_sim:
                 plot=False,
             )
 
-            nz_new, N_wall_new, N_div_new, N_pump_new, N_ret_new, N_tsu_new, N_dsu_new, N_dsul_new, rcld_rate_new, rclw_rate_new = result_new
-
-            if nz_init is None:
-                nz_init = np.zeros_like(nz_new[:, :, 0])
+            nz_new, out['N_wall'], out['N_div'], out['N_pump'], out['N_ret'], out['N_tsu'], out['N_dsu'], out['N_dsul'], out['rcld_rate'], out['rclw_rate'] = result
 
             if nz_all is None:
-                nz_all = nz_new#np.dstack((np.zeros_like(nz_new[:, :, [0]]), nz_new))
-                #nz_init = np.zeros_like(nz_new[:, :, 0])
+                # initialize nz_all
+                nz_all = nz_new
             else:
-                nz_all = np.dstack((nz_all, nz_new))
-            N_wall_all=np.concatenate((N_wall_all,N_wall_new))
-            N_div_all=np.concatenate((N_div_all,N_div_new))
-            N_pump_all=np.concatenate((N_pump_all,N_pump_new))
-            N_ret_all=np.concatenate((N_ret_all,N_ret_new))
-            N_tsu_all=np.concatenate((N_tsu_all,N_tsu_new))
-            N_dsu_all=np.concatenate((N_dsu_all,N_dsu_new))
-            N_dsul_all=np.concatenate((N_dsul_all,N_dsul_new))
-            rcld_rate_all=np.concatenate((rcld_rate_all,rcld_rate_new))
-            rclw_rate_all=np.concatenate((rclw_rate_all,rclw_rate_new))
+                nz_all = np.dstack((nz_all, nz_new[...,1:])) # don't save the first time step, this is the initial value and the last value of the previous round and is saved there
+            
+            for key in output_keys:
+                final_out[key]=np.concatenate((final_out[key], out[key][...,1:]))
 
+            if nz_init is None: # first iteration and no initial value was passed to the function - set nz_init to 0 for the evaluations further down
+                nz_init = np.zeros_like(nz_new[..., 0])
+
+            # get convergence measure
+            conv_meas=np.linalg.norm(nz_new[:, :, -1] - nz_init) / (np.linalg.norm(nz_init) + 1e-99) # calculates the matrix norms
+            
+            conv_meas_all=np.concatenate((conv_meas_all, [conv_meas]))
 
             # check if normalized profiles have converged
             if (
-                np.linalg.norm(nz_new[:, :, -1] - nz_init)
-                / (np.linalg.norm(nz_init) + 1e-99)
-                < tolerance
+                conv_meas < tolerance
             ):
                 break
 
-        result_all = nz_all, N_wall_all, N_div_all, N_pump_all, N_ret_all, N_tsu_all, N_dsu_all, N_dsul_all, rcld_rate_all, rclw_rate_all
+        self.res = nz_all, final_out['N_wall'], final_out['N_div'], final_out['N_pump'], final_out['N_ret'], final_out['N_tsu'], final_out['N_dsu'], final_out['N_dsul'], final_out['rcld_rate'], final_out['rclw_rate']
 
         # store final time grids and other time dependent variables
-        self.time_grid = time_grid[:sim_steps]
-        self.save_time = save_time[:sim_steps]
+        for key in input_keys:
+            setattr(self,key,inputs_save_dict[key][...,:sim_steps])
+        
         self.time_out=self.time_grid[self.save_time]
-        self.par_loss_rate=par_loss_rate[:,:sim_steps]
-        self.rcl_rad_prof=rcl_rad_prof[:,:sim_steps]
-        self.src_core=src_core[:,:sim_steps]
-        self.Sne_rates=Sne_rates[:, :,:sim_steps]
-        self.Rne_rates=Rne_rates[:, :,:sim_steps]
-        self.saw_on=saw_on[:sim_steps]
-        self.src_div=src_div[:sim_steps]
+        self.total_source=self.total_source[:sim_steps]
+
 
         if plot:
             # plot charge state distributions over radius and time
@@ -1352,7 +1386,7 @@ class aurora_sim:
                 plot_sum=True,
             )
 
-        if sim_steps >= len(time_grid):
+        if sim_steps >= len(inputs_save_dict['time_grid']):
             raise ValueError(
                 f"Could not reach convergence before {max_sim_time:.3f}s of simulated time!"
             )
@@ -1378,7 +1412,7 @@ class aurora_sim:
         )  # avoid last time point because source may be 0 there
 
         if return_full_result==True:
-            return result_all
+            return self.res, conv_meas_all
         else:
             return nz_new[:, :, -1]
 
@@ -1473,6 +1507,8 @@ class aurora_sim:
         out["total"] = all_particles + (N_wall + N_div + N_pump + N_ret) * circ
 
         out["source"] = self.total_source * circ + out["total"][0]
+
+        out["source"]=out["source"][self.save_time]
 
         # integrated source over time
         out["integ_source"] = cumtrapz(out["source"], self.time_out, initial=0)

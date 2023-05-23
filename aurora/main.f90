@@ -34,7 +34,11 @@ subroutine run(  &
         it_out, dsaw, &
         rcl, taudiv, taupump, tauwret, &
         rvol_lcfs, dbound, dlim, prox, &
-        rn_t0, alg_opt, evolneut, src_div, &   ! OPTIONAL INPUTS:
+        rn_t0, alg_opt, evolneut, src_div, &
+        nwall_t0, ndiv_t0, npump_t0, nret_t0, &
+        tsu_t0, dsu_t0, dsul_t0, & 
+        rcldrate_t0, &
+        rclwrate_t0, & ! OPTIONAL INPUTS:
         rn_out, &  ! OUT
         N_wall, N_div, N_pump, N_ret, &  ! OUT
         N_tsu, N_dsu, N_dsul,&   !OUT
@@ -219,6 +223,9 @@ subroutine run(  &
   INTEGER, INTENT(IN), OPTIONAL        :: alg_opt
   LOGICAL, INTENT(IN), OPTIONAL        :: evolneut
   REAL*8, INTENT(IN), OPTIONAL         :: src_div(nt)
+  REAL*8, INTENT(IN), OPTIONAL         :: nret_t0, nwall_t0, ndiv_t0, npump_t0
+  REAL*8, INTENT(IN), OPTIONAL         :: tsu_t0, dsu_t0, dsul_t0
+  REAL*8, INTENT(IN), OPTIONAL         :: rcldrate_t0, rclwrate_t0
   
   ! outputs
   REAL*8, INTENT(OUT)                  :: rn_out(ir,nion,nt_out)
@@ -243,6 +250,9 @@ subroutine run(  &
   REAL*8      :: rcld, rclw
   REAL*8      :: rn_t0_in(ir,nion) ! used to support optional argument rn_t0
   REAL*8      :: src_div_in(nt) ! used to support optional argument src_div
+  REAL*8      :: nret_t0_in, nwall_t0_in, ndiv_t0_in, npump_t0_in ! used to support optional argument  
+  REAL*8      :: tsu_t0_in, dsu_t0_in, dsul_t0_in ! used to support optional argument 
+  REAL*8      :: rcldrate_t0_in, rclwrate_t0_in ! used to support optional argument 
   INTEGER     :: sel_alg_opt
   
   ! Only used in impden (define here to avoid re-allocating memory at each impden call)
@@ -276,16 +286,62 @@ subroutine run(  &
   endif
   
   ! initialize edge quantities
-  Nret=0.d0
-  tve = 0.d0
-  divnew = 0.0d0
-  npump = 0.d0
-  tsu = 0.0d0
-  dsu = 0.0d0
-  dsul = 0.0d0
+  ! .._t0_in are optional arguments. if user does not provide them, all are set to 0
+   if(present(nret_t0))then
+      nret_t0_in=nret_t0
+   else
+      nret_t0_in=0.d0 ! all elements set to 0
+   endif
+   if(present(nwall_t0))then
+      nwall_t0_in=nwall_t0
+   else
+      nwall_t0_in=0.d0 ! all elements set to 0
+   endif
+   if(present(ndiv_t0))then
+      ndiv_t0_in=ndiv_t0
+   else
+      ndiv_t0_in=0.0d0 ! all elements set to 0
+   endif
+   if(present(npump_t0))then
+      npump_t0_in=npump_t0
+   else
+      npump_t0_in=0.d0 ! all elements set to 0
+   endif
+   if(present(tsu_t0))then
+      tsu_t0_in=tsu_t0
+   else
+      tsu_t0_in=0.0d0 ! all elements set to 0
+   endif
+   if(present(dsu_t0))then
+      dsu_t0_in=dsu_t0
+   else
+      dsu_t0_in=0.0d0 ! all elements set to 0
+   endif
+   if(present(dsul_t0))then
+      dsul_t0_in=dsul_t0
+   else
+      dsul_t0_in=0.0d0 ! all elements set to 0
+   endif
+   if(present(rcldrate_t0))then
+      rcldrate_t0_in=rcldrate_t0
+   else
+      rcldrate_t0_in=0.d0 ! all elements set to 0
+   endif
+   if(present(rclwrate_t0))then
+      rclwrate_t0_in=rclwrate_t0
+   else
+      rclwrate_t0_in=0.d0 ! all elements set to 0
+   endif
 
   ! set start densities
   rn = rn_t0_in  ! all ir, nion points
+  tve=nwall_t0_in
+  divnew=ndiv_t0_in
+  npump=npump_t0_in
+  tsu=tsu_t0_in
+  dsu=dsu_t0_in
+  dsul=dsul_t0_in
+  Nret=nret_t0_in
 
   ! Set starting values in final output arrays
   it = 1
@@ -300,10 +356,9 @@ subroutine run(  &
      N_tsu(kt) = tsu
      N_dsu(kt) = dsu
      N_dsul(kt) = dsul
-
      N_ret(kt) = Nret
-     rcld_rate(kt) = 0.d0
-     rclw_rate(kt) = 0.d0
+     rcld_rate(kt) = rcldrate_t0_in
+     rclw_rate(kt) = rclwrate_t0_in
 
      kt = kt+1
   end if
