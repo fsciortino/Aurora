@@ -193,7 +193,6 @@ class aurora_sim:
         # create radial grid
         grid_params = grids_utils.create_radial_grid(self.namelist, plot=False)
         self.rvol_grid, self.pro_grid, self.qpr_grid, self.prox_param = grid_params
-
         if self.geqdsk is not None:
             # get rho_poloidal grid corresponding to aurora internal (rvol) grid
             self.rhop_grid = interp1d(_rvol, rho_pol, fill_value="extrapolate")(
@@ -371,7 +370,6 @@ class aurora_sim:
         This function extrapolates in the SOL based on input options using the same methods as in STRAHL.
         """
         times = self.kin_profs[prof]["times"]
-
         r_lcfs = np.interp(1, self.rhop_grid, self.rvol_grid)
 
         # extrapolate profiles outside of LCFS by exponential decays
@@ -408,7 +406,6 @@ class aurora_sim:
             data = interp1d(times, data, axis=0)(
                 np.clip(self.time_grid, *times[[0, -1]])
             )
-
         return data
 
     def get_aurora_kin_profs(self, min_T=1.01, min_ne=1e10):
@@ -416,9 +413,9 @@ class aurora_sim:
         # ensure 2-dimensional inputs:
         self.kin_profs["ne"]["vals"] = np.atleast_2d(self.kin_profs["ne"]["vals"])
         self.kin_profs["Te"]["vals"] = np.atleast_2d(self.kin_profs["Te"]["vals"])
-
         Te = self.interp_kin_prof("Te")
         ne = self.interp_kin_prof("ne")
+
 
         if "Ti" in self.kin_profs and "vals" in self.kin_profs["Ti"]:
             self.kin_profs["Ti"]["vals"] = np.atleast_2d(self.kin_profs["Ti"]["vals"])
@@ -443,7 +440,6 @@ class aurora_sim:
         Te[Te < min_T] = min_T
         Ti[Ti < min_T] = min_T
         ne[ne < min_ne] = min_ne
-
         # make sure that Te,ne,Ti and n0 have the same shape at this stage
         if self.namelist.get("cxr_flag", False) and Tn is not None:
             ne, Te, Ti, Tn, n0 = np.broadcast_arrays(ne, Te, Ti, Tn, n0)
@@ -577,7 +573,6 @@ class aurora_sim:
 
         # Calculate parallel loss frequency using different connection lengths in the SOL and in the limiter shadow
         dv = np.zeros_like(self._Te.T)  # space x time
-
         # Ti may not be reliable in SOL, replace it by Te
         Ti = self._Ti if trust_SOL_Ti else self._Te
 
@@ -594,9 +589,7 @@ class aurora_sim:
             * np.sqrt(3.0 * Ti.T[idl:] + self._Te.T[idl:])
             / self.namelist["clen_limiter"]
         )
-
         dv, _ = np.broadcast_arrays(dv, self.time_grid[None])
-
         return np.asfortranarray(dv)
 
     def superstage_DV(self, D_z, V_z, times_DV=None, opt=1):
@@ -1232,21 +1225,23 @@ class aurora_sim:
 
         if self.ne.shape[0] > 1:
             raise ValueError(
-                "This method is designed to operate with time-independent background profiles!"
+                "The steady state method is designed to operate with time-independent background profiles!"
             )
 
         if D_z.ndim > 2 or V_z.ndim > 2:
             raise ValueError(
-                "This method is designed to operate with time-independent D and V profiles!"
+                "The steady state method is designed to operate with time-independent D and V profiles!"
             )
 
         if keep_timing and not all(term==1 for term in self.namelist["timing"]["steps_per_cycle"]):
             raise ValueError(
-                "This method is designed to operate with steps per cycle equal 1!"
+                "This steady state method is designed to operate with steps per cycle equal 1!"
             )
 
-        # set constant timesource
-        self.namelist["source_type"] = "const"
+        if not self.namelist["source_type"] == "const":
+            raise ValueError(
+                "This steady state method is designed to operate with constant source type!"
+            )
 
         # build timing dictionary
         if not keep_timing:
@@ -1257,13 +1252,14 @@ class aurora_sim:
                 "times": [0.0, max_sim_time],
             }
 
+            # the new preparation is only necessary if the timing was changed
+            # prepare radial and temporal grid
+            self.setup_grids()
+            # update kinetic profile dependencies to get everything to the right shape
+            self.setup_kin_profs_depts()
+
         max_sim_time=self.namelist["timing"]["times"][1]-self.namelist["timing"]["times"][0]
-
-        # prepare radial and temporal grid
-        self.setup_grids()
-
-        # update kinetic profile dependencies to get everything to the right shape
-        self.setup_kin_profs_depts()
+ 
 
         times_DV = None
         if D_z.ndim == 2:
@@ -1613,6 +1609,8 @@ class aurora_sim:
             ax2.plot(self.time_out, out["total"], label="Total")
             ax2.plot(self.time_out, out["integ_source"], label="Integrated source")
 
+            
+            
             if (
                 abs(
                     (out["total"][-1] - out["integ_source"][-1])
