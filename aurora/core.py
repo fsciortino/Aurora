@@ -1,5 +1,5 @@
 """This module includes the core class to set up simulations with :py:mod:`aurora`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.
-"""
+""" 
 # MIT License
 #
 # Copyright (c) 2021 Francesco Sciortino
