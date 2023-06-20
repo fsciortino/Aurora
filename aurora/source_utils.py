@@ -39,7 +39,7 @@ def get_source_time_history(namelist, Raxis_cm, time):
         source function is being specified -- see the notes below.
     Raxis_cm : float
         Major radius at the magnetic axis [cm]. This is needed to normalize the
-        source such that it is treated as toroidally symmetric -- a necessary
+        source such that it is treated as toroidally and poloidally symmetric -- a necessary
         idealization for 1.5D simulations.
     time : array (nt,), optional
         Time array the source should be returned on.
@@ -87,17 +87,13 @@ def get_source_time_history(namelist, Raxis_cm, time):
         # read time history from a simple file with 2 columns
         src_times, src_rates = read_source(namelist["source_file"])
 
-    elif (
-        namelist["source_type"] == "interp"
-        and np.ndim(namelist["explicit_source_vals"]) == 1
-    ):
-        # user provided time history, only 1D interpolation is needed
+    elif namelist["source_type"] in ["interp", "arbitrary_2d_source"]:
         src_times = namelist["explicit_source_time"]
         src_rates = namelist["explicit_source_vals"]
 
     elif namelist["source_type"] == "const":
         # constant source
-        src_times = [-np.inf, np.inf]
+        src_times = [time[0], time[-1]]
         src_rates = [namelist["source_rate"], namelist["source_rate"]]
         # src_rates[0] = 0.0  # start with 0
 
@@ -132,18 +128,31 @@ def get_source_time_history(namelist, Raxis_cm, time):
     else:
         raise ValueError("Unspecified source function time history!")
 
-    source = np.interp(time, src_times, src_rates, left=0, right=0)
+    #this step minimise particle conservation error for noisy or fast varying source
+    from scipy.integrate import cumtrapz 
+    from scipy.interpolate import interp1d
+    integ_rate = cumtrapz(src_rates, src_times, axis=0, initial = 0)
 
-    # get number of particles per cm and sec
-    circ = 2 * np.pi * Raxis_cm
+    kind = 'linear' if len(src_times) < 4 else 'quadratic'
+    integ_rate_interp = interp1d(src_times, integ_rate,axis=0,kind=kind)
+    integ_rate = integ_rate_interp(np.clip(time, src_times[0], src_times[-1]))
 
+    source = (np.diff(integ_rate.T)/np.diff(time)).T
+ 
     # For ease of comparison with STRAHL, shift source by one time step
-    source_time_history = np.r_[source[1:], source[-1]] / circ
-    if all(source_time_history == 0):
+    source_time_history = np.r_[source, source[[-1]]]
+ 
+    
+    if source_time_history.ndim == 1:
+        # get number of particles per cm and sec
+        circ = 2 * np.pi * Raxis_cm
+        source_time_history /= circ
+    
+    if np.all(source_time_history == 0):
         raise Exception("Impurity source is zero within the simulation range")
 
     return np.asfortranarray(source_time_history)
-
+ 
 
 def write_source(t, s, shot, imp="Ca"):
     """Write a STRAHL source file.
