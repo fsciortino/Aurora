@@ -248,26 +248,22 @@ class aurora_sim:
         if len(save_time) == 1:  # if time averaged profiles were used
             Sne0 = Sne0[:, [0]]  # 0th charge state (neutral)
 
+        
+        # get time history and radial profiles separately
+        source_time_history = source_utils.get_source_time_history(
+            self.namelist, self.Raxis_cm, self.time_grid
+        )  # units of particles/s/cm for 1D source or particles/s/cm^3  for 2D source
+
+            
         if self.namelist["source_type"] == "arbitrary_2d_source":
             # interpolate explicit source values on time and rhop grids of simulation
             # NB: explicit_source_vals should be in units of particles/s/cm^3 <-- ionization rate
             srho = self.namelist["explicit_source_rhop"]
-            stime = self.namelist["explicit_source_time"]
-            source = np.array(self.namelist["explicit_source_vals"]).T
-
-            spl = RectBivariateSpline(srho, stime, source, kx=1, ky=1)
-            # extrapolate by the nearest values
-            self.source_rad_prof = spl(
-                np.clip(self.rhop_grid, min(srho), max(srho)),
-                np.clip(self.time_grid, min(stime), max(stime)),
-            )
+            self.source_rad_prof  = interp1d(srho,  source_time_history.T, axis=0,bounds_error=False,
+                                             fill_value=0)(self.rhop_grid)
             # Change units to particles/cm^3
             self.src_core = self.source_rad_prof / Sne0
         else:
-            # get time history and radial profiles separately
-            source_time_history = source_utils.get_source_time_history(
-                self.namelist, self.Raxis_cm, self.time_grid
-            )  # units of particles/s/cm
 
             # get radial profile of source function for each time step
             # dimensionless, normalized such that pnorm=1
@@ -284,6 +280,7 @@ class aurora_sim:
             self.src_core = self.source_rad_prof * source_time_history[None, :]
 
         self.src_core = np.asfortranarray(self.src_core)
+
 
         # if wall_recycling>=0, return flows from the divertor are enabled
         if (
