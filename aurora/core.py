@@ -499,6 +499,8 @@ class aurora_sim:
             if self.nbi_cxr.shape[2] > 1:
                 #time-dependent, times are switch times of beams, values are mean in between switch times
                 it = self.namelist["nbi_cxr"]["times"].searchsorted(self.time_grid)
+                #extrapolate by the nearest value
+                it = np.maximum(it, len(self.nbi_cxr))
                 self.nbi_cxr = self.nbi_cxr[it]
 
             Rne = Rne + self.nbi_cxr
