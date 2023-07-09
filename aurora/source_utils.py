@@ -101,8 +101,8 @@ def get_source_time_history(namelist, Raxis_cm, time):
         # Create the time-dependent step source
         tbuf = namelist.get("step_source_duration", 1e-6)  # e.g. 1.e-6
 
-        # Start with zero source at t=0
-        src_times = [0.0]
+        # Start with zero source at t=-1e-6
+        src_times = [-1e6]
         src_rates = [0.0]
 
         # Form the source with "tbuf" duration to connect the steps
