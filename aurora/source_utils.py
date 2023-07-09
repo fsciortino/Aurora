@@ -252,27 +252,25 @@ def lbo_source_function(t_start, t_rise, t_fall, n_particles=1.0, time_vec=None)
     )
 
     if time_vec is None:
-        time_vec = np.hstack(
-            [
-                np.linspace(ts - 3 * tr, ts + 6 * tf, 200)
-                for ts, tr, tf in zip(t_start, t_rise, t_fall)
-            ]
-        )
+        time_vec = np.hstack(np.linspace(ts - 3 * tr, ts + 6 * tf, 200)  for ts, tr, tf in zip(t_start, t_rise, t_fall))
+        time_vec = np.unique(time_vec)
 
     source = np.zeros_like(time_vec)
 
     for ts, tr, tf, N in zip(t_start, t_rise, t_fall, n_particles):
         tind = slice(*time_vec.searchsorted([ts - 3 * tr, ts + 6 * tf]))
         T = time_vec[tind]
-        source[tind] = np.exp(
+        lbo = np.exp(
             (1 - 4 * tf * (T - ts) / tr**2) / (4 * (tf / tr) ** 2)
         ) * (erfc((T - ts) / tr - 1 / (2 * tf / tr)) - 2)
 
         # scale source to correspond to the given total number of particles
-        source[tind] *= N / np.trapz(source[tind], T)
+        lbo *= N / np.trapz(source[tind], T)
 
         # ensure that source function ends with 0 to avoid numerical issues
-        source[tind][[0, -1]] = 0
+        lbo[[0, -1]] = 0
+
+        source[tind] += lbo
 
     return time_vec, source
 
