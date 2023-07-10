@@ -293,6 +293,7 @@ class aurora_sim:
             self.src_div = interp1d(
                 self.namelist["source_div_time"], self.namelist["source_div_vals"], bounds_error=False, fill_value=0,
             )(self.time_grid)
+            self.src_div /= 2*np.pi *self.Raxis_cm
         else:
             # no source into the divertor
             self.src_div = np.zeros_like(self.time_grid)
