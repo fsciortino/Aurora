@@ -291,7 +291,7 @@ class aurora_sim:
 
             # interpolate divertor source time history
             self.src_div = interp1d(
-                self.namelist["source_div_time"], self.namelist["source_div_vals"]
+                self.namelist["source_div_time"], self.namelist["source_div_vals"], bounds_error=False, fill_value=0,
             )(self.time_grid)
         else:
             # no source into the divertor
