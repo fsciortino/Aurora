@@ -234,7 +234,8 @@ class aurora_sim:
         self.n0 = self._n0[save_time, :]
 
         # Get time-dependent parallel loss rate
-        self.par_loss_rate = self.get_par_loss_rate()
+        trust_SOL_Ti = self.namelist.get("trust_SOL_Ti", False)
+        self.par_loss_rate = self.get_par_loss_rate(trust_SOL_Ti=trust_SOL_Ti)
 
         metastables = self.namelist.get("metastable_flag", False)
         superstages = self.namelist.get("superstages", [])
