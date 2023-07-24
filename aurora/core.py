@@ -71,7 +71,6 @@ class aurora_sim:
 
         # import here to avoid issues when building docs or package
         from omfit_classes.utils_math import atomic_element
-
         # get nuclear charge Z and atomic mass number A
         out = atomic_element(symbol=self.imp)
         spec = list(out.keys())[0]
@@ -85,6 +84,8 @@ class aurora_sim:
             self.Raxis_cm = self.namelist["Raxis_cm"]  # cm
         elif self.geqdsk is not None and "RMAXIS" in self.geqdsk:
             self.Raxis_cm = self.geqdsk["RMAXIS"] * 100.0  # cm
+        # TODO: what happens if Raxis_cm is not defined? Also, why is it first loaded from namelist and only then from geqdsk?
+
 
         if self.geqdsk is not None and "BCENTR" in self.geqdsk:
             self.namelist["Baxis"] = self.geqdsk["BCENTR"]
@@ -93,7 +94,7 @@ class aurora_sim:
         ) and not hasattr(self, "Baxis"):
             # need magnetic field to model prompt redeposition
             raise ValueError(
-                "Missing magnetic field on axis! Please define this in the namelist"
+                "Missing magnetic field on axis! Please define this in the namelist in order to be able to model prompt redeposition."
             )
 
         # specify which atomic data files should be used -- use defaults unless user specified in namelist
@@ -120,7 +121,8 @@ class aurora_sim:
         self.atom_data = atomic.get_atom_data(self.imp, files=atom_files)
 
         # allow for ion superstaging
-        self.superstages = self.namelist.get("superstages", [])
+        # this is not used. self.superstages is set again in setup_kin_profs_depts - set_time_dept_atomic_rates
+        #self.superstages = self.namelist.get("superstages", [])
 
         # set up radial and temporal grids
         self.setup_grids()
@@ -131,6 +133,18 @@ class aurora_sim:
     def reload_namelist(self, namelist=None):
         """(Re-)load namelist to update scalar variables."""
         # load a new namelist, otherwise load elements in self.namelist
+        # ATTENTION:
+        # this does not update any derived quantities, from object initialization, setup_grids or setup_kin_profs_depts
+        # esp. such as self.kin_profs, self.imp, self.Z_imp, self.A_imp, self.Raxis_cm, self.atom_data, self.superstages
+        # self.saw_on, self.saw_times
+        # self.time_grid, self.save_time, self.time_out
+        # self.rvol_lcfs, self.rvol_grid, self.rhop_grid, self.pro_grid, self.qpr_grid, self.prox_param
+        # self.ne, self.Te, self.Ti, self.Tn, self.n0, self._ne, self._Te, self._Ti, self._Tn, self._n0
+        # self.par_loss_rate
+        # self.alpha_RDR_rates, self.alpha_CX_rates, self.Sne_rates, self.Rne_rates, self.Qne_rates, self.Xne_rates, self.nbi_cxr
+        # self.src_core, self.src_div, self.total_source
+        # self.rcl_rad_prof
+        # self.superstages
         if namelist is not None:
             self.namelist = namelist
 
@@ -150,8 +164,10 @@ class aurora_sim:
         self.bound_sep = self.namelist["bound_sep"]
         self.lim_sep = self.namelist["lim_sep"]
         self.sawtooth_erfc_width = self.namelist["saw_model"]["crash_width"]
-        self.cxr_flag = self.namelist["cxr_flag"]
-        self.nbi_cxr_flag = self.namelist["nbi_cxr_flag"]
+        
+        # commented since it wasn't used anywhere
+        #self.cxr_flag = self.namelist["cxr_flag"]
+        #self.nbi_cxr_flag = self.namelist["nbi_cxr_flag"]
 
     def save(self, filename):
         """Save state of `aurora_sim` object."""
@@ -248,7 +264,7 @@ class aurora_sim:
         Sne0 = self.Sne_rates[:, 0, :]
         # get radial profile of source function
         if len(save_time) == 1:  # if time averaged profiles were used
-            Sne0 = Sne0[:, [0]]  # 0th charge state (neutral)
+            Sne0 = Sne0[:, [0]]  # 0th charge state at initial time (neutral)
 
         if self.namelist["source_type"] == "arbitrary_2d_source":
             # interpolate explicit source values on time and rhop grids of simulation
@@ -303,12 +319,15 @@ class aurora_sim:
             self.src_div = np.zeros_like(self.time_grid)
 
         # total number of injected ions, used for a check of particle conservation
+        # integration over radial domain
         self.total_source = np.pi * np.sum(
             self.src_core * Sne0 * (self.rvol_grid / self.pro_grid)[:, None], 0
         )  # sum over radius
         self.total_source += self.src_div  # units of particles/s/cm
         # NB: src_core [1/cm^3] and src_div [1/cm/s] have different units!
 
+
+        # set radial recycling profile shape, then broadcast it to all times
         if self.wall_recycling >= 0:  # recycling activated
 
             # if recycling radial profile is given, interpolate it on radial grid
@@ -516,6 +535,8 @@ class aurora_sim:
             self.superstages, Rne, Sne, self.fz_upstage = atomic.superstage_rates(
                 Rne, Sne, superstages, save_time=self.save_time
             )
+        else:
+            self.superstages=[]
 
         # Sne and Rne for the Z+1 stage must be zero for the forward model.
         # Use Fortran-ordered arrays for speed in forward modeling (both Fortran and Julia)
@@ -567,6 +588,7 @@ class aurora_sim:
 
         # number of points inside of LCFS
         ids = self.rvol_grid.searchsorted(self.namelist["rvol_lcfs"], side="left")
+        # number of points inside of limiter
         idl = self.rvol_grid.searchsorted(
             self.namelist["rvol_lcfs"] + self.namelist["lim_sep"], side="left"
         )
@@ -576,7 +598,7 @@ class aurora_sim:
         # Ti may not be reliable in SOL, replace it by Te
         Ti = self._Ti if trust_SOL_Ti else self._Te
 
-        # open SOL
+        # open SOL - between separatrix and limiter
         dv[ids:idl] = (
             vpf
             * np.sqrt(3.0 * Ti.T[ids:idl] + self._Te.T[ids:idl])
@@ -777,9 +799,10 @@ class aurora_sim:
         if times_DV is None or np.size(times_DV) == 0:
             times_DV = [1.0]  # dummy, no time dependence
 
+        # number of charge states
         num_cs = int(self.Z_imp + 1)
 
-        # D and V were given for all stages -- define D and V for superstages
+        # if D and V were given for all stages -- define D and V for superstages
         if len(self.superstages):
             num_cs = len(self.superstages)
             if D_z.ndim == 3 and D_z.shape[2] == self.Z_imp + 1:
@@ -1013,6 +1036,7 @@ class aurora_sim:
         r_btw = between_grid(self.rvol_grid)
         self.rhop_btw = between_grid(self.rhop_grid)
 
+        # number of radial points (one less than before)
         nr = len(r_btw)
 
         # diagonal of matrices for recombination, ionisation and parallel flux
@@ -1025,49 +1049,62 @@ class aurora_sim:
         if metastables:
             q_z = between_grid(self.Qne_rates.T[0], 1)
             x_z = between_grid(self.Xne_rates.T[0], 1)
-
+            
             x_meta_ind = self.atom_data["xcd"].meta_ind
             q_meta_ind = self.atom_data["qcd"].meta_ind
 
+        # meta_ind=list(zip(self.Z, self.MGRD, self.MPRT))
         s_meta_ind = self.atom_data["scd"].meta_ind
         r_meta_ind = self.atom_data["acd"].meta_ind
 
-        # number of metastables for each ion (ones if data are unresolved)
+        # number of metastables for each ion (ones array of length nion+1 if data are unresolved)
         Mmeta = self.atom_data["scd"].metastables
         # index of each metastable
         meta_ind = [(z, m + 1) for z, M in enumerate(Mmeta) for m in range(M)]
+        # total number of states (charge states resolved by metastables)
         n_state = len(meta_ind)
 
         # uvec
         exp_diag = np.exp(cumtrapz(v_btw / D_btw, r_btw, initial=0, axis=-1))
+        # Why is it devided by the edge value? 
         exp_diag /= exp_diag[..., [-1]]
+        # has the shape of the number of radial points between grid points (i.e. one less than original grid points)
 
+        # 1/(uvec*D*r)
         exp_Dr = 1 / (exp_diag * D_btw * r_btw)  # diagonal of the matrix
+        # should have the same shape as exp_diag
+
+        # calculate edge factor
         lam = self.decay_length_boundary
         edge_factor = 1 / (1 / lam + v_btw[..., [-1]] / D_btw[..., [-1]])  # units of m
 
         # calculate spatial integrals
+        # An array with ones at and below the given diagonal and zeros elsewhere: number of rows, number of colums, subdiagonal at and below which the array is filled
+        # why do these matrices have dimensions nr+1 * nr? 
         del_r_up = np.tri(nr + 1, nr, -1) * (del_r * r_btw)
         del_r_down = np.tri(nr, nr + 1).T * del_r
 
         def apply_integral(prof, i):
             # charge independent transport coefficients
-            i = ... if D_btw.ndim == 1 else i - 1
+            i = ... if D_btw.ndim == 1 else i - 1 #(case with charge state resolved transport coefficients)
             # the first cumulative trapezoid integral
-            a = del_r_up * prof
-            a = between_grid(a)
-            a *= exp_Dr[i, :, None]
+            # prof needs to be a nr*nr matrix with prof values on the diagonal
+            a = del_r_up * prof # now has shape nr+1*nr since del_r_up not square matrix
+            a = between_grid(a) # reduce shape to nr*nr
+            a *= exp_Dr[i, :, None] # exp_Dr[i, :, None] has shape (nr, 1)
             # the second cumulative trapezoid integral
-            a = np.dot(del_r_down, a)
+            a = np.dot(del_r_down, a) # now again shape nr+1*nr
             a = between_grid(a)
             # incorporate edge boundary condition with decay length lambda
             a += a[-1] / del_r[-1] * edge_factor[i]
             a *= exp_diag[i, :, None]
             return a
 
-        R_z = {i: apply_integral(r, i[0]) for i, r in zip(r_meta_ind, r_z)}
+        # i are 3 indices, s_z, r_z are arrays with all radial points
+        R_z = {i: apply_integral(r, i[0]) for i, r in zip(r_meta_ind, r_z)} # i[0] gives the concerned charge state
         S_z = {i: apply_integral(s, i[0]) for i, s in zip(s_meta_ind, s_z)}
 
+        # parallel losses
         if D_z.ndim == 2:
             P_z = [apply_integral(p_z, z) for z in range(self.Z_imp + 1)]
         else:
@@ -1081,7 +1118,7 @@ class aurora_sim:
         nz_0 = np.zeros((n_state, nr))
         nimp0 = between_grid(self.src_core[:, 0])
 
-        # metastable distributon of neutral influx is unknow
+        # metastable distribution of neutral influx is unknow
         meta_source = (1, 1)
         nz_0[meta_ind.index(meta_source)] = np.dot(S_z[meta_source + (1,)], nimp0)
 

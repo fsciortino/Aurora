@@ -88,7 +88,6 @@ def create_radial_grid(namelist, plot=False):
 
     # number of radial points:
     ir = int(round(1.5 + r_edge * (a0 * K + (1.0 / dr_1)) / (K + 1.0)))
-
     rvol_grid = np.zeros(ir)
     pro_grid = np.zeros(ir)
     qpr_grid = np.zeros(ir)

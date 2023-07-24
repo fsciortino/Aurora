@@ -58,17 +58,17 @@ def get_adas_file_types():
     """
 
     return {
-        "acd": "effective recombination",
-        "scd": "effective ionization",
-        "prb": "continuum radiation",
-        "plt": "line radiation",
-        "ccd": "thermal charge exchange",
-        "prc": "thermal charge exchange continuum radiation",
-        "xcd": "Parent cross-coupling coefficients",
-        "qcd": "Cross-coupling coefficients",
-        "pls": "line radiation in the SXR range",
-        "prs": "continuum radiation in the SXR range",
-        "brs": "continuum spectral bremstrahlung",
+        "acd": "rate coefficients for effective recombination",
+        "scd": "rate coefficients for effective ionization",
+        "prb": "power loss coefficients for continuum radiation", 
+        "plt": "power loss coefficients for line radiation", 
+        "ccd": "rate coefficients for thermal charge exchange",
+        "prc": "power loss coefficients for thermal charge exchange continuum radiation",
+        "xcd": "Parent cross-coupling coefficients", # parent cross coupling rates
+        "qcd": "Cross-coupling coefficients", # metastable cross coupling rates
+        "pls": "power loss coefficients for line radiation in the SXR range", # power coefficients
+        "prs": "power loss coefficients for continuum radiation in the SXR range", # power coefficients
+        "brs": "spectral power loss coefficients for continuum bremstrahlung",
         "fis": "sensitivity in the SXR range",
         "pbs": "impurity bremsstrahlung in SXR range, also included in prs files",
     }
@@ -576,6 +576,7 @@ def get_frac_abundances(
         # Get an effective recombination rate by summing radiative & CX recombination rates
         Rne += _n0_by_ne[:, None] * out[3]
 
+    # analytical formula for fractional abundance
     rate_ratio = np.hstack((np.ones_like(Te)[:, None], Sne / Rne))
     fz_full = np.cumprod(rate_ratio, axis=1)
     fz_full /= fz_full.sum(1)[:, None]
@@ -657,7 +658,7 @@ def get_frac_abundances(
                 css += 1
 
         axx.grid("on")
-        axx.set_ylim(1e-2, 1.5)
+        axx.set_ylim(1e-2, 1.05)
         axx.set_xlim(x[0], x[-1])
         plt.tight_layout()
 
@@ -740,13 +741,15 @@ def get_cs_balance_terms(
         # weighted Ti and T0 temperature if possible (effective Temperature)
         if Ti_eV is not None:
             if Tn_eV is not None and a_imp is not None and a_pl is not None:
-        	       #replace neutral temperature by Ti temperature, where it is not available, otherwise use weighted temperature
-        	       T_finite=np.where(np.isfinite(Tn_eV), Tn_eV, Ti_eV)
-        	       logTi = np.log10((a_imp*T_finite+a_pl*Ti_eV)/(a_imp+a_pl))
-            else: # use the ion temperature if masses and/or neutral temperature not available
-        	       logTi = np.log10(Ti_eV)
+                #replace neutral temperature by Ti temperature, where it is not available, otherwise use weighted temperature
+                T_finite=np.where(np.isfinite(Tn_eV), Tn_eV, Ti_eV)
+                logTi = np.log10((a_imp*T_finite+a_pl*Ti_eV)/(a_imp+a_pl))
+            else: 
+                # use the ion temperature if masses and/or neutral temperature not available
+        	    logTi = np.log10(Ti_eV)
         else:
             logTi = logTe # if ion temperature also not available, use electron temperature
+        
         cxne = interp_atom_prof(atom_data["ccd"], logne, logTi, x_multiply=True)
         # select appropriate number of charge states
         # this allows use of CCD files from higher-Z ions because of simple CX scaling
@@ -964,7 +967,7 @@ class CartesianGrid:
         Parameters
         ----------
         coords:  list of arrays
-            List of 1D arrays for the N coordines (N=1 or N=2). These arrays must be of the same shape.
+            List of 1D arrays for the N coordinates (N=1 or N=2). These arrays must be of the same shape.
 
         """
 
@@ -1047,6 +1050,7 @@ def interp_atom_prof(atom_table, xprof, yprof, log_val=False, x_multiply=True):
     y = atom_table.logT
     table = atom_table.logdata
 
+    # multiplication with electron density
     if x_multiply:  # multiplying of logarithms is just adding
         table = table + x  # don't modify original table, create copy
 

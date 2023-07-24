@@ -81,7 +81,6 @@ def get_source_time_history(namelist, Raxis_cm, time):
     the source function.
 
     """
-    imp = namelist["imp"]
 
     if namelist["source_type"] == "file":
         # read time history from a simple file with 2 columns
