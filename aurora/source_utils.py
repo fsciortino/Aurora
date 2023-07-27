@@ -93,7 +93,7 @@ def get_source_time_history(namelist, Raxis_cm, time):
 
     elif namelist["source_type"] == "const":
         # constant source
-        src_times = [time[0], time[-1]]
+        src_times = [time[0]-1, time[-1]+1]
         src_rates = [namelist["source_rate"], namelist["source_rate"]]
         # src_rates[0] = 0.0  # start with 0
 
@@ -136,9 +136,11 @@ def get_source_time_history(namelist, Raxis_cm, time):
     kind = 'linear' if len(src_times) < 4 else 'quadratic'
     integ_rate_interp = interp1d(src_times, integ_rate,axis=0,kind=kind)
     integ_rate = integ_rate_interp(np.clip(time, src_times[0], src_times[-1]))
-
-    source = (np.diff(integ_rate.T)/np.diff(time)).T
- 
+    
+    if np.size(time) > 1:
+        source = (np.diff(integ_rate.T)/np.diff(time)).T
+    else: #for steady-state model
+        source = integ_rate
     # For ease of comparison with STRAHL, shift source by one time step
     source_time_history = np.r_[source, source[[-1]]]
  
