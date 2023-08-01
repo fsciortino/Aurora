@@ -107,6 +107,8 @@ class aurora_sim:
             atom_files["ccd"] = self.namelist.get(
                 "ccd", adas_files.adas_files_dict()[self.imp]["ccd"]
             )
+            if atom_files["ccd"] is None:
+                raise Exception('Missing CCD ADF11 file!')
 
         if self.namelist.get("metastable_flag", False):
             atom_files["qcd"] = self.namelist.get(
