@@ -204,8 +204,29 @@ def _get_Instru(
     ):
     '''
     INPUTS: dphysics -- [dict], necessary physics information
-                i) 'Ti_eV' -- [float], [eV], local ion temperature
-                ii) 'ion_A' -- [float], [amu], species mass
+                i) 'width_A' -- [float], [AA], characteristic FWHM
+                                    on detector surface
+
+                NOTE: the philosophy here is that the user wishes to
+                quickly scope Instrumental broadening per a simple 
+                characteristic Gaussian spread model. 
+
+                i.e., if one considers a highly collimated, monoenergetic
+                beam of photons Bragg diffracted on a crystal spectrometer,
+                the reflected beam would be spread via the reflection curve
+                (rocking curve). We can therefore characterize instrumental 
+                broadening, assuming the rocking curve is a Gaussian, by the
+                arc length of a detection surface normal to the line-of-sight
+                subtended by the rocking curve FWHM. Therefore,
+                        width_A = omega_rc * L_cd
+
+                        where, omega_rc is the rocking curve FWHM in [rad],
+                        and L_cd is the distance between the crystal and 
+                        detector in [AA]
+
+                !!! To properly quantify instrumental broadening to account for
+                effects such as finite aperture size, defocusing, misalignment, etc.
+                it is heavily recommended to use a dedicated ray-tracing code
 
             wave_A -- [list], dim(trs,), [AA], 
                 transition central wavelength
@@ -219,6 +240,20 @@ def _get_Instru(
 
     '''
 
+    # Converts units of FWHM
+    dnu = dphysics['width_A'] * cnt.c*1e10 /wave_A**2 # [Hz], dim(trs,)
+
+    # Calculates general Gaussian shape
+    lams_profs_A, theta = _get_Gaussian(
+        dnu = dnu,
+        wave_A=wave_A,
+        )
+
+    # Output line shape and wavelength mesh
+    return {
+        'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
+        'theta': theta,                 # [1/AA], dim(trs,nlamb)
+        }
 
 
 ########################################################
