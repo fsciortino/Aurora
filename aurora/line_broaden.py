@@ -61,19 +61,17 @@ def get_line_broaden(
                 )
 
     # If only considering one broadening mech, skips convolution
-    #if len(dshape.keys()) == 1:
-    #    brd = list(dshape.keys())[0]
-    #    lams_profs_A = dshape[brd]['lams_profs_A'] # [AA], dim(trs,nlamb)
-    #    theta = dshape[brd]['theta'] # [1/AA], dim(trs,nlamb)
+    if len(dshape.keys()) == 1:
+        brd = list(dshape.keys())[0]
+        lams_profs_A = dshape[brd]['lams_profs_A'] # [AA], dim(trs,nlamb)
+        theta = dshape[brd]['theta'] # [1/AA], dim(trs,nlamb)
 
     # Convolutes line shapes
-    #else:
-    #    lams_profs_A, theta = _convolve(dshape=dshape) # dim(trs,nlamb)
+    else:
+        lams_profs_A, theta = _convolve(dshape=dshape) # dim(trs,nlamb)
 
-
-    #return line_shape
-
-    return dshape
+    # Output
+    return lams_profs_A, theta
 
 
 ########################################################
@@ -359,4 +357,44 @@ def _calc_Lorentzian(
     theta *= (cnt.c*1e10)/wave_A**2 # [1/AA]
 
     # Output
+    return lams_profs_A, theta
+
+########################################################
+#
+#             Utilities
+#
+#########################################################
+
+# Convolves together line profiles
+def _convolve(
+    dshape=None,
+    ):
+
+    # Broadening mechanisms
+    mechs = list(dshape.keys())
+
+    # Initializes output
+    lams_profs_A = np.zeros(dshape[mechs[0]]['lams_profs_A'].shape) # [AA], dim(trs, nlamb)
+    theta = np.zeros(dshape[mechs[0]]['lams_profs_A'].shape) # [1/AA], dim(trs,nlamb)
+
+    # Loop over transitions
+    for trs in np.arange(dshape[mechs[0]]['lams_profs_A'].shape[0]):
+        # Handling if Natural broadening wasn't included for this transition
+        mechs_tmp = mechs.copy()
+
+        if 'Natural' in mechs_tmp:
+            # Removes Natural broadening entry from consideration
+            if sum(dshape['Natural']['theta'][trs,:]) == 0:
+                mechs_tmp.remove('Natural')
+
+        # If now only one mechanism left
+        if len(mechs_tmp) == 1:
+            lams_profs_A[trs,:] = dshape[mechs_tmp[0]]['lams_prof_A'][trs,:]
+            theta[trs,:] = dshape[mechs_tmp[0]]['theta'][trs,:]
+
+        # Convolute if more than one mechanism
+        else:
+            blah = 0
+
+                
     return lams_profs_A, theta
