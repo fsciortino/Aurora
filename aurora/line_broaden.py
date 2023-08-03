@@ -40,7 +40,7 @@ def get_line_broaden(
     # Loop over various physics options
     for brd in dbroad.keys():
         # If one wishes to include Doppler broadening
-        if brd == ' Doppler':
+        if brd == 'Doppler':
             dshape[brd] = _get_Doppler(
                 dphysics=dbroad[brd],
                 wave_A=wave_A,
@@ -56,12 +56,24 @@ def get_line_broaden(
         # If one wishes to include Instrumental broadening
         elif brd == 'Instrumental':
             dshape[brd] = _get_Instru(
-                dphyscis=dbroad[brd],
+                dphysics=dbroad[brd],
                 wave_A=wave_A,
                 )
 
-   
-    return line_shape
+    # If only considering one broadening mech, skips convolution
+    #if len(dshape.keys()) == 1:
+    #    brd = list(dshape.keys())[0]
+    #    lams_profs_A = dshape[brd]['lams_profs_A'] # [AA], dim(trs,nlamb)
+    #    theta = dshape[brd]['theta'] # [1/AA], dim(trs,nlamb)
+
+    # Convolutes line shapes
+    #else:
+    #    lams_profs_A, theta = _convolve(dshape=dshape) # dim(trs,nlamb)
+
+
+    #return line_shape
+
+    return dshape
 
 
 ########################################################
@@ -73,7 +85,7 @@ def get_line_broaden(
 # Calculates Doppler broadening
 def _get_Doppler(
     # Settings
-    dpyhsics=None,         # Dictionary of neccessary phyiscs
+    dphysics=None,         # Dictionary of neccessary phyiscs
     # ADF15 file
     wave_A=None,
     ):
@@ -103,7 +115,7 @@ def _get_Doppler(
         ) # [Hz], dim(trs,)
 
     # Calculates general Gaussian shape
-    lams_profs_A, theta = _get_Gaussian(
+    lams_profs_A, theta = _calc_Gaussian(
         dnu = dnu,
         wave_A=wave_A,
         )
@@ -136,10 +148,10 @@ def _get_Natural(
                 broadening on the w, x, y, z lines for He-like Kr, the
                 input dictionary would look like --
                 dphysics = {
-                    '0.9454': 1.529e15, # [1/s], w line
-                    '0.9471': 9.327e10, # [1/s], x line
-                    '0.9518': 3.945e14, # [1/s], y line
-                    '0.9552': 5.715e9,  # [1/s], z line
+                    '0.9454': 1.529e15, # [Hz], w line
+                    '0.9471': 9.327e10, # [Hz], x line
+                    '0.9518': 3.945e14, # [Hz], y line
+                    '0.9552': 5.715e9,  # [Hz], z line
                     }
                     ref: K.M. Aggarwal and F.P. Keenan, 2012 Phys. Scr. 86 035302
 
@@ -166,8 +178,8 @@ def _get_Natural(
     for lmb in dphysics.keys():
         # Finds transitions of interst in ADF15 file
         ind = np.where(
-            (wave_A >= lmb -tol)
-            & (wave_A <= lamb+tol)
+            (wave_A >= float(lmb) -tol)
+            & (wave_A <= float(lmb)+tol)
             )[0]
 
         # Error check
@@ -175,16 +187,13 @@ def _get_Natural(
             print('NO TRANSITION FOUND FOR LAMBDA= '+str(lmb))
             continue
 
-        # Characteristic time for transitions
-        tau = 2/dphysics[lmb] # [s]
-
         # FWHM
-        dnu = 1/(np.pi*tau) # [Hz]
+        dnu = dphysics[lmb]/(2*np.pi) # [Hz]
 
         # Loop over transitions
         for ii in ind:
             # Calculate Lorentzian shape
-            lams_profs_A[ii,:], theta[ii,:] = _get_Lorentzian(
+            lams_profs_A[ii,:], theta[ii,:] = _calc_Lorentzian(
                 dnu = dnu,
                 wave_A=wave_A[ii],
                 )
@@ -198,7 +207,7 @@ def _get_Natural(
 # Calculates Instrumental broadening
 def _get_Instru(
     # Settings
-    dpyhsics=None,         # Dictionary of neccessary phyiscs
+    dphysics=None,         # Dictionary of neccessary phyiscs
     # ADF15 file
     wave_A=None,
     ):
@@ -216,13 +225,18 @@ def _get_Instru(
                 the reflected beam would be spread via the reflection curve
                 (rocking curve). We can therefore characterize instrumental 
                 broadening, assuming the rocking curve is a Gaussian, by the
-                arc length of a detection surface normal to the line-of-sight
+                arc length on a detection surface normal to the line-of-sight
                 subtended by the rocking curve FWHM. Therefore,
-                        width_A = omega_rc * L_cd
+                        width_A = spec_rng * (omega_rc * L_cd / w_d)
 
                         where, omega_rc is the rocking curve FWHM in [rad],
                         and L_cd is the distance between the crystal and 
-                        detector in [AA]
+                        detector in [m], spec_rng is the spectral range 
+                        imaged in [AA], and w_d is the width of the detector
+                        image in [m]
+
+                        NOTE: the value in the parentheses is really the fraction
+                        of pixels the broadening subtends
 
                 !!! To properly quantify instrumental broadening to account for
                 effects such as finite aperture size, defocusing, misalignment, etc.
@@ -244,7 +258,7 @@ def _get_Instru(
     dnu = dphysics['width_A'] * cnt.c*1e10 /wave_A**2 # [Hz], dim(trs,)
 
     # Calculates general Gaussian shape
-    lams_profs_A, theta = _get_Gaussian(
+    lams_profs_A, theta = _calc_Gaussian(
         dnu = dnu,
         wave_A=wave_A,
         )
@@ -279,8 +293,8 @@ def _calc_Gaussian(
     # set a variable delta lambda based on the width of the broadening
     _dlam_A = (
         wave_A**2 / (cnt.c*1e10) 
-        * dnu * 5
-        )  # [AA], dim(trs,), 5 standard deviations
+        * dnu * 4
+        )  # [AA], dim(trs,), 4 standard deviations
 
     # Wavelength mesh
     lams_profs_A = np.linspace(
@@ -322,8 +336,8 @@ def _calc_Lorentzian(
     # set a variable delta lambda based on the width of the broadening
     _dlam_A = (
         wave_A**2 / (cnt.c*1e10) 
-        * dnu * 5  
-        )# [AA], dim(trs,), 5 standard deviations
+        * dnu * 20
+        )# [AA], dim(trs,), 20 standard deviations
 
     # Wavelength mesh
     lams_profs_A = np.linspace(
@@ -332,16 +346,14 @@ def _calc_Lorentzian(
         100) # [AA], dim(,nlamb)
 
     # Lorentz profile
-    theta = 1/(
-        1+ (
-            (1/lam_profs_A - 1/ wave_A)
-            * cnt.c*1e10
-            * 2 / dnu
-            )**2
-        ) # [], dim(,nlamb)
-                
-    # Normalization
-    theta *= 2 / (np.pi * dnu) # [1/Hz]
+    theta = (1/np.pi) * (
+        dnu/2
+        /(
+            (1/lams_profs_A - 1/wave_A)**2
+            * (cnt.c*1e10)**2
+            + (dnu/2)**2
+            )
+        ) # [1/Hz], dim(,nlamb)
 
     # Fixes units
     theta *= (cnt.c*1e10)/wave_A**2 # [1/AA]

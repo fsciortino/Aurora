@@ -31,4 +31,6 @@ from .oedge import *
 
 from .facit import *
 
+from .line_broaden import *
+
 aurora_dir = os.path.dirname(os.path.abspath(__file__))
