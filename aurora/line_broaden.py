@@ -371,6 +371,14 @@ def _calc_Lorentzian(
 def _convolve(
     dshape=None,
     ):
+    '''
+    NOTE: THis function has been benchmarked 
+    against analytic euqations for 
+        i) Gaussian * Delta function
+        ii) Gaussian * Gaussian
+    to a <1% error
+
+    '''
 
     # Broadening mechanisms
     mechs = list(dshape.keys())
