@@ -62,6 +62,13 @@ def get_line_broaden(
                 wave_A=wave_A,
                 )
 
+        # If one wishes to scope Suprathermal IOns
+        elif brd == 'Suprathermal_Ions':
+            dshape[brd] = _get_Supra(
+                dphysics=dbroad[brd],
+                wave_A=wave_A,
+                )
+
     # If only considering one broadening mech, skips convolution
     if len(dshape.keys()) == 1:
         brd = list(dshape.keys())[0]
@@ -81,6 +88,103 @@ def get_line_broaden(
 #             Broadening Mechanisms
 #
 #########################################################
+
+# Calculates Doppler broadening from Suprathermal Ions
+def _get_Supra(
+    # Settings
+    dphysics=None,         # Dictionary of neccessary phyiscs
+    # ADF15 file
+    wave_A=None,
+    ):
+    '''
+    NOTE: It is assumed that the user won't use the Suprathermal
+    ions and the Doppler (due to Maxwellian ions) options
+    together !!!!!
+
+    INPUTS: dphysics -- [dict], necessary physics information
+                i) 'model' -- [str], Suprathermal ion model
+                    !!! Currently accepted models and the
+                        necessary inputs
+
+                    1) 'Bi-Maxwellain'
+                ii) 'Ti_eV' -- [float], [eV], local ion temperature
+                iii) 'Ti_fast_eV' -- [float], [eV], local fast
+                        ion temperature
+                iv) 'f_fast' -- [float], [fraction], fraction
+                        of fast ion Maxwellian population
+                v) 'ion_A' -- [float], [amu], species mass
+
+                    2) NOT YET IMPLEMENTED
+                        TBD: ASCOT, TRANSP, etc. files
+
+            wave_A -- [list], dim(trs,), [AA], 
+                transition central wavelength
+
+    OUTPUTS: [dict], line shape
+                i) 'lam_profs_A' -- [AA], dim(trs,nlamb), 
+                        wavelength mesh for each transition
+                ii) 'theta' -- [1/AA], dim(trs, nlamb),
+                        line shape for each transition
+
+
+    '''
+
+    # If using the Bi-Maxwellian fast ion model
+    if dphysics['model'] == 'Bi-Maxwellian':
+        # Ion mass
+        mass = cnt.m_p * dphysics['ion_A'] # [kg]
+
+        # Slow population FWHM
+        dnu_slow = (
+            np.sqrt(2.0 * (dphysics['Ti_eV'] * cnt.e) / mass)
+            / cnt. c
+            * (cnt.c*1e10 / wave_A)
+            ) # [Hz], dim(trs,)
+
+        # Fast population FWHM
+        dnu_fast = (
+            np.sqrt(2.0 * (dphysics['Ti_fast_eV'] * cnt.e) / mass)
+            / cnt. c
+            * (cnt.c*1e10 / wave_A)
+            ) # [Hz], dim(trs,)
+
+        # Calculates general Gaussian shape for slow population
+        lams_slow_A, theta_slow = _calc_Gaussian(
+            dnu = dnu_slow,
+            wave_A=wave_A,
+            nlamb = 101,
+            ) # dim(ntrs, nlamb)
+
+        # Calculates general Gaussian shape for fast population
+        lams_fast_A, theta_fast = _calc_Gaussian(
+            dnu = dnu_fast,
+            wave_A=wave_A,
+            nlamb = 1001,
+            ) # dim(ntrs, nlamb)
+
+        # Interpolates the slow pollluation shape onto (larger) fast mesh
+        slow_tmp = np.zeros(lams_fast_A.shape)
+        for trs in np.arange(lams_fast_A.shape[0]):
+            slow_tmp[trs,:] = interp1d(
+                lams_slow_A[trs,:],
+                theta_slow[trs,:],
+                bounds_error=False,
+                fill_value=0.0
+                )(lams_fast_A[trs,:])
+
+        # Combines population
+        lams_profs_A = lams_fast_A # 
+        theta = (
+            (1-dphysics['f_fast']) * slow_tmp
+            + dphysics['f_fast'] * theta_fast
+            )
+
+    # Output line shape and wavelength mesh
+    return {
+        'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
+        'theta': theta,                 # [1/AA], dim(trs,nlamb)
+        }
+
 
 # Calculates Doppler broadening
 def _get_Doppler(
@@ -280,6 +384,7 @@ def _get_Instru(
 def _calc_Gaussian(
     dnu = None, # [Hz], [float], FWHM
     wave_A=None, # [AA], dim(trs,), central wavelength
+    nlamb=101, # [scalar], number of wavelength points
     ):
     '''
     Note this function is meant to be a general-purpose 
@@ -293,14 +398,14 @@ def _calc_Gaussian(
     # set a variable delta lambda based on the width of the broadening
     _dlam_A = (
         wave_A**2 / (cnt.c*1e10) 
-        * dnu * 4
-        )  # [AA], dim(trs,), 4 standard deviations
+        * dnu * 5
+        )  # [AA], dim(trs,), 5 standard deviations
 
     # Wavelength mesh
     lams_profs_A = np.linspace(
         wave_A - _dlam_A, 
         wave_A + _dlam_A, 
-        101, axis=1) # [AA], dim(trs, nlamb)
+        nlamb, axis=1) # [AA], dim(trs, nlamb)
 
     # Gaussian profiles of the lines
     theta = np.exp(
@@ -324,6 +429,7 @@ def _calc_Gaussian(
 def _calc_Lorentzian(
     dnu = None, # [Hz], [float], FWHM
     wave_A=None, # [AA], [float], central wavelength
+    nlamb=101,  # number of wavelength points
     ):
     '''
     Note this function is meant to be a general-purpose 
@@ -343,7 +449,7 @@ def _calc_Lorentzian(
     lams_profs_A = np.linspace(
         wave_A - _dlam_A, 
         wave_A + _dlam_A, 
-        101) # [AA], dim(,nlamb)
+        nlamb) # [AA], dim(,nlamb)
 
     # Lorentz profile
     theta = (1/np.pi) * (
@@ -410,7 +516,10 @@ def _convolve(
             nlamb = 101
 
             # Calculates wavelength mesh
-            for bb in mechs_tmp: 
+            for bb in mechs_tmp:
+                # Skips wide, higher-resolution mesh for suprathermal ions
+                if bb == 'Suprathermal_Ions':
+                    continue
                 lams_min = np.min((lams_min, np.min(dshape[bb]['lams_profs_A'][trs,:]))) 
                 lams_max = np.max((lams_max, np.max(dshape[bb]['lams_profs_A'][trs,:])) )
 
