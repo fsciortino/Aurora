@@ -11,6 +11,8 @@ Aug. 04, 2023
 # Modules
 import numpy as np
 import scipy.constants as cnt
+import scipy
+from scipy.interpolate import interp1d
 
 __all__ = [
     'get_line_broaden',
@@ -71,7 +73,7 @@ def get_line_broaden(
         lams_profs_A, theta = _convolve(dshape=dshape) # dim(trs,nlamb)
 
     # Output
-    return lams_profs_A, theta
+    return lams_profs_A, theta, dshape
 
 
 ########################################################
@@ -166,8 +168,8 @@ def _get_Natural(
     '''
 
     # Initializes output
-    lams_profs_A = np.zeros((len(wave_A), 100)) # [AA], dim(trs, nlamb)
-    theta = np.zeros((len(wave_A), 100)) # [1/AA], dim(trs, nlamb)
+    lams_profs_A = np.zeros((len(wave_A), 101)) # [AA], dim(trs, nlamb)
+    theta = np.zeros((len(wave_A), 101)) # [1/AA], dim(trs, nlamb)
 
     # Tolerance on wavelength match
     tol = 1e-4 # [AA]
@@ -298,7 +300,7 @@ def _calc_Gaussian(
     lams_profs_A = np.linspace(
         wave_A - _dlam_A, 
         wave_A + _dlam_A, 
-        100, axis=1) # [AA], dim(trs, nlamb)
+        101, axis=1) # [AA], dim(trs, nlamb)
 
     # Gaussian profiles of the lines
     theta = np.exp(
@@ -341,7 +343,7 @@ def _calc_Lorentzian(
     lams_profs_A = np.linspace(
         wave_A - _dlam_A, 
         wave_A + _dlam_A, 
-        100) # [AA], dim(,nlamb)
+        101) # [AA], dim(,nlamb)
 
     # Lorentz profile
     theta = (1/np.pi) * (
@@ -389,12 +391,46 @@ def _convolve(
 
         # If now only one mechanism left
         if len(mechs_tmp) == 1:
-            lams_profs_A[trs,:] = dshape[mechs_tmp[0]]['lams_prof_A'][trs,:]
+            lams_profs_A[trs,:] = dshape[mechs_tmp[0]]['lams_profs_A'][trs,:]
             theta[trs,:] = dshape[mechs_tmp[0]]['theta'][trs,:]
 
         # Convolute if more than one mechanism
-        else:
-            blah = 0
+        else: 
+            # Initializes wavelength mesh
+            lams_min = 1e20
+            lams_max = 1e-20
+            nlamb = 101
 
-                
+            # Calculates wavelength mesh
+            for bb in mechs_tmp: 
+                lams_min = np.min((lams_min, np.min(dshape[bb]['lams_profs_A'][trs,:]))) 
+                lams_max = np.max((lams_max, np.max(dshape[bb]['lams_profs_A'][trs,:])) )
+
+                nlamb = np.max((nlamb, dshape[bb]['lams_profs_A'].shape[1]))
+
+            # Assured to be symmetric -> contains lambda_0
+            lams_profs_A[trs,:] = np.linspace(lams_min,lams_max,nlamb)
+
+            # Interpolates broadening profiles onto the same mesh
+            theta_tmp = {}
+            for bb in mechs_tmp:
+                theta_tmp[bb] = interp1d(
+                    dshape[bb]['lams_profs_A'][trs,:],
+                    dshape[bb]['theta'][trs,:],
+                    bounds_error=False,
+                    fill_value = 0.0,
+                    )(lams_profs_A[trs,:])
+
+            # Initializes convolution
+            theta[trs,:] = theta_tmp[mechs_tmp[0]]
+
+            # Calculates convolution
+            for bb in mechs_tmp[1:]:
+                theta[trs,:] = scipy.signal.convolve(
+                    theta[trs,:], 
+                    theta_tmp[bb], 
+                    mode='same'
+                    )/sum(theta_tmp[bb])
+
+    # Output
     return lams_profs_A, theta
