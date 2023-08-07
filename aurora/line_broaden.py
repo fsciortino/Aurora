@@ -152,14 +152,14 @@ def _get_Supra(
         lams_slow_A, theta_slow = _calc_Gaussian(
             dnu = dnu_slow,
             wave_A=wave_A,
-            nlamb = 101,
+            nstd = 5,
             ) # dim(ntrs, nlamb)
 
         # Calculates general Gaussian shape for fast population
         lams_fast_A, theta_fast = _calc_Gaussian(
             dnu = dnu_fast,
             wave_A=wave_A,
-            nlamb = 1001,
+            nstd = 2,
             ) # dim(ntrs, nlamb)
 
         # Interpolates the slow pollluation shape onto (larger) fast mesh
@@ -384,7 +384,9 @@ def _get_Instru(
 def _calc_Gaussian(
     dnu = None, # [Hz], [float], FWHM
     wave_A=None, # [AA], dim(trs,), central wavelength
+    # Wavelength mesh controls
     nlamb=101, # [scalar], number of wavelength points
+    nstd = 5,    # number of standard deviations in wavelength mesh
     ):
     '''
     Note this function is meant to be a general-purpose 
@@ -398,7 +400,7 @@ def _calc_Gaussian(
     # set a variable delta lambda based on the width of the broadening
     _dlam_A = (
         wave_A**2 / (cnt.c*1e10) 
-        * dnu * 5
+        * dnu * nstd
         )  # [AA], dim(trs,), 5 standard deviations
 
     # Wavelength mesh
@@ -429,7 +431,9 @@ def _calc_Gaussian(
 def _calc_Lorentzian(
     dnu = None, # [Hz], [float], FWHM
     wave_A=None, # [AA], [float], central wavelength
+    # Wavelength mesh controls
     nlamb=101,  # number of wavelength points
+    nstd = 20, # number of standard deviations in wavelength mesh
     ):
     '''
     Note this function is meant to be a general-purpose 
@@ -442,7 +446,7 @@ def _calc_Lorentzian(
     # set a variable delta lambda based on the width of the broadening
     _dlam_A = (
         wave_A**2 / (cnt.c*1e10) 
-        * dnu * 20
+        * dnu * nstd
         )# [AA], dim(trs,), 20 standard deviations
 
     # Wavelength mesh
@@ -493,6 +497,9 @@ def _convolve(
     lams_profs_A = np.zeros(dshape[mechs[0]]['lams_profs_A'].shape) # [AA], dim(trs, nlamb)
     theta = np.zeros(dshape[mechs[0]]['lams_profs_A'].shape) # [1/AA], dim(trs,nlamb)
 
+    # Number of wavelength points
+    nlamb = dshape[mechs[0]]['lams_profs_A'].shape[1]
+
     # Loop over transitions
     for trs in np.arange(dshape[mechs[0]]['lams_profs_A'].shape[0]):
         # Handling if Natural broadening wasn't included for this transition
@@ -513,13 +520,9 @@ def _convolve(
             # Initializes wavelength mesh
             lams_min = 1e20
             lams_max = 1e-20
-            nlamb = 101
 
             # Calculates wavelength mesh
             for bb in mechs_tmp:
-                # Skips wide, higher-resolution mesh for suprathermal ions
-                if bb == 'Suprathermal_Ions':
-                    continue
                 lams_min = np.min((lams_min, np.min(dshape[bb]['lams_profs_A'][trs,:]))) 
                 lams_max = np.max((lams_max, np.max(dshape[bb]['lams_profs_A'][trs,:])) )
 
