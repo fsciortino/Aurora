@@ -35,6 +35,7 @@ import pandas as pd
 from . import atomic
 from . import adas_files
 from . import plot_tools
+from . import line_broaden
 
 
 def compute_rad(
@@ -1132,6 +1133,8 @@ def get_local_spectrum(
     plot_all_lines=False,
     no_leg=False,
     ax=None,
+    # Broadening mechanism controls
+    dbroad=None,
 ):
     r"""Plot spectrum based on the lines contained in an ADAS ADF15 file
     at specific values of electron density and temperature. Charge state densities
@@ -1275,28 +1278,19 @@ def get_local_spectrum(
             get_photon_emissivity(trs, lam, ne_cm3, Te_eV, imp_density, n0_cm3)
         )
 
-    from scipy.constants import e, m_p, c
+    # Defaults to just Doppler as broadening mechanism
+    if dbroad is None:
+        # Popullates defaults
+        dbroad = {}
+        dbroad['Doppler'] = {}
+        dbroad['Doppler']['Ti_eV'] = Ti_eV
+        dbroad['Doppler']['ion_A'] = ion_A
 
-    # Doppler broadening
-    mass = constants.m_p * ion_A
-    dnu_g = (
-        np.sqrt(2.0 * (Ti_eV * constants.e) / mass)
-        * (constants.c / wave_A)
-        / constants.c
-    )
-
-    # set a variable delta lambda based on the width of the broadening
-    _dlam_A = wave_A**2 / constants.c * dnu_g * 5  # 5 standard deviations
-
-    lams_profs_A = np.linspace(wave_A - _dlam_A, wave_A + _dlam_A, 100, axis=1)
-
-    # Gaussian profiles of the lines
-    theta = np.exp(
-        -(((constants.c / lams_profs_A - c / wave_A[:, None]) / dnu_g[:, None]) ** 2)
-    )
-
-    # Normalize Gaussian profile
-    theta /= np.sqrt(np.pi) * dnu_g[:, None] * wave_A[:, None] ** 2 / constants.c
+    # Obtains normalized broadening profiles
+    lams_profs_A, theta = line_broaden.get_line_broaden(
+        dbroad=dbroad,
+        wave_A=wave_A,
+        ) # dim(ntrs, nlamb); units[AA, 1/AA]
 
     # non-equally spaced wavelenght
     wave_final_A = np.unique(lams_profs_A)

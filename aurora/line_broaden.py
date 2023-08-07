@@ -80,7 +80,7 @@ def get_line_broaden(
         lams_profs_A, theta = _convolve(dshape=dshape) # dim(trs,nlamb)
 
     # Output
-    return lams_profs_A, theta, dshape
+    return lams_profs_A, theta
 
 
 ########################################################
