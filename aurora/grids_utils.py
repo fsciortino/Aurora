@@ -732,6 +732,7 @@ def estimate_boundary_distance(shot, device, time_ms):
             shot=shot,
             TDI="\\EFIT01::TOP.RESULTS.A_EQDSK.ORIGHT",
         )  # CMOD format, take ORIGHT
+        assert tmp.check()
     except Exception:
         tmp = OMFITmdsValue(
             server=device,
