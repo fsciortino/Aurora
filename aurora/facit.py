@@ -12,7 +12,7 @@ class FACIT:
     References:  Maget et al 2020 Plasma Phys. Control. Fusion 62 105001
                  Fajardo et al 2022 Plasma Phys. Control. Fusion 64 055017
                  Maget et al 2022 Plasma Phys. Control. Fusion 64 069501
-                 Fajardo et al 2023 Plasma Phys. Control. Fusion 65 
+                 Fajardo et al 2023 Plasma Phys. Control. Fusion 65 035021
           
     License statement:
     Software name : FACIT
@@ -1448,9 +1448,9 @@ if __name__ == '__main__':
     ax1.tick_params(which = 'both', direction = 'in', axis = 'both', top = True, right = True)
     
     
-    ax2.plot(rho, fct.Vz_CL, label = 'CL component')
-    ax2.plot(rho, fct.Vz_BP, label = 'BP component')
-    ax2.plot(rho, fct.Vz_PS, label = 'PS component')
+    ax2.plot(rho, fct.Vconv_CL, label = 'CL component')
+    ax2.plot(rho, fct.Vconv_BP, label = 'BP component')
+    ax2.plot(rho, fct.Vconv_PS, label = 'PS component')
     ax2.plot(rho, fct.Vconv, label = ' Total')
     ax2.tick_params(which = 'both', direction = 'in', axis = 'both', top = True, right = True)
     
@@ -1459,4 +1459,6 @@ if __name__ == '__main__':
     ax2.set_ylabel('Convective velocity [m/s]')
     
     fig.tight_layout()
+
+    plt.show()
     
