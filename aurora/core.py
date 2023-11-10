@@ -1,5 +1,5 @@
 """This module includes the core class to set up simulations with :py:mod:`aurora`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.
-"""
+""" 
 # MIT License
 #
 # Copyright (c) 2021 Francesco Sciortino
@@ -491,13 +491,19 @@ class aurora_sim:
             # include charge exchange between NBI neutrals and impurities
             self.nbi_cxr = interp1d(
                 self.namelist["nbi_cxr"]["rhop"],
-                self.namelist["nbi_cxr"]["vals"],
-                axis=0,
+                np.atleast_3d(self.namelist["nbi_cxr"]["vals"]).T,
                 bounds_error=False,
                 fill_value=0.0,
             )(self.rhop_grid)
+            
+            if self.nbi_cxr.shape[2] > 1:
+                #time-dependent, times are switch times of beams, values are mean in between switch times
+                it = self.namelist["nbi_cxr"]["times"].searchsorted(self.time_grid)
+                #extrapolate by the nearest value
+                it = np.maximum(it, len(self.nbi_cxr))
+                self.nbi_cxr = self.nbi_cxr[it]
 
-            Rne = Rne + self.nbi_cxr.T[None, :, :]
+            Rne = Rne + self.nbi_cxr
 
         if len(superstages):
             self.superstages, Rne, Sne, self.fz_upstage = atomic.superstage_rates(
