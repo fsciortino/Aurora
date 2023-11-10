@@ -45,4 +45,4 @@ ion = "Ar"
 frac = 0.005
 
 # look at radiation profiles
-res = aurora.radiation_model(ion, rhop, ne_cm3, Te_eV, geqdsk, frac=frac, plot=True)
+res = aurora.radiation_model(ion, rhop, ne_cm3, Te_eV, geqdsk, frac=frac, plot=plot)
