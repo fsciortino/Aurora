@@ -1,5 +1,5 @@
 """This module includes the core class to set up simulations with :py:mod:`aurora`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.
-"""
+""" 
 # MIT License
 #
 # Copyright (c) 2021 Francesco Sciortino
@@ -66,7 +66,7 @@ class aurora_sim:
         # make sure that any changes in namelist will not propagate back to the calling function
         self.namelist = deepcopy(namelist)
         self.geqdsk = geqdsk  # if None, minor (rvol_lcfs) and major radius (Raxis_cm) must be in namelist
-        self.kin_profs = self.namelist["kin_profs"]
+       
         self.imp = namelist["imp"]
 
         # import here to avoid issues when building docs or package
@@ -109,7 +109,8 @@ class aurora_sim:
             )
             if atom_files["ccd"] is None:
                 raise Exception('Missing CCD ADF11 file!')
-
+            
+     
         if self.namelist.get("metastable_flag", False):
             atom_files["qcd"] = self.namelist.get(
                 "qcd", adas_files.adas_files_dict()[self.imp].get("qcd", None)
@@ -119,6 +120,7 @@ class aurora_sim:
             )
 
         # now load ionization and recombination rates
+        
         self.atom_data = atomic.get_atom_data(self.imp, files=atom_files)
 
         # allow for ion superstaging
@@ -126,9 +128,12 @@ class aurora_sim:
 
         # set up radial and temporal grids
         self.setup_grids()
-
-        # set up kinetic profiles and atomic rates
-        self.setup_kin_profs_depts()
+        
+        #interpolate kinetics profiles of the profiles are in namelist
+        if "kin_profs" in self.namelist:
+            self.kin_profs = self.namelist["kin_profs"]
+            # set up kinetic profiles and atomic rates
+            self.setup_kin_profs_depts()
 
     def reload_namelist(self, namelist=None):
         """(Re-)load namelist to update scalar variables."""
@@ -236,8 +241,7 @@ class aurora_sim:
         self.n0 = self._n0[save_time, :]
 
         # Get time-dependent parallel loss rate
-        trust_SOL_Ti = self.namelist.get("trust_SOL_Ti", False)
-        self.par_loss_rate = self.get_par_loss_rate(trust_SOL_Ti=trust_SOL_Ti)
+        self.par_loss_rate = self.get_par_loss_rate()
 
         metastables = self.namelist.get("metastable_flag", False)
         superstages = self.namelist.get("superstages", [])
@@ -251,7 +255,7 @@ class aurora_sim:
         if len(save_time) == 1:  # if time averaged profiles were used
             Sne0 = Sne0[:, [0]]  # 0th charge state (neutral)
 
-        
+
         # get time history and radial profiles separately
         source_time_history = source_utils.get_source_time_history(
             self.namelist, self.Raxis_cm, self.time_grid
@@ -262,7 +266,8 @@ class aurora_sim:
             # interpolate explicit source values on time and rhop grids of simulation
             # NB: explicit_source_vals should be in units of particles/s/cm^3 <-- ionization rate
             srho = self.namelist["explicit_source_rhop"]
-            self.source_rad_prof  = interp1d(srho,  source_time_history.T, axis=0,bounds_error=False,
+            self.source_rad_prof  = interp1d(srho, source_time_history.T, 
+                                            axis=0,bounds_error=False,
                                              fill_value=0)(self.rhop_grid)
             # Change units to particles/cm^3
             self.src_core = self.source_rad_prof / Sne0
@@ -283,8 +288,6 @@ class aurora_sim:
             self.src_core = self.source_rad_prof * source_time_history[None, :]
 
         self.src_core = np.asfortranarray(self.src_core)
-
-
         # if wall_recycling>=0, return flows from the divertor are enabled
         if (
             self.wall_recycling >= 0
@@ -294,9 +297,8 @@ class aurora_sim:
 
             # interpolate divertor source time history
             self.src_div = interp1d(
-                self.namelist["source_div_time"], self.namelist["source_div_vals"], bounds_error=False, fill_value=0,
+                self.namelist["source_div_time"], self.namelist["source_div_vals"]
             )(self.time_grid)
-            self.src_div /= 2*np.pi *self.Raxis_cm
         else:
             # no source into the divertor
             self.src_div = np.zeros_like(self.time_grid)
@@ -480,10 +482,19 @@ class aurora_sim:
 
         # cache radiative & dielectronic recomb:
         self.alpha_RDR_rates = Rne
-
+      
         if self.namelist["cxr_flag"]:
             # Get an effective recombination rate by summing radiative & CX recombination rates
-            self.alpha_CX_rates = out.pop(0) * (self._n0 / self._ne)[:, None]
+            alpha_CX_rates = out.pop(0) * (self._n0 / self._ne)[:, None]
+            #metastable resolved CCD file exist only for C and N, use unresolved file for others
+            if metastables and alpha_CX_rates.shape[1] != Rne.shape[1]:
+                self.alpha_CX_rates = np.zeros_like(Rne)
+                for i, m in enumerate(self.atom_data["ccd"].meta_ind[1:]):
+                    j = self.atom_data["acd"].meta_ind.index(m)
+                    self.alpha_CX_rates[:,j] = alpha_CX_rates[:,i]
+            else:
+                self.alpha_CX_rates = alpha_CX_rates
+      
             Rne = (
                 Rne + self.alpha_CX_rates
             )  # inplace addition would change also self.alpha_RDR_rates
@@ -492,13 +503,17 @@ class aurora_sim:
             # include charge exchange between NBI neutrals and impurities
             self.nbi_cxr = interp1d(
                 self.namelist["nbi_cxr"]["rhop"],
-                self.namelist["nbi_cxr"]["vals"],
-                axis=0,
+                np.atleast_3d(self.namelist["nbi_cxr"]["vals"]).T,
                 bounds_error=False,
                 fill_value=0.0,
             )(self.rhop_grid)
+            
+            if self.nbi_cxr.shape[2] > 1:
+                #time-dependent, times are switch times of beams, values are mean in between switch times
+                it = self.namelist["nbi_cxr"]["times"].searchsorted(self.time_grid)
+                self.nbi_cxr = self.nbi_cxr[it]
 
-            Rne = Rne + self.nbi_cxr.T[None, :, :]
+            Rne = Rne + self.nbi_cxr
 
         if len(superstages):
             self.superstages, Rne, Sne, self.fz_upstage = atomic.superstage_rates(
