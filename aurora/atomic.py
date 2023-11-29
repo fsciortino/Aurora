@@ -142,7 +142,7 @@ class adas_file:
                     self.MPRT.append(int(iprt.split("=")[1]))
                 except:
                     # some old files have different header
-                    self.Z.append(ind + 1)
+                    self.Z.append(ind)
                     self.MGRD.append(1)
                     self.MPRT.append(1)
 
