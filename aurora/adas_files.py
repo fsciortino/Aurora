@@ -32,7 +32,7 @@ adas_data_dir = (
 )
 
 
-def get_adas_file_loc(filename, filetype="adf11"):
+def get_adas_file_loc(filename, filetype="adf11", tmp_folder=None):
     """Find location of requested atomic data file for the indicated ion.
     Accepts all ADAS "derived" data file types
     (adf11, adf12, adf13, adf15, adf21, adf22).
@@ -75,12 +75,12 @@ def get_adas_file_loc(filename, filetype="adf11"):
 
         url = "https://open.adas.ac.uk/download/" + filetype + '/'
         if filetype == "adf11":
-            filename_mod = filename.split("_")[0] + os.sep + filename
+            filename_mod = filename.split("_")[0] + '/' + filename
 
         elif filetype in ["adf12", "adf13", "adf21", "adf22"]:
             filename_mod = (
                 filename.replace("#", "][").split("_")[0]
-                + os.sep
+                + '/'
                 + filename.replace("#", "][")
             )
 
@@ -99,7 +99,7 @@ def get_adas_file_loc(filename, filetype="adf11"):
             else:
                 # patterns may be different, attempt simple guess:
                 filename_mod = (
-                    filename.split("_")[0] + os.sep + filename.replace("#", "][")
+                    filename.split("_")[0] + '/' + filename.replace("#", "][")
                 )
         else:
             raise ValueError(
@@ -107,7 +107,7 @@ def get_adas_file_loc(filename, filetype="adf11"):
                 + "Could not find it or download it automatically!"
             )
         
-        r = requests.get(url + os.sep + filename_mod)
+        r = requests.get(url + '/' + filename_mod)
 
 
         if len(r.text) < 1000:
@@ -180,6 +180,7 @@ def adas_files_dict():
     files["H"]["brs"] = "brs05360.dat"
     files["H"]["pbs"] = "pbsx7_h.dat"
     files["H"]["prc"] = "prc89_h.dat"
+    files["D"] = files["H"]
     files["He"] = {}  # 2
     files["He"]["acd"] = "acd96_he.dat"
     files["He"]["scd"] = "scd96_he.dat"
