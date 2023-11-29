@@ -101,8 +101,8 @@ def get_source_time_history(namelist, Raxis_cm, time):
         # Create the time-dependent step source
         tbuf = namelist.get("step_source_duration", 1e-6)  # e.g. 1.e-6
 
-        # Start with zero source at t=-1e-6
-        src_times = [-1e6]
+        # Start with zero source at t=0
+        src_times = [0.0]
         src_rates = [0.0]
 
         # Form the source with "tbuf" duration to connect the steps
@@ -127,20 +127,21 @@ def get_source_time_history(namelist, Raxis_cm, time):
         )
     else:
         raise ValueError("Unspecified source function time history!")
-
+    
     #this step minimise particle conservation error for noisy or fast varying source
     from scipy.integrate import cumtrapz 
     from scipy.interpolate import interp1d
     integ_rate = cumtrapz(src_rates, src_times, axis=0, initial = 0)
-
+   
     kind = 'linear' if len(src_times) < 4 else 'quadratic'
     integ_rate_interp = interp1d(src_times, integ_rate,axis=0,kind=kind)
     integ_rate = integ_rate_interp(np.clip(time, src_times[0], src_times[-1]))
     
-    if np.size(time) > 1:
+    if len(time) > 1:
         source = (np.diff(integ_rate.T)/np.diff(time)).T
-    else: #for steady-state model
+    else:
         source = integ_rate
+     
     # For ease of comparison with STRAHL, shift source by one time step
     source_time_history = np.r_[source, source[[-1]]]
  
@@ -254,26 +255,24 @@ def lbo_source_function(t_start, t_rise, t_fall, n_particles=1.0, time_vec=None)
     )
 
     if time_vec is None:
-        time_vec = np.hstack(np.linspace(ts - 3 * tr, ts + 6 * tf, 200)  for ts, tr, tf in zip(t_start, t_rise, t_fall))
+        time_vec = np.hstack([np.linspace(ts - 3 * tr, ts + 6 * tf, 200) for ts, tr, tf in zip(t_start, t_rise, t_fall)])
         time_vec = np.unique(time_vec)
-
     source = np.zeros_like(time_vec)
 
     for ts, tr, tf, N in zip(t_start, t_rise, t_fall, n_particles):
         tind = slice(*time_vec.searchsorted([ts - 3 * tr, ts + 6 * tf]))
         T = time_vec[tind]
-        lbo = np.exp(
-            (1 - 4 * tf * (T - ts) / tr**2) / (4 * (tf / tr) ** 2)
-        ) * (erfc((T - ts) / tr - 1 / (2 * tf / tr)) - 2)
+        lbo = np.exp((1 - 4 * tf * (T - ts) / tr**2) / (4 * (tf / tr) ** 2)) * (erfc((T - ts) / tr - 1 / (2 * tf / tr)) - 2)
 
         # scale source to correspond to the given total number of particles
-        lbo *= N / np.trapz(source[tind], T)
+        lbo *= N / np.trapz(lbo, T)
 
         # ensure that source function ends with 0 to avoid numerical issues
         lbo[[0, -1]] = 0
 
         source[tind] += lbo
 
+     
     return time_vec, source
 
 
