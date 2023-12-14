@@ -32,7 +32,7 @@ adas_data_dir = (
 )
 
 
-def get_adas_file_loc(filename, filetype="adf11", tmp_folder=None):
+def get_adas_file_loc(filename, filetype="adf11"):
     """Find location of requested atomic data file for the indicated ion.
     Accepts all ADAS "derived" data file types
     (adf11, adf12, adf13, adf15, adf21, adf22).
