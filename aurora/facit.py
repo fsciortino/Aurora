@@ -207,16 +207,16 @@ class FACIT:
         if type(rho) is float or type(rho) is np.float64:
             nr  = 1 # number of radial grid points
             
-            rho      *= np.ones(nr)
-            Ti       *= np.ones(nr)
-            Ni       *= np.ones(nr)
-            Nimp     *= np.ones(nr)
-            Machi    *= np.ones(nr)
-            Zeff     *= np.ones(nr)
-            gradTi   *= np.ones(nr)
-            gradNi   *= np.ones(nr)
-            gradNimp *= np.ones(nr)
-            qmag     *= np.ones(nr)
+            rho      = np.atleast_1d(rho)
+            Ti       = np.atleast_1d(Ti)
+            Ni       = np.atleast_1d(Ni)
+            Nimp     = np.atleast_1d(Nimp)
+            Machi    = np.atleast_1d(Machi)
+            Zeff     = np.atleast_1d(Zeff)
+            gradTi   = np.atleast_1d(gradTi)
+            gradNi   = np.atleast_1d(gradNi)
+            gradNimp = np.atleast_1d(gradNimp)
+            qmag     = np.atleast_1d(qmag)
             
         else:
             nr  = rho.size # number of radial grid points
@@ -228,9 +228,9 @@ class FACIT:
         amin = invaspct*R0 # minor radius [m]
         
         if type(Zimp) is int or type(Zimp) is float or type(Zimp) is np.float64:
-            Zimp  *= np.ones(nr)
+            Zimp  = np.atleast_1d(Zimp)
         if type(Te_Ti) is int or type(Te_Ti) is float or type(Te_Ti) is np.float64:
-            Te_Ti *= np.ones(nr)
+            Te_Ti = np.atleast_1d(Te_Ti)
         
         if Nimp.mean() < 1:
             Nimp = np.ones_like(Ni)
@@ -240,7 +240,7 @@ class FACIT:
         grad_ln_Ti   = gradTi/Ti     # [1/m]
         grad_ln_Nimp = gradNimp/Nimp # [1/m]
         
-        if rho[0] == 1e-6:
+        if abs(rho[0]) <= 1e-6:
             grad_ln_Ni[...,0]   = 0.0 # [1/m]
             grad_ln_Ti[...,0]   = 0.0 # [1/m]
             grad_ln_Nimp[...,0] = 0.0 # [1/m]
@@ -274,7 +274,7 @@ class FACIT:
         
         
         if rotation_model == 0:
-            Machi *= 0.0
+            Machi = np.zeros_like(Machi)
             
         Machi2 = Machi**2 # auxiliary
         
@@ -308,18 +308,16 @@ class FACIT:
         #---------------------------------------------------------------------
         
         if RV is not None:
-            if nr == 1:
-                RV = np.reshape(RV, (1,RV.size))
-                JV = np.reshape(RV, (1,RV.size))
-                BV = np.reshape(RV, (1,RV.size))
+            RV = np.atleast_2d(RV)
+            JV = np.atleast_2d(JV)
+            BV = np.atleast_2d(BV)
             nth = RV.shape[1]
             
         if FV is None:
-            FV = R0*B0*np.ones(nr)
+            FV = np.atleast_1d(R0*B0)
             
         if dpsidx is not None: # consistent q when full equilibrium is available
-            if nr == 1:
-                dpsidx *= np.ones(nr)
+            dpsidx = np.atleast_1d(dpsidx)
             qmag = amin*eps*FV/dpsidx
         
         theta = np.linspace(0,2*np.pi, nth)
@@ -329,7 +327,7 @@ class FACIT:
             RV = R0*(1 + eps[:,None]*np.cos(theta)[None,:])
             JV = B0/(qmag[:,None]*RV)
                 
-        if RV is not None and ZV is not None:
+        else:
             JV = self.Jacobian(RV, ZV, amin*rho, theta)
             
             
