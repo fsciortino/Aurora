@@ -651,6 +651,8 @@ class FACIT:
         
         #---------------------- PS facs ---------------------------------------
         # f1, f2, f3 factors in C0z
+        #broadcast in the same shape
+        Z,Mzstar = np.broadcast_arrays(Z,Mzstar)
         
         f1 = (1.74*(1-0.028*A) + 10.25/(1 + A/3.0)**2.8) - 0.423*(1-0.136*A)*ft**(5/4)
         f2 = (88.28389935 + 10.50852772*Z)/( 1 + 0.2157175*Z**2.57338463)
