@@ -172,7 +172,6 @@ def rV_vol_average(quant, r_V):
 
     return quant_vol_avg
 
-
 def rad_coord_transform(x, name_in, name_out, geqdsk):
     """Transform from one radial coordinate to another. Note that this coordinate conversion is only
     strictly valid inside of the LCFS. A number of common coordinate nomenclatures are accepted, but
@@ -187,8 +186,8 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
     name_out: str
         input x coordinate ('rhon','psin','rvol', 'rhop','rhov','Rmid','rmid','r/a')
     geqdsk: dict
-        gEQDSK dictionary, as obtained from the omfit-eqdsk package.
-
+        gEQDSK dictionary, as obtained from the omfit-eqdsk package. 
+    
     Returns
     -------
     array
@@ -225,7 +224,7 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
     if "rvol" not in geqdsk["fluxSurfaces"]["geo"]:
         R0 = geqdsk["RMAXIS"]
         eq_vol = geqdsk["fluxSurfaces"]["geo"]["vol"]
-        rvol = np.sqrt(eq_vol / (2 * np.pi**2 * R0))
+        rvol = np.sqrt(eq_vol / (2 * np.pi ** 2 * R0))
         geqdsk["fluxSurfaces"]["geo"]["rvol"] = rvol
 
     # sqrt(norm. tor. flux)
@@ -238,9 +237,10 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
     rvol = geqdsk["fluxSurfaces"]["geo"]["rvol"]
     # R at midplane
     Rmid = geqdsk["fluxSurfaces"]["midplane"]["R"]
-    # r at midplane
     R0 = geqdsk["fluxSurfaces"]["R0"]
-    rmid = Rmid - R0
+    # r at midplane
+    rmid = geqdsk['fluxSurfaces']['geo']['a']
+
 
     # Interpolate to transform coordiantes
     if name_in == "rhon":
@@ -258,7 +258,7 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
         coord_in = rmid  # use rmid since it starts at 0.0, making interpolation easier
         x -= R0  # make x represent a rmid value
     elif name_in == "rmid":
-        coord_in = rmid
+        coord_in = Rmid-R0
     elif name_in == "r/a":
         rmid_lcfs = np.interp(1, rhon_ref, rmid)
         coord_in = rmid / rmid_lcfs
@@ -277,9 +277,9 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
         rvol_lcfs = np.interp(1, rhon_ref, rvol)
         coord_out = rvol / rvol_lcfs
     elif name_out == "Rmid":
-        coord_out = rmid  # use rmid since it starts at 0.0, making interpolation easier
+        coord_out = Rmid-R0  # use rmid since it starts at 0.0, making interpolation easier
     elif name_out == "rmid":
-        coord_out = rmid
+        coord_out = Rmid-R0
     elif name_out == "r/a":
         rmid_lcfs = np.interp(1, rhon_ref, rmid)
         coord_out = rmid / rmid_lcfs
@@ -298,7 +298,6 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
         out += R0
 
     return out
-
 
 
 
