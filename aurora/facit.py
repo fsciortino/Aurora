@@ -309,7 +309,6 @@ class FACIT:
         
         if RV is not None:
             RV = np.atleast_2d(RV)
-            JV = np.atleast_2d(JV)
             BV = np.atleast_2d(BV)
             nth = RV.shape[1]
             
@@ -1452,9 +1451,9 @@ if __name__ == '__main__':
     ax1.tick_params(which = 'both', direction = 'in', axis = 'both', top = True, right = True)
     
     
-    ax2.plot(rho, fct.Vz_CL, label = 'CL component')
-    ax2.plot(rho, fct.Vz_BP, label = 'BP component')
-    ax2.plot(rho, fct.Vz_PS, label = 'PS component')
+    ax2.plot(rho, fct.Vconv_CL, label = 'CL component')
+    ax2.plot(rho, fct.Vconv_BP, label = 'BP component')
+    ax2.plot(rho, fct.Vconv_PS, label = 'PS component')
     ax2.plot(rho, fct.Vconv, label = ' Total')
     ax2.tick_params(which = 'both', direction = 'in', axis = 'both', top = True, right = True)
     
