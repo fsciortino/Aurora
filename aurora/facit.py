@@ -5,6 +5,7 @@
 
 import numpy as np
 
+
 class FACIT:
     '''
     Calculation of collisional impurity transport coefficients
@@ -36,23 +37,23 @@ class FACIT:
         main ion charge [-]
     Ai : int or float
         main ion mass [-]
-    Ti : 1D array (nr) or float
+    Ti : nD array (...,nr) or float
         main ion temperature [:math:`eV`]
-    ne : 1D array (nr) or float
+    ne : nD array (...,nr) or float
         electron density [:math:`1/m^3`]
-    Ni : 1D array (nr) or float
+    Ni : nD array (...,nr) or float
         main ion density [:math:`1/m^3`]
-    Nimp : 1D array (nr) or float
+    Nimp : nD array (...,nr) or float
         FSA impurity density [:math:`1/m^3`]
-    Machi : 1D array (nr) or float
+    Machi : nD array (...,nr) or float
         main ion Mach number [-]
-    Zeff: 1D array (nr) or float
+    Zeff: nD array (...,nr) or float
         effective charge [-]
-    gradNi : 1D array (nr) or float
+    gradNi : nD array (...,nr) or float
         main ion density gradient [:math:`1/m^3/m`]
-    gradTi : 1D array (nr) or float
+    gradTi : nD array (...,nr) or float
         main ion temperature gradient [:math:`1/m^3/m`]
-    gradNimp : 1D array (nr) or float
+    gradNimp : nD array (...,nr) or float
         FSA impurity density gradient [:math:`1/m^3/m`]
     invaspct : float
         inverse aspect ratio [-], :math:`a/R0`
@@ -67,7 +68,7 @@ class FACIT:
         if 1, use PS model from Maget PPCf (2020)
         if 2, use BP and PS model from Fajardo (subm. to PPCF)
         Default is 0. 0 is recommended for low-Z impurities (e.g. B, N, Ne)
-    Te_Ti : 1D array (nr) or float, optional
+    Te_Ti : nD array (...,nr) or float, optional
         electron to ion temperature ratio [-]
         default is 1.0
     RV : 2D array (nr, nth), optional
@@ -138,7 +139,7 @@ class FACIT:
         default is 1.0
         
     Returns (as attributes)
-    -----------------------
+    -------
     Dz_* : 1D array (nr)
         diffusion coefficient for each flux component [:math:`m^2/s`]
         * = PS, BP or CL (for Pfirsch-Schlüter, Banana-Plateau and Classical)
@@ -206,16 +207,16 @@ class FACIT:
         if type(rho) is float or type(rho) is np.float64:
             nr  = 1 # number of radial grid points
             
-            rho      *= np.ones(nr)
-            Ti       *= np.ones(nr)
-            Ni       *= np.ones(nr)
-            Nimp     *= np.ones(nr)
-            Machi    *= np.ones(nr)
-            Zeff     *= np.ones(nr)
-            gradTi   *= np.ones(nr)
-            gradNi   *= np.ones(nr)
-            gradNimp *= np.ones(nr)
-            qmag     *= np.ones(nr)
+            rho      = np.atleast_1d(rho)
+            Ti       = np.atleast_1d(Ti)
+            Ni       = np.atleast_1d(Ni)
+            Nimp     = np.atleast_1d(Nimp)
+            Machi    = np.atleast_1d(Machi)
+            Zeff     = np.atleast_1d(Zeff)
+            gradTi   = np.atleast_1d(gradTi)
+            gradNi   = np.atleast_1d(gradNi)
+            gradNimp = np.atleast_1d(gradNimp)
+            qmag     = np.atleast_1d(qmag)
             
         else:
             nr  = rho.size # number of radial grid points
@@ -227,9 +228,9 @@ class FACIT:
         amin = invaspct*R0 # minor radius [m]
         
         if type(Zimp) is int or type(Zimp) is float or type(Zimp) is np.float64:
-            Zimp  *= np.ones(nr)
+            Zimp  = np.atleast_1d(Zimp)
         if type(Te_Ti) is int or type(Te_Ti) is float or type(Te_Ti) is np.float64:
-            Te_Ti *= np.ones(nr)
+            Te_Ti = np.atleast_1d(Te_Ti)
         
         if Nimp.mean() < 1:
             Nimp = np.ones_like(Ni)
@@ -239,10 +240,10 @@ class FACIT:
         grad_ln_Ti   = gradTi/Ti     # [1/m]
         grad_ln_Nimp = gradNimp/Nimp # [1/m]
         
-        if rho[0] == 1e-6:
-            grad_ln_Ni[0]   = 0.0 # [1/m]
-            grad_ln_Ti[0]   = 0.0 # [1/m]
-            grad_ln_Nimp[0] = 0.0 # [1/m]
+        if abs(rho[0]) <= 1e-6:
+            grad_ln_Ni[...,0]   = 0.0 # [1/m]
+            grad_ln_Ti[...,0]   = 0.0 # [1/m]
+            grad_ln_Nimp[...,0] = 0.0 # [1/m]
         
         
         ft = self.ftrap(eps) # trapped particle fraction [-]
@@ -273,7 +274,7 @@ class FACIT:
         
         
         if rotation_model == 0:
-            Machi *= 0.0
+            Machi = np.zeros_like(Machi)
             
         Machi2 = Machi**2 # auxiliary
         
@@ -307,18 +308,15 @@ class FACIT:
         #---------------------------------------------------------------------
         
         if RV is not None:
-            if nr == 1:
-                RV = np.reshape(RV, (1,RV.size))
-                JV = np.reshape(RV, (1,RV.size))
-                BV = np.reshape(RV, (1,RV.size))
+            RV = np.atleast_2d(RV)
+            BV = np.atleast_2d(BV)
             nth = RV.shape[1]
             
         if FV is None:
-            FV = R0*B0*np.ones(nr)
+            FV = np.atleast_1d(R0*B0)
             
         if dpsidx is not None: # consistent q when full equilibrium is available
-            if nr == 1:
-                dpsidx *= np.ones(nr)
+            dpsidx = np.atleast_1d(dpsidx)
             qmag = amin*eps*FV/dpsidx
         
         theta = np.linspace(0,2*np.pi, nth)
@@ -328,7 +326,7 @@ class FACIT:
             RV = R0*(1 + eps[:,None]*np.cos(theta)[None,:])
             JV = B0/(qmag[:,None]*RV)
                 
-        if RV is not None and ZV is not None:
+        else:
             JV = self.Jacobian(RV, ZV, amin*rho, theta)
             
             
@@ -420,7 +418,7 @@ class FACIT:
             CclG = 1 + 2*eps2
             
             if fsaout:
-                e0imp = self.fluxavg(np.exp(Mzstar[:,None]**2*((RV**2 - (RV[:,0]**2)[:,None])/R0**2)), JV)
+                e0imp = self.fluxavg(np.exp(Mzstar[...,None]**2*((RV**2 - (RV[:,0]**2)[:,None])/R0**2)), JV)
             else:
                 e0imp = np.ones(nr)
             
@@ -428,7 +426,7 @@ class FACIT:
             
             deltan = 1/e0imp - 1                              # horizontal asymmetry of impurity density
             Deltan = np.zeros(nr)                             # vertical asymmetry of impurity density
-            nn     = 1 + deltan[:,None]*np.cos(theta)[None,:] # poloidal distribution of the impurity density
+            nn     = 1 + deltan[...,None]*np.cos(theta) # poloidal distribution of the impurity density
         
         #---------------------------------------------------------------------
         #------------- Collisional transport coefficients --------------------
@@ -490,7 +488,7 @@ class FACIT:
         self.Dz = self.Dz_PS + self.Dz_BP + self.Dz_CL # collisional diffusion coefficient [m^2/s]
         self.Kz = self.Kz_PS + self.Kz_BP + self.Kz_CL # coefficient of the main ion density gradient [m^2/s]
         self.Hz = self.Hz_PS + self.Hz_BP + self.Hz_CL # coefficient of the main ion temperature gradient [m^2/s]
-        
+       
         self.Vconv = self.Kz*grad_ln_Ni + self.Hz*grad_ln_Ti # convective velocity [m/s]
         self.Vrz = self.Vrz_PS + self.Vrz_BP + self.Vrz_CL   # radial flux per particle [m/s]
         
@@ -652,6 +650,8 @@ class FACIT:
         
         #---------------------- PS facs ---------------------------------------
         # f1, f2, f3 factors in C0z
+        #broadcast in the same shape
+        Z,Mzstar = np.broadcast_arrays(Z,Mzstar)
         
         f1 = (1.74*(1-0.028*A) + 10.25/(1 + A/3.0)**2.8) - 0.423*(1-0.136*A)*ft**(5/4)
         f2 = (88.28389935 + 10.50852772*Z)/( 1 + 0.2157175*Z**2.57338463)
@@ -1007,15 +1007,15 @@ class FACIT:
         ----------
         rho : 1D array
             normalized radial coordinate [-], mid-plane radius over minor radius r/a
-        eps : 1D array
+        eps : 1D, 2D array
             local inverse aspect ratio [-]
-        Zeff : 1D array
+        Zeff : 1D, 2D array
             effective plasma charge [-]
         Zi : int or float
             main ion charge [-]
-        Te_Ti : 1D array
+        Te_Ti : 1D, 2D array
             electron to main ion temperature ratio [-]
-        Machi2 : 1D array
+        Machi2 : 1D, 2D array
             main ion Mach number squared [-]
         fH : float
             resonant hydrogen minority fraction [-]
@@ -1034,9 +1034,10 @@ class FACIT:
         AsymN : 2D array (2, nr)
             horizontal (index 0) and vertical (index 1) in main ion density [-], ni/<ni>
         '''
-        
-        AsymPhi = np.zeros((2, rho.size)) # asymmetry in electrostatic potential [-]
-        AsymN   = np.zeros((2, rho.size)) # asymmetry in main ion density [-]
+        #TODO use broadcast_shapes in new numpy
+        out_shape = np.broadcast(Zeff, Te_Ti, Machi2).shape
+        AsymPhi = np.zeros((2,)+out_shape) # asymmetry in electrostatic potential [-]
+        AsymN   = np.zeros((2,)+out_shape) # asymmetry in main ion density [-]
     
         TperpTpar = (TperpTpar_axis - 1.)*np.exp(-(rho/sigH)**2) + 1.
         
@@ -1412,6 +1413,7 @@ if __name__ == '__main__':
     
     Machi = 0.35*(1 - rho**2) + 0.05
     
+    
     Zeff = 1.5*np.ones_like(rho)
     
     gradTi = np.gradient(Ti, rho*invaspct*R0)
@@ -1423,6 +1425,7 @@ if __name__ == '__main__':
     # circular geometry
     RV = None
     ZV = None
+   
     
     fct = FACIT(rho, \
                 Zimp, Aimp, \
@@ -1433,7 +1436,7 @@ if __name__ == '__main__':
                 rotation_model = 2, Te_Ti = 1.0,\
                 RV = RV, ZV = ZV)
         
-        
+
         
     fig, (ax1, ax2) = plt.subplots(1,2, figsize=(8,4))
     
@@ -1448,9 +1451,9 @@ if __name__ == '__main__':
     ax1.tick_params(which = 'both', direction = 'in', axis = 'both', top = True, right = True)
     
     
-    ax2.plot(rho, fct.Vz_CL, label = 'CL component')
-    ax2.plot(rho, fct.Vz_BP, label = 'BP component')
-    ax2.plot(rho, fct.Vz_PS, label = 'PS component')
+    ax2.plot(rho, fct.Vconv_CL, label = 'CL component')
+    ax2.plot(rho, fct.Vconv_BP, label = 'BP component')
+    ax2.plot(rho, fct.Vconv_PS, label = 'PS component')
     ax2.plot(rho, fct.Vconv, label = ' Total')
     ax2.tick_params(which = 'both', direction = 'in', axis = 'both', top = True, right = True)
     
