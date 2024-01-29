@@ -27,9 +27,13 @@ import shutil, os
 import requests
 
 # location of the "adas_data" directory relative to this script:
-adas_data_dir = (
-    os.path.dirname(os.path.realpath(__file__)) + os.sep + "adas_data" + os.sep
-)
+if  "AURORA_ADAS_DIR" in os.environ:
+    adas_data_dir = os.environ['AURORA_ADAS_DIR']
+else:
+    adas_data_dir = (
+        os.path.dirname(os.path.realpath(__file__)) + os.sep + "adas_data" + os.sep
+    )
+
 
 
 def get_adas_file_loc(filename, filetype="adf11"):
