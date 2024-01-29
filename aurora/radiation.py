@@ -670,7 +670,12 @@ def read_adf15(path, order=1):
     # Get the expected number of lines by reading the header:
     num_lines = int(header[0])
     spec = header[1].strip("/")
-    Z = int(''.join(header[2:-3]).strip(':'))
+
+    # header formating is not strictly defined and this can sometimes fail
+    try:
+        Z = int(''.join(header[2:-3]).strip(':'))
+    except:
+        Z = 0
 
     log10pec_dict = {}
     for i in range(num_lines):
