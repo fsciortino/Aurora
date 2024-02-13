@@ -264,6 +264,14 @@ def _get_pVoigt(
     theta = np.zeros((len(wave_A), nlamb)) # [1/AA], dim(trs, nlamb)
     FWHM = np.zeros(len(wave_A)) # [Hz], dim(trs,)
 
+    # Init wavelength mesh resolution
+    nlamb = np.max(
+        (
+            out_L['theta'].shape[1],
+            out_G['theta'].shape[1]
+            )
+        )
+
     # Loop over transitions
     for tr in np.arange(len(wave_A)):
         # If no Natural broadening data
@@ -487,8 +495,11 @@ def _get_Instru(
     ):
     '''
     INPUTS: dphysics -- [dict], necessary physics information
-                i) 'width_A' -- [float], [AA], characteristic FWHM
-                                    on detector surface
+                i) 'width_A' -- [float] or [array], [AA], characteristic
+                                FWHM on detector surface
+                    NOTE: if [array] -> then assuming to be modeling
+                        instrumental broadening as a sum of Gaussians
+                        WITH NO SYSTEMATIC SHIFT!!!!!
 
                 NOTE: the philosophy here is that the user wishes to
                 quickly scope Instrumental broadening per a simple 
@@ -530,7 +541,16 @@ def _get_Instru(
     '''
 
     # Converts units of variance
-    dnu = dphysics['width_A'] * cnt.c*1e10 /wave_A**2 # [Hz], dim(trs,)
+    if isinstance(dphysics['width'], float):
+        dnu = dphysics['width_A'] * cnt.c*1e10 /wave_A**2 # [Hz], dim(trs,)
+    else:
+        tmp = (
+            dphysics['width_A'][None,: ] 
+            * cnt.c*1e10 /wave_A[:,None]**2 
+            ) # [Hz], dim(trs, nGaussians)
+        dnu = np.sqrt(
+            np.sum(tmp**2, axis=1)
+            ) # [Hz], dim(trs,)
 
     # Calculates FWHM
     FWHM = 2*dnu *np.sqrt(2 *np.log(2)) # [Hz], dim(trs,)
