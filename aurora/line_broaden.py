@@ -260,8 +260,8 @@ def _get_pVoigt(
         )
 
     # Initializes output
-    lams_profs_A = np.zeros((len(wave_A), 101)) # [AA], dim(trs, nlamb)
-    theta = np.zeros((len(wave_A), 101)) # [1/AA], dim(trs, nlamb)
+    lams_profs_A = np.zeros((len(wave_A), nlamb)) # [AA], dim(trs, nlamb)
+    theta = np.zeros((len(wave_A), nlamb)) # [1/AA], dim(trs, nlamb)
     FWHM = np.zeros(len(wave_A)) # [Hz], dim(trs,)
 
     # Loop over transitions
@@ -275,7 +275,55 @@ def _get_pVoigt(
 
         # If Dopler+Natural
         else:
-            print('xxx')
+            # Calculates total FWHM
+            FWHM[tr] = (
+                out_G['FWHM'][tr]**5
+                + 2.69269 *out_G['FWHM'][tr]**4 *out_L['FWHM'][tr]
+                + 2.42843 *out_G['FWHM'][tr]**3 *out_L['FWHM'][tr]**2
+                + 4.47163 *out_G['FWHM'][tr]**2 *out_L['FWHM'][tr]**3
+                + 0.07842 *out_G['FWHM'][tr] *out_L['FWHM'][tr]**4
+                + out_L['FWHM'][tr]**5
+                )**(1/5) # [Hz]
+
+            # Calculates weighting factor
+            eta = (
+                1.36603 * out_L['FWHM'][tr]/FWHM[tr]
+                - 0.47719 *(out_L['FWHM'][tr]/FWHM[tr])**2
+                + 0.11116 *(out_L['FWHM'][tr]/FWHM[tr])**3
+                )
+
+            # Calculates wavelength mesh
+            lams_min = np.min(
+                (
+                    np.min(out_G['lams_profs_A'][tr,:]), 
+                    np.min(out_L['lams_profs_A'][tr,:])
+                    )
+                ) 
+            lams_max = np.max(
+                (
+                    np.max(out_G['lams_profs_A'][tr,:]), 
+                    np.max(out_L['lams_profs_A'][tr,:])
+                    )
+                )
+
+            # Assured to be symmetric -> contains lambda_0
+            lams_profs_A[tr,:] = np.linspace(lams_min,lams_max,nlamb)
+
+            # Profile shape
+            theta[tr,:] = (
+                eta * interp1d(
+                    out_L['lams_profs_A'][tr,:],
+                    out_L['theta'][tr,:],
+                    bounds_error =False,
+                    fill_value = 0.0
+                    )(lams_profs_A[tr,:])
+                + (1-eta) * interp1d(
+                    out_G['lams_profs_A'][tr,:],
+                    out_G['theta'][tr,:],
+                    bounds_error =False,
+                    fill_value = 0.0
+                    )(lams_profs_A[tr,:])
+                )       
 
     # Output line shape and wavelength mesh
     return {
