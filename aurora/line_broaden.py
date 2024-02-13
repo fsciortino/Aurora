@@ -339,6 +339,13 @@ def _get_Natural(
     ):
     '''
     INPUTS: dphysics -- [dict], necessary physics information
+                i) 'key_options' -- [string], defines how Einstein
+                    coefficient data is indexed
+                    options: 'wavelegth', 'isel'
+                ii) rest of the keys are assumed to relate a float
+                    for the Einstein coefficient to the transition 
+
+                If 'key_options' == 'wavelength'  -->   
                 NOTE: The expected form is keys for each central
                 wavelength of interst with its associated Einstein
                 coefficient as a float. This is so that a user won't
@@ -385,11 +392,20 @@ def _get_Natural(
 
     # Loop over transitions of interest
     for lmb in dphysics.keys():
-        # Finds transitions of interst in ADF15 file
-        ind = np.where(
-            (wave_A >= float(lmb) -tol)
-            & (wave_A <= float(lmb)+tol)
-            )[0]
+        # Error check
+        if lmb == 'key_options':
+            continue
+
+        # If transition defined by central wavelength
+        if dphysics['key_options'] == 'wavelength':
+            # Finds transitions of interst in ADF15 file
+            ind = np.where(
+                (wave_A >= float(lmb) -tol)
+                & (wave_A <= float(lmb)+tol)
+                )[0]
+        # If transition defined by isel index within ADF15 file
+        elif dphysics['key_options'] == 'isel':
+            ind = int(float(lmb) - 1)
 
         # Error check
         if len(ind) == 0:
