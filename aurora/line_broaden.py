@@ -41,8 +41,15 @@ def get_line_broaden(
 
     # Loop over various physics options
     for brd in dbroad.keys():
+        # If one wishes to model Doppler+Natural broadening
+        if brd == 'Voigt':
+            dhsape[brd] = _get_pVoigt(
+                dphysics = dbroad[brd],
+                wave_A = wave_A,
+                )
+
         # If one wishes to include Doppler broadening
-        if brd == 'Doppler':
+        elif brd == 'Doppler':
             dshape[brd] = _get_Doppler(
                 dphysics=dbroad[brd],
                 wave_A=wave_A,
@@ -185,6 +192,91 @@ def _get_Supra(
         'theta': theta,                 # [1/AA], dim(trs,nlamb)
         }
 
+# Calculates pseudo-Voigt broadening profiles
+def _get_pVoigt(
+    # Settings
+    dphysics=None,      # Dictionary of neccessary physics
+    # ADF15 file
+    wave_A=None,
+    ):
+    '''
+    NOTE: Here we implement the pseudo-Voigt method as described in:
+    https://en.wikipedia.org/wiki/Voigt_profile#Pseudo-Voigt_approximation
+        Quoted as accurate within 1%
+
+    INPUTS: dphysics -- [dict], necessary physics information
+                i) 'Ti_eV' -- [float], [eV], local ion temperature
+                ii) 'ion_A' -- [float], [amu], species mass
+                iii) 'key_options' -- [string], defines how Einstein
+                    coefficient data is indexed
+                    options: 'wavelegth', 'isel'
+                iv) rest of the keys are assumed to relate a float
+                    for the Einstein coefficient to the transition
+
+                !!! It is assumed you know, at least very closely,
+                the exact wavelength stored in your ADF15 file
+
+                i.e., If one wishes to explore the impact of Natural
+                broadening on the w, x, y, z lines for He-like Kr, the
+                input dictionary would look like --
+                dphysics = {
+                    '0.9454': 1.529e15, # [Hz], w line
+                    '0.9471': 9.327e10, # [Hz], x line
+                    '0.9518': 3.945e14, # [Hz], y line
+                    '0.9552': 5.715e9,  # [Hz], z line
+                    }
+                    ref: K.M. Aggarwal and F.P. Keenan, 2012 Phys. Scr. 86 035302
+
+                NOTE: Einstein coefficients are decay rates, but measured
+                        in terms of angular frequencies
+
+                NOTE: Transitions missing an Einstein coefficient will 
+                    be treated just as Gaussian from Doppler broadening
+
+            wave_A -- [list], dim(trs,), [AA], 
+                transition central wavelength
+
+    OUTPUTS: [dict], line shape
+                i) 'lam_profs_A' -- [AA], dim(trs,nlamb), 
+                        wavelength mesh for each transition
+                ii) 'theta' -- [1/AA], dim(trs, nlamb),
+                        line shape for each transition
+
+
+    '''
+
+    # Calculates Gaussian part
+    out_G = _get_Doppler(
+        dphysics = dphysics,
+        wave_A = wave_A
+        )
+
+    # Calculates Lorentzian part
+    out_L = _get_Natural(
+        dphysics = dphysics,
+        wave_A = wave_A
+        )
+
+    # Initializes output
+    lams_profs_A = np.zeros((len(wave_A), 101)) # [AA], dim(trs, nlamb)
+    theta = np.zeros((len(wave_A), 101)) # [1/AA], dim(trs, nlamb)
+
+    # Loop over transitions
+    for tr in np.arange(len(wave_A)):
+        # If no Natural broadening data
+        if np.max(out_L['lams_profs_A'][tr,:]) <= 0:
+            lams_profs_A[ii,:] = out_G['lams_profs_A'][ii,:]
+            theta[ii,:] = out_G['theta'][ii,:]
+
+        # If Dopler+Natural
+        else:
+            print('xxx')
+
+    # Output line shape and wavelength mesh
+    return {
+        'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
+        'theta': theta,                 # [1/AA], dim(trs,nlamb)
+        }
 
 # Calculates Doppler broadening
 def _get_Doppler(
@@ -252,12 +344,15 @@ def _get_Natural(
                 broadening on the w, x, y, z lines for He-like Kr, the
                 input dictionary would look like --
                 dphysics = {
-                    '0.9454': 1.529e15, # [Hz], w line
-                    '0.9471': 9.327e10, # [Hz], x line
-                    '0.9518': 3.945e14, # [Hz], y line
-                    '0.9552': 5.715e9,  # [Hz], z line
+                    '0.9454': 1.529e15, # [1/s], w line
+                    '0.9471': 9.327e10, # [1/s], x line
+                    '0.9518': 3.945e14, # [1/s], y line
+                    '0.9552': 5.715e9,  # [1/s], z line
                     }
                     ref: K.M. Aggarwal and F.P. Keenan, 2012 Phys. Scr. 86 035302
+
+                    NOTE: Einstein coefficients are decay rates, but measured
+                        in terms of angular frequencies
 
             wave_A -- [list], dim(trs,), [AA], 
                 transition central wavelength
