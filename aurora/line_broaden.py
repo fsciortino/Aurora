@@ -141,14 +141,14 @@ def _get_Supra(
         # Ion mass
         mass = cnt.m_p * dphysics['ion_A'] # [kg]
 
-        # Slow population FWHM
+        # Slow population variance
         dnu_slow = (
             np.sqrt(2.0 * (dphysics['Ti_eV'] * cnt.e) / mass)
             / cnt. c
             * (cnt.c*1e10 / wave_A)
             ) # [Hz], dim(trs,)
 
-        # Fast population FWHM
+        # Fast population variance
         dnu_fast = (
             np.sqrt(2.0 * (dphysics['Ti_fast_eV'] * cnt.e) / mass)
             / cnt. c
@@ -241,6 +241,8 @@ def _get_pVoigt(
                         wavelength mesh for each transition
                 ii) 'theta' -- [1/AA], dim(trs, nlamb),
                         line shape for each transition
+                iii) 'FWHM' -- [Hz], dim(trs,)
+                        full-width, half-max of line shape
 
 
     '''
@@ -260,13 +262,16 @@ def _get_pVoigt(
     # Initializes output
     lams_profs_A = np.zeros((len(wave_A), 101)) # [AA], dim(trs, nlamb)
     theta = np.zeros((len(wave_A), 101)) # [1/AA], dim(trs, nlamb)
+    FWHM = np.zeros(len(wave_A)) # [Hz], dim(trs,)
 
     # Loop over transitions
     for tr in np.arange(len(wave_A)):
         # If no Natural broadening data
-        if np.max(out_L['lams_profs_A'][tr,:]) <= 0:
-            lams_profs_A[ii,:] = out_G['lams_profs_A'][ii,:]
-            theta[ii,:] = out_G['theta'][ii,:]
+        if np.max(out_L['FWHM'][tr]) <= 0:
+            # Output
+            lams_profs_A[tr,:] = out_G['lams_profs_A'][tr,:]
+            theta[tr,:] = out_G['theta'][tr,:]
+            FWHM[tr] = out_G['FWHM'][tr]
 
         # If Dopler+Natural
         else:
@@ -276,6 +281,7 @@ def _get_pVoigt(
     return {
         'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
         'theta': theta,                 # [1/AA], dim(trs,nlamb)
+        'FWHM': FWHM,                   # [Hz], dim(trs,)
         }
 
 # Calculates Doppler broadening
@@ -298,17 +304,18 @@ def _get_Doppler(
                         wavelength mesh for each transition
                 ii) 'theta' -- [1/AA], dim(trs, nlamb),
                         line shape for each transition
-
-
+                iii) 'FWHM' -- [Hz], dim(trs,)
+                        full-width, half-max of line shape
     '''
 
-    # Doppler broadening FWHM
+    # Doppler broadening variance
     mass = cnt.m_p * dphysics['ion_A'] # [kg]
     dnu = (
         np.sqrt(2.0 * (dphysics['Ti_eV'] * cnt.e) / mass)
         / cnt. c
         * (cnt.c*1e10 / wave_A)
         ) # [Hz], dim(trs,)
+    FWHM = 2 *dnu *np.sqrt(2 *np.log(2)) # FWHM, [Hz], dim(trs,)
 
     # Calculates general Gaussian shape
     lams_profs_A, theta = _calc_Gaussian(
@@ -320,6 +327,7 @@ def _get_Doppler(
     return {
         'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
         'theta': theta,                 # [1/AA], dim(trs,nlamb)
+        'FWHM': FWHM,                   # [Hz], dim(trs,)
         }
 
 # Calculates Natural broadening
@@ -362,13 +370,15 @@ def _get_Natural(
                         wavelength mesh for each transition
                 ii) 'theta' -- [1/AA], dim(trs, nlamb),
                         line shape for each transition
-
+                iii) 'FWHM' -- [Hz], dim(trs,)
+                        full-width, half-max of line shape
 
     '''
 
     # Initializes output
     lams_profs_A = np.zeros((len(wave_A), 101)) # [AA], dim(trs, nlamb)
     theta = np.zeros((len(wave_A), 101)) # [1/AA], dim(trs, nlamb)
+    FWHM = np.zeros((len(wave_A))) # [Hz]
 
     # Tolerance on wavelength match
     tol = 1e-4 # [AA]
@@ -386,14 +396,14 @@ def _get_Natural(
             print('NO TRANSITION FOUND FOR LAMBDA= '+str(lmb))
             continue
 
-        # FWHM
-        dnu = dphysics[lmb]/(2*np.pi) # [Hz]
-
         # Loop over transitions
         for ii in ind:
+            # FWHM
+            FWHM[ii] = dphysics[lmb]/(2*np.pi) # [Hz]
+
             # Calculate Lorentzian shape
             lams_profs_A[ii,:], theta[ii,:] = _calc_Lorentzian(
-                dnu = dnu,
+                dnu = FWHM[ii],
                 wave_A=wave_A[ii],
                 )
 
@@ -401,6 +411,7 @@ def _get_Natural(
     return {
         'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
         'theta': theta,                 # [1/AA], dim(trs,nlamb)
+        'FWHM': FWHM,                   # [Hz], dim(trs,)
         }
 
 # Calculates Instrumental broadening
@@ -449,12 +460,16 @@ def _get_Instru(
                         wavelength mesh for each transition
                 ii) 'theta' -- [1/AA], dim(trs, nlamb),
                         line shape for each transition
-
+                iii) 'FWHM' -- [Hz], dim(trs,)
+                        full-width, half-max of line shape
 
     '''
 
-    # Converts units of FWHM
+    # Converts units of variance
     dnu = dphysics['width_A'] * cnt.c*1e10 /wave_A**2 # [Hz], dim(trs,)
+
+    # Calculates FWHM
+    FWHM = 2*dnu *np.sqrt(2 *np.log(2)) # [Hz], dim(trs,)
 
     # Calculates general Gaussian shape
     lams_profs_A, theta = _calc_Gaussian(
@@ -466,6 +481,7 @@ def _get_Instru(
     return {
         'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
         'theta': theta,                 # [1/AA], dim(trs,nlamb)
+        'FWHM': FWHM,                   # [Hz], dim(trs,)
         }
 
 
@@ -477,7 +493,7 @@ def _get_Instru(
 
 # General Gaussian shape calculator
 def _calc_Gaussian(
-    dnu = None, # [Hz], [float], FWHM
+    dnu = None, # [Hz], [float], variance
     wave_A=None, # [AA], dim(trs,), central wavelength
     # Wavelength mesh controls
     nlamb=101, # [scalar], number of wavelength points
