@@ -9,10 +9,18 @@ Aug. 04, 2023
 '''
 
 # Modules
+import sys
 import numpy as np
 import scipy.constants as cnt
 import scipy
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, splev, splrep
+
+# Non-standard modules
+try:
+    import ChiantiPy.tools.io as io
+    Chianti_avail = True
+except:
+    Chianti_avail = False
 
 __all__ = [
     'get_line_broaden',
@@ -668,6 +676,212 @@ def _calc_Lorentzian(
 
     # Output
     return lams_profs_A, theta
+
+########################################################
+#
+#             2-Photon Line Shape
+#
+#########################################################
+
+# Get 2-photon energy distribution
+def _get_2photon(
+    dphysics = None,
+    wave_A = None,
+    # Data source options
+    use_Chianti = True,
+    use_fit = True,
+    ):
+    '''
+    INPUTS: dphysics -- [dict], necessary physics information
+                i) either 'wavelength' or 'isel', [list]
+                    if 'wavelength' -> Minimum photon wavelength for 2-photon emission
+                        This is want would be stored in the ADF15 file, h*c/ \Delta E_ki
+                    elif 'isel' -> Index for the 2-photon transition PECs as stored in
+                        the ADF15 file
+
+                ii) (optional), 'Znuc' -> Ion nuclear charge
+                    Needed if using ChiantiPy for photon energy distributions
+                iii) (optional), 'nele' -> Number of electrons
+                    Needed if using ChiantiPy for photon energy distributions
+                    NOTE: Only nele = 1 or 2 supported
+
+            wave_A -- [list], dim(trs,), [AA], 
+                transition central wavelength
+
+    OUTPUTS: [dict], line shape
+                i) 'lam_profs_A' -- [AA], dim(trs,nlamb), 
+                        wavelength mesh for each transition
+                ii) 'theta' -- [1/AA], dim(trs, nlamb),
+                        line shape for each transition
+                iii) 'inds' -- dim(trs,)
+                        indices of 2-photon emission PECs in 
+                        ADF15 file
+
+    '''
+
+    # Tolerance on wavelength match
+    tol = 1e-4 # [AA]
+
+    # If searching for the transition by its wavelength
+    if 'wavelength' in dphysics.keys():
+        inds = []
+        for ii in np.arange(len(dphysics['wavelength'])):
+            tmp = np.where(
+                (wave_A >= dphysics['wavelength'][ii] - tol)
+                & (wave_A <= dphysics['wavelength'][ii] +tol)
+                )[0]
+            for tt in tmp:
+                inds.append(tt) # dim(ntrs,)
+
+    # If searching for the transition by its indices
+    elif 'isel' in dphysics.keys():
+        inds = dphysics['isel'] # dim(ntrs,)
+
+    # Error check
+    if len(inds) == 0:
+        print('NO TRANSITION FOUND FOR LAMBDA= '+str(lmb))
+        sys.exit(1)
+
+    # Initializes output
+    lams_profs_A = np.zeros((len(inds),nlamb)) # [AA], dim(ntrs,nlamb)
+    theta = np.zeros((len(inds),nlamb))# [1/AA], dim(ntrs,nlamb)
+
+    # Fit grid, [], dim(nlamb,)
+    y_grid = np.linspace(0.01, 0.99, nlamb)
+
+    # Loop over transitions
+    for ind_t, ind_y in enumerate(inds):
+        # Get phton energy distribution from ChiantiPy
+        if use_Chianti and Chianti_avail:
+            print('Getting 2-photon distribution from ChiantiPy')
+            lams_profs_A[ind_t,:], theta[ind_t,:] = _2photon_Chianti(
+                lamb0 = wave_A[ind_y],
+                y_grid = y_grid,
+                nele = dphysics['nele'],
+                Znuc = dphysics['Znuc'],
+                ) # [AA], [1/AA], dim(nlmabda,)
+
+        # Get photon energy distribution for analytic fit
+        elif use_fit:
+            print('Getting 2-photon distribution from analytic fit')
+            lams_profs_A[ind_t,:], theta[ind_t,:] = _2photon_fit(
+                lamb0 = wave_A[ind_y],
+                y_grid = y_grid,
+                ) # [AA], [1/AA], dim(nlmabda,)
+
+        # Error check
+        else:
+            print('No database for 2-photon distribution selected')
+            sys.exit(1)
+
+    # Output
+    return {
+        'lams_profs_A': lams_profs_A,     # [AA], dim(ntrs, nlambda)
+        'theta': theta,                 # [1/AA]. dim(ntrs, nlambda)
+        'ind_2photon': inds,
+        }
+
+# Get 2-photon energy distribution from analytic fit
+def _2photon_fit(
+    # Wavelength data
+    lamb0 = None,   # Minimum wavelength of a photon
+    y_grid = None,  # Reduced wavelength grid, []
+    ):
+    '''
+    DISCLAIMER:
+        What's in this function is heavily inspired by the open-source code
+            PyAtomDB, specficially `pyatomdb.calc_two_phot()`
+            https://github.com/AtomDB/pyatomdb
+            http://www.atomdb.org/
+
+        Utilized for the photon energy distribution is the analytic fit
+        presented for H-like 2-photon emission in
+            H. Nussbaumer & W. Schmutz -- Astron. & Astrophys. 1984, 138, 495-496
+        The reported accuracy of the fit is <0.6% for 0.01 < \nu /\nu_0 < 0.99
+            \nu being the photon frequency
+            \nu_0 being the maximum photon frequency = \Delta E_ki/ h
+
+            We assume emission outside this bounds is effectively zero
+
+        Note that this function can also be used for He-like 2-photon emission
+        per the results of: (see Figure 5)
+            A. Derevianko & W.R. Johnson -- Phys. Rev. A 1997, vol 56, num 2
+        The authors show that the He-like photon distribution can be well
+        approximated using the H-like distribution, particularly for Z>20
+
+    '''
+
+    # Fit coefficients
+    alpha = 0.88
+    beta = 1.53
+    gamma = 0.8
+    CC = 202.0 # [1/s]
+    A_2qH = 8.2249 # [1/s], neutral hydrogen 2-photon emission rate
+
+    # Calculates photon distribution
+    xx = y_grid*(1-y_grid)
+    zz = (4*xx)**gamma
+    A_y = CC *(
+        xx*(1-zz)
+        + alpha *xx**beta *zz
+        ) # [1/s]
+
+    # Normalizes photon distribution
+    # NOTE: Technical also need R_Z/R_H, but even for Z=26,
+    #   this is a 1.0005% error, so we'll ignore it
+    A_y /= A_2qH # []
+
+    # Output, [AA], [1/AA], dim(nlambda,)
+    return lamb0/y_grid, y_grid**2/lamb0 *A_y
+
+# Get 2-photn energy distribution from ChiantiPy
+def _2photon_Chianti(
+    # Wavelength data
+    lamb0 = None,   # Minimum wavelength of a photon
+    y_grid = None,  # Reduced wavelength grid, []
+    # Ion data
+    nele = None,    # Number of electrons
+    Znuc = None,    # Nuclear charge
+    ):
+    '''
+    DISCLAIMER:
+        What's in this function is heavily inspired by the open-source code
+            ChiantiPy, specifically `chiantipy.core.Ion.twoPhoton()`
+
+        Included in the Chianti database is data tables to interpolate the
+        photon energy distribution as well as Einstein coefficients for Z <=30
+
+        The reference for the 2-photon implementation in Chianti suggests that
+        the fits are high-accuracy and extrapolation to higher-Z should be fine
+        as there little change to the H-like distribution for Z>28 and the He-like
+        distribution for Z>10
+            Ref -- P.R. Young et al, ApJSS, 144, 135-152, 2003
+
+    '''
+
+    # Error check
+    if Znuc > 30:
+        print('Nuclear charge outside data table range, using distribution for Z=30')
+        Znuc = 30
+
+    # Loads H-like data table
+    if nele == 1:
+        data = io.twophotonHRead()
+    # Loads He-like data table
+    elif nele == 2:
+        data = io.twophotonHeRead()
+
+    # Interpolates data, []
+    distr1 = splrep(data['y0'], data['psi0'][Znuc-1], s=0) 
+
+    # Calcaultes photon distribution, # [1/AA]
+    distr = y_grid**2/lamb0 *splev(y_grid, distr1)
+    if nele == 1:
+        distr /= data['asum'][Znuc-1]
+
+    # Output, [AA], [1/AA], dim(nlambda,)
+    return lamb0/y_grid, distr
+
 
 ########################################################
 #
