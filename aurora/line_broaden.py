@@ -41,6 +41,12 @@ def get_line_broaden(
     # ADF15 file
     wave_A=None,        # [AA], dim(trs,), central wavelengths
     ):
+    '''
+    Key options for broadening mechanisms:
+        i) '2-photon', ii) 'Voigt', iii) 'Doppler', 
+        iv) 'Natural', v) 'Instrumental', vi) 'Suprathermal_Ions'
+
+    '''
 
     # Initializes ouput
     line_shape = 0
@@ -48,11 +54,21 @@ def get_line_broaden(
     # Initializes storage
     dshape = {}
 
+    # If relevant, finds 2-photon emission first
+    if '2-photon' in dbroad.keys():
+        dshape['2-photon'] = _get_2photon(
+            dphysics = dbroad['2-photon'],
+            wave_A = wave_A,
+            )
+
     # Loop over various physics options
     for brd in dbroad.keys():
+        if brd == '2-photon':
+            continue
+
         # If one wishes to model Doppler+Natural broadening
         if brd == 'Voigt':
-            dhsape[brd] = _get_pVoigt(
+            dshape[brd] = _get_pVoigt(
                 dphysics = dbroad[brd],
                 wave_A = wave_A,
                 )
@@ -85,15 +101,40 @@ def get_line_broaden(
                 wave_A=wave_A,
                 )
 
+        # Error check
+        else:
+            print('Undefined desired broadening mechanism')
+            sys.exit(1)
+
+    # Broadening mechanisms
+    brds = list(dshape.keys())
+    flag_2q = False
+    if '2-photon' in brds:
+        brds.remove('2-photon')
+        flag_2q = True
+
     # If only considering one broadening mech, skips convolution
-    if len(dshape.keys()) == 1:
-        brd = list(dshape.keys())[0]
-        lams_profs_A = dshape[brd]['lams_profs_A'] # [AA], dim(trs,nlamb)
-        theta = dshape[brd]['theta'] # [1/AA], dim(trs,nlamb)
+    if len(brds) == 1:
+        lams_profs_A = dshape[brds[0]]['lams_profs_A'] # [AA], dim(trs,nlamb)
+        theta = dshape[brds[0]]['theta'] # [1/AA], dim(trs,nlamb)
 
     # Convolutes line shapes
-    else:
+    elif len(brds) > 1:
         lams_profs_A, theta = _convolve(dshape=dshape) # dim(trs,nlamb)
+
+    # Error check
+    elif flag_2q:
+        lams_profs_A = np.zeros(dshape['2-photon']['theta'].shape)
+        theta = np.zeros(dshape['2-photon']['theta'].shape)
+    else:
+        print('No Broadening mechanisms defined')
+        sys.exit(1)
+
+    # Overrides line shapes for 2-photon shape
+    if flag_2q:
+        for ii, tr in enumerate(dshape['2-photon']['ind_2photon']):
+            lams_profs_A[tr,:] = dshape['2-photon']['lams_profs_A'][ii,:]
+            theta[tr,:] = dshape['2-photon']['theta'][ii,:]
 
     # Output
     return lams_profs_A, theta
@@ -904,6 +945,8 @@ def _convolve(
 
     # Broadening mechanisms
     mechs = list(dshape.keys())
+    if '2-photon' in mechs:
+        mechs.remove('2-photon')
 
     # Initializes output
     lams_profs_A = np.zeros(dshape[mechs[0]]['lams_profs_A'].shape) # [AA], dim(trs, nlamb)
