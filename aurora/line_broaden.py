@@ -788,7 +788,7 @@ def _get_2photon(
     theta = np.zeros((len(inds),nlamb))# [1/AA], dim(ntrs,nlamb)
 
     # Fit grid, [], dim(nlamb,)
-    y_grid = np.linspace(0.01, 0.99, nlamb)
+    y_grid = np.linspace(0.99, 0.01, int(nlamb-1))
 
     # Loop over transitions
     for ind_t, ind_y in enumerate(inds):
@@ -809,6 +809,10 @@ def _get_2photon(
                 lamb0 = wave_A[ind_y],
                 y_grid = y_grid,
                 ) # [AA], [1/AA], dim(nlmabda,)
+
+        # Adds bound at lambda = lambda_0
+        np.insert(lams_profs_A[ind_t,:], 0, wave_ind[ind_y])
+        np.insert(theta[ind_t,:], 0, 0)
 
         # Error check
         else:
