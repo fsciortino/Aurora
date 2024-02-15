@@ -18,7 +18,8 @@ __all__ = [
     'get_line_broaden',
     ]
 
-
+# Number of wavelength mesh points
+nlamb=101
 
 ########################################################
 #
@@ -220,6 +221,9 @@ def _get_pVoigt(
                 broadening on the w, x, y, z lines for He-like Kr, the
                 input dictionary would look like --
                 dphysics = {
+                    'Ti_eV': 10e3,
+                    'ion_A': 83.798,
+                    'key_options': 'wavelength',
                     '0.9454': 1.529e15, # [Hz], w line
                     '0.9471': 9.327e10, # [Hz], x line
                     '0.9518': 3.945e14, # [Hz], y line
@@ -415,6 +419,7 @@ def _get_Natural(
                 broadening on the w, x, y, z lines for He-like Kr, the
                 input dictionary would look like --
                 dphysics = {
+                    'key_options': 'wavelength,
                     '0.9454': 1.529e15, # [1/s], w line
                     '0.9471': 9.327e10, # [1/s], x line
                     '0.9518': 3.945e14, # [1/s], y line
@@ -439,8 +444,8 @@ def _get_Natural(
     '''
 
     # Initializes output
-    lams_profs_A = np.zeros((len(wave_A), 101)) # [AA], dim(trs, nlamb)
-    theta = np.zeros((len(wave_A), 101)) # [1/AA], dim(trs, nlamb)
+    lams_profs_A = np.zeros((len(wave_A), nlamb)) # [AA], dim(trs, nlamb)
+    theta = np.zeros((len(wave_A), nlamb)) # [1/AA], dim(trs, nlamb)
     FWHM = np.zeros((len(wave_A))) # [Hz]
 
     # Tolerance on wavelength match
@@ -449,7 +454,7 @@ def _get_Natural(
     # Loop over transitions of interest
     for lmb in dphysics.keys():
         # Error check
-        if lmb == 'key_options':
+        if lmb in ['key_options', 'Ti_eV', 'ion_A']:
             continue
 
         # If transition defined by central wavelength
@@ -461,7 +466,7 @@ def _get_Natural(
                 )[0]
         # If transition defined by isel index within ADF15 file
         elif dphysics['key_options'] == 'isel':
-            ind = int(float(lmb) - 1)
+            ind = [int(float(lmb) -1)]
 
         # Error check
         if len(ind) == 0:
@@ -580,7 +585,6 @@ def _calc_Gaussian(
     dnu = None, # [Hz], [float], variance
     wave_A=None, # [AA], dim(trs,), central wavelength
     # Wavelength mesh controls
-    nlamb=101, # [scalar], number of wavelength points
     nstd = 5,    # number of standard deviations in wavelength mesh
     ):
     '''
@@ -627,7 +631,6 @@ def _calc_Lorentzian(
     dnu = None, # [Hz], [float], FWHM
     wave_A=None, # [AA], [float], central wavelength
     # Wavelength mesh controls
-    nlamb=101,  # number of wavelength points
     nstd = 20, # number of standard deviations in wavelength mesh
     ):
     '''
