@@ -341,29 +341,27 @@ def _get_Voigt(
                     theta[tr,:],
                     FWHM[tr] 
                     ) = _calc_Voigt_scipy(
-                        FWHM_G = out_G['FWHM'][tr,:],
-                        FWHM_L = out_L['FWHM'][tr,:],
+                        FWHM_G = out_G['FWHM'][tr],
+                        FWHM_L = out_L['FWHM'][tr],
                         lambda0 = wave_A[tr]
                         )
 
             # Use pseudo-Voigt weighted sum function
             elif use_pseudo:
                 (
-                    lambs_profs_A[tr,:],
+                    lams_profs_A[tr,:],
                     theta[tr,:],
                     FWHM[tr]
                     ) = _calc_Voigt_pseudo(
-                        FWHM_G = out_G['FWHM'][tr,:],
+                        FWHM_G = out_G['FWHM'][tr],
                         lams_G = out_G['lams_profs_A'][tr,:],
                         theta_G = out_G['theta'][tr,:],
-                        FWHM_L = out_L['FWHM'][tr,:],
+                        FWHM_L = out_L['FWHM'][tr],
                         lams_L = out_L['lams_profs_A'][tr,:],
                         theta_L = out_L['theta'][tr,:],
                         lambda0 = wave_A[tr]
                         )
  
-    print('Voigt')
-    print(FWHM)
     # Output line shape and wavelength mesh
     return {
         'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
@@ -411,8 +409,6 @@ def _get_Doppler(
         wave_A=wave_A,
         )
 
-    print('Doppler')
-    print(FWHM)
     # Output line shape and wavelength mesh
     return {
         'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
@@ -513,8 +509,7 @@ def _get_Natural(
                 dnu = FWHM[ii],
                 wave_A=wave_A[ii],
                 )
-    print('Natural')
-    print(FWHM)
+    
     # Output line shape and wavelength mesh
     return {
         'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
@@ -651,6 +646,9 @@ def _calc_Voigt_scipy(
             +cnt.c*1e10/lambda0
             )
         ) # [AA]
+
+    # Ensure normalization
+    theta /= np.trapz(theta,mesh_A)
 
     # Output
     return mesh_A, theta, FWHM_V
