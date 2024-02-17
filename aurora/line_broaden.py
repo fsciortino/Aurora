@@ -14,6 +14,7 @@ import numpy as np
 import scipy.constants as cnt
 import scipy
 from scipy.interpolate import interp1d, splev, splrep
+from scipy.special import voigt_profile as vp
 
 # Non-standard modules
 try:
@@ -40,6 +41,9 @@ def get_line_broaden(
     dbroad=None,        # Dictionary storing various broadening mechs
     # ADF15 file
     wave_A=None,        # [AA], dim(trs,), central wavelengths
+    # TMP FOR DEBUG!!!!!
+    use_scipy = True,
+    use_pseudo = False,
     ):
     '''
     Key options for broadening mechanisms:
@@ -68,9 +72,12 @@ def get_line_broaden(
 
         # If one wishes to model Doppler+Natural broadening
         if brd == 'Voigt':
-            dshape[brd] = _get_pVoigt(
+            dshape[brd] = _get_Voigt(
                 dphysics = dbroad[brd],
                 wave_A = wave_A,
+                # TMP FOR DEBUGGING !!!!
+                use_scipy=use_scipy,
+                use_pseudo=use_pseudo,
                 )
 
         # If one wishes to include Doppler broadening
@@ -242,18 +249,17 @@ def _get_Supra(
         'theta': theta,                 # [1/AA], dim(trs,nlamb)
         }
 
-# Calculates pseudo-Voigt broadening profiles
-def _get_pVoigt(
+# Calculates Voigt broadening profiles
+def _get_Voigt(
     # Settings
     dphysics=None,      # Dictionary of neccessary physics
     # ADF15 file
     wave_A=None,
+    # Data source options
+    use_scipy = True,
+    use_pseudo = False,
     ):
     '''
-    NOTE: Here we implement the pseudo-Voigt method as described in:
-    https://en.wikipedia.org/wiki/Voigt_profile#Pseudo-Voigt_approximation
-        Quoted as accurate within 1%
-
     INPUTS: dphysics -- [dict], necessary physics information
                 i) 'Ti_eV' -- [float], [eV], local ion temperature
                 ii) 'ion_A' -- [float], [amu], species mass
@@ -328,55 +334,34 @@ def _get_pVoigt(
 
         # If Dopler+Natural
         else:
-            # Calculates total FWHM
-            FWHM[tr] = (
-                out_G['FWHM'][tr]**5
-                + 2.69269 *out_G['FWHM'][tr]**4 *out_L['FWHM'][tr]
-                + 2.42843 *out_G['FWHM'][tr]**3 *out_L['FWHM'][tr]**2
-                + 4.47163 *out_G['FWHM'][tr]**2 *out_L['FWHM'][tr]**3
-                + 0.07842 *out_G['FWHM'][tr] *out_L['FWHM'][tr]**4
-                + out_L['FWHM'][tr]**5
-                )**(1/5) # [Hz]
-
-            # Calculates weighting factor
-            eta = (
-                1.36603 * out_L['FWHM'][tr]/FWHM[tr]
-                - 0.47719 *(out_L['FWHM'][tr]/FWHM[tr])**2
-                + 0.11116 *(out_L['FWHM'][tr]/FWHM[tr])**3
-                )
-            print(eta)
-            # Calculates wavelength mesh
-            lams_min = np.min(
+            # Use scipy's Voigt function
+            if use_scipy:
                 (
-                    np.min(out_G['lams_profs_A'][tr,:]), 
-                    np.min(out_L['lams_profs_A'][tr,:])
-                    )
-                ) 
-            lams_max = np.max(
+                    lams_profs_A[tr,:],
+                    theta[tr,:],
+                    FWHM[tr] 
+                    ) = _calc_Voigt_scipy(
+                        FWHM_G = out_G['FWHM'][tr,:],
+                        FWHM_L = out_L['FWHM'][tr,:],
+                        lambda0 = wave_A[tr]
+                        )
+
+            # Use pseudo-Voigt weighted sum function
+            elif use_pseudo:
                 (
-                    np.max(out_G['lams_profs_A'][tr,:]), 
-                    np.max(out_L['lams_profs_A'][tr,:])
-                    )
-                )
-
-            # Assured to be symmetric -> contains lambda_0
-            lams_profs_A[tr,:] = np.linspace(lams_min,lams_max,nlamb)
-
-            # Profile shape
-            theta[tr,:] = (
-                eta * interp1d(
-                    out_L['lams_profs_A'][tr,:],
-                    out_L['theta'][tr,:],
-                    bounds_error =False,
-                    fill_value = 0.0
-                    )(lams_profs_A[tr,:])
-                + (1-eta) * interp1d(
-                    out_G['lams_profs_A'][tr,:],
-                    out_G['theta'][tr,:],
-                    bounds_error =False,
-                    fill_value = 0.0
-                    )(lams_profs_A[tr,:])
-                )       
+                    lambs_profs_A[tr,:],
+                    theta[tr,:],
+                    FWHM[tr]
+                    ) = _calc_Voigt_pseudo(
+                        FWHM_G = out_G['FWHM'][tr,:],
+                        lams_G = out_G['lams_profs_A'][tr,:],
+                        theta_G = out_G['theta'][tr,:],
+                        FWHM_L = out_L['FWHM'][tr,:],
+                        lams_L = out_L['lams_profs_A'][tr,:],
+                        theta_L = out_L['theta'][tr,:],
+                        lambda0 = wave_A[tr]
+                        )
+ 
     print('Voigt')
     print(FWHM)
     # Output line shape and wavelength mesh
@@ -625,6 +610,120 @@ def _get_Instru(
 #             Line Shapes
 #
 #########################################################
+
+# Voigt profile calculator using scipy
+def _calc_Voigt_scipy(
+    FWHM_G = None,      # [Hz], Gaussian-part full-width, half-max
+    FWHM_L = None,      # [Hz], Lorentzian-part full-width, half-max
+    lambda0 = None,     # [AA], Central wavelength
+    ):
+
+    # Estimate for Voigt full-width, half-max
+    FWHM_V = (
+        0.5346*FWHM_L 
+        + np.sqrt(
+            0.2166*FWHM_L**2
+            + FWHM_G**2
+            )
+        ) # [Hz] 
+
+    # Non-dimensionalized mesh
+    mesh = np.linspace(3,-3,nlamb)
+
+    # Non-dimensionalized Gaussian-part variance
+    sig = FWHM_G/FWHM_V /(2*np.sqrt(2*np.log(2)))
+
+    # Non-dimensionalized Lorentzian-part half-width, half-max
+    gam = FWHM_L/FWHM_V /2
+
+    # Voigt porfile
+    theta = (
+        vp(mesh,sig,gam) # []
+        /FWHM_V
+        * cnt.c*1e10/lambda0**2
+        ) # [1/AA], dim(nlamb,)
+
+    # Dimensionalized mesh
+    mesh_A = (
+        cnt.c * 1e10
+        /(
+            FWHM_V*mesh
+            +cnt.c*1e10/lambda0
+            )
+        ) # [AA]
+
+    # Output
+    return mesh_A, theta, FWHM_V
+
+# Voigt profile calculator using pseudo-Voigt weighted sum method
+def _calc_Voigt_pseudo(
+    FWHM_G = None,      # [Hz], Gaussian-part full-width, half-max
+    lams_G = None,      # [AA], Gaussian-part wavelength mesh
+    theta_G = None,     # [1/AA], Gaussian-part distribution
+    FWHM_L = None,      # [Hz], Lorentzian-part full-width, half-max
+    lams_L = None,      # [AA], Lorentzian-part wavelength mesh
+    theta_L = None,     # [1/AA], Lorentzian-part distribution
+    lambda0 = None,     # [AA], Central wavelength
+    ):
+    '''
+    NOTE: Here we implement the pseudo-Voigt method as described in:
+    https://en.wikipedia.org/wiki/Voigt_profile#Pseudo-Voigt_approximation
+        Quoted as accurate within 1%
+
+    '''
+
+     # Calculates Voigt FWHM
+    FWHM_V = (
+        FWHM_G**5
+        + 2.69269 *FWHM_G**4 *FWHM_L
+        + 2.42843 *FWHM_G**3 *FWHM_L**2
+        + 4.47163 *FWHM_G**2 *FWHM_L**3
+        + 0.07842 *FWHM_G *FWHM_L**4
+        + FWHM_L**5
+        )**(1/5) # [Hz]
+
+    # Calculates weighting factor
+    eta = (
+        1.36603 * FWHM_L/FWHM_V
+        - 0.47719 *(FWHM_L/FWHM_V)**2
+        + 0.11116 *(FWHM_L/FWHM_V)**3
+        )
+
+    # Calculates wavelength mesh
+    lams_min = np.min(
+        (
+            np.min(lams_G), 
+            np.min(lams_L)
+            )
+        ) 
+    lams_max = np.max(
+        (
+            np.max(lams_G), 
+            np.max(lams_L)
+            )
+        )
+
+    # Assured to be symmetric -> contains lambda_0
+    lams_V = np.linspace(lams_min,lams_max,nlamb)
+
+    # Profile shape
+    theta= (
+        eta * interp1d(
+            lams_L,
+            theta_L,
+            bounds_error =False,
+            fill_value = 0.0
+            )(lams_V)
+        + (1-eta) * interp1d(
+            lams_G,
+            theta_G,
+            bounds_error =False,
+            fill_value = 0.0
+            )(lams_V)
+        )    
+
+    # Output, [AA], [1/AA], [Hz], dim(nlambda,)
+    return lams_V, theta, FWHM_V 
 
 # General Gaussian shape calculator
 def _calc_Gaussian(
