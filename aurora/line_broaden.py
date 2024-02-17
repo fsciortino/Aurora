@@ -136,7 +136,7 @@ def get_line_broaden(
             lams_profs_A[tr,:] = dshape['2-photon']['lams_profs_A'][ii,:]
             theta[tr,:] = dshape['2-photon']['theta'][ii,:]
 
-    # Output
+    # Output, [AA], [1/AA], dim(ntrs, nlambda)
     return lams_profs_A, theta
 
 
@@ -317,14 +317,6 @@ def _get_pVoigt(
     theta = np.zeros((len(wave_A), nlamb)) # [1/AA], dim(trs, nlamb)
     FWHM = np.zeros(len(wave_A)) # [Hz], dim(trs,)
 
-    # Init wavelength mesh resolution
-    nlamb = np.max(
-        (
-            out_L['theta'].shape[1],
-            out_G['theta'].shape[1]
-            )
-        )
-
     # Loop over transitions
     for tr in np.arange(len(wave_A)):
         # If no Natural broadening data
@@ -352,7 +344,7 @@ def _get_pVoigt(
                 - 0.47719 *(out_L['FWHM'][tr]/FWHM[tr])**2
                 + 0.11116 *(out_L['FWHM'][tr]/FWHM[tr])**3
                 )
-
+            print(eta)
             # Calculates wavelength mesh
             lams_min = np.min(
                 (
@@ -385,7 +377,8 @@ def _get_pVoigt(
                     fill_value = 0.0
                     )(lams_profs_A[tr,:])
                 )       
-
+    print('Voigt')
+    print(FWHM)
     # Output line shape and wavelength mesh
     return {
         'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
@@ -424,7 +417,8 @@ def _get_Doppler(
         / cnt. c
         * (cnt.c*1e10 / wave_A)
         ) # [Hz], dim(trs,)
-    FWHM = 2 *dnu *np.sqrt(2 *np.log(2)) # FWHM, [Hz], dim(trs,)
+    # NOTE: Factor of sqrt(2) already accounted for in dnu
+    FWHM = 2*dnu *np.sqrt(np.log(2)) # FWHM, [Hz], dim(trs,)
 
     # Calculates general Gaussian shape
     lams_profs_A, theta = _calc_Gaussian(
@@ -432,6 +426,8 @@ def _get_Doppler(
         wave_A=wave_A,
         )
 
+    print('Doppler')
+    print(FWHM)
     # Output line shape and wavelength mesh
     return {
         'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
@@ -532,7 +528,8 @@ def _get_Natural(
                 dnu = FWHM[ii],
                 wave_A=wave_A[ii],
                 )
-
+    print('Natural')
+    print(FWHM)
     # Output line shape and wavelength mesh
     return {
         'lams_profs_A': lams_profs_A,   # [AA], dim(trs,nlamb)
@@ -631,8 +628,8 @@ def _get_Instru(
 
 # General Gaussian shape calculator
 def _calc_Gaussian(
-    dnu = None, # [Hz], [float], variance
-    wave_A=None, # [AA], dim(trs,), central wavelength
+    dnu = None, # [Hz], dim(ntrs,), variance
+    wave_A=None, # [AA], dim(ntrs,), central wavelength
     # Wavelength mesh controls
     nstd = 5,    # number of standard deviations in wavelength mesh
     ):
@@ -715,7 +712,7 @@ def _calc_Lorentzian(
     # Fixes units
     theta *= (cnt.c*1e10)/wave_A**2 # [1/AA]
 
-    # Output
+    # Output, dim(nlambda,)
     return lams_profs_A, theta
 
 ########################################################
@@ -810,14 +807,14 @@ def _get_2photon(
                 y_grid = y_grid,
                 ) # [AA], [1/AA], dim(nlmabda,)
 
-        # Adds bound at lambda = lambda_0
-        np.insert(lams_profs_A[ind_t,:], 0, wave_ind[ind_y])
-        np.insert(theta[ind_t,:], 0, 0)
-
         # Error check
         else:
             print('No database for 2-photon distribution selected')
             sys.exit(1)
+
+        # Adds bound at lambda = lambda_0
+        np.insert(lams_profs_A[ind_t,:], 0, wave_ind[ind_y])
+        np.insert(theta[ind_t,:], 0, 0)
 
     # Output
     return {
@@ -956,9 +953,6 @@ def _convolve(
     lams_profs_A = np.zeros(dshape[mechs[0]]['lams_profs_A'].shape) # [AA], dim(trs, nlamb)
     theta = np.zeros(dshape[mechs[0]]['lams_profs_A'].shape) # [1/AA], dim(trs,nlamb)
 
-    # Number of wavelength points
-    nlamb = dshape[mechs[0]]['lams_profs_A'].shape[1]
-
     # Loop over transitions
     for trs in np.arange(dshape[mechs[0]]['lams_profs_A'].shape[0]):
         # Handling if Natural broadening wasn't included for this transition
@@ -984,8 +978,6 @@ def _convolve(
             for bb in mechs_tmp:
                 lams_min = np.min((lams_min, np.min(dshape[bb]['lams_profs_A'][trs,:]))) 
                 lams_max = np.max((lams_max, np.max(dshape[bb]['lams_profs_A'][trs,:])) )
-
-                nlamb = np.max((nlamb, dshape[bb]['lams_profs_A'].shape[1]))
 
             # Assured to be symmetric -> contains lambda_0
             lams_profs_A[trs,:] = np.linspace(lams_min,lams_max,nlamb)
