@@ -870,7 +870,7 @@ def _get_2photon(
 
     # If searching for the transition by its indices
     elif 'isel' in dphysics.keys():
-        inds = dphysics['isel'] # dim(ntrs,)
+        inds = [int(xx-1) for xx in dphysics['isel']] # dim(ntrs,)
 
     # Error check
     if len(inds) == 0:
@@ -889,7 +889,7 @@ def _get_2photon(
         # Get phton energy distribution from ChiantiPy
         if use_Chianti and Chianti_avail:
             print('Getting 2-photon distribution from ChiantiPy')
-            lams_profs_A[ind_t,:], theta[ind_t,:] = _2photon_Chianti(
+            lams_profs_A[ind_t,1:], theta[ind_t,1:] = _2photon_Chianti(
                 lamb0 = wave_A[ind_y],
                 y_grid = y_grid,
                 nele = dphysics['nele'],
@@ -899,7 +899,7 @@ def _get_2photon(
         # Get photon energy distribution for analytic fit
         elif use_fit:
             print('Getting 2-photon distribution from analytic fit')
-            lams_profs_A[ind_t,:], theta[ind_t,:] = _2photon_fit(
+            lams_profs_A[ind_t,1:], theta[ind_t,1:] = _2photon_fit(
                 lamb0 = wave_A[ind_y],
                 y_grid = y_grid,
                 ) # [AA], [1/AA], dim(nlmabda,)
@@ -910,8 +910,7 @@ def _get_2photon(
             sys.exit(1)
 
         # Adds bound at lambda = lambda_0
-        np.insert(lams_profs_A[ind_t,:], 0, wave_ind[ind_y])
-        np.insert(theta[ind_t,:], 0, 0)
+        lams_profs_A[ind_t,0] = wave_A[ind_y]
 
     # Output
     return {
@@ -997,18 +996,17 @@ def _2photon_Chianti(
             Ref -- P.R. Young et al, ApJSS, 144, 135-152, 2003
 
     '''
-
-    # Error check
-    if Znuc > 30:
-        print('Nuclear charge outside data table range, using distribution for Z=30')
-        Znuc = 30
-
     # Loads H-like data table
     if nele == 1:
         data = io.twophotonHRead()
     # Loads He-like data table
     elif nele == 2:
         data = io.twophotonHeRead()
+
+    # Error check
+    if Znuc > len(data['psi0']):
+        print('Nuclear charge outside data table range, using distribution for Z=%0d'%(len(data['psi0'])))
+        Znuc = len(data['psi0'])
 
     # Interpolates data, []
     distr1 = splrep(data['y0'], data['psi0'][Znuc-1], s=0) 
