@@ -1056,7 +1056,7 @@ def plot_pec(transition, ax=None, plot_3d=False):
 
 
 def get_photon_emissivity(
-    adf15, lam, ne_cm3, Te_eV, imp_density, n0_cm3=0, meta_ind=None
+    adf15, lam, ne_cm3, Te_eV, imp_density, n0_cm3=0, meta_ind=None, isel=None
 ):
     r"""Evaluate PEC coefficients and return all components of intensity saved in an ADF15 file in units of :math:`ph/s`.
 
@@ -1097,26 +1097,43 @@ def get_photon_emissivity(
 
     line_emiss = {}  # ph/s
 
-    trs_line = adf15.loc[adf15["lambda [A]"] == lam]
-    for typ in trs_line["type"].unique():
+    if isel is None:
+        trs_line = adf15.loc[adf15["lambda [A]"] == lam]
 
-        line_emiss[typ] = np.zeros_like(ne_cm3)
-        trs_line_type = trs_line.loc[trs_line["type"] == typ]
+        for typ in trs_line["type"].unique():
 
-        for m in trs_line_type["indm"]:
-            log10pec_fun = trs_line_type.loc[trs_line_type["indm"] == m][
-                "log10 PEC fun"
-            ].iloc[0]
+            line_emiss[typ] = np.zeros_like(ne_cm3)
+            trs_line_type = trs_line.loc[trs_line["type"] == typ]
 
-            emiss = 10 ** log10pec_fun.ev(lne, lte)
-            emiss *= imp_density[meta_ind.index((Z + source[typ], m))]
+            for m in trs_line_type["indm"]:
+                log10pec_fun = trs_line_type.loc[trs_line_type["indm"] == m][
+                    "log10 PEC fun"
+                ].iloc[0]
 
-            if typ == "chexc":
-                emiss *= n0_cm3
-            else:
-                emiss *= ne_cm3
-            # sum contributions from all metastables
-            line_emiss[typ] += emiss
+                emiss = 10 ** log10pec_fun.ev(lne, lte)
+                emiss *= imp_density[meta_ind.index((Z + source[typ], m))]
+
+                if typ == "chexc":
+                    emiss *= n0_cm3
+                else:
+                    emiss *= ne_cm3
+                # sum contributions from all metastables
+                line_emiss[typ] += emiss
+
+    else:
+        log10pec_fun = adf15['log10 PEC fun'].iloc[isel]
+        typ = adf15['type'].iloc[isel]
+        m = adf15['indm'].iloc[isel]
+
+        emiss = 10 ** log10pec_fun.ev(lne, lte)
+        emiss *= imp_density[meta_ind.index((Z + source[typ], m))]
+
+        if typ == "chexc":
+            emiss *= n0_cm3
+        else:
+            emiss *= ne_cm3
+        # sum contributions from all metastables
+        line_emiss[typ] = emiss
 
     return line_emiss
 
@@ -1275,7 +1292,7 @@ def get_local_spectrum(
     line_emiss = []
     for ii, lam in enumerate(trs["lambda [A]"]):
         line_emiss.append(
-            get_photon_emissivity(trs, lam, ne_cm3, Te_eV, imp_density, n0_cm3)
+            get_photon_emissivity(trs, lam, ne_cm3, Te_eV, imp_density, n0_cm3, isel=ii)
         )
 
     # Defaults to just Doppler as broadening mechanism
@@ -1622,7 +1639,11 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
     cols = iter(plt.cm.rainbow(np.linspace(0, 1, len(pec_files))))
 
     # use different line styles for different populating processes
-    proc_ls = {"ioniz": "o-.", "excit": "o-", "recom": "o--"}
+    proc_ls = {
+        'ioniz': 'o-.', 'ionise': 'o-.',
+        'excit': 'o-', 
+        'recom': 'o--', 'recomb': 'o--', 'drsat': 'o--'
+        }
 
     def _plot_line(tr, mult_val, ymin, ymax, c):
         log10pec_fun = tr["log10 PEC fun"].iloc[0]
