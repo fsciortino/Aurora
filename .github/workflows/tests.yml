@@ -13,7 +13,7 @@ jobs:
       matrix:
         build_command: ["python setup.py develop",
                         "pip install .",
-                        "pip install --editable .",
+                        #"pip install --editable .", # FIXME: see issue #98
                         "python setup.py install",
                         # "echo 'no operation'",  # how to test this one?
         ]
