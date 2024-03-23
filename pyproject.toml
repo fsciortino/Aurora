@@ -1,0 +1,34 @@
+[project]
+name = "aurorafusion"
+dynamic = ["version"]
+description = "Aurora package for particle transport, radiation and neutrals in magnetically-confined plasmas"
+authors = [
+    { name = "F. Sciortino", email = "sciortino@psfc.mit.edu" },
+]
+urls = { "Homepage" = "https://github.com/fsciortino/Aurora" }
+keywords = ["particle and impurity transport, neutrals, radiation, magnetic confinement fusion"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "omfit_classes",
+    "pandas",
+    "pexpect",
+    "requests",
+    "scipy",
+]
+
+[build-system]
+requires = ["scikit-build-core", "numpy"]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+ninja.minimum-version = "1.10"
+cmake.minimum-version = "3.17.2"
+wheel.packages = ["aurora"]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "aurora/__init__.py"
