@@ -29,6 +29,9 @@ jobs:
       run: |
         cd /
         python -c "import aurora; print(aurora.__version__)"
+    - name: Run test_basic.py
+      run: |
+        python examples/test_basic.py
 #    - name: Test with pytest and coverage
 #      run: |
 #        pip install pytest
