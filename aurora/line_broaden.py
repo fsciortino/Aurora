@@ -355,10 +355,8 @@ def _get_Voigt(
                     ) = _calc_Voigt_pseudo(
                         FWHM_G = out_G['FWHM'][tr],
                         lams_G = out_G['lams_profs_A'][tr,:],
-                        theta_G = out_G['theta'][tr,:],
                         FWHM_L = out_L['FWHM'][tr],
                         lams_L = out_L['lams_profs_A'][tr,:],
-                        theta_L = out_L['theta'][tr,:],
                         lambda0 = wave_A[tr]
                         )
  
@@ -657,10 +655,8 @@ def _calc_Voigt_scipy(
 def _calc_Voigt_pseudo(
     FWHM_G = None,      # [Hz], Gaussian-part full-width, half-max
     lams_G = None,      # [AA], Gaussian-part wavelength mesh
-    theta_G = None,     # [1/AA], Gaussian-part distribution
     FWHM_L = None,      # [Hz], Lorentzian-part full-width, half-max
     lams_L = None,      # [AA], Lorentzian-part wavelength mesh
-    theta_L = None,     # [1/AA], Lorentzian-part distribution
     lambda0 = None,     # [AA], Central wavelength
     ):
     '''
@@ -669,6 +665,10 @@ def _calc_Voigt_pseudo(
         Quoted as accurate within 1%
 
     '''
+    
+    #Converts from Hz to AA
+    FWHM_G = FWHM_G / (cnt.c*1e10/lambda0**2)
+    FWHM_L = FWHM_L / (cnt.c*1e10/lambda0**2)
 
      # Calculates Voigt FWHM
     FWHM_V = (
@@ -686,42 +686,25 @@ def _calc_Voigt_pseudo(
         - 0.47719 *(FWHM_L/FWHM_V)**2
         + 0.11116 *(FWHM_L/FWHM_V)**3
         )
-
+     
     # Calculates wavelength mesh
-    lams_min = np.min(
-        (
-            np.min(lams_G), 
-            np.min(lams_L)
-            )
-        ) 
-    lams_max = np.max(
-        (
-            np.max(lams_G), 
-            np.max(lams_L)
-            )
-        )
+    lams_min = min(lams_G.min(), lams_L.min())
+    lams_max = max(lams_G.max(), lams_L.max())
 
     # Assured to be symmetric -> contains lambda_0
     lams_V = np.linspace(lams_min,lams_max,nlamb)
+    
+    sigma = FWHM_V / np.sqrt(8*np.log(2))
+    gamma = FWHM_V/2
+    
+    G = 1/(sigma * np.sqrt(2*np.pi)) * np.exp(-(lams_V-lambda0)**2/(2*sigma**2))
+    L = gamma/(np.pi*((lams_V-lambda0) **2 + gamma **2))
 
-    # Profile shape
-    theta= (
-        eta * interp1d(
-            lams_L,
-            theta_L,
-            bounds_error =False,
-            fill_value = 0.0
-            )(lams_V)
-        + (1-eta) * interp1d(
-            lams_G,
-            theta_G,
-            bounds_error =False,
-            fill_value = 0.0
-            )(lams_V)
-        )    
+    theta = eta * L + (1-eta) * G
+  
 
     # Output, [AA], [1/AA], [Hz], dim(nlambda,)
-    return lams_V, theta, FWHM_V 
+    return lams_V, theta, FWHM_V * (cnt.c*1e10/lambda0**2)
 
 # General Gaussian shape calculator
 def _calc_Gaussian(
