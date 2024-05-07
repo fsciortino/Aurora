@@ -12,7 +12,7 @@ class FACIT:
     References:  Maget et al 2020 Plasma Phys. Control. Fusion 62 105001
                  Fajardo et al 2022 Plasma Phys. Control. Fusion 64 055017
                  Maget et al 2022 Plasma Phys. Control. Fusion 64 069501
-                 Fajardo et al 2023 Plasma Phys. Control. Fusion 65 035021
+                 Fajardo et al 2023 Plasma Phys. Control. Fusion 65 035021 
           
     License statement:
     Software name : FACIT
@@ -36,23 +36,23 @@ class FACIT:
         main ion charge [-]
     Ai : int or float
         main ion mass [-]
-    Ti : 1D array (nr) or float
+    Ti : nD array (...,nr) or float
         main ion temperature [:math:`eV`]
-    ne : 1D array (nr) or float
+    ne : nD array (...,nr) or float
         electron density [:math:`1/m^3`]
-    Ni : 1D array (nr) or float
+    Ni : nD array (...,nr) or float
         main ion density [:math:`1/m^3`]
-    Nimp : 1D array (nr) or float
+    Nimp : nD array (...,nr) or float
         FSA impurity density [:math:`1/m^3`]
-    Machi : 1D array (nr) or float
+    Machi : nD array (...,nr) or float
         main ion Mach number [-]
-    Zeff: 1D array (nr) or float
+    Zeff: nD array (...,nr) or float
         effective charge [-]
-    gradNi : 1D array (nr) or float
-        main ion density gradient [:math:`1/m^3/m`]
-    gradTi : 1D array (nr) or float
+    gradTi : nD array (...,nr) or float
         main ion temperature gradient [:math:`1/m^3/m`]
-    gradNimp : 1D array (nr) or float
+    gradNi : nD array (...,nr) or float
+        main ion density gradient [:math:`1/m^3/m`]
+    gradNimp : nD array (...,nr) or float
         FSA impurity density gradient [:math:`1/m^3/m`]
     invaspct : float
         inverse aspect ratio [-], :math:`a/R0`
@@ -67,7 +67,7 @@ class FACIT:
         if 1, use PS model from Maget PPCf (2020)
         if 2, use BP and PS model from Fajardo (subm. to PPCF)
         Default is 0. 0 is recommended for low-Z impurities (e.g. B, N, Ne)
-    Te_Ti : 1D array (nr) or float, optional
+    Te_Ti : nD array (...,nr) or float, optional
         electron to ion temperature ratio [-]
         default is 1.0
     RV : 2D array (nr, nth), optional
@@ -138,7 +138,7 @@ class FACIT:
         default is 1.0
         
     Returns (as attributes)
-    -----------------------
+    -------
     Dz_* : 1D array (nr)
         diffusion coefficient for each flux component [:math:`m^2/s`]
         * = PS, BP or CL (for Pfirsch-Schlüter, Banana-Plateau and Classical)
@@ -240,9 +240,9 @@ class FACIT:
         grad_ln_Nimp = gradNimp/Nimp # [1/m]
         
         if rho[0] == 1e-6:
-            grad_ln_Ni[0]   = 0.0 # [1/m]
-            grad_ln_Ti[0]   = 0.0 # [1/m]
-            grad_ln_Nimp[0] = 0.0 # [1/m]
+            grad_ln_Ni[...,0]   = 0.0 # [1/m]
+            grad_ln_Ti[...,0]   = 0.0 # [1/m]
+            grad_ln_Nimp[...,0] = 0.0 # [1/m]
         
         
         ft = self.ftrap(eps) # trapped particle fraction [-]
@@ -420,7 +420,7 @@ class FACIT:
             CclG = 1 + 2*eps2
             
             if fsaout:
-                e0imp = self.fluxavg(np.exp(Mzstar[:,None]**2*((RV**2 - (RV[:,0]**2)[:,None])/R0**2)), JV)
+                e0imp = self.fluxavg(np.exp(Mzstar[...,None]**2*((RV**2 - (RV[:,0]**2)[:,None])/R0**2)), JV)
             else:
                 e0imp = np.ones(nr)
             
@@ -428,7 +428,7 @@ class FACIT:
             
             deltan = 1/e0imp - 1                              # horizontal asymmetry of impurity density
             Deltan = np.zeros(nr)                             # vertical asymmetry of impurity density
-            nn     = 1 + deltan[:,None]*np.cos(theta)[None,:] # poloidal distribution of the impurity density
+            nn     = 1 + deltan[...,None]*np.cos(theta) # poloidal distribution of the impurity density
         
         #---------------------------------------------------------------------
         #------------- Collisional transport coefficients --------------------
@@ -490,7 +490,7 @@ class FACIT:
         self.Dz = self.Dz_PS + self.Dz_BP + self.Dz_CL # collisional diffusion coefficient [m^2/s]
         self.Kz = self.Kz_PS + self.Kz_BP + self.Kz_CL # coefficient of the main ion density gradient [m^2/s]
         self.Hz = self.Hz_PS + self.Hz_BP + self.Hz_CL # coefficient of the main ion temperature gradient [m^2/s]
-        
+       
         self.Vconv = self.Kz*grad_ln_Ni + self.Hz*grad_ln_Ti # convective velocity [m/s]
         self.Vrz = self.Vrz_PS + self.Vrz_BP + self.Vrz_CL   # radial flux per particle [m/s]
         
@@ -652,6 +652,9 @@ class FACIT:
         
         #---------------------- PS facs ---------------------------------------
         # f1, f2, f3 factors in C0z
+        #broadcast in the same shape
+        Z,Mzstar = np.broadcast_arrays(Z,Mzstar)
+        
         
         f1 = (1.74*(1-0.028*A) + 10.25/(1 + A/3.0)**2.8) - 0.423*(1-0.136*A)*ft**(5/4)
         f2 = (88.28389935 + 10.50852772*Z)/( 1 + 0.2157175*Z**2.57338463)
@@ -1007,15 +1010,15 @@ class FACIT:
         ----------
         rho : 1D array
             normalized radial coordinate [-], mid-plane radius over minor radius r/a
-        eps : 1D array
+        eps : 1D, 2D array
             local inverse aspect ratio [-]
-        Zeff : 1D array
+        Zeff : 1D, 2D array
             effective plasma charge [-]
         Zi : int or float
             main ion charge [-]
-        Te_Ti : 1D array
+        Te_Ti : 1D, 2D array
             electron to main ion temperature ratio [-]
-        Machi2 : 1D array
+        Machi2 : 1D, 2D array
             main ion Mach number squared [-]
         fH : float
             resonant hydrogen minority fraction [-]
@@ -1034,9 +1037,10 @@ class FACIT:
         AsymN : 2D array (2, nr)
             horizontal (index 0) and vertical (index 1) in main ion density [-], ni/<ni>
         '''
-        
-        AsymPhi = np.zeros((2, rho.size)) # asymmetry in electrostatic potential [-]
-        AsymN   = np.zeros((2, rho.size)) # asymmetry in main ion density [-]
+        #TODO use broadcast_shapes in new numpy
+        out_shape = np.broadcast(Zeff, Te_Ti, Machi2).shape
+        AsymPhi = np.zeros((2,)+out_shape) # asymmetry in electrostatic potential [-]
+        AsymN   = np.zeros((2,)+out_shape) # asymmetry in main ion density [-]
     
         TperpTpar = (TperpTpar_axis - 1.)*np.exp(-(rho/sigH)**2) + 1.
         
@@ -1248,8 +1252,10 @@ class FACIT:
         #thetalong = np.concatenate((theta-2*np.pi,theta,theta+2*np.pi))
 
         Factrot0 = (Aimp/Ai)*Machi2/R0**2
-            
+     
+    
         if nat_asym:
+            nuz = np.squeeze(nuz)
             Apsi = JV*FV[:,None]*(Aimp*self.mp)*nuz[:,None]/\
                    (Zimp[:,None]*self.qe*(dpsidx[:,None]**2 + 1.e-33)) # as defined after eq. 9 in Maget (2020)
         else:
@@ -1389,7 +1395,8 @@ class FACIT:
 
 
 if __name__ == '__main__':
-    
+   
+
     import matplotlib.pyplot as plt
     
     # simple example
@@ -1412,6 +1419,7 @@ if __name__ == '__main__':
     
     Machi = 0.35*(1 - rho**2) + 0.05
     
+    
     Zeff = 1.5*np.ones_like(rho)
     
     gradTi = np.gradient(Ti, rho*invaspct*R0)
@@ -1423,6 +1431,7 @@ if __name__ == '__main__':
     # circular geometry
     RV = None
     ZV = None
+   
     
     fct = FACIT(rho, \
                 Zimp, Aimp, \
@@ -1433,7 +1442,7 @@ if __name__ == '__main__':
                 rotation_model = 2, Te_Ti = 1.0,\
                 RV = RV, ZV = ZV)
         
-        
+
         
     fig, (ax1, ax2) = plt.subplots(1,2, figsize=(8,4))
     
@@ -1459,6 +1468,5 @@ if __name__ == '__main__':
     ax2.set_ylabel('Convective velocity [m/s]')
     
     fig.tight_layout()
-
     plt.show()
     
