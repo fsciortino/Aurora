@@ -1,0 +1,65 @@
+Datafiles for sputtering yields as a function of
+impact energy and angle.    
+
+Available projectiles:
+H, D, T, He, N, Ne, Ar
+(only for self-sputtering): Be, C, W
+
+Available targets:
+Be, C, W
+
+The tables are calculated with the Monte Carlo program
+trvmcmom, which is vectorized version of trim.sp
+determining also moments of distributions. The program
+assumes a nearly flat surface, a statistically roughness
+in the order of a monolayer is taken into account.
+Well polished surfaces give a good agreement with the
+calculated yields, but for rough surfaces the strong
+angular dependence is reduced, leading to an increase
+in the sputtering yield at normal incidence and a 
+decrease around the sputtering maximum.
+
+The files named [projectile]_[target].y contain the
+calculated sputtering yield Y, defined as the mean
+number of sputtered target atoms per unity of incident
+projectile ions.
+
+The files named [projectile]_[target].ye contain the
+calculated sputtering energy yield Ye, defined in such
+a way that the mean energy of sputtered atoms, for a
+constant energy E0 of the incident ions, is
+<E> = E0 * (Ye/Y).
+
+The tables are arranged in such a way that rows give an
+angular dependence of sputtering yields at a fixed energy
+E0, and columns give an energy dependence at a fixed angle
+of incidence. On top of the tables the values for the 
+atomic numbers (Z) and the masses (m) of the projectile 
+(index 1) and the target atoms (index 2) and the value for
+the surface binding energy (Es) are given. Furthermore, the
+number ne of incident energies and the number na of incident
+angles at which the data are calculated are provided.
+
+The files named [projectile]_[target]_fit.y contain the
+coefficients derived fitting the calculated sputtering
+yield data with the Bohdansky formula
+Y(E0) = Q*Sn*(1-(Eth/E0)^(2/3))*(1-(Eth/E0))^2
+where E0 is the projectile energy, and Q and Eth are
+fitting parameters, contained in the tables for each
+available value of the projectile incidence angle.
+Sn is the nuclear stopping cross section, defined as
+Sn = (0.5*log(1+1.2288*epsilon))/
+     (epsilon+0.1728*sqrt(epsilon)+0.008*epsilon^0.1504)
+epsilon is the reduced energy, defined as epsilon = E0/ETF,
+where ETF = ((Z1*Z2*e^2)/(alpha_L))*((m1+m2)/(m2)) is the
+Thomas-Fermi energy, in which Z1, Z2 are the nuclear charges,
+and m1, m2 are the masses of the projectile and target atoms
+respectively, and e is the electron charge. Finally, alpha_L,
+defined as alpha_L = 0.4685*(Z1^(2/3)+Z2^(2/3))^(-1/2), in
+angstrom, is the Lindhard screening length.
+
+The original data are published in W. Eckstein, IPP-Report
+9/117, Garching, March 1998.
+The fits are produced by A. Zito, Garching, October 2022.
+Status October 2022: many fits are actually not produced yet
+(i.e. the coefficients are NaNs in the fit tables).

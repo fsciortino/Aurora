@@ -140,12 +140,12 @@ V_z = -2e2 * np.ones(len(asim.rvol_grid))  # cm/s
 
 # run Aurora forward model and plot results
 out = asim.run_aurora(D_z, V_z, plot=False)
-nz_all = out[0]  # impurity charge state densities are the first element of "out"
+nz_all = out['nz']  # impurity charge state densities are the first element of "out"
 nz_init = nz_all[:, :, -1]
 
 # calculate dilution cooling
 rad = aurora.compute_rad(
-    imp, out[0].transpose(2, 1, 0), asim.ne, asim.Te, prad_flag=True
+    imp, out['nz'].transpose(2, 1, 0), asim.ne, asim.Te, prad_flag=True
 )
 tot_rad_dens = rad["tot"]  # W/cm^3
 line_rad_all = rad["line_rad"].T  # W/cm^3
@@ -180,10 +180,10 @@ for i in np.arange(num_sims):
     nz_old = nz_all[:, :, -1 * n_rep]
     nz_init = nz_all[:, :, -1]
     out = asim.run_aurora(D_z, V_z, nz_init=nz_init, plot=False)
-    nz_all = np.dstack((nz_all, out[0]))
+    nz_all = np.dstack((nz_all, out['nz']))
 
     rad = aurora.compute_rad(
-        imp, out[0].transpose(2, 1, 0), asim.ne, asim.Te, prad_flag=True
+        imp, out['nz'].transpose(2, 1, 0), asim.ne, asim.Te, prad_flag=True
     )
     tot_rad_dens = rad["tot"]  # W/cm^3
     line_rad_all = np.dstack((line_rad_all, rad["line_rad"].T))

@@ -47,3 +47,7 @@ junit
 
 # json databases should not bee shared publicly
 *.json
+
+# folder-related macbook files
+*.DS_Store
+docs/.idea/*
