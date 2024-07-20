@@ -11,7 +11,6 @@ class FACIT:
     ----------------------------------------------------------
     References:  Maget et al 2020 Plasma Phys. Control. Fusion 62 105001
                  Fajardo et al 2022 Plasma Phys. Control. Fusion 64 055017
-                 Maget et al 2022 Plasma Phys. Control. Fusion 64 069501
                  Fajardo et al 2023 Plasma Phys. Control. Fusion 65 035021 
           
     License statement:
@@ -44,7 +43,7 @@ class FACIT:
         main ion density [:math:`1/m^3`]
     Nimp : nD array (...,nr) or float
         FSA impurity density [:math:`1/m^3`]
-    Machi : nD array (...,nr) or float
+    Mach_i : nD array (...,nr) or float
         main ion Mach number [-]
     Zeff: nD array (...,nr) or float
         effective charge [-]
@@ -62,10 +61,12 @@ class FACIT:
         major radius at magnetic axis [:math:`m`]
     qmag : 1D array (nr) or float
         safety factor [-]
+        generalize to flux surface shaping as qmag_general = qmag * (r_min * B0 / d_torfluxov2pi_d_rmin)
+        or equivalently qmag_general =  r_min * B0 / d_polfluxov2pi_d_rmin
     rotation_model : int, optional
         if 0, use non-rotating limit from Fajardo PPCF (2022)
         if 1, use PS model from Maget PPCf (2020)
-        if 2, use BP and PS model from Fajardo (subm. to PPCF)
+        if 2, use BP and PS model from Fajardo PPCF (2023)
         Default is 0. 0 is recommended for low-Z impurities (e.g. B, N, Ne)
     Te_Ti : nD array (...,nr) or float, optional
         electron to ion temperature ratio [-]
@@ -184,7 +185,7 @@ class FACIT:
                        Zimp: (np.ndarray, float), Aimp: (int, float), \
                        Zi: (np.ndarray, float), Ai: (int, float), \
                        Ti: (np.ndarray, float), Ni: (np.ndarray, float), Nimp: (np.ndarray, float), \
-                       Machi: (np.ndarray, float), Zeff: (np.ndarray, float), \
+                       Mach_i: (np.ndarray, float), Zeff: (np.ndarray, float), \
                        gradTi: (np.ndarray, float), gradNi: (np.ndarray, float), gradNimp: (np.ndarray, float), \
                        invaspct: (float), B0: (float), R0: (float), qmag: (np.ndarray, float),  \
                        
@@ -203,6 +204,8 @@ class FACIT:
         
         rho = np.maximum(1e-6, rho) # to avoid dividing by zero
         
+        assert np.size(invaspct) == 1 # new
+        
         if type(rho) is float or type(rho) is np.float64:
             nr  = 1 # number of radial grid points
             
@@ -210,7 +213,7 @@ class FACIT:
             Ti       *= np.ones(nr)
             Ni       *= np.ones(nr)
             Nimp     *= np.ones(nr)
-            Machi    *= np.ones(nr)
+            Mach_i    *= np.ones(nr)
             Zeff     *= np.ones(nr)
             gradTi   *= np.ones(nr)
             gradNi   *= np.ones(nr)
@@ -252,9 +255,9 @@ class FACIT:
         LnimpiNRL   = 23. - np.log(Zi*Zimp*np.sqrt((Ni/1e6)*Zi**2+(Nimp/1e6)*Zimp**2)) + 1.5*np.log(Ti)
         LnimpimpNRL = 23. - np.log(Zimp**3*np.sqrt(2*(Nimp/1e6))) + 1.5*np.log(Ti)
         
-        # Braginskii collision times
+        # Braginskii collision times (factor in front for NEO definition in contrast to NRL formulary definition)
         
-        Tauii     = (self.eps_pi_fac*np.sqrt(mi)*Ti**1.5)/(Zi**4*Ni*LniiNRL)             # ion-ion collision time [s]
+        Tauii     = ((1/(3.*np.sqrt(2.*np.pi)/4.))*self.eps_pi_fac*np.sqrt(mi)*Ti**1.5)/(Zi**4*Ni*LniiNRL) # ion-ion collision time [s]
         # set other collision times with respect to Tauii:
         Tauimpi   = np.sqrt(Aimp/Ai)*((Zi**2*LniiNRL)/(Zimp**2*LnimpiNRL))*Tauii           # impurity-ion collision time [s]
         Tauiimp   = ((Zi**2*Ni*LniiNRL)/(Zimp**2*Nimp*LnimpiNRL))*Tauii                    # ion-impurity collision time [s]
@@ -273,7 +276,9 @@ class FACIT:
         
         
         if rotation_model == 0:
-            Machi *= 0.0
+            Machi = 0.0
+        else:
+            Machi = Mach_i * 1.0
             
         Machi2 = Machi**2 # auxiliary
         
@@ -351,6 +356,7 @@ class FACIT:
             
             
             e0imp = 1.0
+            f_conv_fsa = 0.0
             
             
         elif rotation_model == 1:
@@ -409,7 +415,7 @@ class FACIT:
                 CclG = 1.0 + eps*deltan + 2*eps2
                 
             e0imp = 1.0
-        
+            f_conv_fsa = 0.0
             
             
         elif rotation_model == 2:
@@ -421,8 +427,10 @@ class FACIT:
             
             if fsaout:
                 e0imp = self.fluxavg(np.exp(Mzstar[...,None]**2*((RV**2 - (RV[:,0]**2)[:,None])/R0**2)), JV)
+                f_conv_fsa = np.gradient(e0imp, amin*rho)/e0imp
             else:
                 e0imp = np.ones(nr)
+                f_conv_fsa = 0.0
             
             
             
@@ -451,6 +459,11 @@ class FACIT:
         self.Z = ZV
         self.J = JV
         self.B = BV
+        self.e0imp = e0imp
+        self.f_conv_fsa = f_conv_fsa
+        self.g = g
+        self.ft = ft
+        self.eps = eps
         
         # Pfirsch-Schlüter (PS)
         
@@ -461,7 +474,7 @@ class FACIT:
         
         self.Vrz_PS = -self.Dz_PS*grad_ln_Nimp + self.Kz_PS*grad_ln_Ni + \
                        self.Hz_PS*grad_ln_Ti # PS radial flux per particle [m/s]
-        self.Vconv_PS = self.Kz_PS*grad_ln_Ni + self.Hz_PS*grad_ln_Ti # PS convective velocity [m/s]
+        self.Vconv_PS = self.Kz_PS*grad_ln_Ni + self.Hz_PS*grad_ln_Ti + f_conv_fsa*self.Dz_PS # PS convective velocity [m/s]
         
         # Banana-Plateau (BP)
         
@@ -472,7 +485,7 @@ class FACIT:
         self.Vrz_BP = -self.Dz_BP*grad_ln_Nimp + self.Kz_BP*grad_ln_Ni + \
                        self.Hz_BP*grad_ln_Ti  # BP radial flux per particle [m/s]
         
-        self.Vconv_BP = self.Kz_BP*grad_ln_Ni + self.Hz_BP*grad_ln_Ti # BP convective velocity [m/s]
+        self.Vconv_BP = self.Kz_BP*grad_ln_Ni + self.Hz_BP*grad_ln_Ti + f_conv_fsa*self.Dz_BP # BP convective velocity [m/s]
         
         # Classical
         
@@ -482,7 +495,7 @@ class FACIT:
         
         self.Vrz_CL = -self.Dz_CL*grad_ln_Nimp + self.Kz_CL*grad_ln_Ni + \
                        self.Hz_CL*grad_ln_Ti # CL radial flux per particle [m/s]
-        self.Vconv_CL  = self.Kz_CL*grad_ln_Ni + self.Hz_CL*grad_ln_Ti # CL convective velocity [m/s]
+        self.Vconv_CL  = self.Kz_CL*grad_ln_Ni + self.Hz_CL*grad_ln_Ti + f_conv_fsa*self.Dz_CL # CL convective velocity [m/s]
         
         
         # Total
@@ -491,10 +504,21 @@ class FACIT:
         self.Kz = self.Kz_PS + self.Kz_BP + self.Kz_CL # coefficient of the main ion density gradient [m^2/s]
         self.Hz = self.Hz_PS + self.Hz_BP + self.Hz_CL # coefficient of the main ion temperature gradient [m^2/s]
        
-        self.Vconv = self.Kz*grad_ln_Ni + self.Hz*grad_ln_Ti # convective velocity [m/s]
+        self.Vconv = self.Kz*grad_ln_Ni + self.Hz*grad_ln_Ti + f_conv_fsa*self.Dz# convective velocity [m/s]
         self.Vrz = self.Vrz_PS + self.Vrz_BP + self.Vrz_CL   # radial flux per particle [m/s]
         
         self.Flux_z = self.Vrz*Nimp # radial collisional flux [1/(m s)]
+        
+        # Neoclassical
+        
+        self.Dz_ncl = self.Dz_PS + self.Dz_BP # neoclassical diffusion coefficient [m^2/s]
+        self.Kz_ncl = self.Kz_PS + self.Kz_BP # neoclassical of the main ion density gradient [m^2/s]
+        self.Hz_ncl = self.Hz_PS + self.Hz_BP # neoclassical of the main ion temperature gradient [m^2/s]
+       
+        self.Vconv_ncl = self.Kz_ncl*grad_ln_Ni + self.Hz_ncl*grad_ln_Ti + f_conv_fsa*self.Dz_ncl # convective velocity [m/s]
+        self.Vrz_ncl = self.Vrz_PS + self.Vrz_BP   # radial flux per particle [m/s]
+        
+        self.Flux_z_ncl = self.Vrz_ncl*Nimp # radial neoclassical flux [1/(m s)]
         
         
         # asymmetries
@@ -560,8 +584,8 @@ class FACIT:
             value in C0z coefficient [-]
         '''
         
-        return 1.5/(1+f1*(Ai/A)) - (0.29 + 0.68*alpha)/(0.59 + alpha + (1.34 + f2)*g**(-2))
-    
+        #return 1.5/(1+f1*(Ai/A)) - (0.29 + 0.68*alpha)/(0.59 + alpha + (1.34 + f2)*g**(-2))
+        return 1.5/(1+f1*(2.0/A)) - (0.29 + 0.68*alpha)/(0.59 + alpha + (1.34 + f2)*g**(-2))
     
     
     def ki_f(self, nui_star, ft, Zeff, Machi):
