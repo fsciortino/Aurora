@@ -329,7 +329,6 @@ def read_filter_response(filepath, adas_format=True, plot=False):
 
     return E_eV, response
 
-
 @lru_cache(maxsize=1000)
 def load_adas_file_with_cache(fileloc):
     """Wrapper around the adas_file loading mechanism to enable implementation
