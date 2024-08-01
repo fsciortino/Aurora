@@ -387,6 +387,11 @@ def adas_files_dict():
     files["Ca"]["brs"] = "brs05360.dat"
     files["Ca"]["pbs"] = ""
     files["Ca"]["prc"] = ""
+    files["Ti"] = {}  # 22
+    files["Ti"]["acd"] = "acd00_ti.dat"
+    files["Ti"]["scd"] = "scd00_ti.dat"
+    files["Ti"]['prb'] = "prb00_ti.dat"
+    files["Ti"]['plt'] = "plt00_ti.dat"
     files["Fe"] = {}  # 26
     files["Fe"]["acd"] = "acd89_fe.dat"
     files["Fe"]["scd"] = "scd89_fe.dat"
