@@ -1,7 +1,0 @@
-numpy<1.23.0
-scipy
-matplotlib
-pexpect
-omfit_classes
-requests
-pandas
