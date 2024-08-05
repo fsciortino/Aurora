@@ -140,8 +140,9 @@ class ehr5_file:
 
         self.res = {}
         with open(self.filepath) as f:
+            for dummy_int in np.arange(4):
+                header = f.readline()
             for field in self.fields:
-
                 data = np.zeros((15, 60))
 
                 # read header
@@ -153,10 +154,7 @@ class ehr5_file:
                     arr = []
                     for jt_row in np.arange(10):
                         # 10 rows of 6 values each for Te
-                        elems = [
-                            val for val in f.readline().strip().split(" ") if val != ""
-                        ]
-
+                        elems = [val for val in f.readline().strip().split(" ") if val != ""]
                         line = [float(val) for val in elems]
                         data[jn, jt_row * 6 : (jt_row + 1) * 6] = np.array(line)
                     _dum = f.readline()  # empty line at the end
