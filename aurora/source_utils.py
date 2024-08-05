@@ -127,24 +127,10 @@ def get_source_time_history(namelist, Raxis_cm, time):
         )
     else:
         raise ValueError("Unspecified source function time history!")
-    
-    #this step minimise particle conservation error for noisy or fast varying source
-    from scipy.integrate import cumtrapz 
+        
     from scipy.interpolate import interp1d
-    integ_rate = cumtrapz(src_rates, src_times, axis=0, initial = 0)
-   
-    kind = 'linear' if len(src_times) < 4 else 'quadratic'
-    integ_rate_interp = interp1d(src_times, integ_rate,axis=0,kind=kind)
-    integ_rate = integ_rate_interp(np.clip(time, src_times[0], src_times[-1]))
-    
-    if len(time) > 1:
-        source = (np.diff(integ_rate.T)/np.diff(time)).T
-    else:
-        source = integ_rate
-     
-    # For ease of comparison with STRAHL, shift source by one time step
-    source_time_history = np.r_[source, source[[-1]]]
- 
+    src_rate_interp = interp1d(src_times, src_rates ,axis=0,kind='linear')
+    source_time_history= src_rate_interp(np.clip(time, src_times[0], src_times[-1]))
     
     if source_time_history.ndim == 1:
         # get number of particles per cm and sec
