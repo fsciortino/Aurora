@@ -402,7 +402,7 @@ def get_atom_data(imp, files=["acd", "scd"]):
 
     for filecheck in files:
         if filecheck not in all_files:
-            raise ValueError(f"Could not fetch {imp} {filecheck.upper()} file!")
+            raise ValueError(f"Could not fetch {imp} {filecheck.upper()} file! Please specify file locations using 'files' argument, for example files=dict(acd='user/acd89_ar.dat')")
 
     atom_data = {}
     for filetype in all_files:
