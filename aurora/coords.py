@@ -245,7 +245,7 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
     # Interpolate to transform coordiantes
     if name_in == "rhon":
         coord_in = rhon_ref
-    if name_in == "psin":
+    elif name_in == "psin":
         coord_in = psin_ref
     elif name_in == "rhop":
         coord_in = rhop_ref
