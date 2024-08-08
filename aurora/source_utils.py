@@ -132,6 +132,7 @@ def get_source_time_history(namelist, Raxis_cm, time, plot = False):
         
     from scipy.interpolate import interp1d
     src_rate_interp = interp1d(src_times, src_rates ,axis=0,kind='linear')
+
     #this will extrapolate source by a contant values outside of src_times range
     source_time_history= src_rate_interp(np.clip(time, src_times[0], src_times[-1]))
     
@@ -154,7 +155,7 @@ def get_source_time_history(namelist, Raxis_cm, time, plot = False):
         ax.set_xlim(time[0],time[-1])
 
     return np.asfortranarray(source_time_history)
-
+ 
 
 def write_source(t, s, shot, imp="Ca"):
     """Write a STRAHL source file.

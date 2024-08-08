@@ -1,5 +1,5 @@
 """This module includes the core class to set up simulations with :py:mod:`aurora`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.
-"""
+""" 
 # MIT License
 #
 # Copyright (c) 2021 Francesco Sciortino
@@ -122,6 +122,7 @@ class aurora_sim:
             )
 
         # now load ionization and recombination rates
+        
         self.atom_data = atomic.get_atom_data(self.imp, files=atom_files)
 
         # allow for ion superstaging
@@ -135,12 +136,11 @@ class aurora_sim:
             self.kin_profs = self.namelist["kin_profs"]
             # set up kinetic profiles and atomic rates
             self.setup_kin_profs_depts()
-            
-    
+
         # full PWI model not used - dummy values for all related input variables to fortran routine
         self.setup_dummy_pwi_vars()
 
-        
+ 
 
     def reload_namelist(self, namelist=None):
         """(Re-)load namelist to update scalar variables."""
@@ -326,7 +326,6 @@ class aurora_sim:
             self.src_core = self.source_rad_prof * source_time_history[None, :]
 
         self.src_core = np.asfortranarray(self.src_core)
-
         # if wall_recycling>=0, return flows from the divertor are enabled
         if (
             self.wall_recycling >= 0
@@ -591,10 +590,11 @@ class aurora_sim:
                     self.alpha_CX_rates[:,j] = alpha_CX_rates[:,i]
             else:
                 self.alpha_CX_rates = alpha_CX_rates
-            
+
             # inplace addition would change also self.alpha_RDR_rates
             Rne = Rne + self.alpha_CX_rates
             
+
 
         if self.namelist["nbi_cxr_flag"]:
             # include charge exchange between NBI neutrals and impurities

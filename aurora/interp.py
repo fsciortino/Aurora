@@ -113,6 +113,7 @@ def interp_quad(x, y, d, rLCFS, r):
     edge = core[..., [idx - 1]] * np.exp(
         -np.outer(1.0 / np.asarray(d), r[idx:] - r[idx - 1])
     )
+    
 
     return np.concatenate([core, edge], axis=-1)
 
