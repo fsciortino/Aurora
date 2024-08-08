@@ -23,6 +23,7 @@ Refer also to the adas_files.py script.
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from functools import lru_cache
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import RectBivariateSpline, interp1d, RegularGridInterpolator
@@ -142,7 +143,7 @@ class adas_file:
                     self.MPRT.append(int(iprt.split("=")[1]))
                 except:
                     # some old files have different header
-                    self.Z.append(ind + 1)
+                    self.Z.append(ind)
                     self.MGRD.append(1)
                     self.MPRT.append(1)
 
@@ -328,6 +329,24 @@ def read_filter_response(filepath, adas_format=True, plot=False):
 
     return E_eV, response
 
+@lru_cache(maxsize=1000)
+def load_adas_file_with_cache(fileloc):
+    """Wrapper around the adas_file loading mechanism to enable implementation
+    of a granular caching system at file level. Each file would on average
+    account for less than 100kB, as such I have arbitrarily choosen to cap the
+    cache size to 1000, therefore preventing the cache to ever occupy more than
+    100MB in worst case scenario.
+
+    Parameters
+    ----------
+    fileloc : str containing the address of the adas file to load.
+
+    Returns
+    -------
+    The in-memory representation of the loaded adas file.
+    """
+    return adas_file(fileloc)
+
 
 def get_atom_data(imp, files=["acd", "scd"]):
     """Collect atomic data for a given impurity from all types of ADAS files available or
@@ -383,7 +402,7 @@ def get_atom_data(imp, files=["acd", "scd"]):
 
     for filecheck in files:
         if filecheck not in all_files:
-            raise ValueError(f"Could not fetch {imp} {filecheck.upper()} file!")
+            raise ValueError(f"Could not fetch {imp} {filecheck.upper()} file! Please specify file locations using 'files' argument, for example files=dict(acd='user/acd89_ar.dat')")
 
     atom_data = {}
     for filetype in all_files:
@@ -392,8 +411,7 @@ def get_atom_data(imp, files=["acd", "scd"]):
         fileloc = adas_files.get_adas_file_loc(all_files[filetype], filetype="adf11")
 
         # load specific file and add it to output dictionary
-        res = adas_file(fileloc)
-        atom_data[filetype] = adas_file(fileloc)
+        atom_data[filetype] = load_adas_file_with_cache(fileloc)
         # {'lne': res.logNe, 'lte': res.logT, 'ldata': res.data,
         #'meta_ind': res.meta_ind, 'meta': res.metastables}
 

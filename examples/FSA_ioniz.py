@@ -38,12 +38,10 @@ n_alpha1 = 2
 n_alpha2 = 0.5
 
 rhop = kp["Te"]["rhop"] = kp["ne"]["rhop"] = np.linspace(0, 1, 100)
-ne_cm3 = kp["ne"]["vals"] = (n_core - n_edge) * (
-    1 - rhop**n_alpha1
-) ** n_alpha2 + n_edge
-Te_eV = kp["Te"]["vals"] = (T_core - T_edge) * (
-    1 - rhop**T_alpha1
-) ** T_alpha2 + T_edge
+ne_cm3 = (n_core - n_edge) * (1 - rhop**n_alpha1) ** n_alpha2 + n_edge
+Te_eV = (T_core - T_edge) * (1 - rhop**T_alpha1) ** T_alpha2 + T_edge
+kp["ne"]["vals"] = ne_cm3
+kp["Te"]["vals"] = Te_eV
 
 # set impurity species and sources rate
 imp = namelist["imp"] = "F"  #'Ar'
@@ -81,9 +79,7 @@ nu_ioniz_star = aurora.atomic.plot_norm_ion_freq(
 atom_data = aurora.get_atom_data(imp, ["acd", "scd"])
 _Te, fz = aurora.atomic.get_frac_abundances(atom_data, ne_cm3, Te_eV, rho=rhop)
 
-fz_profs = np.zeros_like(Sne_z)
-for cs in np.arange(Sne_z.shape[1]):
-    fz_profs[:, cs] = interp1d(rhop, fz[:, cs])(rhop_in)
+fz_profs = interp1d(rhop, fz,axis=0)(rhop_in)
 
 nu_ioniz_star = aurora.atomic.plot_norm_ion_freq(
     Sne_z,

@@ -51,7 +51,7 @@ namelist["source_type"] = "const"
 namelist["source_rate"] = 2e20  # particles/s
 
 # selection of superstages for Ar
-superstages = [0, 14, 15, 16, 17, 18]
+superstages = [0,1, 14, 15, 16, 17, 18]
 
 ########
 # first run WITHOUT superstages
@@ -66,15 +66,7 @@ D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
 V_z = 0.0 * np.ones(len(asim.rvol_grid))  # cm/s
 
 # run Aurora forward model and plot results
-out = asim.run_aurora(
-    D_z,
-    V_z,
-    times_DV=[
-        1.0,
-    ],
-    unstage=True,
-    plot=plot,
-)
+out = asim.run_aurora( D_z, V_z, times_DV=[1.0], unstage=True,plot=plot)
 
 
 ########

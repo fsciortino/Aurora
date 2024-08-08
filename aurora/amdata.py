@@ -510,9 +510,14 @@ def parse_amjuel():
 
     # open file back
     aj = open(local_path + os.sep + "amjuel.tex").read()
+    
+    if 'URL was not found' in  aj:
+        raise Exception('Sorry, amjuel.tex was removed from eirene websites. Find another source')
 
     headers = aj.split("\section{H.")[1:]
-
+    
+    from IPython import embed
+    embed()
     for ih in [3, 4, 10, 12]:
         header = headers[ih]
 

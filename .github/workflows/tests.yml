@@ -11,11 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        build_command: ["python setup.py develop",
-                        "pip install .",
-                        "pip install --editable .",
-                        "python setup.py install",
-                        # "echo 'no operation'",  # how to test this one?
+        build_command: [
+          "pip install .",
+          "pip install --editable .",
         ]
       fail-fast: false
 
@@ -25,15 +23,80 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.9'
-    - name: Install dependencies
-      run: |
-        python -m pip install -r requirements.txt
     - name: Install Aurora
       run: ${{ matrix.build_command }}
     - name: Move to root and try importing Aurora
       run: |
         cd /
         python -c "import aurora; print(aurora.__version__)"
+    - name: Run test_basic.py
+      run: |
+        python examples/test_basic.py
+    - name: Run facit_basic.py
+      run: |
+        python examples/facit_basic.py
+    - name: Run FSA_ioniz.py
+      run: |
+        python examples/FSA_ioniz.py
+    - name: Run iterative_example.py
+      run: |
+        python examples/iterative_example.py
+    - name: Run kn1d_example.py
+      run: |
+        python examples/kn1d_example.py
+    - name: Run metastables.py
+      run: |
+        python examples/metastables.py
+    - name: Run steady_state_run.py
+      run: |
+        python examples/steady_state_run.py
+    - name: Run superstages.py
+      run: |
+        python examples/superstages.py
+    - name: Run surface_data_bulk_sputtering.py
+      run: |
+        python examples/surface_data_bulk_sputtering.py
+    - name: Run surface_data_impurity_sputtering.py
+      run: |
+        python examples/surface_data_impurity_sputtering.py
+    - name: Run surface_data_reflection.py
+      run: |
+        python examples/surface_data_reflection.py
+    - name: Run test_extended_recycling_model.py
+      run: |
+        python examples/test_extended_recycling_model.py
+    - name: Run test_frac_abundances.py
+      run: |
+        python examples/test_frac_abundances.py
+    - name: Run test_full_PWI_model.py
+      run: |
+        python examples/test_full_PWI_model.py
+    - name: Run test_local_spectrum.py
+      run: |
+        python examples/test_local_spectrum.py
+    - name: Run test_local_spectrum_W.py
+      run: |
+        python examples/test_local_spectrum_W.py
+    - name: Run test_radiation_model.py
+      run: |
+        python examples/test_radiation_model.py
+    - name: Run am_balmer_emission.py
+      run: |
+        python examples/am_balmer_emission.py
+    - name: Run aurora_rates_demo.py
+      run: |
+        python examples/aurora_rates_demo.py
+    - name: Run compare_algorithms.py
+      run: |
+        python examples/compare_algorithms.py
+    - name: Run cooling_factors.py
+      run: |
+        python examples/cooling_factors.py
+ 
+ 
+
+        
+        
 #    - name: Test with pytest and coverage
 #      run: |
 #        pip install pytest

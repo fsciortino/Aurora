@@ -1,0 +1,53 @@
+[project]
+name = "aurorafusion"
+dynamic = ["version"]
+description = "Aurora package for particle transport, radiation and neutrals in magnetically-confined plasmas"
+authors = [
+    { name = "F. Sciortino", email = "sciortino@psfc.mit.edu" },
+]
+urls = { "Homepage" = "https://github.com/fsciortino/Aurora" }
+keywords = ["particle and impurity transport, neutrals, radiation, magnetic confinement fusion"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "matplotlib",
+    "numpy<2.0.0",
+    "omfit_classes",
+    "pandas",
+    "pexpect",
+    "requests",
+    "scipy",
+    # transitive dependencies of omfit_classes
+    # that omfit_classes does not advertise
+    "fortranformat",
+    "netCDF4",
+    "uncertainties",
+    "omas",
+    # omfit_classes will have issues with newer versions
+    # of xarray for two different reasons:
+    # 1. because of a recently-introduced xarray bug that
+    #    will be fixed in the next release after v2024.02.0
+    #    (this commit: https://github.com/pydata/xarray/commit/a241845c0dfcb8a5a0396f5ef7602e9dae6155c0).
+    #    This constrains xarray<=v2023.07.0.
+    # 2. because omfit_classes uses xarray.plot.plot, which has
+    #    been removed/renamed by a commit from October 2022.
+    #    This constrains xarray<=v2022.09.0
+#    "xarray==v2022.09.0",
+    # omfit_classes has issues with newer versions of
+    # matplotlib, see https://github.com/gafusion/OMFIT-source/issues/6784
+    "matplotlib<=3.5",
+]
+
+[build-system]
+requires = ["scikit-build-core", "numpy"]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+ninja.minimum-version = "1.10"
+cmake.minimum-version = "3.17.2"
+wheel.packages = ["aurora"]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "aurora/__init__.py"

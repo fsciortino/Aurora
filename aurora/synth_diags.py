@@ -22,8 +22,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import RectBivariateSpline, interp1d
-from scipy.integrate import trapz
+from scipy.interpolate import interp1d
 import matplotlib.tri as tri
 
 plt.ion()
@@ -86,7 +85,7 @@ def line_int_weights(
         asym = 1.0
 
     # compute weights by summing over beam/ray path
-    weights = trapz(response[None] * asym, dist_path, axis=2)
+    weights = np.trapz(response[None] * asym, dist_path, axis=2)
 
     return weights
 
@@ -154,21 +153,13 @@ def centrifugal_asymmetry(
     CF_lam : array (nr,)
         Asymmetry factor, defined as :math:`\lambda` in the expression above.
     """
-    if omega.ndim == 1:
-        omega = omega[None, :]  # take constant in time
-    if isinstance(Zeff, (int, float)):
-        Zeff = np.array(Zeff) * np.ones_like(Ti)
-    if Zeff.ndim == 1:
-        Zeff = Zeff[None, :]  # take constant in time
+
 
     # deuterium mach number
-    mach = np.sqrt(2.0 * m_p / q_electron * (omega * Rlfs[None, :]) ** 2 / (2.0 * Ti))
+    mach = np.sqrt(2.0 * m_p / q_electron * (omega * Rlfs) ** 2 / (2.0 * Ti))
 
     # valid for deuterium plasma with Zeff almost constants on flux surfaces
-    CF_lam = (
-        A_imp
-        / 2.0
-        * (mach / Rlfs[None, :]) ** 2
+    CF_lam = (  A_imp / 2.0 * (mach / Rlfs) ** 2
         * (1.0 - Z_imp * main_ion_A / A_imp * Zeff * Te / (Ti + Zeff * Te))
     )
 
@@ -192,33 +183,26 @@ def centrifugal_asymmetry(
             nz_sel = nz.sum(1)
 
         rhop_surfs = np.sqrt(geqdsk["fluxSurfaces"]["geo"]["psin"])
-
+        
+        # FSA nz on this flux surface at the last time point
+        nz_sel = np.interp(rhop_surfs, rhop, nz_sel)
+        CF_lam = np.interp(rhop_surfs, rhop, CF_lam[-1, :])
+            
         Rs = []
         Zs = []
         vals = []
         for ii, surf in enumerate(geqdsk["fluxSurfaces"]["flux"]):
-
-            # FSA nz on this flux surface at the last time point
-            nz_sel_i = interp1d(rhop, nz_sel)(rhop_surfs[ii])
-            CF_lam_i = interp1d(rhop, CF_lam[-1, :])(rhop_surfs[ii])
-
-            Rs = np.concatenate((Rs, geqdsk["fluxSurfaces"]["flux"][ii]["R"]))
-            Zs = np.concatenate((Zs, geqdsk["fluxSurfaces"]["flux"][ii]["Z"]))
-            vals = np.concatenate(
-                (
-                    vals,
-                    nz_sel_i
-                    * np.exp(
-                        CF_lam_i
-                        * (
-                            geqdsk["fluxSurfaces"]["flux"][ii]["R"] ** 2
-                            - geqdsk["RMAXIS"] ** 2
-                        )
-                    ),
-                )
-            )
-
-        triang = tri.Triangulation(Rs, Zs)
+            R = geqdsk["fluxSurfaces"]["flux"][ii]["R"]
+            Z = geqdsk["fluxSurfaces"]["flux"][ii]["Z"]
+            Rs += [R]
+            Zs += [Z]
+            vals += [nz_sel[ii]* np.exp(CF_lam[ii] * (R ** 2 - geqdsk["RMAXIS"] ** 2 ))]
+        
+        Rs = np.concatenate(Rs)
+        Zs = np.concatenate(Zs)
+        vals = np.concatenate(vals)
+        
+        triang = tri.Triangulation( Rs, Zs)
         cntr1 = ax.tricontourf(triang, vals, levels=300)
         ax.plot(geqdsk["RBBBS"], geqdsk["ZBBBS"], c="k")
         ax.scatter(geqdsk["RMAXIS"], geqdsk["ZMAXIS"], marker="x", c="k")

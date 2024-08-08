@@ -40,7 +40,7 @@ def get_source_time_history(namelist, Raxis_cm, time, plot = False):
         source function is being specified -- see the notes below.
     Raxis_cm : float
         Major radius at the magnetic axis [cm]. This is needed to normalize the
-        source such that it is treated as toroidally symmetric -- a necessary
+        source such that it is treated as toroidally and poloidally symmetric -- a necessary
         idealization for 1.5D simulations.
     time : array (nt,)
         Time array the source should be returned on.
@@ -89,17 +89,13 @@ def get_source_time_history(namelist, Raxis_cm, time, plot = False):
         # read time history from a simple file with 2 columns
         src_times, src_rates = read_source(namelist["source_file"])
 
-    elif (
-        namelist["source_type"] == "interp"
-        and np.ndim(namelist["explicit_source_vals"]) == 1
-    ):
-        # user provided time history, only 1D interpolation is needed
+    elif namelist["source_type"] in ["interp", "arbitrary_2d_source"]:
         src_times = namelist["explicit_source_time"]
         src_rates = namelist["explicit_source_vals"]
 
     elif namelist["source_type"] == "const":
         # constant source
-        src_times = [-np.inf, np.inf]
+        src_times = [time[0]-1, time[-1]+1]
         src_rates = [namelist["source_rate"], namelist["source_rate"]]
         # src_rates[0] = 0.0  # start with 0
 
@@ -133,15 +129,18 @@ def get_source_time_history(namelist, Raxis_cm, time, plot = False):
         )
     else:
         raise ValueError("Unspecified source function time history!")
-
-    source = np.interp(time, src_times, src_rates, left=0, right=0)
-
-    # get number of particles per cm and sec
-    circ = 2 * np.pi * Raxis_cm
-
-    # For ease of comparison with STRAHL, shift source by one time step
-    source_time_history = np.r_[source[1:], source[-1]] / circ
-    if all(source_time_history == 0):
+        
+    from scipy.interpolate import interp1d
+    src_rate_interp = interp1d(src_times, src_rates ,axis=0,kind='linear')
+    #this will extrapolate source by a contant values outside of src_times range
+    source_time_history= src_rate_interp(np.clip(time, src_times[0], src_times[-1]))
+    
+    if source_time_history.ndim == 1:
+        # get number of particles per cm and sec
+        circ = 2 * np.pi * Raxis_cm
+        source_time_history /= circ
+    
+    if np.all(source_time_history == 0):
         raise Exception("Impurity source is zero within the simulation range")
         
     if plot:
@@ -255,28 +254,24 @@ def lbo_source_function(t_start, t_rise, t_fall, n_particles=1.0, time_vec=None)
     )
 
     if time_vec is None:
-        time_vec = np.hstack(
-            [
-                np.linspace(ts - 3 * tr, ts + 6 * tf, 200)
-                for ts, tr, tf in zip(t_start, t_rise, t_fall)
-            ]
-        )
-
+        time_vec = np.hstack([np.linspace(ts - 3 * tr, ts + 6 * tf, 200) for ts, tr, tf in zip(t_start, t_rise, t_fall)])
+        time_vec = np.unique(time_vec)
     source = np.zeros_like(time_vec)
 
     for ts, tr, tf, N in zip(t_start, t_rise, t_fall, n_particles):
         tind = slice(*time_vec.searchsorted([ts - 3 * tr, ts + 6 * tf]))
         T = time_vec[tind]
-        source[tind] = np.exp(
-            (1 - 4 * tf * (T - ts) / tr**2) / (4 * (tf / tr) ** 2)
-        ) * (erfc((T - ts) / tr - 1 / (2 * tf / tr)) - 2)
+        lbo = np.exp((1 - 4 * tf * (T - ts) / tr**2) / (4 * (tf / tr) ** 2)) * (erfc((T - ts) / tr - 1 / (2 * tf / tr)) - 2)
 
         # scale source to correspond to the given total number of particles
-        source[tind] *= N / np.trapz(source[tind], T)
+        lbo *= N / np.trapz(lbo, T)
 
         # ensure that source function ends with 0 to avoid numerical issues
-        source[tind][[0, -1]] = 0
+        lbo[[0, -1]] = 0
 
+        source[tind] += lbo
+
+     
     return time_vec, source
 
 
@@ -352,7 +347,8 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
             E0 = namelist["imp_source_energy_eV"] * np.ones_like(rvol_grid)
         else:
             if Ti_eV is not None:
-                E0 = copy.deepcopy(Ti_eV)[0]
+                #NOTE: antonello used Ti_eV[0], but this will use Ti only from the first timeslice
+                E0 = copy.deepcopy(Ti_eV)
             else:
                 raise ValueError("Could not compute a valid energy of injected ions!")
 

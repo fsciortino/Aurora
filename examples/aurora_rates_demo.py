@@ -8,7 +8,7 @@ import aurora
 import os
 import matplotlib.pyplot as plt
 
-plt.ion()
+plt.ion() 
 import numpy as np
 
 ion = "Ar"  # chosen species
@@ -54,8 +54,8 @@ Z = geqdsk["AuxQuantities"]["Z"]
 rhop = geqdsk["AuxQuantities"]["RHOpRZ"]
 
 # make up some arbitrary (example) density and temperature profiles
-ne_cm3_2d = (2 - rhop) * 1e13  # cm^-3
-Te_eV_2d = (2 - rhop) * 3e3  # eV
+ne_cm3_2d = np.maximum(0,1 - rhop**2)**.5 * 1e13  # cm^-3
+Te_eV_2d = np.maximum(0,1- rhop**2)**.5 * 3e3  # eV
 
 # plt.figure()
 # cntr = plt.contourf(R,Z,ne)
@@ -121,3 +121,4 @@ cbar.set_label(rf"$n_{{{ion}17+}}$")
 cntr = axs[1].contourf(R, Z, rad["line_rad"][:, 16, :])
 cbar = plt.colorbar(cntr, ax=axs[1])
 cbar.set_label(rf"$P_{{line,{ion}17+}}$ [MW/m$^3$]")
+ 

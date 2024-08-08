@@ -109,7 +109,7 @@ def interp_quad(x, y, d, rLCFS, r):
     """Function 'interp' used for kinetic profiles."""
     f = interp1d(x, np.log(y), kind="quadratic", assume_sorted=True, copy=False)
     idx = np.searchsorted(r, rLCFS)
-    core = np.exp(f(np.clip(r[:idx] / rLCFS, 0, x[-1])))
+    core = np.exp(f(np.clip(r[:idx] / rLCFS, x[0], x[-1])))
     edge = core[..., [idx - 1]] * np.exp(
         -np.outer(1.0 / np.asarray(d), r[idx:] - r[idx - 1])
     )
@@ -122,12 +122,12 @@ def interpa_quad(x, y, rLCFS, r):
     f = interp1d(
         x,
         np.log(y),
-        bounds_error=False,
         kind="quadratic",
         assume_sorted=True,
         copy=False,
     )
-    return np.exp(f(np.minimum(r / rLCFS, x[-1])))
+
+    return np.exp(f(np.clip(r / rLCFS, x[0], x[-1])))
 
 
 def interp(x, y, rLCFS, r):
