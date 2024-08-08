@@ -143,7 +143,7 @@ class adas_file:
                     self.MPRT.append(int(iprt.split("=")[1]))
                 except:
                     # some old files have different header
-                    self.Z.append(ind + 1)
+                    self.Z.append(ind)
                     self.MGRD.append(1)
                     self.MPRT.append(1)
 
@@ -402,7 +402,7 @@ def get_atom_data(imp, files=["acd", "scd"]):
 
     for filecheck in files:
         if filecheck not in all_files:
-            raise ValueError(f"Could not fetch {imp} {filecheck.upper()} file!")
+            raise ValueError(f"Could not fetch {imp} {filecheck.upper()} file! Please specify file locations using 'files' argument, for example files=dict(acd='user/acd89_ar.dat')")
 
     atom_data = {}
     for filetype in all_files:
