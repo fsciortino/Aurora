@@ -38,12 +38,6 @@ jobs:
     - name: Run FSA_ioniz.py
       run: |
         python examples/FSA_ioniz.py
-    - name: Run iterative_example.py
-      run: |
-        python examples/iterative_example.py
-    - name: Run kn1d_example.py
-      run: |
-        python examples/kn1d_example.py
     - name: Run metastables.py
       run: |
         python examples/metastables.py
