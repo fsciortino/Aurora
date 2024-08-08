@@ -40,7 +40,7 @@ from . import synth_diags
 from . import adas_files
 from . import surface
 from . import radiation
-from IPython import embed
+ 
 
 class aurora_sim:
     """Setup the input dictionary for an Aurora ion transport simulation from the given namelist.
