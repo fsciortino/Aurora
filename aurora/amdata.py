@@ -515,9 +515,7 @@ def parse_amjuel():
         raise Exception('Sorry, amjuel.tex was removed from eirene websites. Find another source')
 
     headers = aj.split("\section{H.")[1:]
-    
-    from IPython import embed
-    embed()
+ 
     for ih in [3, 4, 10, 12]:
         header = headers[ih]
 
