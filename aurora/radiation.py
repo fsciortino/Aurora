@@ -35,6 +35,7 @@ import pandas as pd
 from . import atomic
 from . import adas_files
 from . import plot_tools
+from . import line_broaden
 
 
 def compute_rad(
@@ -1060,7 +1061,7 @@ def plot_pec(transition, ax=None, plot_3d=False):
 
 
 def get_photon_emissivity(
-    adf15, lam, ne_cm3, Te_eV, imp_density, n0_cm3=0, meta_ind=None
+    adf15, lam, ne_cm3, Te_eV, imp_density, n0_cm3=0, meta_ind=None, isel=None
 ):
     r"""Evaluate PEC coefficients and return all components of intensity saved in an ADF15 file in units of :math:`ph/s`.
 
@@ -1101,26 +1102,43 @@ def get_photon_emissivity(
 
     line_emiss = {}  # ph/s
 
-    trs_line = adf15.loc[adf15["lambda [A]"] == lam]
-    for typ in trs_line["type"].unique():
+    if isel is None:
+        trs_line = adf15.loc[adf15["lambda [A]"] == lam]
 
-        line_emiss[typ] = np.zeros_like(ne_cm3)
-        trs_line_type = trs_line.loc[trs_line["type"] == typ]
+        for typ in trs_line["type"].unique():
 
-        for m in trs_line_type["indm"]:
-            log10pec_fun = trs_line_type.loc[trs_line_type["indm"] == m][
-                "log10 PEC fun"
-            ].iloc[0]
+            line_emiss[typ] = np.zeros_like(ne_cm3)
+            trs_line_type = trs_line.loc[trs_line["type"] == typ]
 
-            emiss = 10 ** log10pec_fun.ev(lne, lte)
-            emiss *= imp_density[meta_ind.index((Z + source[typ], m))]
+            for m in trs_line_type["indm"]:
+                log10pec_fun = trs_line_type.loc[trs_line_type["indm"] == m][
+                    "log10 PEC fun"
+                ].iloc[0]
 
-            if typ == "chexc":
-                emiss *= n0_cm3
-            else:
-                emiss *= ne_cm3
-            # sum contributions from all metastables
-            line_emiss[typ] += emiss
+                emiss = 10 ** log10pec_fun.ev(lne, lte)
+                emiss *= imp_density[meta_ind.index((Z + source[typ], m))]
+
+                if typ == "chexc":
+                    emiss *= n0_cm3
+                else:
+                    emiss *= ne_cm3
+                # sum contributions from all metastables
+                line_emiss[typ] += emiss
+
+    else:
+        log10pec_fun = adf15['log10 PEC fun'].iloc[isel]
+        typ = adf15['type'].iloc[isel]
+        m = adf15['indm'].iloc[isel]
+
+        emiss = 10 ** log10pec_fun.ev(lne, lte)
+        emiss *= imp_density[meta_ind.index((Z + source[typ], m))]
+
+        if typ == "chexc":
+            emiss *= n0_cm3
+        else:
+            emiss *= ne_cm3
+        # sum contributions from all metastables
+        line_emiss[typ] = emiss
 
     return line_emiss
 
@@ -1137,6 +1155,8 @@ def get_local_spectrum(
     plot_all_lines=False,
     no_leg=False,
     ax=None,
+    # Broadening mechanism controls
+    dbroad=None,
 ):
     r"""Plot spectrum based on the lines contained in an ADAS ADF15 file
     at specific values of electron density and temperature. Charge state densities
@@ -1277,31 +1297,22 @@ def get_local_spectrum(
     line_emiss = []
     for ii, lam in enumerate(trs["lambda [A]"]):
         line_emiss.append(
-            get_photon_emissivity(trs, lam, ne_cm3, Te_eV, imp_density, n0_cm3)
+            get_photon_emissivity(trs, lam, ne_cm3, Te_eV, imp_density, n0_cm3, isel=ii)
         )
 
-    from scipy.constants import e, m_p, c
+    # Defaults to just Doppler as broadening mechanism
+    if dbroad is None:
+        # Popullates defaults
+        dbroad = {}
+        dbroad['Doppler'] = {}
+        dbroad['Doppler']['Ti_eV'] = Ti_eV
+        dbroad['Doppler']['ion_A'] = ion_A
 
-    # Doppler broadening
-    mass = constants.m_p * ion_A
-    dnu_g = (
-        np.sqrt(2.0 * (Ti_eV * constants.e) / mass)
-        * (constants.c / wave_A)
-        / constants.c
-    )
-
-    # set a variable delta lambda based on the width of the broadening
-    _dlam_A = wave_A**2 / constants.c * dnu_g * 5  # 5 standard deviations
-
-    lams_profs_A = np.linspace(wave_A - _dlam_A, wave_A + _dlam_A, 100, axis=1)
-
-    # Gaussian profiles of the lines
-    theta = np.exp(
-        -(((constants.c / lams_profs_A - c / wave_A[:, None]) / dnu_g[:, None]) ** 2)
-    )
-
-    # Normalize Gaussian profile
-    theta /= np.sqrt(np.pi) * dnu_g[:, None] * wave_A[:, None] ** 2 / constants.c
+    # Obtains normalized broadening profiles
+    lams_profs_A, theta = line_broaden.get_line_broaden(
+        dbroad=dbroad,
+        wave_A=wave_A,
+        ) # dim(ntrs, nlamb); units[AA, 1/AA]
 
     # non-equally spaced wavelenght
     wave_final_A = np.unique(lams_profs_A)
@@ -1633,7 +1644,11 @@ def adf15_line_identification(pec_files, lines=None, Te_eV=1e3, ne_cm3=5e13, mul
     cols = iter(plt.cm.rainbow(np.linspace(0, 1, len(pec_files))))
 
     # use different line styles for different populating processes
-    proc_ls = {"ioniz": "o-.", "excit": "o-", "recom": "o--"}
+    proc_ls = {
+        'ioniz': 'o-.', 'ionise': 'o-.',
+        'excit': 'o-', 
+        'recom': 'o--', 'recomb': 'o--', 'drsat': 'o--'
+        }
 
     def _plot_line(tr, mult_val, ymin, ymax, c):
         log10pec_fun = tr["log10 PEC fun"].iloc[0]
