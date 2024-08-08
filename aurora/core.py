@@ -11,7 +11,7 @@
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in all
+# The above copyright notice and this permission notice shall be included in a
 # copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -244,12 +244,8 @@ class aurora_sim:
             self.rhop_grid = self.rvol_grid / self.rvol_lcfs
 
         # define time grid ('timing' must be in namelist)
-        #self.time_grid, self.save_time = grids_utils.create_time_grid(
-         #   timing=self.namelist["timing"], plot=False
-        #)
-        print('BUG!!')
-        self.time_grid = np.linspace(0,1,1000)
-        self.save_time = np.bool_( self.time_grid > 0)
+        self.time_grid, self.save_time = grids_utils.create_time_grid(
+            timing=self.namelist["timing"], plot=False)
         
         self.time_out = self.time_grid[self.save_time]
 
@@ -501,7 +497,7 @@ class aurora_sim:
         # the reflection profile = recycling profile
         self.rfl_rad_prof = self.rcl_rad_prof
         # sputtering profiles 
-        self.spt_rad_prof = np.tile(self.rcl_rad_prof[:,:,None], (1,len(self.time_grid)))
+        self.spt_rad_prof = np.tile(self.rcl_rad_prof[:,None], (self.num_background_species+1,1))
   
         # effective wall surfaces, accounting for roughness
         self.surf_mainwall_eff = self.surf_mainwall*self.mainwall_roughness #cm^2
@@ -514,7 +510,7 @@ class aurora_sim:
 
         # dummy values for reflection coefficients at each time step
         self.rn_main_wall = np.zeros(nt)
-        self.rn_div_wall = np.zeros(nt)
+        self.rn_div_wall  = np.zeros(nt)
         
         # dummy values for reflected energies at each time step
         self.E_refl_main_wall = np.zeros(nt)
@@ -669,21 +665,22 @@ class aurora_sim:
             self.namelist["rvol_lcfs"] + self.namelist["lim_sep"], side="left"
         )
 
+        
+        # Calculate parallel loss frequency using different connection lengths in the SOL and in the limiter shadow
+        dv = np.zeros_like(self._Te.T)  # space x time
 
         # Ti may not be reliable in SOL, replace it by Te
         Ti = self._Ti if trust_SOL_Ti else self._Te
 
-        # Calculate parallel loss frequency using different connection lengths in the SOL and in the limiter shadow
-        dv = vpf * np.sqrt(3.0 * Ti.T[ids:idl] + self._Te.T[ids:idl])   # space x time
-        
         # open SOL
-        dv[ids:idl] /=  self.namelist["clen_divertor"]
+        dv[ids:idl] = vpf * np.sqrt(3.0 * Ti.T[ids:idl] + self._Te.T[ids:idl])/ self.namelist["clen_divertor"]
 
         # limiter shadow
-        dv[idl:] /= self.namelist["clen_limiter"]
-
+        dv[idl:] = vpf * np.sqrt(3.0 * Ti.T[idl:] + self._Te.T[idl:]) / self.namelist["clen_limiter"]
+        
         dv, _ = np.broadcast_arrays(dv, self.time_grid[None])
-
+        
+   
         return np.asfortranarray(dv)
 
 
@@ -1101,7 +1098,7 @@ class aurora_sim:
 
             # import here to avoid import when building documentation or package (negligible slow down)
             from ._aurora import run as fortran_run
- 
+    
             _res = fortran_run(
                 nt,  # number of times at which simulation outputs results
                 times_DV,
