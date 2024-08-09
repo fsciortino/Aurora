@@ -443,9 +443,9 @@ def Lya_to_neut_dens(
 
         # ground state density
         # N1 = (N2 - cc * ni)/gc
-        N1 = (
-            N2 / gc
-        )  # continuum recomb term not well constrained, but should be small. Ignore it
+        # continuum recomb term not well constrained, but should be small. Ignore it
+        N1 =  N2 / gc
+          
 
     elif rates_source == "adas":
         filename = "pec96#h_pju#h0.dat"  # for D Ly-alpha

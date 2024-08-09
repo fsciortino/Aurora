@@ -59,7 +59,7 @@ V_z = -2e2 * np.ones(len(asim.rvol_grid))  # cm/s
 out = asim.run_aurora(D_z, V_z)
 
 # extract densities of each charge state:
-nz = out[0]
+nz = out['nz']
 
 # now create animation
 aurora.animate.animate_aurora(

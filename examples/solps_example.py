@@ -15,10 +15,17 @@ import aurora
 # if one wants to load a SOLPS case from MDS+ (defaults for AUG):
 so = aurora.solps_case(solps_id=141349)
 
-# alternatively, one may want to load SOLPS results from files on disk:
-so2 = aurora.solps_case(
-    b2fstate_path="/afs/ipp/home/s/sciof/SOLPS/141349/b2fstate",
-    b2fgmtry_path="/afs/ipp/home/s/sciof/SOLPS/141349/b2fgmtry",
+# alternatively, one may want to load SOLPS results from files on disk/cluster:
+# indicate here the absolute path of your SOLPS run folder in the same format as in the example!
+################################################################################################
+path = "/absolute/path/of/your/SOLPS/run/folder"
+################################################################################################
+rev_path = path[::-1]
+i = len(path) - rev_path.index('/') - 1
+baserun_path = path[:i] + "/baserun"
+so = aurora.solps_case(
+    b2fstate_path = path + "/b2fstate",
+    b2fgmtry_path = baserun_path + "/b2fgmtry",
 )
 
 # plot some important fields

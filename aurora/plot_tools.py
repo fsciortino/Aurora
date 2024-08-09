@@ -38,10 +38,12 @@ def slider_plot(
     xlabel="",
     ylabel="",
     zlabel="",
+    plot_title=None,
     labels=None,
     plot_sum=False,
     x_line=None,
     y_line=None,
+    zlim = False,
     **kwargs
 ):
     """Make a plot to explore multidimensional data.
@@ -60,6 +62,8 @@ def slider_plot(
         The label for the slider.
     zlabel : str, optional
         The label for the ordinate.
+    plot_title : None or string, optional
+        Title of the plot.
     labels : list of str with length `P`
         The labels for each curve in `z`.
     plot_sum : bool, optional
@@ -118,6 +122,14 @@ def slider_plot(
             label="total",
             **kwargs
         )
+        
+    if zlim:
+        if plot_sum:
+            lim_min = np.min(zz.sum(axis=0))
+            lim_max = np.max(zz.sum(axis=0))*1.15
+        else:
+            lim_min = np.min(zz)
+            lim_max = np.max(zz)*1.15
 
     leg = a_legend.legend(loc="best", fontsize=12).set_draggable(True)
     title = fig.suptitle("")
@@ -137,7 +149,15 @@ def slider_plot(
         a_plot.relim()
         a_plot.autoscale()
 
-        title.set_text("%s = %.5f" % (ylabel, y[i]) if ylabel else "%.5f" % (y[i],))
+        a_plot.set_xlim(x[0],x[-1]*1.05)
+        
+        if zlim:
+            a_plot.set_ylim(lim_min,lim_max)
+
+        if plot_title is not None:
+            title.set_text(f"{plot_title}, %s = %.5f" % (ylabel, y[i]) if ylabel else f"{plot_title}, %.5f" % (y[i],))
+        else:
+            title.set_text("%s = %.5f" % (ylabel, y[i]) if ylabel else "%.5f" % (y[i],))
 
         fig.canvas.draw()
 
@@ -175,6 +195,32 @@ def get_color_cycle(num=None, map="plasma"):
     for j in np.arange(num):
         cols[j] = cm(1.0 * j / num)
     return itertools.cycle(cols)
+
+
+def load_color_codes_reservoirs():
+    '''Get a systematic color code for the reservoirs and particle conservation plots.
+    '''
+    blue = (0.0000, 0.4470, 0.7410) # color for plasma reservoirs and fluxes, 1st variation
+    light_blue = (0.2824, 0.6980, 0.9686) # color for plasma reservoirs and fluxes, 2nd variation
+    green = (0.4660, 0.6740, 0.1880) # color for neutrals reservoirs and fluxes, 1st variation
+    light_green = (0.7137, 0.9020, 0.4667) # color for neutrals reservoirs and fluxes, 2nd variation
+    grey = (0.5098, 0.5098, 0.5098) # color for wall reservoirs, 1st variation
+    light_grey = (0.7451, 0.7451, 0.7451) # color for wall reservoirs, 2nd variation
+    red = (0.8500, 0.3250, 0.0980) # color code for sources/sinks, 1st variation
+    light_red = (1.0000, 0.5059, 0.2902) # color code for sources/sinks, 2nd variation
+    
+    return (blue,light_blue,green,light_green,grey,light_grey,red,light_red)
+
+
+def load_color_codes_PWI():
+    '''Get a systematic color code for the PWI-related plots.
+    '''
+    reds = [(0.6, 0, 0), (0.9, 0, 0), (1, 0.4, 0.4), (1, 0.6, 0.6), (1, 0.8, 0.8)]
+    blues = [(0, 0, 0.6), (0, 0, 0.9), (0.4, 0.4, 1), (0.6, 0.6, 1), (0.8, 0.8, 1)]
+    light_blues = [(0, 0.3608, 0.6), (0, 0.5412, 0.9020), (0.3020, 0.7216, 1), (0.6, 0.8392, 1), (0.8118, 0.9216, 1)]
+    greens = [(0.3176, 0.4706, 0.1294), (0.4745, 0.7059, 0.1922), (0.6706, 0.8510, 0.4510), (0.8118, 0.9137, 0.6863), (0.9059, 0.9569, 0.8431)]
+    
+    return (reds, blues, light_blues, greens)
 
 
 def get_line_cycle():

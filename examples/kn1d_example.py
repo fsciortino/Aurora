@@ -115,8 +115,8 @@ V_z = -2e2 * np.ones(len(asim.rvol_grid))  # cm/s
 out = asim.run_aurora(D_z, V_z, plot=plot)
 out_cxr = asim_cxr.run_aurora(D_z, V_z, plot=plot)
 
-nz = out[0]
-nz_cxr = out_cxr[0]
+nz = out['nz']
+nz_cxr = out_cxr['nz']
 
 # ls_cycle = aurora.get_ls_cycle()
 c_cycle = aurora.get_color_cycle()

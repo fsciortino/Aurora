@@ -7,7 +7,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 plt.ion()
-import aug_sfutils as sf
 from omfit_classes import omfit_eqdsk
 import sys
 import os
@@ -209,8 +208,8 @@ if plot:  # display neoclassical transport coefficients
 # run Aurora forward model and plot results
 out = asim.run_aurora(D_z, V_z, times_DV=times_DV, nz_init=nz_init, plot=plot)
 
-# extract densities and particle numbers in each simulation reservoir
-nz, N_wall, N_div, N_pump, N_ret, N_tsu, N_dsu, N_dsul, rcld_rate, rclw_rate = out
+# extract densities
+nz = out['nz']
 
 if plot:
     # plot charge state distributions over radius and time

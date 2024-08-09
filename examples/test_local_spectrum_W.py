@@ -76,5 +76,5 @@ plt.xlabel("$\lambda$ [nm]")
 plt.ylabel("$T_e$ [keV]")
 cb.set_label("log$_{10}$(Emissivity)")
 plt.title("W spectrum")
-plt.ioff()
-plt.show()
+ 
+ 

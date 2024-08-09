@@ -75,9 +75,8 @@ V_z = -10e2 * asim.rhop_grid**5  # cm/s
 
 
 t = time()
-meta_ind, nz_norm_steady = asim.run_aurora_steady_analytic(
-    D_z, V_z
-)  # ) ,  rvol,  nz[0], ploss, Sne, Rne, lam = 1.0)
+meta_ind, nz_norm_steady = asim.run_aurora_steady_analytic( D_z, V_z) 
+#,  rvol,  nz[0], ploss, Sne, Rne, lam = 1.0)
 print("Analytical steady solution calculated in : %.3fs" % (time() - t))
 
 n_steps = 10
