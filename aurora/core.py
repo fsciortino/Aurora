@@ -81,6 +81,8 @@ class aurora_sim:
         self.A_imp = int(out[spec]["A"])
 
         self.reload_namelist()
+ 
+        self.full_PWI_flag = False
 
         if "Raxis_cm" in self.namelist:
             self.Raxis_cm = self.namelist["Raxis_cm"]  # cm
@@ -380,13 +382,6 @@ class aurora_sim:
 
                 nml_rcl_prof["source_width_in"] = 0
                 nml_rcl_prof["source_width_out"] = 0
-                
-                print('Warning, overwrite imp_source_energy_eV, source_cm_out_lcfs from namelist!!')
-                # set the energy of the recycled neutrals
-                nml_rcl_prof["imp_source_energy_eV"] = self.namelist["imp_recycling_energy_eV"]
-                    
-                # set start of the recycling source at the wall boundary
-                nml_rcl_prof["source_cm_out_lcfs"] = self.namelist["bound_sep"]
 
                 # NB: we assume here that the 0th time is a good representation of how recycling is radially distributed
                 rcl_rad_prof = source_utils.get_radial_source(
@@ -488,8 +483,7 @@ class aurora_sim:
     def setup_dummy_pwi_vars(self):
     
         # full PWI model not used - dummy values for all related input variables to fortran routine
-        
-        self.full_PWI_flag = False
+
         
         nt = len(self.time_out)
 
