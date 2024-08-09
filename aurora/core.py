@@ -1,5 +1,5 @@
 """This module includes the core class to set up simulations with :py:mod:`aurora`. The :py:class:`~aurora.core.aurora_sim` takes as input a namelist dictionary and a g-file dictionary (and possibly other optional argument) and allows creation of grids, interpolation of atomic rates and other steps before running the forward model.
-""" 
+"""
 # MIT License
 #
 # Copyright (c) 2021 Francesco Sciortino
@@ -11,7 +11,7 @@
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in a
+# The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -122,7 +122,6 @@ class aurora_sim:
             )
 
         # now load ionization and recombination rates
-        
         self.atom_data = atomic.get_atom_data(self.imp, files=atom_files)
 
         # allow for ion superstaging
@@ -136,11 +135,9 @@ class aurora_sim:
             self.kin_profs = self.namelist["kin_profs"]
             # set up kinetic profiles and atomic rates
             self.setup_kin_profs_depts()
-
+            
         # full PWI model not used - dummy values for all related input variables to fortran routine
-        self.setup_dummy_pwi_vars()
-
- 
+        self.setup_dummy_pwi_vars() 
 
     def reload_namelist(self, namelist=None):
         """(Re-)load namelist to update scalar variables."""
@@ -326,6 +323,7 @@ class aurora_sim:
             self.src_core = self.source_rad_prof * source_time_history[None, :]
 
         self.src_core = np.asfortranarray(self.src_core)
+
         # if wall_recycling>=0, return flows from the divertor are enabled
         if (
             self.wall_recycling >= 0
@@ -406,7 +404,9 @@ class aurora_sim:
         else:
             # dummy profile -- recycling is turned off
             self.rcl_rad_prof = np.zeros((len(self.rhop_grid), len(self.time_grid)))
+        
 
+        
     def interp_kin_prof(self, prof):
         """Interpolate the given kinetic profile on the radial and temporal grids [units of s].
         This function extrapolates in the SOL based on input options using the same methods as in STRAHL.
@@ -495,6 +495,7 @@ class aurora_sim:
 
         # the reflection profile = recycling profile
         self.rfl_rad_prof = self.rcl_rad_prof
+       
         # sputtering profiles 
         self.spt_rad_prof = np.tile(self.rcl_rad_prof[:,None], (self.num_background_species+1,1))
   
@@ -590,11 +591,10 @@ class aurora_sim:
                     self.alpha_CX_rates[:,j] = alpha_CX_rates[:,i]
             else:
                 self.alpha_CX_rates = alpha_CX_rates
-
+            
             # inplace addition would change also self.alpha_RDR_rates
             Rne = Rne + self.alpha_CX_rates
             
-
 
         if self.namelist["nbi_cxr_flag"]:
             # include charge exchange between NBI neutrals and impurities
@@ -1098,7 +1098,6 @@ class aurora_sim:
 
             # import here to avoid import when building documentation or package (negligible slow down)
             from ._aurora import run as fortran_run
-    
             _res = fortran_run(
                 nt,  # number of times at which simulation outputs results
                 times_DV,
@@ -1313,7 +1312,10 @@ class aurora_sim:
             raise ValueError(
                 "This method is designed to operate with time-independent background profiles!"
             )
-
+        if self.full_PWI_flag:
+            raise Exception('It cannot be supported by PWI model!')
+            
+            
         if len(self.superstages) > 0:
             raise Exception("Superstages are not yet suported by analytical solver")
 
@@ -1566,6 +1568,9 @@ class aurora_sim:
             raise ValueError(
                 "This method is designed to operate with time-independent D and V profiles!"
             )
+            
+        if self.full_PWI_flag:
+            raise Exception('Not yet supported by PWI model!')
 
         # set constant timesource
         self.namelist["source_type"] = "const"
@@ -1626,7 +1631,9 @@ class aurora_sim:
                 nz_init = None
             else:
                 nz_init = nz_all[:, :, -1] if nz_all.ndim == 3 else nz_all
-
+            
+            #update dummy variable sizes of the PWI model
+            self.setup_dummy_pwi_vars() 
             nz_new = self.run_aurora(
                 D_z,
                 V_z,
