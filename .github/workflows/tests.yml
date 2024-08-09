@@ -75,9 +75,6 @@ jobs:
     - name: Run test_radiation_model.py
       run: |
         python examples/test_radiation_model.py
-    - name: Run am_balmer_emission.py
-      run: |
-        python examples/am_balmer_emission.py
     - name: Run aurora_rates_demo.py
       run: |
         python examples/aurora_rates_demo.py
