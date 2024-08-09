@@ -52,6 +52,14 @@ class aurora_sim_pwi(core.aurora_sim):
     """
     
     def __init__(self, namelist, geqdsk=None):
+
+        #PWI model assumes that the particle source is at the wall. 
+        # set the energy of the recycled neutrals
+        nml_rcl_prof["imp_source_energy_eV"] = self.namelist["imp_recycling_energy_eV"]
+        
+        # set start of the recycling source at the wall boundary
+        nml_rcl_prof["source_cm_out_lcfs"] = self.namelist["bound_sep"]
+
         
         # inheritate all methods from main class core.py
         super(aurora_sim_pwi, self).__init__(namelist, geqdsk)
