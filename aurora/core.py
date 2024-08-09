@@ -484,8 +484,8 @@ class aurora_sim:
     
         # full PWI model not used - dummy values for all related input variables to fortran routine
 
-        
-        nt = len(self.time_out)
+ 
+        nt = len(self.time_grid)
 
         # the reflection profile = recycling profile
         self.rfl_rad_prof = self.rcl_rad_prof
