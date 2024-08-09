@@ -44,7 +44,8 @@ atom_data = aurora.get_atom_data(
 # load an example gEQDSK from the Aurora examples directory
 from omfit_classes.omfit_eqdsk import OMFITgeqdsk
 
-geqdsk = OMFITgeqdsk(os.path.expanduser("~") + os.sep + "Aurora/examples/example.gfile")
+examples_dir = os.path.dirname(os.path.abspath(__file__))
+geqdsk = omfit_eqdsk.OMFITgeqdsk(examples_dir + "/example.gfile")
 
 # To plot the equilibrium:
 # geqdsk.plot()
