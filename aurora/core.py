@@ -150,7 +150,9 @@ class aurora_sim:
         # as attributes of asim, keeping the same name  
         #NOTE T.O. I'm not a fan of this MATLAB approach.. 
         for parameter in self.namelist:
-            if isinstance(self.namelist[parameter], dict):
+            if parameter == 'kin_profs':
+                pass
+            elif isinstance(self.namelist[parameter], dict):
                 for sub_parameter in self.namelist[parameter]:
                      setattr(self, sub_parameter, self.namelist[parameter][sub_parameter])
             else:
@@ -462,7 +464,7 @@ class aurora_sim:
         else:
             Ti = Te
 
-        # get neutral background ion density
+        # get neutral background neutral density
         if self.namelist.get("cxr_flag", False):
             n0 = self.interp_kin_prof("n0")
         else:
