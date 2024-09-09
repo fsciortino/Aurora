@@ -219,6 +219,8 @@ def create_time_grid(timing=None, plot=False):
         ax.semilogy(time[1:][save[1:]], np.diff(time)[save[1:]], "o", label="step")
         [ax.axvline(t, c="k", ls="--") for t in timing["times"]]
         ax.set_xlim(time[0], time[-1])
+        ax.set_xlabel('time [s]')
+        ax.set_ylabel('time step duration [s]'),
 
     return time, save
 
@@ -756,7 +758,7 @@ def estimate_boundary_distance(shot, device, time_ms):
 def vol_int(var, rvol_grid, pro_grid, Raxis_cm, rvol_max=None):
     """
     Perform a volume integral of an input variable. If the variable is f(t,x)
-    then the result is f(t). If the variable is f(t,*,x) then the result is f(t,charge)
+    then the result is f(t). If the variable is f(t,*,x) then the result is f(t,*)
     when "*" represents charge, line index, etc...
 
     Parameters

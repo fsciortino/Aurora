@@ -32,8 +32,59 @@ jobs:
     - name: Run test_basic.py
       run: |
         python examples/test_basic.py
-#    - name: Test with pytest and coverage
-#      run: |
-#        pip install pytest
-#        pip install pytest-cov
-#        pytest --junitxml=junit/test-results.xml --cov=aurora --cov-report=xml --cov-report=html
+
+    - name: Run facit_basic.py
+      run: |
+        python examples/facit_basic.py
+    - name: Run FSA_ioniz.py
+      run: |
+        python examples/FSA_ioniz.py
+    - name: Run metastables.py
+      run: |
+        python examples/metastables.py
+    - name: Run steady_state_run.py
+      run: |
+        python examples/steady_state_run.py
+    - name: Run superstages.py
+      run: |
+        python examples/superstages.py
+    - name: Run surface_data_bulk_sputtering.py
+      run: |
+        python examples/surface_data_bulk_sputtering.py
+    - name: Run surface_data_impurity_sputtering.py
+      run: |
+        python examples/surface_data_impurity_sputtering.py
+    - name: Run surface_data_reflection.py
+      run: |
+        python examples/surface_data_reflection.py
+    - name: Run test_extended_recycling_model.py
+      run: |
+        python examples/test_extended_recycling_model.py
+    - name: Run test_frac_abundances.py
+      run: |
+        python examples/test_frac_abundances.py
+    - name: Run test_full_PWI_model.py
+      run: |
+        python examples/test_full_PWI_model.py
+    - name: Run test_local_spectrum.py
+      run: |
+        python examples/test_local_spectrum.py
+    - name: Run test_local_spectrum_W.py
+      run: |
+        python examples/test_local_spectrum_W.py
+    - name: Run test_radiation_model.py
+      run: |
+        python examples/test_radiation_model.py
+    - name: Run aurora_rates_demo.py
+      run: |
+        python examples/aurora_rates_demo.py
+    - name: Run compare_algorithms.py
+      run: |
+        python examples/compare_algorithms.py
+    - name: Run cooling_factors.py
+      run: |
+        python examples/cooling_factors.py
+ 
+ 
+
+       

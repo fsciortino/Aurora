@@ -33,5 +33,3 @@ trs = trs.loc[trs['lambda [A]']<2000]
 out = aurora.get_local_spectrum(trs,  ne_cm3, Te_eV,
                                 ion_exc_rec_dens=[0.0, fz[0,0], fz[0,1]])
 
-
-plt.title('Lyman 

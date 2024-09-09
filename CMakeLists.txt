@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.17.2...3.26)
 project(${SKBUILD_PROJECT_NAME} LANGUAGES C Fortran)
 
+
 find_package(
   Python
   COMPONENTS Interpreter Development.Module NumPy
   REQUIRED)
+
 
 # F2PY headers
 execute_process(
@@ -17,6 +19,7 @@ add_library(fortranobject OBJECT "${F2PY_INCLUDE_DIR}/fortranobject.c")
 target_link_libraries(fortranobject PUBLIC Python::NumPy)
 target_include_directories(fortranobject PUBLIC "${F2PY_INCLUDE_DIR}")
 set_property(TARGET fortranobject PROPERTY POSITION_INDEPENDENT_CODE ON)
+
 
 add_custom_command(
   OUTPUT _auroramodule.c example-f2pywrappers.f

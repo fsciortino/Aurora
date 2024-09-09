@@ -18,7 +18,6 @@ requirements:
     - scipy
     - matplotlib
     - pexpect
-    - omfit_classes
     - requests
     - pandas
 
@@ -28,7 +27,6 @@ requirements:
     - scipy
     - matplotlib
     - pexpect
-    - omfit_classes
     - requests
     - pandas
     

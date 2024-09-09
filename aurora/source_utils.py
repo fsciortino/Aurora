@@ -27,9 +27,10 @@ import numpy as np
 import copy, sys
 from scipy.constants import m_p, e as q_electron
 from scipy.special import erfc
+import matplotlib.pyplot as plt
 
 
-def get_source_time_history(namelist, Raxis_cm, time):
+def get_source_time_history(namelist, Raxis_cm, time, plot = False):
     """Load source time history based on current state of the namelist.
 
     Parameters
@@ -41,8 +42,10 @@ def get_source_time_history(namelist, Raxis_cm, time):
         Major radius at the magnetic axis [cm]. This is needed to normalize the
         source such that it is treated as toroidally and poloidally symmetric -- a necessary
         idealization for 1.5D simulations.
-    time : array (nt,), optional
+    time : array (nt,)
         Time array the source should be returned on.
+    plot : bool, optional
+        If True, plot the source vs. the time grid. 
 
     Returns
     -------
@@ -51,7 +54,7 @@ def get_source_time_history(namelist, Raxis_cm, time):
 
     Notes
     -----
-    There are 4 options to describe the time-dependence of the source:
+    There are 5 options to describe the time-dependence of the source:
 
     #. namelist['source_type'] == 'file': in this case, a simply formatted
     source file, with one time point and corresponding and source amplitude on each
@@ -81,7 +84,6 @@ def get_source_time_history(namelist, Raxis_cm, time):
     the source function.
 
     """
-    imp = namelist["imp"]
 
     if namelist["source_type"] == "file":
         # read time history from a simple file with 2 columns
@@ -130,6 +132,8 @@ def get_source_time_history(namelist, Raxis_cm, time):
         
     from scipy.interpolate import interp1d
     src_rate_interp = interp1d(src_times, src_rates ,axis=0,kind='linear')
+
+    #this will extrapolate source by a contant values outside of src_times range
     source_time_history= src_rate_interp(np.clip(time, src_times[0], src_times[-1]))
     
     if source_time_history.ndim == 1:
@@ -139,6 +143,16 @@ def get_source_time_history(namelist, Raxis_cm, time):
     
     if np.all(source_time_history == 0):
         raise Exception("Impurity source is zero within the simulation range")
+        
+    if plot:
+
+        fig, ax = plt.subplots()
+        fig.suptitle('External particle source')
+        ax.set_xlabel('time [s]')
+        ax.set_ylabel('$\Gamma_{{source}}$ [s$^{{-1}}$]'),
+        ax.plot(time, source)
+        ax.set_ylim(0, None)
+        ax.set_xlim(time[0],time[-1])
 
     return np.asfortranarray(source_time_history)
  
@@ -334,6 +348,7 @@ def get_radial_source(namelist, rvol_grid, pro_grid, S_rates, Ti_eV=None):
             E0 = namelist["imp_source_energy_eV"] * np.ones_like(rvol_grid)
         else:
             if Ti_eV is not None:
+                #NOTE: antonello used Ti_eV[0], but this will use Ti only from the first timeslice
                 E0 = copy.deepcopy(Ti_eV)
             else:
                 raise ValueError("Could not compute a valid energy of injected ions!")
