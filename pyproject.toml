@@ -33,7 +33,7 @@ dependencies = [
     # 2. because omfit_classes uses xarray.plot.plot, which has
     #    been removed/renamed by a commit from October 2022.
     #    This constrains xarray<=v2022.09.0
-    "xarray==v2022.09.0",
+    #"xarray==v2022.09.0",
 
     # omfit_classes has issues with newer versions of
     # matplotlib, see https://github.com/gafusion/OMFIT-source/issues/6784
