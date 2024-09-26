@@ -1,5 +1,5 @@
 name = "aurora"
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 
 import numpy as np, os
 
@@ -11,6 +11,7 @@ from .surface import *
 from .trim_files import *
 
 from .source_utils import *
+from .transport_utils import *
 from .default_nml import *
 from .grids_utils import *
 from .coords import *

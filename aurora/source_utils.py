@@ -141,8 +141,8 @@ def get_source_time_history(namelist, Raxis_cm, time, plot = False):
 
     # For ease of comparison with STRAHL, shift source by one time step
     source_time_history = np.r_[source[1:], source[-1]] / circ
-    if all(source_time_history == 0):
-        raise Exception("Impurity source is zero within the simulation range")
+    # if all(source_time_history == 0):
+    #     raise Exception("Impurity source is zero within the simulation range")
         
     if plot:
 

@@ -26,6 +26,7 @@ import numpy as np, copy
 import matplotlib.gridspec as mplgs
 import matplotlib.widgets as mplw
 from matplotlib.cm import ScalarMappable
+from scipy.interpolate import interp1d
 import itertools
 
 plt.ion()
@@ -171,6 +172,86 @@ def slider_plot(
     slider.on_changed(update)
     update(0)
     fig.canvas.mpl_connect("key_press_event", lambda evt: arrow_respond(slider, evt))
+    
+    
+def time_average_profiles(timing,time,data,interval):
+    """Perform time average over cycles of a time-dependent multidimensional variable.
+
+    Parameters
+    ----------
+    timing: dict
+        Sub-dict "timing" from the main aurorawall inputs namelist.
+    time : array of float
+        Times of the original data.
+    data : array of float
+        Original data, whose last variable is the time.
+    interval : float
+        Duration of the cycles over which perform the time integration.      
+        
+    Returns
+    -------
+    times : array of float
+        Contains the times of the time-integrated data for all cycles.
+    data_average : array of float
+        Contains the time-integrated data for all cycles.
+    """
+    
+    dt_start = time[0]
+    res = np.linspace(timing['times'][0]+dt_start,timing['times'][-1],int((timing['times'][-1]-timing['times'][0])/dt_start)) 
+    times = np.linspace(timing['times'][0]+interval,timing['times'][-1],int((timing['times'][-1]-timing['times'][0])/interval))
+    temp = np.zeros((data.shape[0],data.shape[1],len(res))) 
+    data_average = np.zeros((data.shape[0],data.shape[1],len(times)))
+    
+    for i in range(0,data.shape[0]):
+        for j in range(0,data.shape[1]):
+            f = interp1d(time, data[i,j,:], kind="linear", fill_value="extrapolate", assume_sorted=True)
+            temp[i,j,:] = f(res)
+    
+    for i in range(0,len(times)):
+        idx_lower = np.argmin(np.abs(np.asarray(res) - (times[i]-interval)))
+        idx_upper = np.argmin(np.abs(np.asarray(res) - times[i]))
+        data_average[:,:,i] = np.trapz(temp[:,:,idx_lower:idx_upper],res[idx_lower:idx_upper])/interval
+            
+    return times, data_average
+
+
+def time_average_reservoirs(timing,time,data,interval):
+    """Perform time average over cycles of a time-dependent variable.
+
+    Parameters
+    ----------
+    timing: dict
+        Sub-dict "timing" from the main aurorawall inputs namelist.
+    time : array of float
+        Times of the original data.
+    data : array of float
+        Original data, which is a one-dimensional function of the time.
+    interval : float
+        Duration of the cycles over which perform the time integration.      
+        
+    Returns
+    -------
+    times : array of float
+        Contains the times of the time-integrated data for all cycles.
+    data_average : array of float
+        Contains the time-integrated data for all cycles.
+    """
+    
+    dt_start = time[0]
+    res = np.linspace(timing['times'][0]+dt_start,timing['times'][-1],int((timing['times'][-1]-timing['times'][0])/dt_start)) 
+    times = np.linspace(timing['times'][0]+interval,timing['times'][-1],int((timing['times'][-1]-timing['times'][0])/interval))
+    temp = np.zeros(len(res))
+    data_average = np.zeros(len(times))
+    
+    f = interp1d(time, data, kind="linear", fill_value="extrapolate", assume_sorted=True)
+    temp = f(res)
+    
+    for i in range(0,len(times)):
+        idx_lower = np.argmin(np.abs(np.asarray(res) - (times[i]-interval)))
+        idx_upper = np.argmin(np.abs(np.asarray(res) - times[i]))
+        data_average[i] = np.trapz(temp[idx_lower:idx_upper],res[idx_lower:idx_upper])/interval
+            
+    return times, data_average
 
 
 def get_ls_cycle():

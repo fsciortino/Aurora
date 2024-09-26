@@ -75,6 +75,7 @@ def load_default_namelist():
         "explicit_source_time": None,
         "explicit_source_rhop": None,
         "LBO": {"n_particles": 1e18, "t_fall": 0.3, "t_rise": 0.05, "t_start": 0.01},
+        "div_leak_ratio": 0.0,
         # --------------------
         # NEUTRAL SOURCE PROFILES 
         "source_width_in": 0.0,  # exponential ionization decay from wall boundary if widths both = 0
@@ -92,10 +93,26 @@ def load_default_namelist():
             "crash_width": 1.0,
         },
         # --------------------
+        # ELM MODEL  
+        "ELM_model": {
+            "ELM_flag": False,
+            "ELM_time_windows": None,
+            "ELM_frequency": [100], # Hz
+            "crash_duration": [0.5],  # ms
+            "plateau_duration": [1.0],  # ms
+            "recovery_duration": [0.5],  # ms
+            "ELM_shape_decay_param": 2000, # s^-1
+            "ELM_shape_delay_param": 0.001, # s
+            "adapt_time_grid": False,
+            "dt_intra_ELM": 5e-5, # s
+            "dt_increase_inter_ELM": 1.05,
+        },
+        # --------------------
         # EDGE/DIVERTOR
         "clen_divertor": 17.0, # m
         "clen_limiter": 0.5, # m
         "SOL_mach": 0.1,
+        "SOL_mach_ELM": 0.1,
         "div_recomb_ratio": 1.0,
         "recycling_flag": False, 
         "tau_div_SOL_ms": 50.0,  # ms
@@ -115,7 +132,9 @@ def load_default_namelist():
             "background_mode": 'manual',
             "background_species": ['D'],
             "background_main_wall_fluxes": [0], # s^-1
+            "background_main_wall_fluxes_ELM": [0], # s^-1
             "background_div_wall_fluxes": [0], # s^-1
+            "background_div_wall_fluxes_ELM": [0], # s^-1
             "background_files": ['file/location'],
             "characteristic_impact_energy_main_wall": 200, # eV
             "characteristic_impact_energy_div_wall": 500, # eV
@@ -123,7 +142,9 @@ def load_default_namelist():
             "n_div_wall_sat": 1e20, # m^-2
             "energetic_recycled_neutrals": False,
             "Te_div": 30.0, # eV
+            "Te_ped_ELM": 400.0, # eV
             "Te_lim": 10.0, # eV
+            "Te_lim_ELM": 20.0, # eV
             "Ti_over_Te": 1.0,
             "gammai": 2.0,
         },

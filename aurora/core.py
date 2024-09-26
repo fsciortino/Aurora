@@ -35,6 +35,7 @@ from . import interp
 from . import atomic
 from . import grids_utils
 from . import source_utils
+from . import transport_utils
 from . import plot_tools
 from . import synth_diags
 from . import adas_files
@@ -230,6 +231,12 @@ class aurora_sim:
         else:
             # use rho_vol = rvol/rvol_lcfs
             self.rhop_grid = self.rvol_grid / self.rvol_lcfs
+            
+        # possibly adapt the namelist 'timing' for ELMs, before creating the time grid, if asked to do so
+        if self.namelist['ELM_model']['ELM_flag'] and self.namelist['ELM_model']['adapt_time_grid']:
+            
+            # updated version of the namelist 'timing
+            self.namelist['timing'] = grids_utils.ELM_time_grid(self.namelist['timing'], self.namelist['ELM_model'])
 
         # define time grid ('timing' must be in namelist)
         self.time_grid, self.save_time = grids_utils.create_time_grid(
@@ -296,11 +303,30 @@ class aurora_sim:
             )
             # Change units to particles/cm^3
             self.src_core = self.source_rad_prof / Sne0
+            
+            # explicit source into the divertor
+            if (
+                self.wall_recycling >= 0
+                and "source_div_time" in self.namelist
+                and "source_div_vals" in self.namelist
+            ):
+
+                # interpolate divertor source time history
+                self.src_div = interp1d(
+                    self.namelist["source_div_time"], self.namelist["source_div_vals"]
+                )(self.time_grid)
+            else:
+                # no source into the divertor
+                self.src_div = np.zeros_like(self.time_grid)
+            
         else:
             # get time history and radial profiles separately
             source_time_history = source_utils.get_source_time_history(
                 self.namelist, self.Raxis_cm, self.time_grid
             )  # units of particles/s/cm
+            
+            plasma_source_time_history = source_time_history * (1-self.div_leak_ratio) # units of particles/s/cm
+            div_source_time_history = source_time_history * self.div_leak_ratio # units of particles/s/cm    
 
             # get radial profile of source function for each time step
             # dimensionless, normalized such that pnorm=1
@@ -314,24 +340,11 @@ class aurora_sim:
             )
 
             # construct source from separable radial and time dependences
-            self.src_core = self.source_rad_prof * source_time_history[None, :]
+            self.src_core = self.source_rad_prof * plasma_source_time_history[None, :]
 
         self.src_core = np.asfortranarray(self.src_core)
-
-        # if wall_recycling>=0, return flows from the divertor are enabled
-        if (
-            self.wall_recycling >= 0
-            and "source_div_time" in self.namelist
-            and "source_div_vals" in self.namelist
-        ):
-
-            # interpolate divertor source time history
-            self.src_div = interp1d(
-                self.namelist["source_div_time"], self.namelist["source_div_vals"]
-            )(self.time_grid)
-        else:
-            # no source into the divertor
-            self.src_div = np.zeros_like(self.time_grid)
+        
+        self.src_div = div_source_time_history # particles/s/cm
 
         # total number of injected ions, used for a check of particle conservation
         self.total_source = np.pi * np.sum(
@@ -525,6 +538,8 @@ class aurora_sim:
             Rne = (
                 Rne + self.alpha_CX_rates
             )  # inplace addition would change also self.alpha_RDR_rates
+        else:
+            self.alpha_CX_rates = np.zeros_like(Rne)
 
         if self.namelist["nbi_cxr_flag"]:
             # include charge exchange between NBI neutrals and impurities
@@ -554,6 +569,16 @@ class aurora_sim:
             (Rne.shape[2], Rne.shape[1] + 1, self.time_grid.size), order="F"
         )
         self.Rne_rates[:, :-1] = Rne.T
+        
+        self.Rne_RDR_rates = np.zeros(
+            (self.alpha_RDR_rates.shape[2], self.alpha_RDR_rates.shape[1] + 1, self.time_grid.size), order="F"
+        )
+        self.Rne_RDR_rates[:, :-1] = self.alpha_RDR_rates.T
+        
+        self.Rne_CX_rates = np.zeros(
+            (self.alpha_CX_rates.shape[2], self.alpha_CX_rates.shape[1] + 1, self.time_grid.size), order="F"
+        )
+        self.Rne_CX_rates[:, :-1] = self.alpha_CX_rates.T
 
         if metastables:
             self.Qne_rates = out.pop(0).T
@@ -617,7 +642,31 @@ class aurora_sim:
 
         dv, _ = np.broadcast_arrays(dv, self.time_grid[None])
 
-        return np.asfortranarray(dv)
+        # if a peak mach number during the ELM is desired, then
+        #   rescale the rate accordingly in the open SOL
+
+        if self.namelist['ELM_model']['ELM_flag'] and self.namelist["SOL_mach_ELM"] > self.namelist["SOL_mach"]:
+            # time-dependent ratio wrt the intra-ELM value
+            
+            rescale_factor = transport_utils.ELM_cycle_SOL_mach(self.namelist["SOL_mach"],
+                                                                self.namelist["SOL_mach_ELM"],
+                                                                self.time_grid,
+                                                                self.namelist["ELM_model"],
+                                                                self.namelist['timing'])/self.namelist["SOL_mach"]
+            dv_rescaled = np.zeros_like(dv)
+            # rescale
+            for i in range(0,ids):
+                dv_rescaled[i,:] = dv[i,:]
+            for i in range(ids,idl):
+                dv_rescaled[i,:] = dv[i,:]*rescale_factor
+            for i in range(idl,len(dv)):  
+                dv_rescaled[i,:] = dv[i,:]
+                
+            return np.asfortranarray(dv_rescaled)
+        
+        else:
+            
+            return np.asfortranarray(dv)
 
 
     def superstage_DV(self, D_z, V_z, times_DV=None, opt=1):
@@ -715,6 +764,8 @@ class aurora_sim:
         use_julia=False,
         plot=False,
         plot_radiation=False,
+        plot_average = False,
+        interval = 0.01,
         radial_coordinate = 'rho_vol',
     ):
         """Run a simulation using the provided diffusion and convection profiles as a function of space, time
@@ -803,7 +854,11 @@ class aurora_sim:
             particle conservation in each particle reservoir.
         plot_radiation : bool, optional
             If True, plot line radiation for each charge state using a convenient slides over time and
-            the total radiation time traces.
+        plot_average : bool, optional
+            If True, plot density for each charge state averaged over ELM cycles using a convenient slide
+            over time and check particle conservation in each particle reservoir averaged over ELM cycles.
+        interval : float, optional
+            Duration of time cycles to plot if plot_average is True, in s
         radial_coordinate : string, optional
             Radial coordinate shown in the plot. Options: 'rho_vol' (default) or 'rho_pol'
 
@@ -1248,8 +1303,30 @@ class aurora_sim:
                     zlim = True,
                 )
         
-            # check particle conservation by summing over simulation reservoirs
+            # Plot reservoirs and particle conservation
             _ = self.reservoirs_time_traces(plot=True)
+            
+            if self.namelist['ELM_model']['ELM_flag'] and plot_average:
+                
+                time_average, data_average_profiles = plot_tools.time_average_profiles(self.namelist['timing'], self.time_out, self.res['nz'], interval = interval)
+                
+                # plot charge state density distributions over radius and time, averaged over cycles
+                plot_tools.slider_plot(
+                    x,
+                    time_average,
+                    data_average_profiles.transpose(1, 0, 2),
+                    xlabel=xlabel,
+                    ylabel="time [s]",
+                    zlabel=f'$n_{{{self.imp}}}$ [$\mathrm{{cm}}$$^{{-3}}$]',
+                    plot_title = f'{self.imp} density profiles (averaged over ELM cycles)',
+                    labels=[str(i) for i in np.arange(0, self.res['nz'].shape[1])],
+                    plot_sum=True,
+                    x_line=x_line,
+                    zlim = True,
+                )
+                
+                # Plot reservoirs and particle conservation, averaged over cycles
+                _ = self.reservoirs_average_time_traces(interval = interval,plot = True)
 
         if len(self.superstages) and unstage:
             # "unstage" superstages to recover estimates for density of all charge states
@@ -1702,7 +1779,7 @@ class aurora_sim:
         assert hasattr(self, "res")
 
         # extract charge state densities from the simulation result
-        nz = self.res[0]
+        nz = self.res['nz']
 
         # this method requires all charge states to be made available
         try:
@@ -1717,6 +1794,85 @@ class aurora_sim:
         Z = np.arange(Zmax + 1)
         self.delta_Zeff = nz * (Z * (Z - 1))[None, :, None]  # for each charge state
         self.delta_Zeff /= self.ne.T[:, None, :]
+        
+    def calc_tauimp(self):
+        
+        nz = self.res['nz']
+        N_div = self.res['N_div']
+        N_pump = self.res['N_pump']
+        N_tsu = self.res['N_tsu']
+        N_dsu = self.res['N_dsu']
+        N_dsul = self.res['N_dsul']
+        nz = nz.transpose(2, 1, 0)  # time,nZ,space
+        
+        # factor to account for cylindrical geometry:
+        circ = 2 * np.pi * self.Raxis_cm  # cm
+
+        # calculate total impurity density (summed over charge states)
+        total_impurity_density = np.nansum(nz, axis=1)  # time, space
+
+        # compute total number of particles in the plasma
+        N_main = grids_utils.vol_int(
+            total_impurity_density, self.rvol_grid, self.pro_grid, self.Raxis_cm,
+            rvol_max = None
+        )
+        
+        # compute fluxes leaving the plasma
+        edge_loss = N_tsu * circ
+        limiter_loss = N_dsul * circ
+        parallel_loss = N_dsu * circ
+        flux_plasma_out = edge_loss + limiter_loss + parallel_loss
+        
+        # calculate the characteristic loss time from the plasma
+        tau_main = np.divide(N_main, flux_plasma_out, out=np.zeros_like(N_main), where=flux_plasma_out!=0)
+        
+        # calculate the effective pumping time from the divertor
+        ndiv = (N_div * circ)/self.vol_div
+        npump = (N_pump * circ)/self.vol_pump
+        tau_pump = ((ndiv / npump) * self.vol_div) / (self.S_pump)
+        
+        # calculate the effective retention time of the divertor
+        tau_div = (self.tau_div_SOL_ms/1000) / (1 - self.div_neut_screen)
+        
+        # calculate the effective impurity confinement time in the plasma according to a two-chamber model approximation
+        tau_imp = tau_pump * (1 + tau_main/tau_div)
+        
+        return tau_main, tau_pump, tau_div, tau_imp
+    
+
+    def calc_compression_enrichment(self,exp_data,n_div_main,geqdsk):
+        
+        nz = self.res['nz']
+        N_div = self.res['N_div']
+        nz = nz.transpose(2, 1, 0)  # time,nZ,space
+        
+        # factor to account for cylindrical geometry:
+        circ = 2 * np.pi * self.Raxis_cm  # cm
+        
+        if not self.namelist["phys_volumes"]:    
+            raise ValueError("Calculating the divertor compression and enrichment requires the physical volumes of the reservoirs to be defined.") 
+        
+        # calculate average impurity density in the core and in the divertor
+        n_core = grids_utils.vol_int(nz[:,-1,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=self.rvol_lcfs)/self.core_vol
+        n_div = (N_div*circ)/self.vol_div
+        
+        # extract data for main ion density
+        rhop_main = exp_data[f'{self.namelist["main_element"]}_density_plasma']['rhop']
+        n_main = exp_data[f'{self.namelist["main_element"]}_density_plasma'][f'n_{self.namelist["main_element"]}']
+        
+        # interpolate main ion density profile onto aurorawall radial grid
+        _, rvol_main = grids_utils.get_rhopol_rvol_mapping(geqdsk, rho_pol=rhop_main)
+        f_n_main = interp1d(rvol_main, n_main, kind="linear", fill_value="extrapolate", assume_sorted=True)
+        n_main = f_n_main(self.rvol_grid)
+        
+        # calculate average main ion density in the core
+        n_core_main = grids_utils.vol_int(n_main,self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=self.rvol_lcfs)/self.core_vol
+
+        # calculate compression and enrichment
+        compression = np.divide(n_div, n_core, out=np.zeros_like(n_div), where=n_core!=0)
+        enrichment = np.divide(n_div*n_core_main, n_core*n_div_main, out=np.zeros_like(n_div*n_core_main), where=(n_core*n_div_main)!=0)
+
+        return n_core, n_div, compression, enrichment
 
     def plot_resolutions(self):
         """Convenience function to show time and spatial resolution in Aurora simulation setup."""
@@ -1743,7 +1899,7 @@ class aurora_sim:
         plot_tools.slider_plot(
             self.rvol_grid if rad_coord=='rvol' else self.rhop_grid,
             self.time_out,
-            _prof,
+            prof,
             xlabel= r"$r_V$ [cm]" if rad_coord=='rvol' else r'$\rho_p$',
             ylabel="time [s]",
             zlabel=qlabels[var],
@@ -1801,7 +1957,7 @@ class aurora_sim:
 
         # main fluxes
         reservoirs["source"] = self.total_source*circ
-        reservoirs["plasma_source"] = self.total_source*circ
+        reservoirs["plasma_source"] = self.total_source*circ*(1-self.div_leak_ratio)
         reservoirs["wall_source"] = self.res['rclw_rate'] * circ
         reservoirs["divertor_source"] = self.res['rclb_rate'] * circ + self.res['rclp_rate'] * circ
         reservoirs["plasma_removal_rate"] = - self.res['N_dsu'] * circ - self.res['N_tsu'] * circ - self.res['N_dsul'] * circ       
@@ -2060,6 +2216,313 @@ class aurora_sim:
         else:
 
             return reservoirs
+        
+    def reservoirs_average_time_traces(self, interval, plot=True, ylim = True, axs=None, plot_resolutions=False):
+        """Plot the particle content in the various reservoirs
+        time-averaged over user-defined cycles.
+
+        Parameters
+        ----------
+        interval : float
+            Duration of the cycles over which perform the time integration.
+        plot : bool, optional
+            If True, plot time histories in each particle reservoir and display quality of particle conservation.
+        axs : 2-tuple or array
+            Array-like structure containing two matplotlib.Axes instances: the first one
+            for the separate particle time variation in each reservoir and the main fluxes,
+            and the second one for the total particle-conservation check.
+
+        Returns
+        -------
+        reservoirs : dict
+            Dictionary containing density of particles in each reservoir.
+        axs : matplotlib.Axes instances, only returned if plot=True
+            Array-like structure containing two matplotlib.Axes instances, (ax1,ax2).
+            See optional input argument.
+        """
+        
+        # get colors for plots
+        colors = plot_tools.load_color_codes_reservoirs()
+        blue,light_blue,green,light_green,grey,light_grey,red,light_red = colors
+        
+        nz = self.res['nz'].transpose(2, 1, 0)  # time,nZ,space
+
+        # factor to account for cylindrical geometry:
+        circ = 2 * np.pi * self.Raxis_cm  # cm
+
+        # collect all the relevant quantities for particle conservation
+        reservoirs = {}
+
+        # calculate total impurity density (summed over charge states)
+        total_impurity_density = np.nansum(nz, axis=1)  # time, space
+
+        # Compute total number of particles for particle conservation checks:
+        all_particles = grids_utils.vol_int(
+            total_impurity_density,
+            self.rvol_grid,
+            self.pro_grid,
+            self.Raxis_cm,
+            rvol_max = None
+        )
+
+        time_average, reservoirs["total"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,all_particles + (self.res['N_mainwall'] + self.res['N_divwall'] + self.res['N_div'] + self.res['N_pump'] + self.res['N_out'] + self.res['N_mainret'] + self.res['N_divret']) * circ,interval)
+
+        # main fluxes
+        _, reservoirs["source"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.total_source*circ,interval)
+        _, reservoirs["plasma_source"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.total_source*circ*(1-self.div_leak_ratio),interval)
+        _, reservoirs["wall_source"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['rclw_rate'] * circ,interval)
+        _, reservoirs["divertor_source"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['rclb_rate'] * circ + self.res['rclp_rate'] * circ,interval)       
+        _, reservoirs["plasma_removal_rate"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,- self.res['N_dsu'] * circ - self.res['N_tsu'] * circ - self.res['N_dsul'] * circ,interval)    
+        reservoirs["net_plasma_flow"] = reservoirs["plasma_source"] + reservoirs["wall_source"] + reservoirs["divertor_source"] + reservoirs["plasma_removal_rate"]
+
+        # integrated source over time
+        reservoirs["integ_source"] = cumtrapz(reservoirs["source"], time_average, initial=0) + reservoirs["total"][0]
+
+        # main plasma content
+        if self.namelist["phys_volumes"]: 
+            _, reservoirs["particle_density_in_plasma"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,all_particles/self.plasma_vol,interval)      
+        _, reservoirs["particles_in_plasma"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,all_particles,interval)
+
+        # divertor and pump neutrals reservoirs
+        if self.namelist["phys_volumes"]:
+            _, reservoirs["particle_density_in_divertor"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(self.res['N_div'] * circ)/self.vol_div,interval)
+            _, reservoirs["particle_density_in_pump"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(self.res['N_pump'] * circ)/self.vol_pump,interval) 
+        _, reservoirs["particles_in_divertor"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['N_div'] * circ,interval)
+        _, reservoirs["particles_in_pump"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['N_pump'] * circ,interval)
+
+        # fluxes towards main wall
+        _, reservoirs["edge_loss"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['N_tsu'] * circ,interval)
+        _, reservoirs["limiter_loss"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['N_dsul'] * circ,interval)
+        reservoirs["total_flux_mainwall"] = reservoirs["edge_loss"] + reservoirs["limiter_loss"]
+
+        # recycling rates from main wall
+        _, reservoirs["mainwall_recycling"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['rclw_rate'] * circ,interval)
+
+        # main wall reservoir
+        if self.namelist["phys_surfaces"]:
+            _, reservoirs["particle_density_stuck_at_main_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(self.res['N_mainwall'] * circ)/(self.surf_mainwall*self.mainwall_roughness),interval)
+            _, reservoirs["particle_density_retained_at_main_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(self.res['N_mainret'] * circ)/(self.surf_mainwall*self.mainwall_roughness),interval)
+        _, reservoirs["particles_stuck_at_main_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['N_mainwall'] * circ,interval)
+        _, reservoirs["particles_retained_at_main_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['N_mainret'] * circ,interval)
+
+        # flux towards divertor targets and backflow/leakage rates
+        _, reservoirs["parallel_loss"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['N_dsu'] * circ,interval)
+        _, reservoirs["divertor_backflow"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['rclb_rate'] * circ,interval)
+        _, reservoirs["screened_divertor_backflow"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['rcls_rate'] * circ,interval)
+        _, reservoirs["pump_leakage"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['rclp_rate'] * circ,interval)
+        reservoirs["total_flux_divwall"] = (reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*(1-self.div_recomb_ratio)       
+        
+        # recycling rates from divertor wall
+        _, reservoirs["divwall_recycling"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['rcld_rate'] * circ,interval)
+        
+        # divertor wall reservoir
+        if self.namelist["phys_surfaces"]:
+            _, reservoirs["particle_density_stuck_at_div_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(self.res['N_divwall'] * circ)/(self.surf_divwall*self.divwall_roughness),interval)
+            _, reservoirs["particle_density_retained_at_div_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,(self.res['N_divret'] * circ)/(self.surf_divwall*self.divwall_roughness),interval)
+        _, reservoirs["particles_stuck_at_div_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['N_divwall'] * circ,interval)
+        _, reservoirs["particles_retained_at_div_wall"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['N_divret'] * circ,interval)        
+
+        # particles pumped away
+        _, reservoirs["particles_pumped"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,self.res['N_out'] * circ,interval)
+        reservoirs["pumping_rate"] = np.zeros(len(time_average))
+        for i in range(1,len(time_average)):
+            reservoirs["pumping_rate"][i] = (reservoirs["particles_pumped"][i]-reservoirs["particles_pumped"][i-1])/(time_average[i]-time_average[i-1]) 
+
+        if hasattr(self, "rad"):  # radiation has already been computed
+            impurity_radiation_all = grids_utils.vol_int(
+                    self.rad["tot"], self.rvol_grid, self.pro_grid, self.Raxis_cm,
+                    rvol_max = self.rvol_lcfs
+                )
+            _, reservoirs["impurity_radiation"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,impurity_radiation_all,interval)
+
+        if plot:
+            # -------------------------------------------------
+            # plot time histories for each particle reservoirs:
+            if axs is None:
+                fig, ax1 = plt.subplots(nrows=4, ncols=3, sharex=True, figsize=(16, 12))
+            else:
+                ax1 = axs[0]
+            
+            fig.suptitle('Time traces (averaged over ELM cycles)',fontsize=18)
+
+            ax1[0, 0].plot(time_average, reservoirs["plasma_source"], label="Ext. source", color = red, linestyle = 'dotted')
+            ax1[0, 0].plot(time_average, reservoirs["wall_source"], label="Wall source", color = light_green)
+            ax1[0, 0].plot(time_average, reservoirs["divertor_source"], label="Div. source", color = green)
+            ax1[0, 0].plot(time_average, reservoirs["plasma_removal_rate"], label="Removal rate", color = red, linestyle = 'dashed')
+            ax1[0, 0].plot(time_average, reservoirs["net_plasma_flow"], label="Net sum", color = 'black', linestyle = 'dashed')
+            ax1[0, 0].set_title('Plasma particles balance', loc='right', fontsize = 11)
+            ax1[0, 0].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax1[0, 0].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            if self.namelist["phys_volumes"]:
+                ax1[0, 1].plot(time_average, reservoirs["particle_density_in_plasma"],
+                               color = blue)
+                if ylim:
+                    ax1[0, 1].set_ylim(0,np.max(reservoirs["particle_density_in_plasma"])*1.15)
+                ax1[0, 1].set_ylabel('[$\mathrm{cm}^{-3}$]')
+            else:   
+                ax1[0, 1].plot(time_average, reservoirs["particles_in_plasma"],
+                           color = blue)
+                if ylim:
+                    ax1[0, 1].set_ylim(0,np.max(reservoirs["particles_in_plasma"])*1.15)
+                ax1[0, 1].set_ylabel('[\#]')
+            ax1[0, 1].set_title('Plasma', loc='right', fontsize = 11)
+                
+            if "impurity_radiation" in reservoirs:
+                ax1[0, 2].plot(time_average, reservoirs["impurity_radiation"]/1e6, color = 'red')
+                if ylim:
+                    ax1[0, 2].set_ylim(0,np.max(reservoirs["impurity_radiation"]/1e6)*1.15)
+                ax1[0, 2].set_ylabel('[$\mathrm{MW}$]')
+                ax1[0, 2].set_title('Core radiation', loc='right', fontsize = 11) 
+                
+            ax1[1, 0].plot(time_average, reservoirs["total_flux_mainwall"], label="Tot. flux to main wall", color = blue)
+            ax1[1, 0].plot(time_average, reservoirs["edge_loss"], label="Radial edge loss", color = light_blue, linestyle = 'dashed')
+            ax1[1, 0].plot(time_average, reservoirs["limiter_loss"], label="Parallel limiter loss", color = light_blue, linestyle = 'dotted')
+            if ylim:
+                ax1[1, 0].set_ylim(0,np.max(reservoirs["total_flux_mainwall"])*1.15)
+            ax1[1, 0].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax1[1, 0].set_title('Main wall fluxes', loc='right', fontsize = 11)
+            ax1[1, 0].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            ax1[1, 1].plot(time_average, reservoirs["mainwall_recycling"], color = light_green)
+            if ylim:
+                ax1[1, 1].set_ylim(0,np.max(reservoirs["mainwall_recycling"])*1.15)
+            ax1[1, 1].set_ylabel('[$\mathrm{s}^{-1}$]')  
+            ax1[1, 1].set_title('Main wall recycling rate', loc='right', fontsize = 11)
+
+            if self.namelist["phys_surfaces"]:
+                if not self.full_PWI_flag:
+                    ax1[1, 2].plot(time_average, reservoirs["particle_density_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
+                ax1[1, 2].plot(time_average, reservoirs["particle_density_retained_at_main_wall"],
+                    label="Particles retained", color = light_grey)
+                ax1[1, 2].set_ylabel('[$\mathrm{cm}^{-2}$]')            
+            else:
+                if not self.full_PWI_flag:
+                    ax1[1, 2].plot(time_average, reservoirs["particles_stuck_at_main_wall"], label="Particles stuck", color = light_grey, linestyle = 'dashed')
+                ax1[1, 2].plot(time_average, reservoirs["particles_retained_at_main_wall"],
+                    label="Particles retained", color = light_grey)
+                ax1[1, 2].set_ylabel('[\#]')
+            ax1[1, 2].set_title('Main wall reservoir', loc='right', fontsize = 11)
+            ax1[1, 2].legend(loc="best", fontsize = 9).set_draggable(True)
+                
+            if self.div_recomb_ratio < 1.0:               
+                ax1[2, 0].plot(time_average, reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"],
+                           label="Tot. parallel loss", color = light_blue) 
+                ax1[2, 0].plot(time_average, (reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*(1-self.div_recomb_ratio),
+                           label="Tot. flux to div. wall", color = blue)
+                ax1[2, 0].plot(time_average, (reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*(self.div_recomb_ratio),
+                               label="Recomb. flux to div. reservoir", color = green)
+            elif self.div_recomb_ratio == 1.0:
+                ax1[2, 0].plot(time_average, reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"],
+                           label="Parallel loss", color = blue) 
+            if ylim:
+                ax1[2, 0].set_ylim(0,np.max(reservoirs["parallel_loss"]+reservoirs["screened_divertor_backflow"])*1.15)
+            ax1[2, 0].set_ylabel('[$\mathrm{s}^{-1}$]') 
+            ax1[2, 0].set_title('Divertor fluxes', loc='right', fontsize = 11)
+            ax1[2, 0].legend(loc="best", fontsize = 9).set_draggable(True)
+                
+            ax1[2, 1].plot(time_average, reservoirs["divwall_recycling"], color = green)
+            if ylim:
+                ax1[2, 1].set_ylim(0,np.max(reservoirs["divwall_recycling"])*1.15)
+            ax1[2, 1].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax1[2, 1].set_title('Divertor wall recycling rate', loc='right', fontsize = 11)
+            
+            if self.namelist["phys_surfaces"]:
+                if not self.full_PWI_flag:
+                    ax1[2, 2].plot(time_average, reservoirs["particle_density_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
+                ax1[2, 2].plot(time_average, reservoirs["particle_density_retained_at_div_wall"],
+                    label="Particles retained", color = grey)
+                ax1[2, 2].set_ylabel('[$\mathrm{cm}^{-2}$]')            
+            else:
+                if not self.full_PWI_flag:
+                    ax1[2, 2].plot(time_average, reservoirs["particles_stuck_at_div_wall"], label="Particles stuck", color = grey, linestyle = 'dashed')
+                ax1[2, 2].plot(time_average, reservoirs["particles_retained_at_div_wall"],
+                    label="Particles retained", color = grey)
+                ax1[2, 2].set_ylabel('[\#]') 
+            ax1[2, 2].set_title('Divertor wall reservoir', loc='right', fontsize = 11)
+            ax1[2, 2].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            if self.div_neut_screen > 0.0:
+                ax1[3, 0].plot(time_average, reservoirs["divertor_backflow"]+reservoirs["screened_divertor_backflow"],
+                           label="Tot. backflow rate", color = green) 
+                ax1[3, 0].plot(time_average, reservoirs["divertor_backflow"],
+                           label="Backflow to core", color = blue) 
+                ax1[3, 0].plot(time_average, reservoirs["screened_divertor_backflow"],
+                           label="Screened backflow", color = light_blue) 
+            elif self.div_neut_screen == 0.0:
+                ax1[3, 0].plot(time_average, reservoirs["divertor_backflow"]+reservoirs["screened_divertor_backflow"],
+                           label="Backflow rate", color = green)
+            if ylim:
+                ax1[3, 0].set_ylim(0,np.max(reservoirs["divertor_backflow"]+reservoirs["screened_divertor_backflow"])*1.15)
+            ax1[3, 0].set_ylabel('[$\mathrm{s}^{-1}$]') 
+            ax1[3, 0].set_title('Divertor backflow rates', loc='right', fontsize = 11)
+            ax1[3, 0].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            ax1[3, 1].plot(time_average, reservoirs["pump_leakage"],
+                           label="Leakage to core", color = light_green)
+            if ylim and np.max(reservoirs["pump_leakage"])!=0:
+                ax1[3, 1].set_ylim(0,np.max(reservoirs["pump_leakage"])*1.15)
+            ax1[3, 1].set_ylabel('[$\mathrm{s}^{-1}$]')
+            ax1[3, 1].set_title('Pump leakage rates', loc='right', fontsize = 11)
+            ax1[3, 1].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            if self.namelist["phys_volumes"]:
+                ax1[3, 2].plot(time_average, reservoirs["particle_density_in_divertor"],
+                               label="Div. reservoir", color = green)
+                if self.namelist["pump_chamber"]:
+                    ax1[3, 2].plot(time_average, reservoirs["particle_density_in_pump"],
+                               label="Pump reservoir", color = light_green)
+                if ylim:
+                    ax1[3, 2].set_ylim(0,np.max(reservoirs["particle_density_in_divertor"])*1.15)
+                ax1[3, 2].set_ylabel('[$\mathrm{cm}^{-3}$]')     
+            else:
+                ax1[3, 2].plot(time_average, reservoirs["particles_in_divertor"],
+                           label="Div. reservoir", color = green)
+                if self.namelist["pump_chamber"]:
+                    ax1[3, 2].plot(time_average, reservoirs["particles_in_pump"],
+                           label="Pump reservoir", color = light_green)
+                if ylim:
+                    ax1[3, 2].set_ylim(0,np.max(reservoirs["particles_in_divertor"])*1.15)
+                ax1[3, 2].set_ylabel('[\#]')
+            ax1[3, 2].set_title('Neutrals reservoirs', loc='right', fontsize = 11)
+            ax1[3, 2].legend(loc="best", fontsize = 9).set_draggable(True)
+
+            for ii in [0, 1, 2]:
+                ax1[3, ii].set_xlabel('$\mathrm{time}$ [$\mathrm{s}$]')
+            ax1[3, 0].set_xlim(time_average[[0, -1]])
+            
+            plt.tight_layout()
+
+            # ----------------------------------------------------------------
+            # now plot all particle reservoirs to check particle conservation:
+            if axs is None:
+                fig, ax2 = plt.subplots(figsize=(9, 5))
+            else:
+                ax2 = axs[1]
+                
+            fig.suptitle('Particle conservation (averaged over ELM cycles)',fontsize=14)
+
+            ax2.set_xlabel('$\mathrm{time}$ [$\mathrm{s}$]')
+
+            ax2.plot(time_average, reservoirs["particles_in_plasma"], label="Particles in the plasma", color = blue)
+            ax2.plot(time_average, reservoirs["particles_in_divertor"], label="Particles in the divertor chamber", color = green)
+            if self.namelist["pump_chamber"]:
+                ax2.plot(time_average, reservoirs["particles_in_pump"], label="Particles in the pump chamber", color = light_green)
+            ax2.plot(time_average, reservoirs["particles_stuck_at_main_wall"]+reservoirs["particles_retained_at_main_wall"], label="Particles stored at the main wall", color = light_grey)
+            ax2.plot(time_average, reservoirs["particles_stuck_at_div_wall"]+reservoirs["particles_retained_at_div_wall"], label="Particles stored at the divertor wall", color = grey)
+            ax2.plot(time_average, reservoirs["particles_pumped"], label="Particles pumped away", color = red, linestyle = 'dashed')
+            ax2.plot(time_average, reservoirs["integ_source"], label="Integrated source", color = red, linestyle = 'dotted')
+            ax2.plot(time_average, reservoirs["total"], label="Total particles in the system", color = 'black')
+        
+            ax2.set_xlim(time_average[[0, -1]])
+            ax2.set_ylim(0, None)
+            ax2.legend(loc="center left", bbox_to_anchor=(1, 0.5))
+            plt.tight_layout()
+
+        if plot:
+            return reservoirs, (ax1, ax2)
+        else:
+            return reservoirs 
 
 
     def centrifugal_asym(self, omega, Zeff, plot=False):
@@ -2087,13 +2550,13 @@ class aurora_sim:
          """
          # this method requires all charge states to be made available
          try:
-             assert self.res[0].shape[1] == self.Z_imp + 1
+             assert self.res['nz'].shape[1] == self.Z_imp + 1
          except AssertionError:
              raise ValueError(
                  "centrifugal_asym method requires all charge state densities to be availble! Unstage superstages."
              )
 
-         fz = self.res[0][..., -1] / np.sum(self.res[0][..., -1], axis=1)[:, None]
+         fz = self.res['nz'][..., -1] / np.sum(self.res['nz'][..., -1], axis=1)[:, None]
          Z_ave_vec = np.sum(fz * np.arange(self.Z_imp + 1)[None, :], axis=1)
          _, self.Rlfs = grids_utils.get_HFS_LFS(self.geqdsk, rho_pol=self.rhop_grid)
          self.CF_lambda = synth_diags.centrifugal_asymmetry(
@@ -2107,7 +2570,7 @@ class aurora_sim:
              self.Ti,
              main_ion_A=self.main_ion_A,
              plot=plot,
-             nz=self.res[0][..., -1],
+             nz=self.res['nz'][..., -1],
              geqdsk=self.geqdsk,
          ).mean(0)
 

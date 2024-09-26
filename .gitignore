@@ -51,3 +51,4 @@ junit
 # folder-related macbook files
 *.DS_Store
 docs/.idea/*
+aurora/config.py

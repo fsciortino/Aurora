@@ -37,6 +37,7 @@ from . import interp
 from . import atomic
 from . import grids_utils
 from . import source_utils
+from . import transport_utils
 from . import plot_tools
 from . import synth_diags
 from . import adas_files
@@ -227,13 +228,38 @@ class aurora_sim_pwi(core.aurora_sim):
             if (len(self.background_species) != len(self.background_main_wall_fluxes) or len(self.background_species) != len(self.background_div_wall_fluxes)):
                 raise ValueError("Declared number of background species for full PWI model not consistent with declared number of background fluxes!")  
                 
-            # set wall fluxes of the background species to constant value over entire time grid
+            if not self.namelist['ELM_model']['ELM_flag']:
+                # set wall fluxes of the background species to constant value over entire time grid
                 
-            for i in range(0,len(self.background_species)):
-                fluxes_main_wall[i,:] = np.full(len(self.time_out),self.background_main_wall_fluxes[i])
-                fluxes_div_wall[i,:] = np.full(len(self.time_out),self.background_div_wall_fluxes[i])
-                
+                for i in range(0,len(self.background_species)):
+                    fluxes_main_wall[i,:] = np.full(len(self.time_out),self.background_main_wall_fluxes[i])
+                    fluxes_div_wall[i,:] = np.full(len(self.time_out),self.background_div_wall_fluxes[i])        
+                    
+            else:
+                # impose also a peak value during ELMs
+                    
+                if (len(self.background_species) != len(self.background_main_wall_fluxes_ELM) or len(self.background_species) != len(self.background_div_wall_fluxes_ELM)):
+                    raise ValueError("Declared number of background species for advanced PWI model not consistent with declared number of background ELM peak fluxes!")
+                    
+                for i in range(0,len(self.background_species)):
+                    
+                    # general time-dependent shape following the ELMs onto the entire time grid
+                    shape = transport_utils.ELM_cycle_shape(self.time_grid,self.namelist["ELM_model"],self.namelist['timing'])
+                    max_shape = np.max(shape)
+                    
+                    # normalize the time-dependent shape so that its peaks value equates
+                    #   the difference between flux_peak_intra_ELM and flux_inter_ELM
+                    shape_norm_main = shape/(max_shape/(self.background_main_wall_fluxes_ELM[i] - self.background_main_wall_fluxes[i]))
+                    shape_norm_div = shape/(max_shape/(self.background_div_wall_fluxes_ELM[i] - self.background_div_wall_fluxes[i]))
 
+                    # now add this normalized shape to the inter-ELM value in order to achieve
+                    #   background fluxes which flatten on their inter-ELM values during inter-ELM phases
+                    #   but peak at wall_fluxes_ELM in the moment of maximum ELM-carried flux
+                    flux_main_wall_inter_ELM = np.full(len(self.time_out),self.background_main_wall_fluxes[i])
+                    fluxes_main_wall[i,:] = flux_main_wall_inter_ELM + shape_norm_main
+                    flux_div_wall_inter_ELM = np.full(len(self.time_out),self.background_div_wall_fluxes[i])
+                    fluxes_div_wall[i,:] = flux_div_wall_inter_ELM + shape_norm_div 
+   
         elif self.background_mode == 'files':
         # fluxes of all the background species taken from aurora simulations performed
         #   in advance, one for each background species, on the same time grid of the
@@ -276,38 +302,70 @@ class aurora_sim_pwi(core.aurora_sim):
         impact_energy_main_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
         impact_energy_div_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
                 
-        # Impact energy for the simulated species itself (index 0)
-        # Single values
-        E0_main_wall = surface.get_impact_energy(self.Te_lim,
-                                                 self.imp,
-                                                 mode = 'sheath',
-                                                 Ti_over_Te = self.Ti_over_Te,
-                                                 gammai = self.gammai)
-        E0_div_wall = surface.get_impact_energy(self.Te_div,
-                                                self.imp,
-                                                mode = 'sheath',
-                                                Ti_over_Te = self.Ti_over_Te,
-                                                gammai = self.gammai)
-        # Same values over entire time grid
-        impact_energy_main_wall[0,:] = np.full(len(self.time_out),E0_main_wall)
-        impact_energy_div_wall[0,:] = np.full(len(self.time_out),E0_div_wall)
-
-        # Impact energies for the background species (indices 1+)
-        for i in range(1,len(self.background_species)+1):
+        if self.namelist['ELM_model']['ELM_flag']:
+        # ELMs activated --> Time-dependent impact energy which peaks during the ELM crash
+        #   whose time dependency is generated using the free streaming model
+        
+            # Impact energies for the simulated species itself (index 0)
+            impact_energy_main_wall[0,:] = transport_utils.ELM_cycle_impact_energy_main_wall(self.imp,
+                                                                                             self.time_grid,
+                                                                                             self.namelist['full_PWI'],
+                                                                                             self.namelist["ELM_model"],
+                                                                                             self.namelist['timing'])
+            impact_energy_div_wall[0,:] = transport_utils.ELM_cycle_impact_energy_div_wall(self.imp,
+                                                                                             self.time_grid,
+                                                                                             self.namelist['full_PWI'],
+                                                                                             self.namelist["ELM_model"],
+                                                                                             self.namelist['timing'])       
+            
+            # Impact energies for the background species (indices 1+)
+            for i in range(1,len(self.background_species)+1):
+                impact_energy_main_wall[i,:] = transport_utils.ELM_cycle_impact_energy_main_wall(self.background_species[i-1],
+                                                                                                 self.time_grid,
+                                                                                                 self.namelist['full_PWI'],
+                                                                                                 self.namelist["ELM_model"],
+                                                                                                 self.namelist['timing'])
+                impact_energy_div_wall[i,:] = transport_utils.ELM_cycle_impact_energy_div_wall(self.background_species[i-1],
+                                                                                                 self.time_grid,
+                                                                                                 self.namelist['full_PWI'],
+                                                                                                 self.namelist["ELM_model"],
+                                                                                                 self.namelist['timing'])    
+                
+        else:
+        # No ELMs --> Constant impact energy over the entire time grid
+        
+            # Impact energy for the simulated species itself (index 0)
             # Single values
-            E0_main_wall_temp = surface.get_impact_energy(self.Te_lim,
-                                                          self.background_species[i-1],
-                                                          mode = 'sheath',
-                                                          Ti_over_Te = self.Ti_over_Te,
-                                                          gammai = self.gammai)
-            E0_div_wall_temp = surface.get_impact_energy(self.Te_div,
-                                                         self.background_species[i-1],
-                                                         mode = 'sheath',
-                                                         Ti_over_Te = self.Ti_over_Te,
-                                                         gammai = self.gammai)                
-            # Same values over entire time grid 
-            impact_energy_main_wall[i,:] = np.full(len(self.time_out),E0_main_wall_temp)
-            impact_energy_div_wall[i,:] = np.full(len(self.time_out),E0_div_wall_temp)
+            E0_main_wall = surface.get_impact_energy(self.Te_lim,
+                                                     self.imp,
+                                                     mode = 'sheath',
+                                                     Ti_over_Te = self.Ti_over_Te,
+                                                     gammai = self.gammai)
+            E0_div_wall = surface.get_impact_energy(self.Te_div,
+                                                    self.imp,
+                                                    mode = 'sheath',
+                                                    Ti_over_Te = self.Ti_over_Te,
+                                                    gammai = self.gammai)
+            # Same values over entire time grid
+            impact_energy_main_wall[0,:] = np.full(len(self.time_out),E0_main_wall)
+            impact_energy_div_wall[0,:] = np.full(len(self.time_out),E0_div_wall)
+    
+            # Impact energies for the background species (indices 1+)
+            for i in range(1,len(self.background_species)+1):
+                # Single values
+                E0_main_wall_temp = surface.get_impact_energy(self.Te_lim,
+                                                              self.background_species[i-1],
+                                                              mode = 'sheath',
+                                                              Ti_over_Te = self.Ti_over_Te,
+                                                              gammai = self.gammai)
+                E0_div_wall_temp = surface.get_impact_energy(self.Te_div,
+                                                             self.background_species[i-1],
+                                                             mode = 'sheath',
+                                                             Ti_over_Te = self.Ti_over_Te,
+                                                             gammai = self.gammai)                
+                # Same values over entire time grid 
+                impact_energy_main_wall[i,:] = np.full(len(self.time_out),E0_main_wall_temp)
+                impact_energy_div_wall[i,:] = np.full(len(self.time_out),E0_div_wall_temp)
         
         return impact_energy_main_wall, impact_energy_div_wall
         
@@ -351,50 +409,58 @@ class aurora_sim_pwi(core.aurora_sim):
         # Source profile from reflected particles from main wall:
         #   use the reflected energy from TRIM data
         
-        nml_rfl_prof = {
-            key: self.namelist[key]
-            for key in [
-                    "imp_source_energy_eV",
-                    "rvol_lcfs",
-                    "source_cm_out_lcfs",
-                    "imp",
-                    "prompt_redep_flag",
-                    "Baxis",
-                    "main_ion_A",
-            ]
-        }
-        nml_rfl_prof["source_width_in"] = 0
-        nml_rfl_prof["source_width_out"] = 0
-        
-        # set energy value in the reflection profile namelist
-        nml_rfl_prof["imp_source_energy_eV"] = self.E_refl_main_wall[0]
-        
-        # set start of the recycling source at the wall boundary
-        nml_rfl_prof["source_cm_out_lcfs"] = self.namelist["bound_sep"]
-        
-        # calculate the reflection profile
-        rfl_rad_prof = source_utils.get_radial_source(
-            nml_rfl_prof,  # namelist specifically to obtain exp decay from wall
-            self.rvol_grid,
-            self.pro_grid,
-            Sne0,
-            self._Ti,
-        )
-        
-        # set same profile for all times    
-        self.rfl_rad_prof = np.broadcast_to(
-            rfl_rad_prof, (rfl_rad_prof.shape[0], len(self.time_grid))
-        )     
+        if self.namelist['ELM_model']['ELM_flag']:
+        # ELMs activated --> Time-dependent reflection energy
             
-        # Source profile from sputtered particles from main wall:
-        #   use the sputtered energy from TRIM data
+            # The reflection energy will repeat itself over cycles as the ELM frequency
+            #   --> calculate the reflection energy only for the first cycle then repeat it
+            #   to save computation time
+            ELM_frequency = self.namelist["ELM_model"]["ELM_frequency"]
+            ELM_period = 1/ELM_frequency
+            num_periods = int((self.namelist['timing']['times'][-1]-self.namelist['timing']['times'][0])/ELM_period)
+            steps = int(len(self.time_out)/(num_periods))
+                
+            # reflection energies for the first ELM cycle
+            E_refl_main_wall = self.E_refl_main_wall[0:steps]
+            
+            # calculate the reflection profiles for all times of the first ELM cycle
+            rfl_rad_prof = np.zeros((len(self.rvol_grid), steps))
+            
+            for i in range(0,steps):
+                
+                nml_rfl_prof = {
+                    key: self.namelist[key]
+                    for key in [
+                            "imp_source_energy_eV",
+                            "rvol_lcfs",
+                            "source_cm_out_lcfs",
+                            "imp",
+                            "prompt_redep_flag",
+                            "Baxis",
+                            "main_ion_A",
+                    ]
+                }
+                nml_rfl_prof["source_width_in"] = 0
+                nml_rfl_prof["source_width_out"] = 0
+                
+                # set energy value in the reflection profile namelist
+                nml_rfl_prof["imp_source_energy_eV"] = E_refl_main_wall[i]
+            
+                rfl_rad_prof[:,i] = source_utils.get_radial_source(
+                    nml_rfl_prof,  # namelist specifically to obtain exp decay from wall
+                    self.rvol_grid,
+                    self.pro_grid,
+                    Sne0,
+                    self._Ti,
+                )[:,0]
         
-        # calculate the sputtering profiles from simulated and background species
-        spt_rad_prof = np.zeros((len(self.rvol_grid), len(self.background_species)+1))
+            # repeat the profiles throughout all the cycles in the time grid  
+            self.rfl_rad_prof = np.tile(rfl_rad_prof,num_periods)
+            
+        else:
+        # No ELMs --> Constant impact energy over the entire time grid
         
-        for j in range(0,len(self.background_species)+1):
-        
-            nml_spt_prof = {
+            nml_rfl_prof = {
                 key: self.namelist[key]
                 for key in [
                         "imp_source_energy_eV",
@@ -406,30 +472,129 @@ class aurora_sim_pwi(core.aurora_sim):
                         "main_ion_A",
                 ]
             }
-            nml_spt_prof["source_width_in"] = 0
-            nml_spt_prof["source_width_out"] = 0
+            nml_rfl_prof["source_width_in"] = 0
+            nml_rfl_prof["source_width_out"] = 0
             
             # set energy value in the reflection profile namelist
-            nml_spt_prof["imp_source_energy_eV"] = self.E_sput_main_wall[j,0]
+            nml_rfl_prof["imp_source_energy_eV"] = self.E_refl_main_wall[0]
             
             # set start of the recycling source at the wall boundary
-            nml_spt_prof["source_cm_out_lcfs"] = self.namelist["bound_sep"]
-    
-            spt_rad_prof[:,j] = source_utils.get_radial_source(
-                nml_spt_prof,  # namelist specifically to obtain exp decay from wall
+            nml_rfl_prof["source_cm_out_lcfs"] = self.namelist["bound_sep"]
+            
+            # calculate the reflection profile
+            rfl_rad_prof = source_utils.get_radial_source(
+                nml_rfl_prof,  # namelist specifically to obtain exp decay from wall
                 self.rvol_grid,
                 self.pro_grid,
                 Sne0,
                 self._Ti,
-            )[:,0]
+            )
             
-            # set same profile for all times
-            self.spt_rad_prof = np.zeros((len(self.rvol_grid),len(self.background_species)+1,len(self.time_grid)))
-            for i in range(0,len(self.background_species)+1):
-                for j in range(0,len(self.time_grid)):
-                    self.spt_rad_prof[:,i,j] = spt_rad_prof[:,i]
-                   
+            # set same profile for all times    
+            self.rfl_rad_prof = np.broadcast_to(
+                rfl_rad_prof, (rfl_rad_prof.shape[0], len(self.time_grid))
+            )     
+        
+        # Source profile from sputtered particles from main wall:
+        #   use the sputtered energy from TRIM data
+        
+        if self.namelist['ELM_model']['ELM_flag']:
+        # ELMs activated --> Time-dependent sputtered energy
+        
+            # The sputtered energy will repeat itself over cycles as the ELM frequency
+            #   --> calculate the sputtered energy only for the first cycle then repeat it
+            #   to save computation time
+            ELM_frequency = self.namelist["ELM_model"]["ELM_frequency"]
+            ELM_period = 1/ELM_frequency
+            num_periods = int((self.namelist['timing']['times'][-1]-self.namelist['timing']['times'][0])/ELM_period)
+            steps = int(len(self.time_out)/(num_periods))
+                
+            # sputtered energies for the first ELM cycle from simulated and background species
+            E_sput_main_wall = self.E_sput_main_wall[:,0:steps]
             
+            # calculate the sputtering profiles from simulated and background species
+            #   for all times of the first ELM cycle
+            spt_rad_prof = np.zeros((len(self.rvol_grid), len(self.background_species)+1, steps))
+            
+            for i in range(0,steps):
+                for j in range(0,len(self.background_species)+1):
+                
+                    nml_spt_prof = {
+                        key: self.namelist[key]
+                        for key in [
+                                "imp_source_energy_eV",
+                                "rvol_lcfs",
+                                "source_cm_out_lcfs",
+                                "imp",
+                                "prompt_redep_flag",
+                                "Baxis",
+                                "main_ion_A",
+                        ]
+                    }
+                    nml_spt_prof["source_width_in"] = 0
+                    nml_spt_prof["source_width_out"] = 0
+                
+                    # set energy value in the sputtering profile namelist for the given projectile species
+                    nml_spt_prof["imp_source_energy_eV"] = E_sput_main_wall[j,i]
+                    
+                    # set start of the recycling source at the wall boundary
+                    nml_spt_prof["source_cm_out_lcfs"] = self.namelist["bound_sep"]
+            
+                    spt_rad_prof[:,j,i] = source_utils.get_radial_source(
+                        nml_spt_prof,  # namelist specifically to obtain exp decay from wall
+                        self.rvol_grid,
+                        self.pro_grid,
+                        Sne0,
+                        self._Ti,
+                    )[:,0]
+        
+            # repeat the profiles throughout all the cycles in the time grid  
+            self.spt_rad_prof = np.tile(spt_rad_prof,num_periods)
+            
+        else:
+        # No ELMs --> Constant impact energy over the entire time grid
+        
+            # calculate the sputtering profiles from simulated and background species
+            spt_rad_prof = np.zeros((len(self.rvol_grid), len(self.background_species)+1))
+            
+            for j in range(0,len(self.background_species)+1):
+            
+                nml_spt_prof = {
+                    key: self.namelist[key]
+                    for key in [
+                            "imp_source_energy_eV",
+                            "rvol_lcfs",
+                            "source_cm_out_lcfs",
+                            "imp",
+                            "prompt_redep_flag",
+                            "Baxis",
+                            "main_ion_A",
+                    ]
+                }
+                nml_spt_prof["source_width_in"] = 0
+                nml_spt_prof["source_width_out"] = 0
+                
+                # set energy value in the reflection profile namelist
+                nml_spt_prof["imp_source_energy_eV"] = self.E_sput_main_wall[j,0]
+                
+                # set start of the recycling source at the wall boundary
+                nml_spt_prof["source_cm_out_lcfs"] = self.namelist["bound_sep"]
+        
+                spt_rad_prof[:,j] = source_utils.get_radial_source(
+                    nml_spt_prof,  # namelist specifically to obtain exp decay from wall
+                    self.rvol_grid,
+                    self.pro_grid,
+                    Sne0,
+                    self._Ti,
+                )[:,0]
+                
+                # set same profile for all times
+                self.spt_rad_prof = np.zeros((len(self.rvol_grid),len(self.background_species)+1,len(self.time_grid)))
+                for i in range(0,len(self.background_species)+1):
+                    for j in range(0,len(self.time_grid)):
+                        self.spt_rad_prof[:,i,j] = spt_rad_prof[:,i]
+        
+
     def run_aurora(
         self,
         D_z,
@@ -446,6 +611,8 @@ class aurora_sim_pwi(core.aurora_sim):
         use_julia=False,
         plot=False,
         plot_radiation=False,
+        plot_average = False,
+        interval = 0.01,
         radial_coordinate = 'rho_vol',
         plot_PWI = False,
     ):
@@ -536,6 +703,11 @@ class aurora_sim_pwi(core.aurora_sim):
         plot_radiation : bool, optional
             If True, plot line radiation for each charge state using a convenient slides over time and
             the total radiation time traces.
+        plot_average : bool, optional
+            If True, plot density for each charge state averaged over ELM cycles using a convenient slide
+            over time and check particle conservation in each particle reservoir averaged over ELM cycles.
+        interval : float, optional
+            Duration of time cycles to plot if plot_average is True, in s
         radial_coordinate : string, optional
             Radial coordinate shown in the plot. Options: 'rho_vol' (default) or 'rho_pol'
         plot_PWI : bool, optional
@@ -876,9 +1048,35 @@ class aurora_sim_pwi(core.aurora_sim):
             # check particle conservation by summing over simulation reservoirs
             _ = self.reservoirs_time_traces(plot=True)
             
+            if self.namelist['ELM_model']['ELM_flag'] and plot_average:
+                
+                time_average, data_average_profiles = plot_tools.time_average_profiles(self.namelist['timing'], self.time_out, self.res['nz'], interval = interval)
+                
+                # plot charge state density distributions over radius and time, averaged over cycles
+                plot_tools.slider_plot(
+                    x,
+                    time_average,
+                    data_average_profiles.transpose(1, 0, 2),
+                    xlabel=xlabel,
+                    ylabel="time [s]",
+                    zlabel=f'$n_{{{self.imp}}}$ [$\mathrm{{cm}}$$^{{-3}}$]',
+                    plot_title = f'{self.imp} density profiles (averaged over ELM cycles)',
+                    labels=[str(i) for i in np.arange(0, self.res['nz'].shape[1])],
+                    plot_sum=True,
+                    x_line=x_line,
+                    zlim = True,
+                )
+                
+                print('Simulated ELM-averaged impurity density profiles slider plot prepared.')
+                
+                # Plot reservoirs and particle conservation, averaged over cycles
+                _ = self.reservoirs_average_time_traces(interval = interval,plot = True)
+                
+                print('Simulated reservoirs ELM-averaged time traces plots prepared.')
+            
         # Plot PWI model
         if plot_PWI:
-            _ = self.PWI_time_traces(plot = True)
+            _ = self.PWI_time_traces(interval = interval,plot = True)
 
         if len(self.superstages) and unstage:
             # "unstage" superstages to recover estimates for density of all charge states
@@ -900,7 +1098,7 @@ class aurora_sim_pwi(core.aurora_sim):
         return self.res
         
         
-    def PWI_time_traces(self, plot=True, ylim = True, axs=None):
+    def PWI_time_traces(self, interval = 0.01, plot=True, ylim = True, axs=None):
         """Return and plot data regarding the plasma-wall interaction in the simulation.
 
         Parameters
@@ -974,6 +1172,46 @@ class aurora_sim_pwi(core.aurora_sim):
             PWI_traces["impurity_sputtering_rates_mainwall"][:,i] = self.res['rclw_sput_rate'][i,:] * circ
         PWI_traces["impurity_sputtering_rate_total_mainwall"] = PWI_traces["impurity_sputtering_rates_mainwall"].sum(axis=1)
 
+        # main wall, averaged
+        
+        # main wall impurity content
+        time_average, PWI_traces["impurity_content_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_content_mainwall"],interval)
+        # impurity flux towards main wall
+        _, PWI_traces["impurity_flux_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_flux_mainwall"],interval)
+        # impurity impact energy at main wall
+        _, PWI_traces["impurity_impact_energy_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_impact_energy_mainwall"],interval)
+        # impurity reflection coefficient at main wall
+        _, PWI_traces["impurity_reflection_coeff_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_reflection_coeff_mainwall"],interval)
+        # impurity reflection energy at main wall
+        _, PWI_traces["impurity_reflection_energy_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_reflection_energy_mainwall"],interval)
+        # fluxes of background species
+        PWI_traces["background_fluxes_mainwall_av"] = np.zeros((len(time_average),len(background_species)))
+        for i in range(0,len(background_species)):
+            _, PWI_traces["background_fluxes_mainwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["background_fluxes_mainwall"][:,i],interval)
+        # impact energies of background species at main wall
+        PWI_traces["background_impact_energies_mainwall_av"] = np.zeros((len(time_average),len(background_species)))
+        for i in range(0,len(background_species)):
+            _, PWI_traces["background_impact_energies_mainwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["background_impact_energies_mainwall"][:,i],interval)
+        # impurity sputtering yields at main wall
+        PWI_traces["impurity_sputtering_yields_mainwall_av"] = np.zeros((len(time_average),len(background_species)+1))
+        for i in range(0,len(background_species)+1):
+            _, PWI_traces["impurity_sputtering_yields_mainwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_yields_mainwall"][:,i],interval)
+        # impurity sputtering energies at main wall
+        PWI_traces["impurity_sputtering_energies_mainwall_av"] = np.zeros((len(time_average),len(background_species)+1))
+        for i in range(0,len(background_species)+1):
+            _, PWI_traces["impurity_sputtering_energies_mainwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_energies_mainwall"][:,i],interval)
+        # impurity reflection rate from main wall
+        _, PWI_traces["impurity_reflection_rate_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_reflection_rate_mainwall"],interval) 
+        # impurity prompt recycling rate from main wall
+        _, PWI_traces["impurity_prompt_recycling_rate_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_prompt_recycling_rate_mainwall"],interval) 
+        # impurity implantation rate into main wall
+        _, PWI_traces["impurity_implantation_rate_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_implantation_rate_mainwall"],interval) 
+        # impurity release rate from main wall
+        PWI_traces["impurity_sputtering_rates_mainwall_av"] = np.zeros((len(time_average),len(background_species)+1))
+        for i in range(0,len(background_species)+1):
+            _, PWI_traces["impurity_sputtering_rates_mainwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_rates_mainwall"][:,i],interval) 
+        _, PWI_traces["impurity_sputtering_rate_total_mainwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_rate_total_mainwall"],interval) 
+
         # divertor wall
         
         # divertor wall impurity content
@@ -1005,6 +1243,46 @@ class aurora_sim_pwi(core.aurora_sim):
         for i in range(0,len(background_species)+1):
             PWI_traces["impurity_sputtering_rates_divwall"][:,i] = self.res['rcld_sput_rate'][i,:] * circ
         PWI_traces["impurity_sputtering_rate_total_divwall"] = PWI_traces["impurity_sputtering_rates_divwall"].sum(axis=1)
+        
+        # divertor wall, average
+        
+        # divertor wall impurity content
+        _, PWI_traces["impurity_content_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_content_divwall"],interval) 
+        # impurity flux towards divertor wall
+        _, PWI_traces["impurity_flux_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_flux_divwall"],interval) 
+        # impurity impact energy at divertor wall
+        _, PWI_traces["impurity_impact_energy_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_impact_energy_divwall"],interval) 
+        # impurity reflection coefficient at divertor wall
+        _, PWI_traces["impurity_reflection_coeff_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_reflection_coeff_divwall"],interval)
+        # impurity reflection energy at divertor wall
+        _, PWI_traces["impurity_reflection_energy_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_reflection_energy_divwall"],interval)
+        # fluxes of background species
+        PWI_traces["background_fluxes_divwall_av"] = np.zeros((len(time_average),len(background_species)))
+        for i in range(0,len(background_species)):
+            _, PWI_traces["background_fluxes_divwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["background_fluxes_divwall"][:,i],interval)
+        # impact energies of background species at divertor wall
+        PWI_traces["background_impact_energies_divwall_av"] = np.zeros((len(time_average),len(background_species)))
+        for i in range(0,len(background_species)):
+            _, PWI_traces["background_impact_energies_divwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["background_impact_energies_divwall"][:,i],interval)
+        # impurity sputtering yields at divertor wall
+        PWI_traces["impurity_sputtering_yields_divwall_av"] = np.zeros((len(time_average),len(background_species)+1))
+        for i in range(0,len(background_species)+1):
+            _, PWI_traces["impurity_sputtering_yields_divwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_yields_divwall"][:,i],interval)
+        # impurity sputtering energies at divertor wall
+        PWI_traces["impurity_sputtering_energies_divwall_av"] = np.zeros((len(time_average),len(background_species)+1))
+        for i in range(0,len(background_species)+1):
+            _, PWI_traces["impurity_sputtering_energies_divwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_energies_divwall"][:,i],interval)    
+        # impurity reflection rate from divertor wall
+        _, PWI_traces["impurity_reflection_rate_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_reflection_rate_divwall"],interval) 
+        # impurity prompt recycling rate from divertor wall
+        _, PWI_traces["impurity_prompt_recycling_rate_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_prompt_recycling_rate_divwall"],interval) 
+        # impurity implantation rate into divertor wall
+        _, PWI_traces["impurity_implantation_rate_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_implantation_rate_divwall"],interval) 
+        # impurity release rate from divertor wall
+        PWI_traces["impurity_sputtering_rates_divwall_av"] = np.zeros((len(time_average),len(background_species)+1))
+        for i in range(0,len(background_species)+1):
+            _, PWI_traces["impurity_sputtering_rates_divwall_av"][:,i] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_rates_divwall"][:,i],interval) 
+        _, PWI_traces["impurity_sputtering_rate_total_divwall_av"] = plot_tools.time_average_reservoirs(self.namelist["timing"],self.time_out,PWI_traces["impurity_sputtering_rate_total_divwall"],interval) 
 
         if plot:
             # -------------------------------------------------
@@ -1045,6 +1323,14 @@ class aurora_sim_pwi(core.aurora_sim):
                 ax1[0, 4].set_ylim(0,np.max(PWI_traces["impurity_reflection_energy_mainwall"])*1.15)
             ax1[0, 4].set_ylabel('[$\mathrm{eV}$]') 
             ax1[0, 4].set_title(f"Mean energy of reflected {self.imp}", loc='right', fontsize = 11)
+            
+            if self.namelist['ELM_model']['ELM_flag']:
+                ax1[1, 0].plot(time_average, PWI_traces["impurity_implantation_rate_mainwall_av"], label="Total absorption rate", color = greens[0])
+                ax1[1, 0].plot(time_average, PWI_traces["impurity_sputtering_rate_total_mainwall_av"], label="Total release rate", color = blues[0])
+                ax1[1, 0].plot(time_average, PWI_traces["impurity_implantation_rate_mainwall_av"]-PWI_traces["impurity_sputtering_rate_total_mainwall_av"], label="Balance", color = 'black')
+                ax1[1, 0].set_ylabel('[$\mathrm{s}^{-1}$]')
+                ax1[1, 0].set_title(f"{self.imp} wall balance (ELM-average)", loc='right', fontsize = 11)
+                ax1[1, 0].legend(loc="best", fontsize = 9).set_draggable(True)
 
             for i in range(0,len(background_species)):
                 ax1[1, 1].plot(self.time_out, PWI_traces["background_fluxes_mainwall"][:,i], label=f"{background_species[i]} flux", color = light_blues[i+1])
@@ -1158,6 +1444,14 @@ class aurora_sim_pwi(core.aurora_sim):
                 ax2[0, 4].set_ylim(0,np.max(PWI_traces["impurity_reflection_energy_divwall"])*1.15)
             ax2[0, 4].set_ylabel('[$\mathrm{eV}$]') 
             ax2[0, 4].set_title(f"Mean energy of reflected {self.imp}", loc='right', fontsize = 11)
+            
+            if self.namelist['ELM_model']['ELM_flag']:
+                ax2[1, 0].plot(time_average, PWI_traces["impurity_implantation_rate_divwall_av"], label="Total absorption rate", color = greens[0])
+                ax2[1, 0].plot(time_average, PWI_traces["impurity_sputtering_rate_total_divwall_av"], label="Total release rate", color = blues[0])
+                ax2[1, 0].plot(time_average, PWI_traces["impurity_implantation_rate_divwall_av"]-PWI_traces["impurity_sputtering_rate_total_divwall_av"], label="Balance", color = 'black')
+                ax2[1, 0].set_ylabel('[$\mathrm{s}^{-1}$]')
+                ax2[1, 0].set_title(f"{self.imp} wall balance (ELM-average)", loc='right', fontsize = 11)
+                ax2[1, 0].legend(loc="best", fontsize = 9).set_draggable(True)
 
             for i in range(0,len(background_species)):
                 ax2[1, 1].plot(self.time_out, PWI_traces["background_fluxes_divwall"][:,i], label=f"{background_species[i]} flux", color = light_blues[i+1])
