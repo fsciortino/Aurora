@@ -148,7 +148,7 @@ subroutine impden0(nion, ir, species, ra, rn, diff, conv, par_loss_rate, &
         rcls = 0.d0
      endif
      
-     call advanced_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species, &
+     call full_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species, &
           rcmb, surfmain, surfdiv, Zmain, Zdiv, depthmain, depthdiv, nmainsat, ndivsat, &
           fluxmain, fluxdiv, rnmain, rndiv, ymain, ydiv, &
           Nmainret, Ndivret, &
@@ -491,7 +491,7 @@ subroutine impden1(nion, ir, species, ra, rn, diff, conv, par_loss_rate, &
         rcls = 0.d0
      endif
      
-     call advanced_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species, &
+     call full_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species, &
           rcmb, surfmain, surfdiv, Zmain, Zdiv, depthmain, depthdiv, nmainsat, ndivsat, &
           fluxmain, fluxdiv, rnmain, rndiv, ymain, ydiv, &
           Nmainret, Ndivret, &
@@ -916,7 +916,7 @@ end subroutine TDMA
 
 
 !============================================================================================|
-subroutine advanced_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species, &
+subroutine full_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species, &
      rcmb, surfmain, surfdiv, Zmain, Zdiv, depthmain, depthdiv, nmainsat, ndivsat, &
      fluxmain, fluxdiv, rnmain, rndiv, ymain, ydiv, &
      Nmainret, Ndivret, &
@@ -1051,7 +1051,7 @@ subroutine advanced_PWI_model(det, Raxis, tsuold, dsulold, dsuold, rcls, species
   
   return
   
-end subroutine advanced_PWI_model
+end subroutine full_PWI_model
 
 
 

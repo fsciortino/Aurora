@@ -15,7 +15,7 @@ and by citing the following works:
 
     This thesis contains a general introduction on the topic of impurity transport in fusion plasmas, and is the basis of the impurity transport model present in Aurora.
     
-[3] A. Zito et al, 2023, "Modelling and interpretation of helium exhaust dynamics at the ASDEX Upgrade tokamak with full-tungsten wall", Nucl. Fusion, to be submitted
+[3] A. Zito et al, 2023, "Modelling and interpretation of helium exhaust dynamics at the ASDEX Upgrade tokamak with full-tungsten wall", Nucl. Fusion 63 096027, https://doi.org/10.1088/1741-4326/ace26e
 
      This paper explains the introduction of the extended multi-reservoir recyling and pumping model in Aurora, as well as the full plasma-wall interaction model, and their application to experiments.
      

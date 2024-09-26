@@ -53,21 +53,11 @@ Both the PyPI and conda installation are automatically updated at every package 
 
 To look at the code and contribute to the Aurora repository, it is recommended to install from source, by git-cloning the  `Aurora repo <https://github.com/fsciortino/aurora>`_ from Github. This will ensure that you can access the latest version of the tools. 
 
-For compilation after git-cloning, users can make use of the `setup.py` file, e.g. using 
+For compilation after git-cloning, users must compile the Fortran code manually, using
 
-    python setup.py -e .
+    mkdir builds; cd builds; cmake ..; make; cp *.so ../aurora
 
-or use the makefile in the package directory to build the Fortran code using 
-
-    make clean; make
-   
-Note that the makefile will not install any of the dependencies, listed in the `requirements.txt` file in the main directory. You can use this file to quickly install dependencies within a Python virtual environment, or install each dependency one at a time.
-
-The Julia version of the code is not built by default. If you have Julia installed on your system, you can do  
-
-    make julia
-
-from the main package directory. This will build a Julia `sysimage` to speed up access of Julia source code from Python, but it is not strictly necessary. See the documentation to read about interfacing Python and Julia. 
+Note that the compilation process will not install any of the dependencies, listed in the `requirements.txt` file in the main directory. You can use this file to quickly install dependencies within a Python virtual environment, or install each dependency one at a time.
 
 
 Atomic data
