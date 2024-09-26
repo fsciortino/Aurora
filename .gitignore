@@ -7,6 +7,13 @@ __pycache__
 */#*
 */.#*
 
+# Ignore all folders which are not the default ones
+/*/
+!aurora/
+!aurora.jl/
+!docs/
+!examples/
+
 # Aurora animations
 *.mp4
 
@@ -52,3 +59,6 @@ junit
 *.DS_Store
 docs/.idea/*
 aurora/config.py
+
+# Compilation outputs
+builds/*

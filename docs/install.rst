@@ -10,13 +10,9 @@ We recommend installing from the latest version of the code, obtained by git-clo
     
 After doing this, you can run::
 
-  python setup.py install
+  mkdir builds; cd builds; cmake ..; make; cp *.so ../aurora
 
 which should do the magic.
-
-Some users may want to have greater control over which compiler is being used for the installation; this can be most easily done by modifying the provided Makefile directly. After changing its top configuration lines, users can do::
-
-  make clean; make
 
 
 Installing via PyPI or Anaconda

@@ -192,7 +192,7 @@ def create_time_grid(timing=None, plot=False):
     except ModuleNotFoundError:
         raise MissingAuroraBuild(
             "Could not load particle transport forward model! "
-            + "Use the makefile or setup.py to build sources."
+            + "Build the Fortran sources first (see instructions in README.rst)."
         )
 
     _time, _save = time_steps(
@@ -673,7 +673,7 @@ def create_radial_grid_fortran(namelist, plot=False):
     except ModuleNotFoundError:
         raise MissingAuroraBuild(
             "Could not load particle transport forward model!"
-            + "Use the makefile or setup.py to build sources."
+            + "Build the Fortran sources first (see instructions in README.rst)."
         )
 
     # NB: there is currently a hard-coded maximum number of grid points (1000)

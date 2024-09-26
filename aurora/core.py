@@ -112,8 +112,8 @@ class aurora_sim:
             atom_files["ccd"] = self.namelist.get(
                 "ccd", adas_files.adas_files_dict()[self.imp]["ccd"]
             )
-            if atom_files["ccd"] is None:
-                raise Exception('Missing CCD ADF11 file!')
+            # if atom_files["ccd"] is None:
+            #     raise Exception('Missing CCD ADF11 file!')
             
      
         if self.namelist.get("metastable_flag", False):
@@ -607,6 +607,9 @@ class aurora_sim:
             
             # inplace addition would change also self.alpha_RDR_rates
             Rne = Rne + self.alpha_CX_rates
+            
+        else:
+            self.alpha_CX_rates = np.zeros_like(Rne)
 
         if self.namelist["nbi_cxr_flag"]:
             # include charge exchange between NBI neutrals and impurities
