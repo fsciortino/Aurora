@@ -29,6 +29,8 @@ def load_default_namelist():
     """
 
     namelist = {
+        "imp": "Ca",
+        "main_element": "D",  # background
         # --------------------
         # IMPURITY AND MAIN SPECIES
         "imp": "Ca",  # impurity species

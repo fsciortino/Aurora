@@ -17,20 +17,15 @@ import sys, copy, os
 # Make sure that package home is added to sys.path
 sys.path.append("../")
 import aurora
-
+from scipy.interpolate import interp1d
 
 def get_nall(rhop, rhop_grid, ne, nd, nz):
     # This function gives total ion+electron density
-    nz_interp = np.zeros([len(rhop), len(nz[0, :])])
-    for Z in range(len(nz[0, :])):
-        nz_interp[:, Z] = np.interp(rhop, rhop_grid, nz[:, Z])
+    nz_interp = interp1d(rhop_grid, nz, axis = 0)(rhop)
 
-    nall = ne + nd
-    Znz = np.zeros(len(rhop))
-    for Z in range(len(nz_interp[0, :])):
-        nall += nz_interp[:, Z]
-        Znz += Z * nz_interp[:, Z]
-
+    nall = ne + nd + nz_interp.sum(1)
+    Z = np.arange(nz.shape[1])
+    Znz = np.sum(nz_interp * Z)
     nall += nall + Znz
 
     return nall, Znz
@@ -53,9 +48,8 @@ def radiation_cooling(rhop, rhop_grid, ne, nd, nz, T, Erad):
     # This function subracts radiation power from plasma energy
     nall, ZnZ = get_nall(rhop, rhop_grid, ne, nd, nz)
     Erad = np.interp(rhop, rhop_grid, Erad)
-    T_new = T - 2 * Erad / (
-        3 * nall
-    )  # 2/3 to account for stored energy = 3/2 integral p dV
+    # 2/3 to account for stored energy = 3/2 integral p dV
+    T_new = T - 2 * Erad / (3 * nall)  
     return T_new
 
 
@@ -127,7 +121,7 @@ namelist["explicit_source_vals"] = gaussian_rhop[None, :] * time_decay[:, None]
 # Now get aurora setup
 asim = aurora.core.aurora_sim(namelist, geqdsk=geqdsk)
 
-
+plt.ioff()
 fig, ax = plt.subplots(num="Impurity neutral source")
 ax.contourf(asim.rhop_grid, asim.time_grid, asim.src_core.T)
 ax.set_xlabel(r"$\rho_p$")
@@ -162,6 +156,8 @@ Te_eV = radiation_cooling(rhop, rhop_grid, ne_cm3, nd_cm3, nz_init, Te_eV, Erad)
 ne_cm3, Te_eV = dilution_cooling(
     rhop, rhop_grid, ne_cm3, nd_cm3, Te_eV, nz_init * 0.0, nz_init
 )
+#TODO missing ionisation cooling 
+
 kp["Te"]["vals"] = Te_eV
 kp["ne"]["vals"] = ne_cm3
 
@@ -241,3 +237,5 @@ aurora.slider_plot(
     ylabel="time [s]",
     zlabel=r"Te [eV]",
 )
+
+plt.show()

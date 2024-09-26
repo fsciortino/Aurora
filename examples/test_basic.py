@@ -54,4 +54,48 @@ D_z = 1e4 * np.ones(len(asim.rvol_grid))  # cm^2/s
 V_z = -2e2 * np.ones(len(asim.rvol_grid))  # cm/s
 
 # run Aurora forward model and plot results
-out = asim.run_aurora(D_z, V_z, plot=plot, plot_radiation=plot)
+out = asim.run_aurora(D_z, V_z)#, plot=plot, plot_radiation=plot)
+
+
+if plot:
+    # plot charge state distributions over radius and time
+    aurora.plot_tools.slider_plot(
+        asim.rvol_grid,
+        asim.time_out,
+        out['nz'].transpose(1, 0, 2),
+        xlabel=r"$r_V$ [cm]",
+        ylabel="time [s]",
+        zlabel=r"$n_z$ [$cm^{-3}$]",
+        labels=map(str, range(out['nz'].shape[1])),
+        plot_sum=True,
+        x_line=asim.rvol_lcfs,
+    )
+
+# add radiation
+rad = aurora.compute_rad(
+    imp,
+    out['nz'].transpose(2, 1, 0),
+    asim.ne,
+    asim.Te,
+    prad_flag=True,
+    thermal_cx_rad_flag=False,
+    spectral_brem_flag=False,
+    sxr_flag=False,
+)
+
+if plot:
+    # plot radiation profiles over radius and time
+    aurora.slider_plot(
+        asim.rvol_grid,
+        asim.time_out,
+        rad["line_rad"].transpose(1, 2, 0),
+        xlabel=r"$r_V$ [cm]",
+        ylabel="time [s]",
+        zlabel=r"Line radiation [$MW/m^3$]",
+        labels=map(str, range(out['nz'].shape[1])),
+        plot_sum=True,
+        x_line=asim.rvol_lcfs,
+    )
+    
+
+

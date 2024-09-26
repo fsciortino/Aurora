@@ -24,7 +24,7 @@
 
 import os, sys
 import numpy as np
-from scipy.interpolate import interp1d, RectBivariateSpline
+from scipy.interpolate import interp1d
 from scipy.constants import e as q_electron, m_p
 import pickle as pkl
 from copy import deepcopy
@@ -41,7 +41,7 @@ from . import synth_diags
 from . import adas_files
 from . import surface
 from . import radiation
-
+ 
 
 class aurora_sim:
     """Setup the input dictionary for an Aurora ion transport simulation from the given namelist.
@@ -69,7 +69,7 @@ class aurora_sim:
         # make sure that any changes in namelist will not propagate back to the calling function
         self.namelist = deepcopy(namelist)
         self.geqdsk = geqdsk  # if None, minor (rvol_lcfs) and major radius (Raxis_cm) must be in namelist
-        self.kin_profs = self.namelist["kin_profs"]
+       
         self.imp = namelist["imp"]
 
         # import here to avoid issues when building docs or package
@@ -82,6 +82,8 @@ class aurora_sim:
         self.A_imp = int(out[spec]["A"])
 
         self.reload_namelist()
+ 
+        self.full_PWI_flag = False
 
         if "Raxis_cm" in self.namelist:
             self.Raxis_cm = self.namelist["Raxis_cm"]  # cm
@@ -110,7 +112,10 @@ class aurora_sim:
             atom_files["ccd"] = self.namelist.get(
                 "ccd", adas_files.adas_files_dict()[self.imp]["ccd"]
             )
-
+            if atom_files["ccd"] is None:
+                raise Exception('Missing CCD ADF11 file!')
+            
+     
         if self.namelist.get("metastable_flag", False):
             atom_files["qcd"] = self.namelist.get(
                 "qcd", adas_files.adas_files_dict()[self.imp].get("qcd", None)
@@ -127,9 +132,15 @@ class aurora_sim:
 
         # set up radial and temporal grids
         self.setup_grids()
-
-        # set up kinetic profiles and atomic rates
-        self.setup_kin_profs_depts()
+        
+        #interpolate kinetics profiles of the profiles are in namelist
+        if "kin_profs" in self.namelist:
+            self.kin_profs = self.namelist["kin_profs"]
+            # set up kinetic profiles and atomic rates
+            self.setup_kin_profs_depts()
+            
+        # full PWI model not used - dummy values for all related input variables to fortran routine
+        self.setup_dummy_pwi_vars() 
 
     def reload_namelist(self, namelist=None):
         """(Re-)load namelist to update scalar variables."""
@@ -138,19 +149,23 @@ class aurora_sim:
             
         # Extract one by one all the inputs from namelist
         # as attributes of asim, keeping the same name  
+        #NOTE T.O. I'm not a fan of this MATLAB approach.. 
         for parameter in self.namelist:
-            if isinstance(self.namelist[parameter], dict):
+            if parameter == 'kin_profs':
+                pass
+            elif isinstance(self.namelist[parameter], dict):
                 for sub_parameter in self.namelist[parameter]:
                      setattr(self, sub_parameter, self.namelist[parameter][sub_parameter])
             else:
                 setattr(self, parameter, self.namelist[parameter])
         
         # consistency checks for divertor parameters
-        if self.div_neut_screen < 0.0 or self.div_neut_screen > 1.0:
+        if not 0.0 <= self.div_neut_screen <= 1.0:
             raise ValueError("div_neut_screen must be between 0.0 and 1.0!") 
-        if self.div_recomb_ratio < 0.0 or self.div_recomb_ratio > 1.0:
+        if not 0.0 <= self.div_recomb_ratio <= 1.0:
             raise ValueError("div_recomb_ratio must be between 0.0 and 1.0!") 
          
+        self.num_background_species = len(self.background_species)
         # if phys_volumes and pump_chamber flags are set to False, pumping is done
         # directly from the divertor chamber and is defined by the time tau_pump_ms
         if not self.phys_volumes and not self.pump_chamber:
@@ -204,10 +219,8 @@ class aurora_sim:
         if self.geqdsk is not None:
             # Get r_V to rho_pol mapping
             rho_pol, _rvol = grids_utils.get_rhopol_rvol_mapping(self.geqdsk)
-            rvol_lcfs = interp1d(rho_pol, _rvol)(1.0)
-            self.rvol_lcfs = self.namelist["rvol_lcfs"] = np.round(
-                rvol_lcfs, 3
-            )  # set limit on accuracy
+            rvol_lcfs = np.round(np.interp(1.0, rho_pol, _rvol), 3)
+            self.rvol_lcfs = self.namelist["rvol_lcfs"] = rvol_lcfs 
 
         elif "rvol_lcfs" in self.namelist:
             # separatrix location explicitly given by user
@@ -240,8 +253,8 @@ class aurora_sim:
 
         # define time grid ('timing' must be in namelist)
         self.time_grid, self.save_time = grids_utils.create_time_grid(
-            timing=self.namelist["timing"], plot=False
-        )
+            timing=self.namelist["timing"], plot=False)
+        
         self.time_out = self.time_grid[self.save_time]
 
         # create array of 0's of length equal to self.time_grid, with 1's where sawteeth must be triggered
@@ -253,9 +266,9 @@ class aurora_sim:
             self.saw_on[self.time_grid.searchsorted(self.saw_times)] = 1
             
         # calculate core plasma volume (i.e. volume of region until rvol = rvol_lcfs) and total plasma volume
-        ones = np.ones((len(self.time_out),len(self.rvol_grid)))
-        self.core_vol = grids_utils.vol_int(ones[:,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=self.rvol_lcfs)[0]
-        self.plasma_vol = grids_utils.vol_int(ones[:,:],self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=None)[0]
+        ones = np.ones_like(self.rvol_grid)
+        self.core_vol = grids_utils.vol_int(ones,self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=self.rvol_lcfs)
+        self.plasma_vol = grids_utils.vol_int(ones,self.rvol_grid,self.pro_grid,self.Raxis_cm,rvol_max=None)
 
     def setup_kin_profs_depts(self):
         """Method to set up Aurora inputs related to the kinetic background from namelist inputs."""
@@ -288,19 +301,20 @@ class aurora_sim:
         if len(save_time) == 1:  # if time averaged profiles were used
             Sne0 = Sne0[:, [0]]  # 0th charge state (neutral)
 
+
+        # get time history and radial profiles separately
+        source_time_history = source_utils.get_source_time_history(
+            self.namelist, self.Raxis_cm, self.time_grid
+        )  # units of particles/s/cm for 1D source or particles/s/cm^3  for 2D source
+
+            
         if self.namelist["source_type"] == "arbitrary_2d_source":
             # interpolate explicit source values on time and rhop grids of simulation
             # NB: explicit_source_vals should be in units of particles/s/cm^3 <-- ionization rate
             srho = self.namelist["explicit_source_rhop"]
-            stime = self.namelist["explicit_source_time"]
-            source = np.array(self.namelist["explicit_source_vals"]).T
-
-            spl = RectBivariateSpline(srho, stime, source, kx=1, ky=1)
-            # extrapolate by the nearest values
-            self.source_rad_prof = spl(
-                np.clip(self.rhop_grid, min(srho), max(srho)),
-                np.clip(self.time_grid, min(stime), max(stime)),
-            )
+            self.source_rad_prof  = interp1d(srho, source_time_history.T, 
+                                            axis=0,bounds_error=False,
+                                             fill_value=0)(self.rhop_grid)
             # Change units to particles/cm^3
             self.src_core = self.source_rad_prof / Sne0
             
@@ -371,9 +385,7 @@ class aurora_sim:
             else:
                 # set recycling prof to exp decay from wall
                 # use all time steps, specified neutral stage energy
-                nml_rcl_prof = {
-                    key: self.namelist[key]
-                    for key in [
+                nml_keys = [
                         "imp_source_energy_eV",
                         "rvol_lcfs",
                         "source_cm_out_lcfs",
@@ -381,22 +393,14 @@ class aurora_sim:
                         "prompt_redep_flag",
                         "main_ion_A",
                     ]
-                }
-                if (
-                    "prompt_redep_flag" in self.namelist
-                    and self.namelist["prompt_redep_flag"]
-                ):
+                nml_rcl_prof = {k: self.namelist[k] for k in nml_keys}
+
+                if "prompt_redep_flag" in self.namelist and self.namelist["prompt_redep_flag"]:
                     # only need Baxis for prompt redeposition model
                     nml_rcl_prof["Baxis"] = self.namelist["Baxis"]
 
                 nml_rcl_prof["source_width_in"] = 0
                 nml_rcl_prof["source_width_out"] = 0
-                
-                # set the energy of the recycled neutrals
-                nml_rcl_prof["imp_source_energy_eV"] = self.namelist["imp_recycling_energy_eV"]
-                    
-                # set start of the recycling source at the wall boundary
-                nml_rcl_prof["source_cm_out_lcfs"] = self.namelist["bound_sep"]
 
                 # NB: we assume here that the 0th time is a good representation of how recycling is radially distributed
                 rcl_rad_prof = source_utils.get_radial_source(
@@ -414,7 +418,9 @@ class aurora_sim:
         else:
             # dummy profile -- recycling is turned off
             self.rcl_rad_prof = np.zeros((len(self.rhop_grid), len(self.time_grid)))
+        
 
+        
     def interp_kin_prof(self, prof):
         """Interpolate the given kinetic profile on the radial and temporal grids [units of s].
         This function extrapolates in the SOL based on input options using the same methods as in STRAHL.
@@ -475,7 +481,7 @@ class aurora_sim:
         else:
             Ti = Te
 
-        # get neutral background ion density
+        # get neutral background neutral density
         if self.namelist.get("cxr_flag", False):
             n0 = self.interp_kin_prof("n0")
         else:
@@ -490,6 +496,61 @@ class aurora_sim:
         ne, Te, Ti, n0 = np.broadcast_arrays(ne, Te, Ti, n0)
 
         return ne, Te, Ti, n0
+    
+    
+    
+    def setup_dummy_pwi_vars(self):
+    
+        # full PWI model not used - dummy values for all related input variables to fortran routine
+
+ 
+        nt = len(self.time_grid)
+
+        # the reflection profile = recycling profile
+        self.rfl_rad_prof = self.rcl_rad_prof
+       
+        # sputtering profiles 
+        self.spt_rad_prof = np.tile(self.rcl_rad_prof[:,None], (self.num_background_species+1,1))
+  
+        # effective wall surfaces, accounting for roughness
+        self.surf_mainwall_eff = self.surf_mainwall*self.mainwall_roughness #cm^2
+        self.surf_divwall_eff = self.surf_divwall*self.divwall_roughness #cm^2
+        
+        # keys for fortran routine
+        self.Z_main_wall = 0
+        self.Z_div_wall = 0
+        
+
+        # dummy values for reflection coefficients at each time step
+        self.rn_main_wall = np.zeros(nt)
+        self.rn_div_wall  = np.zeros(nt)
+        
+        # dummy values for reflected energies at each time step
+        self.E_refl_main_wall = np.zeros(nt)
+        self.E_refl_div_wall = np.zeros(nt)
+        
+        # dummy values for background fluxes onto the walls at each time step
+        self.fluxes_main_wall_background = np.zeros((self.num_background_species,nt))
+        self.fluxes_div_wall_background = np.zeros((self.num_background_species,nt))
+        
+        # dummy values for impurity sputtering coefficients at each time step
+        self.y_main_wall = np.zeros((self.num_background_species+1,nt))
+        self.y_div_wall = np.zeros((self.num_background_species+1,nt))
+        
+        # dummy values for impurity sputtered energies at each time step
+        self.E_sput_main_wall = np.zeros((self.num_background_species+1,nt))
+        self.E_sput_div_wall = np.zeros((self.num_background_species+1,nt))
+        
+        # dummy values for impurity implantation depths into the walls
+        self.implantation_depth_main_wall = 0.0
+        self.implantation_depth_div_wall = 0.0
+        
+        # dummy values for impurity saturation densities into the walls
+        self.n_main_wall_sat = 0.0
+        self.n_div_wall_sat = 0.0
+        
+            
+            
 
     def set_time_dept_atomic_rates(self, superstages=[], metastables=False):
         """Obtain time-dependent ionization and recombination rates for a simulation run.
@@ -531,27 +592,37 @@ class aurora_sim:
 
         # cache radiative & dielectronic recomb:
         self.alpha_RDR_rates = Rne
-
+      
         if self.namelist["cxr_flag"]:
             # Get an effective recombination rate by summing radiative & CX recombination rates
-            self.alpha_CX_rates = out.pop(0) * (self._n0 / self._ne)[:, None]
-            Rne = (
-                Rne + self.alpha_CX_rates
-            )  # inplace addition would change also self.alpha_RDR_rates
-        else:
-            self.alpha_CX_rates = np.zeros_like(Rne)
+            alpha_CX_rates = out.pop(0) * (self._n0 / self._ne)[:, None]
+            #metastable resolved CCD file exist only for C and N, use unresolved file for others
+            if metastables and alpha_CX_rates.shape[1] != Rne.shape[1]:
+                self.alpha_CX_rates = np.zeros_like(Rne)
+                for i, m in enumerate(self.atom_data["ccd"].meta_ind[1:]):
+                    j = self.atom_data["acd"].meta_ind.index(m)
+                    self.alpha_CX_rates[:,j] = alpha_CX_rates[:,i]
+            else:
+                self.alpha_CX_rates = alpha_CX_rates
+            
+            # inplace addition would change also self.alpha_RDR_rates
+            Rne = Rne + self.alpha_CX_rates
 
         if self.namelist["nbi_cxr_flag"]:
             # include charge exchange between NBI neutrals and impurities
             self.nbi_cxr = interp1d(
                 self.namelist["nbi_cxr"]["rhop"],
-                self.namelist["nbi_cxr"]["vals"],
-                axis=0,
+                np.atleast_3d(self.namelist["nbi_cxr"]["vals"]).T,
                 bounds_error=False,
                 fill_value=0.0,
             )(self.rhop_grid)
+            
+            if self.nbi_cxr.shape[2] > 1:
+                #time-dependent, times are switch times of beams, values are mean in between switch times
+                it = self.namelist["nbi_cxr"]["times"].searchsorted(self.time_grid)
+                self.nbi_cxr = self.nbi_cxr[it]
 
-            Rne = Rne + self.nbi_cxr.T[None, :, :]
+            Rne = Rne + self.nbi_cxr
 
         if len(superstages):
             self.superstages, Rne, Sne, self.fz_upstage = atomic.superstage_rates(
@@ -560,14 +631,10 @@ class aurora_sim:
 
         # Sne and Rne for the Z+1 stage must be zero for the forward model.
         # Use Fortran-ordered arrays for speed in forward modeling (both Fortran and Julia)
-        self.Sne_rates = np.zeros(
-            (Sne.shape[2], Sne.shape[1] + 1, self.time_grid.size), order="F"
-        )
+        self.Sne_rates = np.zeros((Sne.shape[2], Sne.shape[1] + 1, self.time_grid.size), order="F")
         self.Sne_rates[:, :-1] = Sne.T
 
-        self.Rne_rates = np.zeros(
-            (Rne.shape[2], Rne.shape[1] + 1, self.time_grid.size), order="F"
-        )
+        self.Rne_rates = np.zeros((Rne.shape[2], Rne.shape[1] + 1, self.time_grid.size), order="F")
         self.Rne_rates[:, :-1] = Rne.T
         
         self.Rne_RDR_rates = np.zeros(
@@ -620,6 +687,7 @@ class aurora_sim:
             self.namelist["rvol_lcfs"] + self.namelist["lim_sep"], side="left"
         )
 
+        
         # Calculate parallel loss frequency using different connection lengths in the SOL and in the limiter shadow
         dv = np.zeros_like(self._Te.T)  # space x time
 
@@ -627,19 +695,11 @@ class aurora_sim:
         Ti = self._Ti if trust_SOL_Ti else self._Te
 
         # open SOL
-        dv[ids:idl] = (
-            vpf
-            * np.sqrt(3.0 * Ti.T[ids:idl] + self._Te.T[ids:idl])
-            / self.namelist["clen_divertor"]
-        )
+        dv[ids:idl] = vpf * np.sqrt(3.0 * Ti.T[ids:idl] + self._Te.T[ids:idl])/ self.namelist["clen_divertor"]
 
         # limiter shadow
-        dv[idl:] = (
-            vpf
-            * np.sqrt(3.0 * Ti.T[idl:] + self._Te.T[idl:])
-            / self.namelist["clen_limiter"]
-        )
-
+        dv[idl:] = vpf * np.sqrt(3.0 * Ti.T[idl:] + self._Te.T[idl:]) / self.namelist["clen_limiter"]
+        
         dv, _ = np.broadcast_arrays(dv, self.time_grid[None])
 
         # if a peak mach number during the ELM is desired, then
@@ -711,12 +771,8 @@ class aurora_sim:
 
             for i in range(len(self.superstages)):
                 if superstages[i] + 1 != superstages[i + 1]:
-                    Dzf[:, :, i] = D_z[:, :, superstages[i] : superstages[i + 1]].mean(
-                        2
-                    )
-                    Vzf[:, :, i] = V_z[:, :, superstages[i] : superstages[i + 1]].mean(
-                        2
-                    )
+                    Dzf[:, :, i] = D_z[:, :, superstages[i] : superstages[i + 1]].mean(2)
+                    Vzf[:, :, i] = V_z[:, :, superstages[i] : superstages[i + 1]].mean(2)
 
         elif opt == 3:
             # weighted average of D and V
@@ -766,7 +822,8 @@ class aurora_sim:
         plot_radiation=False,
         plot_average = False,
         interval = 0.01,
-        radial_coordinate = 'rho_vol',
+        plot_radial_coordinate = 'rho_vol',
+        plot_PWI = False,
     ):
         """Run a simulation using the provided diffusion and convection profiles as a function of space, time
         and potentially also ionization state. Users can give an initial state of each ion charge state as an input.
@@ -859,8 +916,10 @@ class aurora_sim:
             over time and check particle conservation in each particle reservoir averaged over ELM cycles.
         interval : float, optional
             Duration of time cycles to plot if plot_average is True, in s
-        radial_coordinate : string, optional
+        plot_radial_coordinate : string, optional
             Radial coordinate shown in the plot. Options: 'rho_vol' (default) or 'rho_pol'
+        plot_PWI : bool, optional
+            If True, plot time traces related to the plasma-wall interaction model
 
         Returns
         -------
@@ -985,14 +1044,14 @@ class aurora_sim:
                 # the input ndiv_init is interpreted as absolute number of particles
                 ndiv_init = ndiv_init / circ        
                 
-        if npump_init is None or self.namelist["pump_chamber"] == False:
+        if npump_init is None or not self.namelist["pump_chamber"]:
             # default: start in a state with empty pump neutrals reservoir
             #   (or pump reservoir not used at all)
             npump_init = 0 
         else:
             # start in a state with not empty pump neutrals reservoir
             # convert to cm^-1 before passing it to fortran_run
-            if self.namelist["phys_volumes"] == True:
+            if self.namelist["phys_volumes"]:
                 # the input npump_init is interpreted as a particle density in cm^-3
                 npump_init = (npump_init * self.vol_pump) / circ # ([cm^-3]*[cm^3])/[cm]
             else:
@@ -1042,7 +1101,7 @@ class aurora_sim:
         # NOTE: for both Fortran and Julia, use f_configuous arrays for speed
         if use_julia:
             
-            if self.div_recomb_ratio < 1.0 or self.pump_chamber or self.div_neut_screen > 0.0:
+            if self.namelist["div_recomb_ratio"] < 1.0 or self.pump_chamber or self.div_neut_screen > 0.0:
                 raise ValueError("Full recycling/pumping/PWI model not yet implemented in Julia!")
             
             # run Julia version of the code
@@ -1088,56 +1147,10 @@ class aurora_sim:
                 self.src_div,
             )
         else:
+
+
             # import here to avoid import when building documentation or package (negligible slow down)
             from ._aurora import run as fortran_run
-
-            # full PWI model not used - dummy values for all related input variables to fortran routine
-            
-            self.full_PWI_flag = False
-
-            self.rfl_rad_prof = self.rcl_rad_prof
-            self.spt_rad_prof = np.zeros((len(self.rvol_grid),len(self.background_species)+1,len(self.time_grid)))
-            for i in range(0,len(self.background_species)+1):
-                self.spt_rad_prof[:,i,:] = self.rcl_rad_prof
-
-            self.surf_mainwall_eff = self.surf_mainwall*self.mainwall_roughness #cm^2
-            self.surf_divwall_eff = self.surf_divwall*self.divwall_roughness #cm^2
-            
-            # keys for fortran routine
-            self.Z_main_wall = 0
-            self.Z_div_wall = 0
-            
-            # List of background species
-            self.num_background_species = len(self.background_species)
-            
-            # dummy values for reflection coefficients at each time step
-            self.rn_main_wall = np.zeros(len(self.time_out))
-            self.rn_div_wall = np.zeros(len(self.time_out))
-            
-            # dummy values for reflected energies at each time step
-            self.E_refl_main_wall = np.zeros(len(self.time_out))
-            self.E_refl_div_wall = np.zeros(len(self.time_out))
-            
-            # dummy values for background fluxes onto the walls at each time step
-            self.fluxes_main_wall_background = np.zeros((len(self.background_species),len(self.time_out)))
-            self.fluxes_div_wall_background = np.zeros((len(self.background_species),len(self.time_out)))
-            
-            # dummy values for impurity sputtering coefficients at each time step
-            self.y_main_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
-            self.y_div_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
-            
-            # dummy values for impurity sputtered energies at each time step
-            self.E_sput_main_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
-            self.E_sput_div_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
-            
-            # dummy values for impurity implantation depths into the walls
-            self.implantation_depth_main_wall = 0.0
-            self.implantation_depth_div_wall = 0.0
-            
-            # dummy values for impurity saturation densities into the walls
-            self.n_main_wall_sat = 0.0
-            self.n_div_wall_sat = 0.0
-
             _res = fortran_run(
                 nt,  # number of times at which simulation outputs results
                 times_DV,
@@ -1200,7 +1213,7 @@ class aurora_sim:
                 evolneut=evolneut,
                 src_div=self.src_div,
             )
-            
+             
         # add output fields in a dictionary
         self.res = {}
         
@@ -1250,11 +1263,11 @@ class aurora_sim:
         
         if plot:
             
-            if radial_coordinate == 'rho_vol':
+            if plot_radial_coordinate == 'rho_vol':
                 x = self.rvol_grid
                 xlabel = r"$r_V$ [cm]"
                 x_line=self.rvol_lcfs
-            elif radial_coordinate == 'rho_pol':
+            elif plot_radial_coordinate == 'rho_pol':
                 x = self.rhop_grid
                 xlabel=r'$\rho_p$'
                 x_line = 1
@@ -1328,6 +1341,13 @@ class aurora_sim:
                 # Plot reservoirs and particle conservation, averaged over cycles
                 _ = self.reservoirs_average_time_traces(interval = interval,plot = True)
 
+
+        # Plot PWI model
+        if plot_PWI and self.full_PWI_flag:
+            _ = self.PWI_time_traces(plot = True)
+
+
+
         if len(self.superstages) and unstage:
             # "unstage" superstages to recover estimates for density of all charge states
             nz_unstaged = np.zeros((len(self.rvol_grid), self.Z_imp + 1, nt))
@@ -1342,8 +1362,9 @@ class aurora_sim:
                     nz_unstaged[:, ind] = self.res['nz'][:, [i]] * self.fz_upstage[:, ind]
                 else:
                     nz_unstaged[:, superstages[i]] = self.res['nz'][:, i]
-
-            self.res = nz_unstaged, *self.res[1:]
+          
+            self.res['nz'] = nz_unstaged
+ 
 
         return self.res
 
@@ -1366,7 +1387,10 @@ class aurora_sim:
             raise ValueError(
                 "This method is designed to operate with time-independent background profiles!"
             )
-
+        if self.full_PWI_flag:
+            raise Exception('It cannot be supported by PWI model!')
+            
+            
         if len(self.superstages) > 0:
             raise Exception("Superstages are not yet suported by analytical solver")
 
@@ -1559,7 +1583,7 @@ class aurora_sim:
         dt_increase=1.05,
         n_steps=100,
         plot=False,
-        radial_coordinate = 'rho_vol',
+        plot_radial_coordinate = 'rho_vol',
     ):
         """Run an Aurora simulation until reaching steady state profiles. This method calls :py:meth:`~aurora.core.run_aurora`
         checking at every iteration whether profile shapes are still changing within a given fractional tolerance.
@@ -1603,7 +1627,7 @@ class aurora_sim:
             Number of time steps (>2) before convergence is checked.
         plot : bool
             If True, plot time evolution of charge state density profiles to show convergence.
-        radial_coordinate : string, optional
+        plot_radial_coordinate : string, optional
             Radial coordinate shown in the plot. Options: 'rho_vol' (default) or 'rho_pol'
         """
 
@@ -1619,6 +1643,9 @@ class aurora_sim:
             raise ValueError(
                 "This method is designed to operate with time-independent D and V profiles!"
             )
+            
+        if self.full_PWI_flag:
+            raise Exception('Not yet supported by PWI model!')
 
         # set constant timesource
         self.namelist["source_type"] = "const"
@@ -1641,12 +1668,8 @@ class aurora_sim:
         times_DV = None
         if D_z.ndim == 2:
             # make sure that transport coefficients were given as a function of space and nZ, not time!
-            assert (
-                D_z.shape[0] == len(self.rhop_grid) and D_z.shape[1] == self.Z_imp + 1
-            )
-            assert (
-                V_z.shape[0] == len(self.rhop_grid) and V_z.shape[1] == self.Z_imp + 1
-            )
+            assert D_z.shape[0] == len(self.rhop_grid) and D_z.shape[1] == self.Z_imp + 1
+            assert V_z.shape[0] == len(self.rhop_grid) and V_z.shape[1] == self.Z_imp + 1
 
             D_z = D_z[:, None]  # (ir,nt_trans,nion)
             V_z = V_z[:, None]
@@ -1664,8 +1687,8 @@ class aurora_sim:
         saw_on = self.saw_on.copy()
         src_div = self.src_div.copy()
         nz_all = None if nz_init is None else nz_init
-        while sim_steps < len(time_grid):
 
+        while sim_steps < len(time_grid):
             self.time_grid = self.time_out = time_grid[sim_steps : sim_steps + n_steps]
             self.save_time = save_time[sim_steps : sim_steps + n_steps]
             self.par_loss_rate = par_loss_rate[:, sim_steps : sim_steps + n_steps]
@@ -1683,7 +1706,9 @@ class aurora_sim:
                 nz_init = None
             else:
                 nz_init = nz_all[:, :, -1] if nz_all.ndim == 3 else nz_all
-
+            
+            #update dummy variable sizes of the PWI model
+            self.setup_dummy_pwi_vars() 
             nz_new = self.run_aurora(
                 D_z,
                 V_z,
@@ -1713,16 +1738,16 @@ class aurora_sim:
         # store final time grids
         self.time_grid = time_grid[:sim_steps]
         # identical because steps_per_cycle is fixed to 1
-        self.time_out = time_grid[:sim_steps]
+        self.time_out  = time_grid[:sim_steps]
         self.save_time = save_time[:sim_steps]
 
         if plot:
             
-            if radial_coordinate == 'rho_vol':
+            if plot_radial_coordinate == 'rho_vol':
                 x = self.rvol_grid
                 xlabel = r"$r_V$ [cm]"
                 x_line=self.rvol_lcfs
-            elif radial_coordinate == 'rho_pol':
+            elif plot_radial_coordinate == 'rho_pol':
                 x = self.rhop_grid
                 xlabel=r'$\rho_p$'
                 x_line = 1
@@ -1762,9 +1787,10 @@ class aurora_sim:
             self.Raxis_cm,
             rvol_max=self.rvol_lcfs,
         )
-        self.tau_imp = (
-            var_volint / source_time_history[-2]
-        )  # avoid last time point because source may be 0 there
+        
+        # avoid last time point because source may be 0 there
+        self.tau_imp = var_volint / source_time_history[-2]
+        
 
         return nz_new[:, :, -1]
 
@@ -1933,16 +1959,13 @@ class aurora_sim:
         colors = plot_tools.load_color_codes_reservoirs()
         blue,light_blue,green,light_green,grey,light_grey,red,light_red = colors
 
-        nz = self.res['nz'].transpose(2, 1, 0)  # time,nZ,space
-
         # factor to account for cylindrical geometry:
         circ = 2 * np.pi * self.Raxis_cm  # cm
 
-        # collect all the relevant quantities for particle conservation
-        reservoirs = {}
+
 
         # calculate total impurity density (summed over charge states)
-        total_impurity_density = np.nansum(nz, axis=1)  # time, space
+        total_impurity_density = np.nansum(self.res['nz'], axis=1).T  # time, space
 
         # Compute total number of particles for particle conservation checks:
         all_particles = grids_utils.vol_int(
@@ -1952,6 +1975,9 @@ class aurora_sim:
             self.Raxis_cm,
             rvol_max=None,
         )
+        
+        # collect all the relevant quantities for particle conservation
+        reservoirs = {}
 
         reservoirs["total"] = all_particles + (self.res['N_mainwall'] + self.res['N_divwall'] + self.res['N_div'] + self.res['N_pump'] + self.res['N_out'] + self.res['N_mainret'] + self.res['N_divret']) * circ
 
@@ -2013,10 +2039,8 @@ class aurora_sim:
         
         # particles pumped away
         reservoirs["particles_pumped"] = self.res['N_out'] * circ
-        reservoirs["pumping_rate"] = np.zeros(len(self.time_out))
-        for i in range(1,len(self.time_out)):
-            reservoirs["pumping_rate"][i] = (reservoirs["particles_pumped"][i]-reservoirs["particles_pumped"][i-1])/(self.time_out[i]-self.time_out[i-1])
-
+        reservoirs["pumping_rate"] = np.r_[0, np.diff(reservoirs["particles_pumped"]) / np.diff(self.time_out)]
+     
         if hasattr(self, "rad"):  # radiation has already been computed
             reservoirs["impurity_radiation"] = grids_utils.vol_int(
                 self.rad["tot"], self.rvol_grid, self.pro_grid, self.Raxis_cm,
@@ -2539,6 +2563,8 @@ class aurora_sim:
          Zeff : array (nt,nr), (nr,) or float
               Effective plasma charge on Aurora temporal time_grid and radial rhop_grid (or, equivalently, rvol_grid) grids.
               Alternatively, users may give Zeff as a float (taken constant over time and space).
+              If impurity is not trace, Zeff should include also the modelled impurity
+              Iz the Zeff have a large poloidal asymmetry, it nust be included in the calculation! Not done yet. 
          plot : bool
              If True, plot asymmetry factor :math:`\lambda` vs. radius
 
@@ -2549,14 +2575,17 @@ class aurora_sim:
              docstring.
          """
          # this method requires all charge states to be made available
+         nz = self.res['nz']
          try:
-             assert self.res['nz'].shape[1] == self.Z_imp + 1
+             assert nz.shape[1] == self.Z_imp + 1
          except AssertionError:
              raise ValueError(
                  "centrifugal_asym method requires all charge state densities to be availble! Unstage superstages."
              )
-
-         fz = self.res['nz'][..., -1] / np.sum(self.res['nz'][..., -1], axis=1)[:, None]
+         
+         #calculate only for the last timeslice
+         nz = nz[..., -1]
+         fz = nz / np.sum(nz, axis=1)[:, None]
          Z_ave_vec = np.sum(fz * np.arange(self.Z_imp + 1)[None, :], axis=1)
          _, self.Rlfs = grids_utils.get_HFS_LFS(self.geqdsk, rho_pol=self.rhop_grid)
          self.CF_lambda = synth_diags.centrifugal_asymmetry(
@@ -2570,7 +2599,7 @@ class aurora_sim:
              self.Ti,
              main_ion_A=self.main_ion_A,
              plot=plot,
-             nz=self.res['nz'][..., -1],
+             nz=nz,
              geqdsk=self.geqdsk,
          ).mean(0)
 

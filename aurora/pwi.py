@@ -23,24 +23,15 @@ Module provided by Antonello Zito.
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os, sys
+#TODO add paper references to this PWI model
+
 import numpy as np
-from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.constants import e as q_electron, m_p
-import pickle as pkl
-from copy import deepcopy
-from scipy.integrate import cumtrapz
-from scipy.linalg import solve_banded
 import pandas as pd
 import matplotlib.pyplot as plt
-from . import interp
-from . import atomic
-from . import grids_utils
 from . import source_utils
 from . import transport_utils
 from . import plot_tools
-from . import synth_diags
-from . import adas_files
 from . import surface
 from . import radiation
 from . import core
@@ -62,6 +53,14 @@ class aurora_sim_pwi(core.aurora_sim):
     """
     
     def __init__(self, namelist, geqdsk=None):
+
+        #PWI model assumes that the particle source is at the wall. 
+        # set the energy of the recycled neutrals
+        namelist["imp_source_energy_eV"] = namelist["imp_recycling_energy_eV"]
+        
+        # set start of the recycling source at the wall boundary
+        namelist["source_cm_out_lcfs"] = namelist["bound_sep"]
+
         
         # inheritate all methods from main class core.py
         super(aurora_sim_pwi, self).__init__(namelist, geqdsk)
@@ -73,8 +72,12 @@ class aurora_sim_pwi(core.aurora_sim):
         if not self.phys_surfaces:
             raise ValueError("Implementing the full PWI model requires defining the physical wall surface areas!") 
       
-        # set up kinetic profiles and atomic rates
+        # recycling profiles for neutrals
         self.setup_rec_profs()
+        
+        # activate full PWI model in fortran main routines
+        self.full_PWI_flag = True
+
     
     
     def setup_PWI_model(self):
@@ -101,7 +104,9 @@ class aurora_sim_pwi(core.aurora_sim):
             raise ValueError(f"Full PWI model not available for divertor wall material {self.div_wall_material}!")
             
         # List of background species
+        self.background_species = list(self.background_species)
         self.num_background_species = len(self.background_species)
+        self.all_species = [self.imp] + self.background_species
         
         # calculate impact energies for simulated impurity and background species
         #   onto main and divertor walls at each time step
@@ -113,9 +118,7 @@ class aurora_sim_pwi(core.aurora_sim):
         
         # get angles of incidence
         angle_imp = surface.incidence_angle(self.imp)
-        angle_background = np.zeros(len(self.background_species))
-        for i in range(0,len(self.background_species)):
-            angle_background[i] = surface.incidence_angle(self.background_species[i])
+
         
         # extract values for reflection coefficient of the simulated impurity at each time step
         self.rn_main_wall = surface.reflection_coeff_fit(self.imp,
@@ -139,55 +142,6 @@ class aurora_sim_pwi(core.aurora_sim):
                                                              angle_imp,
                                                              energies = self.E0_div_wall_imp)["data"]
         
-        # extract values for fluxes of background species onto main and divertor walls at each time step
-        self.fluxes_main_wall_background, self.fluxes_div_wall_background = self.get_background_fluxes()
-        
-        # extract values for impurity sputtering coefficient for the wall retention of the
-        #   simulated impurity at each time step
-        self.y_main_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
-        self.y_div_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
-        self.y_main_wall[0,:] = surface.impurity_sputtering_coeff_fit(self.imp, # Index 0 --> simulated species
-                                                                           self.imp, # simulated impurity itself as projectile
-                                                                           self.main_wall_material,
-                                                                           angle_imp,
-                                                                           energies = self.E0_main_wall_imp)["normalized_data"]
-        self.y_div_wall[0,:] = surface.impurity_sputtering_coeff_fit(self.imp, # Index 0 --> simulated species
-                                                                          self.imp, # simulated impurity itself as projectile
-                                                                          self.div_wall_material,
-                                                                          angle_imp,
-                                                                          energies = self.E0_div_wall_imp)["normalized_data"]
-        for i in range(0,len(self.background_species)):
-            self.y_main_wall[i+1,:] = surface.impurity_sputtering_coeff_fit(self.imp, # Indices > 1 --> background species
-                                                                               self.background_species[i], # background species as projectiles
-                                                                               self.main_wall_material,
-                                                                               angle_background[i],
-                                                                               energies = self.E0_main_wall_background[i,:])["normalized_data"]
-            self.y_div_wall[i+1,:] = surface.impurity_sputtering_coeff_fit(self.imp, # Indices > 1 --> background species
-                                                                              self.background_species[i], # background species as projectiles
-                                                                              self.div_wall_material,
-                                                                              angle_background[i],
-                                                                              energies = self.E0_div_wall_background[i,:])["normalized_data"]
-        
-        # extract values for the impurity sputtered energy at each time step
-        self.E_sput_main_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
-        self.E_sput_div_wall = np.zeros((len(self.background_species)+1,len(self.time_out)))
-        self.E_sput_main_wall[0,:] = surface.calc_imp_sputtered_energy(self.imp, # Index 0 --> simulated species
-                                                                         self.imp, # simulated impurity itself as projectile
-                                                                         self.main_wall_material,
-                                                                         energies = self.E0_main_wall_imp)["data"]
-        self.E_sput_div_wall[0,:] = surface.calc_imp_sputtered_energy(self.imp, # Index 0 --> simulated species
-                                                                        self.imp, # simulated impurity itself as projectile
-                                                                        self.div_wall_material,
-                                                                        energies = self.E0_div_wall_imp)["data"]
-        for i in range(0,len(self.background_species)):
-            self.E_sput_main_wall[i+1,:] = surface.calc_imp_sputtered_energy(self.imp, # Indices > 1 --> background species
-                                                                             self.background_species[i], # background species as projectiles
-                                                                             self.main_wall_material,
-                                                                             energies = self.E0_main_wall_background[i,:])["data"]
-            self.E_sput_div_wall[i+1,:] = surface.calc_imp_sputtered_energy(self.imp, # Indices > 1 --> background species
-                                                                            self.background_species[i], # background species as projectiles
-                                                                            self.div_wall_material,
-                                                                            energies = self.E0_div_wall_background[i,:])["data"]
         
         # extract the depth of the impurity implantation profile into main and divertor walls
         self.implantation_depth_main_wall = surface.implantation_depth_fit(self.imp,
@@ -198,6 +152,47 @@ class aurora_sim_pwi(core.aurora_sim):
                                                              self.div_wall_material,
                                                              angle_imp,
                                                              energies = self.characteristic_impact_energy_div_wall)["data"]
+        
+        
+        
+        # extract values for fluxes of background species onto main and divertor walls at each time step
+        self.fluxes_main_wall_background, self.fluxes_div_wall_background = self.get_background_fluxes()
+        
+        # extract values for impurity sputtering coefficient for the wall retention of the
+        #   simulated impurity at each time step
+        self.y_main_wall = np.zeros((len(self.all_species),len(self.time_out)))
+        self.y_div_wall  = np.zeros((len(self.all_species),len(self.time_out)))
+        
+        # extract values for the impurity sputtered energy at each time step
+        self.E_sput_main_wall = np.zeros((len(self.all_species),len(self.time_out)))
+        self.E_sput_div_wall  = np.zeros((len(self.all_species),len(self.time_out)))
+        
+        for i, s in enumerate(self.all_species):
+            # get angles of incidence
+            angle = surface.incidence_angle(s)
+            
+            self.y_main_wall[i] = surface.impurity_sputtering_coeff_fit(self.imp, 
+                                                                s, # simulated impurity or background species as projectiles
+                                                                self.main_wall_material,
+                                                                angle,
+                                                                energies = self.energies_main_wall[i])["normalized_data"]
+    
+            self.y_div_wall[i] = surface.impurity_sputtering_coeff_fit(self.imp,  
+                                                                s, # simulated impurity or background species as projectiles
+                                                                self.div_wall_material,
+                                                                angle,
+                                                                energies = self.energies_div_wall[i])["normalized_data"]
+                
+            self.E_sput_main_wall[i] = surface.calc_imp_sputtered_energy(self.imp,  
+                                                                s, # simulated impurity or background species as projectiles
+                                                                self.main_wall_material,
+                                                                energies = self.energies_main_wall[i])["data"]
+            self.E_sput_div_wall[i] = surface.calc_imp_sputtered_energy(self.imp,  
+                                                                s, # simulated impurity or background species as projectiles
+                                                                self.div_wall_material,
+                                                                energies = self.energies_div_wall[i])["data"]
+    
+
         
         # extract saturation value of the density of the implanted impurity into main and divertor walls 
         self.n_main_wall_sat = self.namelist['full_PWI']['n_main_wall_sat'] # m^-2
@@ -219,15 +214,15 @@ class aurora_sim_pwi(core.aurora_sim):
         
         """
         
-        fluxes_main_wall = np.zeros((len(self.background_species),len(self.time_out)))
-        fluxes_div_wall = np.zeros((len(self.background_species),len(self.time_out)))
+        fluxes_main_wall = np.zeros((self.num_background_species,len(self.time_out)))
+        fluxes_div_wall  = np.zeros((self.num_background_species,len(self.time_out)))
         
         if self.background_mode == 'manual':
         # manually imposed fluxes of all the background species over the entire time grid
                     
-            if (len(self.background_species) != len(self.background_main_wall_fluxes) or len(self.background_species) != len(self.background_div_wall_fluxes)):
+            if not (self.num_background_species == len(self.background_main_wall_fluxes) == len(self.background_div_wall_fluxes)):
                 raise ValueError("Declared number of background species for full PWI model not consistent with declared number of background fluxes!")  
-                
+         
             if not self.namelist['ELM_model']['ELM_flag']:
                 # set wall fluxes of the background species to constant value over entire time grid
                 
@@ -265,11 +260,11 @@ class aurora_sim_pwi(core.aurora_sim):
         #   in advance, one for each background species, on the same time grid of the
         #   current simulation
             
-            if len(self.background_species) != len(self.background_files):
+            if self.num_background_species != len(self.background_files):
                 raise ValueError("Declared number of background species for full PWI model not consistent with declared number of background simulation files!")       
             
             # Wall fluxes for the background species
-            for i in range(0,len(self.background_species)):
+            for i in range(0,self.num_background_species):
                 
                 # Load background simulation data
                 reservoirs_background = pd.read_pickle(self.background_files[i])
@@ -366,7 +361,7 @@ class aurora_sim_pwi(core.aurora_sim):
                 # Same values over entire time grid 
                 impact_energy_main_wall[i,:] = np.full(len(self.time_out),E0_main_wall_temp)
                 impact_energy_div_wall[i,:] = np.full(len(self.time_out),E0_div_wall_temp)
-        
+
         return impact_energy_main_wall, impact_energy_div_wall
         
         
@@ -1097,7 +1092,7 @@ class aurora_sim_pwi(core.aurora_sim):
 
         return self.res
         
-        
+
     def PWI_time_traces(self, interval = 0.01, plot=True, ylim = True, axs=None):
         """Return and plot data regarding the plasma-wall interaction in the simulation.
 

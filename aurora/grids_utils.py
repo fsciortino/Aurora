@@ -854,6 +854,7 @@ def estimate_boundary_distance(shot, device, time_ms):
             shot=shot,
             TDI="\\EFIT01::TOP.RESULTS.A_EQDSK.ORIGHT",
         )  # CMOD format, take ORIGHT
+        assert tmp.check()
     except Exception:
         tmp = OMFITmdsValue(
             server=device,
@@ -861,7 +862,7 @@ def estimate_boundary_distance(shot, device, time_ms):
             shot=shot,
             TDI="\\EFIT01::TOP.RESULTS.AEQDSK.GAPOUT",
         )  # useful variable for many other devices
-
+  
     time_vec = tmp.dim_of(0)
     data_r = tmp.data()
 
@@ -871,8 +872,7 @@ def estimate_boundary_distance(shot, device, time_ms):
 
     # take separation to limiter to be 2/3 of the separation to the wall boundary
     lim_sep = round(bound_sep * 2.0 / 3.0, 3)
-
-    return bound_sep, lim_sep
+    return bound_sep*100, lim_sep*100
 
 
 def vol_int(var, rvol_grid, pro_grid, Raxis_cm, rvol_max=None):
