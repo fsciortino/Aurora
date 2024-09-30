@@ -32,7 +32,6 @@ import os, sys, copy
 import scipy.ndimage
 from scipy.linalg import svd
 from scipy import constants
-from scipy.integrate import simps
 from . import adas_files
 
 
