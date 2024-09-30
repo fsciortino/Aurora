@@ -23,7 +23,7 @@
 import os, sys, re
 import numpy as np
 from scipy.interpolate import RectBivariateSpline, interp1d
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid
 import matplotlib.pyplot as plt
 
 plt.ion()
@@ -464,15 +464,15 @@ def radiation_model(
     out["rad_tot_dens"] = rad["tot"][0, :] * 1e6
 
     # cumulative integral over all volume
-    out["line_rad"] = cumtrapz(out["line_rad_dens"], vol, initial=0.0)
-    out["line_rad_tot"] = cumtrapz(out["line_rad_dens"].sum(0), vol, initial=0.0)
-    out["cont_rad"] = cumtrapz(out["cont_rad_dens"], vol, initial=0.0)
-    out["brems"] = cumtrapz(out["brems_dens"], vol, initial=0.0)
-    out["rad_tot"] = cumtrapz(out["rad_tot_dens"], vol, initial=0.0)
+    out["line_rad"] = cumulative_trapezoid(out["line_rad_dens"], vol, initial=0.0)
+    out["line_rad_tot"] = cumulative_trapezoid(out["line_rad_dens"].sum(0), vol, initial=0.0)
+    out["cont_rad"] = cumulative_trapezoid(out["cont_rad_dens"], vol, initial=0.0)
+    out["brems"] = cumulative_trapezoid(out["brems_dens"], vol, initial=0.0)
+    out["rad_tot"] = cumulative_trapezoid(out["rad_tot_dens"], vol, initial=0.0)
 
     if n0_cm3 is not None:
         out["thermal_cx_rad_dens"] = rad["thermal_cx_cont_rad"][0, :, :] * 1e6
-        out["thermal_cx_rad"] = cumtrapz(
+        out["thermal_cx_rad"] = cumulative_trapezoid(
             out["thermal_cx_rad_dens"].sum(0), vol, initial=0.0
         )
 

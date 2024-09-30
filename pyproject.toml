@@ -37,7 +37,8 @@ dependencies = [
 
     # omfit_classes has issues with newer versions of
     # matplotlib, see https://github.com/gafusion/OMFIT-source/issues/6784
-    "matplotlib<=3.5",
+    # (link appears to be broken - MT 2024-09-26; trying to relax <=3.5)
+    "matplotlib",
 ]
 
 [build-system]
