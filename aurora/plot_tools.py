@@ -180,7 +180,7 @@ def time_average_profiles(timing,time,data,interval):
     Parameters
     ----------
     timing: dict
-        Sub-dict "timing" from the main aurorawall inputs namelist.
+        Sub-dict "timing" from the main aurora inputs namelist.
     time : array of float
         Times of the original data.
     data : array of float
@@ -221,7 +221,7 @@ def time_average_reservoirs(timing,time,data,interval):
     Parameters
     ----------
     timing: dict
-        Sub-dict "timing" from the main aurorawall inputs namelist.
+        Sub-dict "timing" from the main aurora inputs namelist.
     time : array of float
         Times of the original data.
     data : array of float

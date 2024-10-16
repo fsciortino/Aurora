@@ -47,9 +47,9 @@ def interp_coeffs(namelist, rhop_grid, data, radial_dependency = False, rhop = N
     Parameters
     ----------
     namelist: dict
-        Dictionary containing aurorawall inputs. 
+        Dictionary containing aurora inputs. 
     rhop_grid: array
-        Values of rho_poloidal on the aurorawall radial grid.
+        Values of rho_poloidal on the aurora radial grid.
     data: list
         List containing the user-specified values for the transport coefficient. It can be:
             0-dimensional: constant and uniform transport coefficient.
@@ -92,7 +92,7 @@ def interp_coeffs(namelist, rhop_grid, data, radial_dependency = False, rhop = N
                 i.e. as shape of (space).
             2-D array in case of both space- and time-dependence requested,
                 i.e. as shape of (space,time).
-        This is to be used as input of the main aurorawall routine.
+        This is to be used as input of the main aurora routine.
     """
                  
     
@@ -208,11 +208,11 @@ def ELM_model(timing, ELM_model, rhop_grid, rhop, data_inter_ELM, data_intra_ELM
     Parameters
     ----------
     timing: dict
-        Sub-dict "timing" from the main aurorawall inputs namelist.
+        Sub-dict "timing" from the main aurora inputs namelist.
     ELM_model: dict
-        Sub-dict "ELM_model" from the main aurorawall inputs namelist.
+        Sub-dict "ELM_model" from the main aurora inputs namelist.
     rhop_grid: array
-        Values of rho_poloidal on the aurorawall radial grid.
+        Values of rho_poloidal on the aurora radial grid.
     rhop: list
         List containing the user-specified values of rhop at which the transport coefficients are imposed.    
     data_inter_ELM: list
@@ -242,11 +242,11 @@ def ELM_model(timing, ELM_model, rhop_grid, rhop, data_inter_ELM, data_intra_ELM
     -------
     times_transport: list
         Contains the values at which the transport coefficients are imposed.
-        This is to be used as input of the main aurorawall routine.
+        This is to be used as input of the main aurora routine.
     coeffs : array
         Contains the desired output transport coefficients, defined as a 2-D array,
         i.e. in function of (space,time).
-        This is to be used as input of the main aurorawall routine.
+        This is to be used as input of the main aurora routine.
     """
     
     # Convert input list into array

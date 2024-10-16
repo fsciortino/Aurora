@@ -411,14 +411,14 @@ def ELM_time_grid(timing, ELM_model):
     Parameters
     ----------
     timing: dict
-        Original version of the sub-dict "timing" from the main aurorawall inputs namelist (to update).
+        Original version of the sub-dict "timing" from the main aurora inputs namelist (to update).
     ELM_model: dict
-        Sub-dict "ELM_model" from the main aurorawall inputs namelist.
+        Sub-dict "ELM_model" from the main aurora inputs namelist.
         
     Returns
     -------
     timing_update : dict
-        Update to sub-dict "timing" from the main aurorawall inputs namelist.
+        Update to sub-dict "timing" from the main aurora inputs namelist.
     """ 
     
     ELM_time_windows = ELM_model['ELM_time_windows'] # s

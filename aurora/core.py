@@ -825,7 +825,7 @@ class aurora_sim:
         plot_radiation=False,
         plot_average = False,
         interval = 0.01,
-        plot_radial_coordinate = 'rho_vol',
+        radial_coordinate = 'rho_vol',
         plot_PWI = False,
     ):
         """Run a simulation using the provided diffusion and convection profiles as a function of space, time
@@ -919,7 +919,7 @@ class aurora_sim:
             over time and check particle conservation in each particle reservoir averaged over ELM cycles.
         interval : float, optional
             Duration of time cycles to plot if plot_average is True, in s
-        plot_radial_coordinate : string, optional
+        radial_coordinate : string, optional
             Radial coordinate shown in the plot. Options: 'rho_vol' (default) or 'rho_pol'
         plot_PWI : bool, optional
             If True, plot time traces related to the plasma-wall interaction model
@@ -1266,11 +1266,11 @@ class aurora_sim:
         
         if plot:
             
-            if plot_radial_coordinate == 'rho_vol':
+            if radial_coordinate == 'rho_vol':
                 x = self.rvol_grid
                 xlabel = r"$r_V$ [cm]"
                 x_line=self.rvol_lcfs
-            elif plot_radial_coordinate == 'rho_pol':
+            elif radial_coordinate == 'rho_pol':
                 x = self.rhop_grid
                 xlabel=r'$\rho_p$'
                 x_line = 1
@@ -1586,7 +1586,7 @@ class aurora_sim:
         dt_increase=1.05,
         n_steps=100,
         plot=False,
-        plot_radial_coordinate = 'rho_vol',
+        radial_coordinate = 'rho_vol',
     ):
         """Run an Aurora simulation until reaching steady state profiles. This method calls :py:meth:`~aurora.core.run_aurora`
         checking at every iteration whether profile shapes are still changing within a given fractional tolerance.
@@ -1630,7 +1630,7 @@ class aurora_sim:
             Number of time steps (>2) before convergence is checked.
         plot : bool
             If True, plot time evolution of charge state density profiles to show convergence.
-        plot_radial_coordinate : string, optional
+        radial_coordinate : string, optional
             Radial coordinate shown in the plot. Options: 'rho_vol' (default) or 'rho_pol'
         """
 
@@ -1746,11 +1746,11 @@ class aurora_sim:
 
         if plot:
             
-            if plot_radial_coordinate == 'rho_vol':
+            if radial_coordinate == 'rho_vol':
                 x = self.rvol_grid
                 xlabel = r"$r_V$ [cm]"
                 x_line=self.rvol_lcfs
-            elif plot_radial_coordinate == 'rho_pol':
+            elif radial_coordinate == 'rho_pol':
                 x = self.rhop_grid
                 xlabel=r'$\rho_p$'
                 x_line = 1
@@ -1889,7 +1889,7 @@ class aurora_sim:
         rhop_main = exp_data[f'{self.namelist["main_element"]}_density_plasma']['rhop']
         n_main = exp_data[f'{self.namelist["main_element"]}_density_plasma'][f'n_{self.namelist["main_element"]}']
         
-        # interpolate main ion density profile onto aurorawall radial grid
+        # interpolate main ion density profile onto aurora radial grid
         _, rvol_main = grids_utils.get_rhopol_rvol_mapping(geqdsk, rho_pol=rhop_main)
         f_n_main = interp1d(rvol_main, n_main, kind="linear", fill_value="extrapolate", assume_sorted=True)
         n_main = f_n_main(self.rvol_grid)
