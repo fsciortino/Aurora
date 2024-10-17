@@ -133,16 +133,15 @@ def get_source_time_history(namelist, Raxis_cm, time, plot = False):
     from scipy.interpolate import interp1d
     src_rate_interp = interp1d(src_times, src_rates ,axis=0,kind='linear')
 
-    #this will extrapolate source by a contant values outside of src_times range
-    source_time_history= src_rate_interp(np.clip(time, src_times[0], src_times[-1]))
-    
-    if source_time_history.ndim == 1:
-        # get number of particles per cm and sec
-        circ = 2 * np.pi * Raxis_cm
-        source_time_history /= circ
-    
-    if np.all(source_time_history == 0):
-        raise Exception("Impurity source is zero within the simulation range")
+    source = np.interp(time, src_times, src_rates, left=0, right=0)
+
+    # get number of particles per cm and sec
+    circ = 2 * np.pi * Raxis_cm
+
+    # For ease of comparison with STRAHL, shift source by one time step
+    source_time_history = np.r_[source[1:], source[-1]] / circ
+    # if all(source_time_history == 0):
+    #     raise Exception("Impurity source is zero within the simulation range")
         
     if plot:
 

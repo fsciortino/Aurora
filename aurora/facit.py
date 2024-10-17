@@ -1,34 +1,24 @@
 #-----------------------------------------------------------------------------
 # Python standalone of FACIT routine for collisional impurity transport
-# Daniel Fajardo (daniel.fajardo@ipp.mpg.de), January 2023
+# Daniel Fajardo (daniel.fajardo@ipp.mpg.de), November 2021
 #-----------------------------------------------------------------------------
 
 import numpy as np
 
 class FACIT:
     '''
-    Calculation of collisional impurity transport coefficients
-    ----------------------------------------------------------
-    References:  Maget et al 2020 Plasma Phys. Control. Fusion 62 105001
-                 Fajardo et al 2022 Plasma Phys. Control. Fusion 64 055017
-                 Maget et al 2022 Plasma Phys. Control. Fusion 64 069501
-                 Fajardo et al 2023 Plasma Phys. Control. Fusion 65 035021 
-          
-    License statement:
-    Software name : FACIT
-    Authors : P. Maget and D. Fajardo, C. Angioni, P. Manas
-    Copyright holders : Commissariat à l’Energie Atomique et aux Energies Alternatives (CEA), France, 
-                        Max-Planck Institut für Plasmaphysik, Germany
-    CEA and IPP authorize the use of the FACIT software under the CeCILL-C open source license 
-    https://cecill.info/licences/Licence_CeCILL-C_V1-en.html  
-    The terms and conditions of the CeCILL-C license are deemed to be accepted upon downloading 
-    the software and/or exercising any of the rights granted under the CeCILL-C license.
+    Calculates collisional impurity transport coefficients and the poloidal
+    asymmetry of the impurity density.
+    
+    Refs: Maget PPCF (2020), https://doi.org/10.1088/1361-6587/ab53ab
+          Maget PPCF (2020), https://doi.org/10.1088/1361-6587/aba7f9
+          new paper...
     
     Parameters
     ----------
-    rho : 1D array (nr) or float
-        mid-plane radius normalized to minor radius [-], :math:`r/a`
-    Zimp : 1D array (nr) or float or int
+    rho : 1D array (nr)
+        mid-plane radius normalized to minor radius [-], r/a
+    Zimp : int or float or 1D array (nr)
         impurity charge [-]
     Aimp : int or float
         impurity mass [-]
@@ -36,85 +26,67 @@ class FACIT:
         main ion charge [-]
     Ai : int or float
         main ion mass [-]
-    Ti : nD array (...,nr) or float
-        main ion temperature [:math:`eV`]
-    ne : nD array (...,nr) or float
-        electron density [:math:`1/m^3`]
-    Ni : nD array (...,nr) or float
-        main ion density [:math:`1/m^3`]
-    Nimp : nD array (...,nr) or float
-        FSA impurity density [:math:`1/m^3`]
-    Machi : nD array (...,nr) or float
+    Te : 1D array (nr)
+        electron temperature [eV]
+    Ti : 1D array (nr)
+        main ion temperature [eV]
+    Ne : 1D array (nr)
+        electron density [1/m^3]
+    Ni : 1D array (nr)
+        main ion density [1/m^3]
+    Nimp : 1D array (nr)
+        impurity density [1/m^3]
+    Machi : float or 1D array (nr)
         main ion Mach number [-]
-    Zeff: nD array (...,nr) or float
-        effective charge [-]
-    gradTi : nD array (...,nr) or float
-        main ion temperature gradient [:math:`1/m^3/m`]
-    gradNi : nD array (...,nr) or float
-        main ion density gradient [:math:`1/m^3/m`]
-    gradNimp : nD array (...,nr) or float
-        FSA impurity density gradient [:math:`1/m^3/m`]
+        set to zero to perform calculations in the non-rotating limit
     invaspct : float
-        inverse aspect ratio [-], :math:`a/R0`
+        inverse aspect ratio [-], a/R0
     B0 : float
-        magnetic field at magnetic axis [:math:`T`]
+        magnetic field at magnetic axis [T]
     R0 : float
-        major radius at magnetic axis [:math:`m`]
-    qmag : 1D array (nr) or float
+        major radius at magnetic axis [m]
+    qmag : 1D array (nr)
         safety factor [-]
-    rotation_model : int, optional
-        if 0, use non-rotating limit from Fajardo PPCF (2022)
-        if 1, use PS model from Maget PPCf (2020)
-        if 2, use BP and PS model from Fajardo (subm. to PPCF)
-        Default is 0. 0 is recommended for low-Z impurities (e.g. B, N, Ne)
-    Te_Ti : nD array (...,nr) or float, optional
-        electron to ion temperature ratio [-]
-        default is 1.0
-    RV : 2D array (nr, nth), optional
-        R contours of flux surfaces, 2D distribution on (r,theta) [:math:`m`]
-        used if rotation_model == 2 or rotation_model == 1 and full_geom
-        default is None, which calculates it in circular geometry
-    ZV : 2D array (nr, nth), optional
-        Z contours of flux surfaces, 2D distribution on (r,theta) [:math:`m/T`]
-        used if rotation_model == 2 or rotation_model == 1 and full_geom
-        default is None, which calculates it in circular geometry
-    BV : 2D array (nr, nth), optional
-        magnetic field, poloidal distribution on (r,theta) [:math:`T`]
-        used if rotation_model == 1 and full_geom
-        default is None, which calculates it in circular geometry
-    FV : 1D array (nr), optional
-        poloidal current flux function [:math:`T*m`]
-        required if rotation_model == 1 and full_geom
-        default is None, which makes it R0*B0
-    dpsidx : 1D array (nr), optional
-        radial coordinate transformation from flux psi to rho [:math:`T*m^2`]
-        required if rotation_model == 1 and full_geom
-        default is None
-    fsaout : bool, optional
-        if True, return FSA transport coefficients
-        only relevant if rotation_model == 2
-        default is True
+    pol_asym : bool, optional
+        if True, calculate the poloidal asymmetry of the impurity density
+        default is False
     full_geom : bool, optional
-        only relevant if rotation_model == 1
         if True, use full flux surface shaped geometry in the calculation of
         the asymmetries, which means an iterative solution. This would be the
         most computationally-expensive setting of FACIT.
         if False, use circular geometry with large aspect ratio, such that
         the calculation of the asymmetries can be completely analytical
         default is False
-    nat_asym : bool, optional
-        if True, consider friction-induced "natural" poloidal asymmetry
-        only relevant if pol_asym
-        default is True
+        if pol_asym is False, full_geom matters only in the calculation of
+        some geometric coefficients
     nth : int, optional
         number of poloidal grid points [-]
-        if RV, BV, ZV are given, it is the size of axis 1,
-        else default is 20
+        default is 20
     regulopt : list (4), optional
         parameters for the convergence of the iterative calculation of the
         asymmetries
-        only relevant if rotation_model = 1 and full_geom
+        only relevant if pol_asym and full_geom
         default is [1e-2,0.5,1.e-5,1e2]
+    dpsidx : 1D array (nr), optional
+        radial coordinate transformation from flux psi to rho [T*m^2]
+        only relevant if pol_asym and full_geom
+        default is None
+    FV : 1D array (nr), optional
+        poloidal current flux function [T*m]
+        only relevant if pol_asym and full_geom
+        default is None
+    BV : 2D array (nr, nth), optional
+        magnetic field, poloidal distribution on (r,theta) [T]
+        only relevant if pol_asym and full_geom
+        default is None
+    RV : 2D array (nr, nth), optional
+        major radius, poloidal distribution on (r,theta) [m]
+        only relevant if pol_asym and full_geom
+        default is None
+    JV : 2D array (nr, nth), optional
+        Jacobian of coordinate system, poloidal distribution on (r,theta) [m/T]
+        only relevant if pol_asym and full_geom
+        default is None
     fH : float, optional
         resonant hydrogen minority fraction [-]
         for ICRH-induced asymmetries
@@ -127,7 +99,7 @@ class FACIT:
         only relevant if pol_asym
         default is 1.0
     sigH : float, optional
-        std. dev. for radial exponential decay of temperature anisotropy
+        
         for ICRH-induced asymmetries
         only relevant if pol_asym
         default is 1.0
@@ -136,32 +108,38 @@ class FACIT:
         for ICRH-induced asymmetries
         only relevant if pol_asym
         default is 1.0
+    nat_asym : bool, optional
+        if True, consider friction-induced "natural" poloidal asymmetry
+        only relevant if pol_asym
+        default is True
         
-    Returns (as attributes)
+    Returns
     -------
     Dz_* : 1D array (nr)
-        diffusion coefficient for each flux component [:math:`m^2/s`]
+        diffusion coefficient from each flux component [m^2/s]
         * = PS, BP or CL (for Pfirsch-Schlüter, Banana-Plateau and Classical)
     Kz_* : 1D array (nr)
-        coefficient of the main ion density gradient for each flux component [:math:`m^2/s`]
+        coefficient of the main ion density gradient from each flux component [m^2/s]
     Hz_* : 1D array (nr)
-        coefficient of the main ion temperature gradient for each flux component [:math:`m^2/s`]
+        coefficient of the main ion temperature gradient from each flux component [m^2/s]
+    Vrot_* : 1D array (nr)
+        centrifugal velocity from each flux component [m^2/s]
     Vrz_* : 1D array (nr)
-        radial flux per particle (Flux_z/nz)_* for each flux component [:math:`m/s`]
-    Vconv_* : 1D array (nr)
-        radial convective velocity for each flux component [:math:`m/s`]
+        radial flux per particle (Flux_z/nz)_* from each flux component [m/s]
     Dz : 1D array (nr)
-        total diffusion coefficient [:math:`m^2/s`]
+        total diffusion coefficient [m^2/s]
     Kz : 1D array (nr)
-        total coefficient of the main ion density gradient [:math:`m^2/s`]
+        total coefficient of the main ion density gradient [m^2/s]
     Hz : 1D array (nr)
-        total coefficient of the main ion temperature gradient [:math:`m^2/s`]
+        total coefficient of the main ion temperature gradient [m^2/s]
     Vconv : 1D array (nr)
-        total convective velocity [:math:`m/s`]
+        total convective velocity [m/s]
+    Vrot : 1D array (nr)
+        total centrifugal velocity [m^2/s]
     Vrz : 1D array (nr)
-        total radial flux per particle (Flux_z/nz) [:math:`m/s`]
+        total radial flux per particle (Flux_z/nz) [m/s]
     Flux_z : 1D array (nr)
-        total radial flux [:math:`1/(m^2 s)`]
+        total radial flux [1/(m^2 s)]
     horiz_asym : 1D array (nr)
         horizontal asymmetry of the impurity density [-]
         in the representation n = nz/<nz> = 1 + horiz_asym*cos(theta) + vert_asym*sin(theta)
@@ -172,77 +150,51 @@ class FACIT:
         nn = nz(r,theta)/<nz(r,theta)>(r)
     '''
     
-    # some constants
-    mp   = 1.672623e-27   # mass of the proton   [kg]
-    me   = 9.1096e-31     # mass of the electron [kg]
-    qe   = 1.60217653e-19 # elementary charge    [-]
-    eps0 = 8.8542e-12     # vacuum permittivity  [F/m]
+    # variables shared by all instances
+    mp   = 1.672623e-27   # mass of the proton
+    me   = 9.1096e-31     # mass of the electron
+    qe   = 1.60217653e-19 # elementary charge
+    eps0 = 8.8542e-12     # vacuum permittivity
+    
     eps_pi_fac = 3*eps0**2*(2*np.pi/qe)**1.5/qe # common factor in collision times
     
     
-    def __init__(self, rho: (np.ndarray, float), \
-                       Zimp: (np.ndarray, float), Aimp: (int, float), \
-                       Zi: (np.ndarray, float), Ai: (int, float), \
-                       Ti: (np.ndarray, float), Ni: (np.ndarray, float), Nimp: (np.ndarray, float), \
-                       Machi: (np.ndarray, float), Zeff: (np.ndarray, float), \
-                       gradTi: (np.ndarray, float), gradNi: (np.ndarray, float), gradNimp: (np.ndarray, float), \
-                       invaspct: (float), B0: (float), R0: (float), qmag: (np.ndarray, float),  \
+    def __init__(self, rho, \
+                       Zimp, Aimp, Zi, Ai, \
+                       Te, Ti, Ne, Ni, Nimp, Machi, \
+                       invaspct, B0, R0, qmag, \
                        
-                       rotation_model = 0, Te_Ti = 1.0,\
-                       RV = None, ZV = None, BV = None, FV = None, dpsidx = None,\
-                       fsaout = True, full_geom = False, nat_asym = True,\
+                       pol_asym = False, full_geom = False, \
                        nth = 20, regulopt = [1e-2,0.5,1e-5,1e2], \
-                       fH = 0., bC = 1., sigH = 1., TperpTpar_axis = 1.):
+                       dpsidx = None, FV = None, BV = None, RV = None, JV = None, \
+                       fH = 0., bC = 1., sigH = 1., TperpTpar_axis = 1., nat_asym = True):
         
         #---------------------------------------------------------------------
         #-------------- Definition of physical quantities --------------------
         #---------------------------------------------------------------------
         
+        
         mi   = Ai*self.mp   # main ion mass [kg]
         mimp = Aimp*self.mp # impurity mass [kg]
         
         rho = np.maximum(1e-6, rho) # to avoid dividing by zero
+        nr  = rho.size # number of radial grid points
         
-        if type(rho) is float or type(rho) is np.float64:
-            nr  = 1 # number of radial grid points
-            
-            rho      *= np.ones(nr)
-            Ti       *= np.ones(nr)
-            Ni       *= np.ones(nr)
-            Nimp     *= np.ones(nr)
-            Machi    *= np.ones(nr)
-            Zeff     *= np.ones(nr)
-            gradTi   *= np.ones(nr)
-            gradNi   *= np.ones(nr)
-            gradNimp *= np.ones(nr)
-            qmag     *= np.ones(nr)
-            
-        else:
-            nr  = rho.size # number of radial grid points
-        
-        eps   = np.maximum(0.005, rho*invaspct)  # local inverse aspect ratio [-]
+        eps = rho*invaspct  # local inverse aspect ratio [-]
         eps2  = eps**2 # auxiliary
         
         
         amin = invaspct*R0 # minor radius [m]
         
-        if type(Zimp) is int or type(Zimp) is float or type(Zimp) is np.float64:
-            Zimp  *= np.ones(nr)
-        if type(Te_Ti) is int or type(Te_Ti) is float or type(Te_Ti) is np.float64:
-            Te_Ti *= np.ones(nr)
+        if type(Zimp) is int: # impurity charge must always be a radial array
+            Zimp = Zimp*np.ones(nr)
         
-        if Nimp.mean() < 1:
-            Nimp = np.ones_like(Ni)
+        Zeff = (Zimp**2*Nimp + Zi*Ni)/Ne # effective charge [-]
         
         # logarithmic gradients: dlnQ/dr = (dQ/dr)/Q = dlnQ/d(amin*rho)
-        grad_ln_Ni   = gradNi/Ni     # [1/m]
-        grad_ln_Ti   = gradTi/Ti     # [1/m]
-        grad_ln_Nimp = gradNimp/Nimp # [1/m]
-        
-        if rho[0] == 1e-6:
-            grad_ln_Ni[...,0]   = 0.0 # [1/m]
-            grad_ln_Ti[...,0]   = 0.0 # [1/m]
-            grad_ln_Nimp[...,0] = 0.0 # [1/m]
+        grad_ln_Ni   = np.gradient(Ni, amin*rho)/Ni     # [1/m]
+        grad_ln_Ti   = np.gradient(Ti, amin*rho)/Ti     # [1/m]
+        grad_ln_Nimp = np.gradient(Nimp, amin*rho)/Nimp # [1/m]
         
         
         ft = self.ftrap(eps) # trapped particle fraction [-]
@@ -254,7 +206,12 @@ class FACIT:
         
         # Braginskii collision times
         
-        Tauii     = (self.eps_pi_fac*np.sqrt(mi)*Ti**1.5)/(Zi**4*Ni*LniiNRL)             # ion-ion collision time [s]
+        Ti15    = Ti**1.5 # auxiliary
+        
+        Tauii     = (self.eps_pi_fac*np.sqrt(mi)*Ti15)/(Zi**4*Ni*LniiNRL)             # ion-ion collision time [s]
+        #Tauimpi   = (self.eps_pi_fac*np.sqrt(mimp)*Ti15)/(Zi**2*Zimp**2*Ni*LnimpiNRL) # impurity-ion collision time [s]
+        #Tauiimp   = (self.eps_pi_fac*np.sqrt(mi)*Ti15)/(Zi**2*Zimp**2*Nimp*LnimpiNRL) # ion-impurity collision time [s]
+        #Tauimpimp = (self.eps_pi_fac*np.sqrt(mimp)*Ti15)/(Zimp**4*Nimp*LnimpimpNRL)   # impurity-impurity collision time [s]
         # set other collision times with respect to Tauii:
         Tauimpi   = np.sqrt(Aimp/Ai)*((Zi**2*LniiNRL)/(Zimp**2*LnimpiNRL))*Tauii           # impurity-ion collision time [s]
         Tauiimp   = ((Zi**2*Ni*LniiNRL)/(Zimp**2*Nimp*LnimpiNRL))*Tauii                    # ion-impurity collision time [s]
@@ -263,42 +220,32 @@ class FACIT:
         # collisionalities
         nuz     = 1/(np.sqrt(1 + Aimp/Ai)*Tauimpi)           # impurity collision frequency [1/s]
         g       = (qmag*R0)/(np.sqrt(2*(self.qe*Ti)/mi)*Tauii) # main collisionality parameter [-]
-        nuistar = g/eps**1.5                                 # main ion collisionality [-]
-        
+        self.nuistar = g/eps**1.5                                 # main ion collisionality [-]
         
         alpha = Zimp**2*Nimp/(Zi**2*Ni) # impurity strength parameter [-]
         
         # ion-electron heat exchange term (Fülöp-Helander PoP 2001) [-]
-        mu_ie = (96*np.sqrt(2)/125)*(1/Zi**2)*np.sqrt(self.me/mi)*((1/Te_Ti)**1.5)
-        
-        
-        if rotation_model == 0:
-            Machi *= 0.0
-            
-        Machi2 = Machi**2 # auxiliary
-        
-        # Effective impurity Mach number
-        Mzstar = np.sqrt(Aimp/Ai - (Zimp/Zi)*Zeff/(Zeff + 1/Te_Ti))*Machi
+        mu_ie = (96*np.sqrt(2)/125)*np.sqrt(self.me/mi)*(Ti15/Te**1.5)
         
         
         # fitted factors
-        f1, f2, f3, fG, fU, yy, fv, fdps, fhbp = self.facs(Zimp, Aimp, ft, Mzstar, rotation_model)
+        f1, f2, f3, y1, y2, y3, y4, adps, ahbp = self.facs(Zimp, ft)
         
         # new friction coefficient of the main ion parallel heat flow [-]
-        C0z = self.C2(alpha, g, Ai, Aimp, f1, f2)/(1 + f3*mu_ie*g**2)
+        C0z = self.C2(alpha, g, Zimp, Ai, Aimp, f1, f2)/(1 + f3*mu_ie*g**2)
         
-        ki = self.ki_f(nuistar, ft, Zeff, Machi) # neoclassical main ion flow coefficient [-]
+        ki = self.ki_Redl(self.nuistar, ft, Zeff) # neoclassical main ion flow coefficient [-]
         
         
         wcz = Zimp*self.qe*B0/mimp         # impurity cyclotron frequency [1/s]
         rhoLz2 = (2*(self.qe*Ti)/mimp)/wcz**2 # impurity Larmor radius squared [m^2]
         
-        
+        Machi2 = Machi**2 # auxiliary
         
         # viscosity coefficients
         K11i, K12i, K11z, K12z = self.KVISC(Nimp, Ni, Ti, Ai, Aimp, Zi, Zimp, \
                                             Tauii, Tauimpimp, Tauiimp, Tauimpi, \
-                                            eps, ft, R0, qmag, yy)
+                                            eps, ft, R0, qmag, y1, y2, y3, y4)
         
         
         
@@ -306,87 +253,46 @@ class FACIT:
         #------------------ Poloidal asymmetry terms -------------------------
         #---------------------------------------------------------------------
         
-        if RV is not None:
-            if nr == 1:
-                RV = np.reshape(RV, (1,RV.size))
-                JV = np.reshape(RV, (1,RV.size))
-                BV = np.reshape(RV, (1,RV.size))
-            nth = RV.shape[1]
-            
-        if FV is None:
-            FV = R0*B0*np.ones(nr)
-            
-        if dpsidx is not None: # consistent q when full equilibrium is available
-            if nr == 1:
-                dpsidx *= np.ones(nr)
-            qmag = amin*eps*FV/dpsidx
+        theta, b2, invb2avg, gradR2, gradR2avg = self.GEOM(full_geom, nth, rho, eps, B0, BV, RV, JV)
         
-        theta = np.linspace(0,2*np.pi, nth)
         
-        if RV is None or ZV is None:
-            # make circular geometry
-            RV = R0*(1 + eps[:,None]*np.cos(theta)[None,:])
-            JV = B0/(qmag[:,None]*RV)
-                
-        if RV is not None and ZV is not None:
-            JV = self.Jacobian(RV, ZV, amin*rho, theta)
-            
-            
-        if BV is None:
-            BV = B0/(1 + eps[:,None]*np.cos(theta)[None,:])
-            
+        if pol_asym: # calculate poloidal asymmetries...
         
-        if rotation_model == 0: # poloidally symmetric limit
-            
-            # geometric coefficient in flux equations
-            
-            CgeoG = 2*eps2*(0.96*(1 - 0.54*ft**4.5)) #CG0
-            CgeoU = 0.
-            
-            CclG = 1 + 2*eps2
-            
-            deltan = np.zeros(nr)       # horizontal asymmetry of impurity density
-            Deltan = np.zeros(nr)       # vertical asymmetry of impurity density
-            nn     = np.ones((nr, nth)) # poloidal distribution of the impurity density
-            
-            
-            e0imp = 1.0
-            
-            
-        elif rotation_model == 1:
-            
             # common gradient terms
             UU = -(Zimp/Zi)*(C0z + ki)*(grad_ln_Ti*amin)
             GG = (grad_ln_Nimp*amin) - (Zimp/Zi)*(grad_ln_Ni*amin) +\
                  (1 + (Zimp/Zi)*(C0z - 1.0))*(grad_ln_Ti*amin)
                  
+            Te_Ti = Te/Ti # auxiliary
+                 
             # rotation and ICRH asymmetries input
             AsymPhi, AsymN = self.polasym_input(rho, eps, Zeff, Zi, Te_Ti, Machi2, \
                                                 fH, bC, TperpTpar_axis, sigH)
-            
-            
+        
             if full_geom: # ...in full flux surface shaped geometry
-            
-                b2        = BV**2/self.fluxavg(BV**2, JV)[:,None] # asymmetry of magnetic field: B^2/<B^2>
         
                 deltan, Deltan, nn, b2sNNavg, NV = self.asymmetry_iterative(regulopt, nr, theta, GG, UU, \
                                                                             Ai, Aimp, Zi, Zimp, Te_Ti, \
                                                                             Machi2, R0, nuz, BV, RV, JV, FV, dpsidx, \
-                                                                            AsymPhi, AsymN, b2, nat_asym)
+                                                                            AsymPhi, AsymN, b2, gradR2, gradR2avg, nat_asym)
                                                               
 
                 b2snnavg = self.fluxavg(b2/nn, JV) # <b^2/n>
                 nnsb2avg = self.fluxavg(nn/b2, JV) # <n/b^2>
                 
                 # geometric coefficients in flux equations
-                
+                # CHECK SIGNS
                 CgeoG = nnsb2avg - 1/b2snnavg
                 CgeoU = self.fluxavg(nn/NV, JV) - b2sNNavg/b2snnavg
+                CgeoR = self.fluxavg(gradR2/(b2/nn), JV) - gradR2avg/b2snnavg
+            
                 CclG  = nnsb2avg
+                CclR  = self.fluxavg(gradR2/(b2/nn), JV)
+                
                 
             else: # ... in circular geometry with large aspect ratio
                 
-                deltaM = 2*(Aimp/Ai)*Machi2*eps # rotation strength parameter [-]
+                deltaM = 2*(Aimp/Ai)*Machi**2*eps # rotation strength parameter [-]
                 
                 dminphia = Zimp*(Te_Ti)*AsymPhi[0] # horizontal asym. in ES potential
                 dmajphia = Zimp*(Te_Ti)*AsymPhi[1] # vertical asym. in ES potential
@@ -405,74 +311,62 @@ class FACIT:
                 # geometric coefficients in flux equations
             
                 CgeoG = 2.0*eps*deltan + dD2 + 2.0*eps2
-                CgeoU = -(eps*(dNH - deltan) - dD2 + 0.5*(deltan*dNH + Deltan*dNV))
+                CgeoU = eps*(dNH - deltan) - dD2 + 0.5*(deltan*dNH + Deltan*dNV)
+                CgeoR = R0*(2.0*eps + deltan)
+            
                 CclG = 1.0 + eps*deltan + 2*eps2
+                CclR = R0*(1.0 + 2.0*eps + deltan - eps*deltan - dD2)
                 
-            e0imp = 1.0
-        
+                
+                
+
+        else: # poloidally symmetric limit
             
+            # geometric coefficient in flux equations
             
-        elif rotation_model == 2:
+            CgeoG = invb2avg - 1
+            CgeoU = 0.
+            CgeoR = 2*eps*R0
             
-            CG0 = 2*eps2*(0.96*(1 - 0.54*ft**4.5))
-            CgeoG = fG*CG0
-            CgeoU = fU*CG0
             CclG = 1 + 2*eps2
+            CclR = R0*(1 + 2*eps)
             
-            if fsaout:
-                e0imp = self.fluxavg(np.exp(Mzstar[...,None]**2*((RV**2 - (RV[:,0]**2)[:,None])/R0**2)), JV)
-            else:
-                e0imp = np.ones(nr)
-            
-            
-            
-            deltan = 1/e0imp - 1                              # horizontal asymmetry of impurity density
-            Deltan = np.zeros(nr)                             # vertical asymmetry of impurity density
-            nn     = 1 + deltan[...,None]*np.cos(theta) # poloidal distribution of the impurity density
+            deltan = np.zeros(nr)       # horizontal asymmetry of impurity density
+            Deltan = np.zeros(nr)       # vertical asymmetry of impurity density
+            nn     = np.ones((nr, nth)) # poloidal distribution of the impurity density
+        
         
         #---------------------------------------------------------------------
         #------------- Collisional transport coefficients --------------------
         #---------------------------------------------------------------------
         
-        # inputs
-        self.rho = rho
-        self.Ti = Ti
-        self.Ni = Ni
-        self.Nimp = Nimp
-        self.Machi = Machi
-        self.Mzstar = Mzstar
-        self.Zeff = Zeff
-        self.Te = Te_Ti*Ti
-        self.gradTi = gradTi
-        self.gradNi = gradNi
-        self.gradNimp = gradNimp
-        self.qmag = qmag
-        self.R = RV
-        self.Z = ZV
-        self.J = JV
-        self.B = BV
         
         # Pfirsch-Schlüter (PS)
         
-        self.Dz_PS = fdps*qmag**2*rhoLz2*nuz*(CgeoG/(2*eps2))/e0imp # PS diffusion coefficient [m^2/s]
+        self.Dz_PS = adps*qmag**2*rhoLz2*nuz*(CgeoG/(2*eps2)) # PS diffusion coefficient [m^2/s]
         self.Kz_PS = (Zimp/Zi)*self.Dz_PS # PS coefficient of the main ion density gradient [m^2/s]
-        self.Hz_PS = (-(1.0 + (Zimp/Zi)*(C0z - 1.0)) + (CgeoU/CgeoG)*(Zimp/Zi)*(C0z + ki))*\
+        self.Hz_PS = -((1.0 + (Zimp/Zi)*(C0z - 1.0)) + \
+                       (CgeoU/CgeoG)*(Zimp/Zi)*(C0z + ki))*\
                         self.Dz_PS # PS coefficient of the main ion temperature gradient [m^2/s]
         
+        self.Vrot_PS = (CgeoR/CgeoG)*(Aimp/Ai)*(Machi2/R0**2)*\
+                        (1.0-(Ai*Zimp)/(Aimp*Zi))*self.Dz_PS/amin # PS centrifugal velocity [m/s]
+        
         self.Vrz_PS = -self.Dz_PS*grad_ln_Nimp + self.Kz_PS*grad_ln_Ni + \
-                       self.Hz_PS*grad_ln_Ti # PS radial flux per particle [m/s]
-        self.Vconv_PS = self.Kz_PS*grad_ln_Ni + self.Hz_PS*grad_ln_Ti # PS convective velocity [m/s]
+                       self.Hz_PS*grad_ln_Ti + self.Vrot_PS # PS radial flux per particle [m/s]
+        
         
         # Banana-Plateau (BP)
         
-        self.Dz_BP = (1.5*(self.qe*Ti)/(Zimp**2*self.qe**2*FV**2*Nimp))*(1/(1/K11i + 1/K11z))/e0imp # BP diffusion coefficient [m^2/s]
+        self.Dz_BP = (1.5*(self.qe*Ti)/(Zimp**2*self.qe**2*B0**2*R0**2*Nimp))*(1/(1/K11i + 1/K11z))# BP diffusion coefficient [m^2/s]
         self.Kz_BP = (Zimp/Zi)*self.Dz_BP # BP coefficient of the main ion density gradient [m^2/s]
-        self.Hz_BP = fhbp*((Zimp/Zi)*(K12i/K11i - fv) - (K12z/K11z - fv))*self.Dz_BP # BP coefficient of the main ion temperature gradient [m^2/s]
+        self.Hz_BP = ahbp*((Zimp/Zi)*(K12i/K11i - 1.5) - (K12z/K11z - 1.5))*self.Dz_BP # BP coefficient of the main ion temperature gradient [m^2/s]
+        
+        self.Vrot_BP = 0. # no centrifugal effects in BP, perhaps in the future?
         
         self.Vrz_BP = -self.Dz_BP*grad_ln_Nimp + self.Kz_BP*grad_ln_Ni + \
-                       self.Hz_BP*grad_ln_Ti  # BP radial flux per particle [m/s]
+                       self.Hz_BP*grad_ln_Ti + self.Vrot_BP # BP radial flux per particle [m/s]
         
-        self.Vconv_BP = self.Kz_BP*grad_ln_Ni + self.Hz_BP*grad_ln_Ti # BP convective velocity [m/s]
         
         # Classical
         
@@ -480,9 +374,11 @@ class FACIT:
         self.Kz_CL = (Zimp/Zi)*self.Dz_CL # CL coefficient of the main ion density gradient [m^2/s]
         self.Hz_CL = -(1.0 + (Zimp/Zi)*(C0z - 1.0))*self.Dz_CL # CL coefficient of the main ion temperature gradient [m^2/s]
         
+        self.Vrot_CL = (CclR/CclG)*(Aimp/Ai)*(Machi2/R0**2)*\
+                        (1.0-(Ai*Zimp)/(Aimp*Zi))*self.Dz_CL/amin # CL centrifugal velocity [m/s]
+        
         self.Vrz_CL = -self.Dz_CL*grad_ln_Nimp + self.Kz_CL*grad_ln_Ni + \
-                       self.Hz_CL*grad_ln_Ti # CL radial flux per particle [m/s]
-        self.Vconv_CL  = self.Kz_CL*grad_ln_Ni + self.Hz_CL*grad_ln_Ti # CL convective velocity [m/s]
+                       self.Hz_CL*grad_ln_Ti + self.Vrot_CL # CL radial flux per particle [m/s]
         
         
         # Total
@@ -490,9 +386,16 @@ class FACIT:
         self.Dz = self.Dz_PS + self.Dz_BP + self.Dz_CL # collisional diffusion coefficient [m^2/s]
         self.Kz = self.Kz_PS + self.Kz_BP + self.Kz_CL # coefficient of the main ion density gradient [m^2/s]
         self.Hz = self.Hz_PS + self.Hz_BP + self.Hz_CL # coefficient of the main ion temperature gradient [m^2/s]
-       
+        
+        self.Vconv_PS = self.Kz_PS*grad_ln_Ni + self.Hz_PS*grad_ln_Ti # convective velocity [m/s]
+        self.Vconv_BP = self.Kz_BP*grad_ln_Ni + self.Hz_BP*grad_ln_Ti # convective velocity [m/s]
+        self.Vconv_CL = self.Kz_CL*grad_ln_Ni + self.Hz_CL*grad_ln_Ti # convective velocity [m/s]
+        
         self.Vconv = self.Kz*grad_ln_Ni + self.Hz*grad_ln_Ti # convective velocity [m/s]
-        self.Vrz = self.Vrz_PS + self.Vrz_BP + self.Vrz_CL   # radial flux per particle [m/s]
+        
+        self.Vrot = self.Vrot_PS + self.Vrot_BP + self.Vrot_CL # centrifugal velocity [m/s]
+        
+        self.Vrz = self.Vrz_PS + self.Vrz_BP + self.Vrz_CL
         
         self.Flux_z = self.Vrz*Nimp # radial collisional flux [1/(m s)]
         
@@ -510,6 +413,7 @@ class FACIT:
         #---------------------------------------------------------------------
         
         
+        
     def ftrap(self, eps):
         '''
         Trapped particle fraction as a function of the local inverse aspect ratio
@@ -524,9 +428,12 @@ class FACIT:
         ftrap : float or 1D array
             trapped particle fraction [-]
         '''
-        return 1. - (1. - eps)**1.5/ (np.sqrt(1. + eps)*(1 + 1.46*np.sqrt(eps)))
+        return 1. - (1. - eps)**2/ (np.sqrt(1. - eps**2)*(1 + 1.46*np.sqrt(eps)))
+        #return np.sqrt(2*eps)
     
-    def C2(self, alpha, g, Ai, A, f1, f2):
+    
+    
+    def C2(self, alpha, g, Za, Ai, Aa, f1, f2):
         '''
         Function related to the friction coefficient of the main ion parallel
         heat flow in the impurity-main ion parallel heat flow.
@@ -534,7 +441,7 @@ class FACIT:
         
         Refs: Hirshman-Sigmar NF (1981), https://doi.org/10.1088/0029-5515/21/9/003
               Wenzel-Sigmar NF (1990),   https://doi.org/0029-5515/30/6/013
-              Fajardo PPCF (2022), https://doi.org/10.1088/1361-6587/ac5b4d
+              new paper...
         
         Parameters
         ----------
@@ -543,15 +450,17 @@ class FACIT:
         g : float or 1D array
             collisionality parameter, ratio of main ion transit time to ion-ion
             collision time, q*R0/(vthi*Tauii) [-]
+        Za : float or 1D array
+            impurity charge [-]
         Ai : int or float
             main ion mass [-]
-        A  : int or float
+        Aa : int or float
             impurity mass [-]
         f1 : float or 1D array
-            fitted factor [-]
+            fitted factor (function of Za) [-]
             obtained from facs
-        f2 : float or 1D array
-            fitted factor [-]
+        f1 : float or 1D array
+            fitted factor (function of Za) [-]
             obtained from facs
         
         Returns
@@ -559,16 +468,16 @@ class FACIT:
         C2 : float or 1D array
             value in C0z coefficient [-]
         '''
-        
-        return 1.5/(1+f1*(Ai/A)) - (0.29 + 0.68*alpha)/(0.59 + alpha + (1.34 + f2)*g**(-2))
+
+        return 1.5/(1+f1*(Ai/Aa)) - (0.29 + 0.68*alpha)/(0.59 + alpha + (1.34 + f2)*g**(-2))
     
     
     
-    def ki_f(self, nui_star, ft, Zeff, Machi):
+    def ki_Redl(self, nui_star, ft, Zeff):
         '''
         Analytical expression for the neoclassical main ion flow coefficient
         
-        Ref: Fajardo (subm. to PPCF)
+        Ref: Redl PoP (2021), https://doi.org/10.1063/5.0012664
         
         Parameters
         ----------
@@ -578,55 +487,43 @@ class FACIT:
             trapped particle fraction [-]
         Zeff : float or 1D array
             effective plasma charge [-]
-        Machi: float or 1D array
-            main ion Mach number [-]
         
         Returns
         -------
         ki : float or 1D array
             neoclassical main ion flow coefficient [-]
         '''
+
+        alpha0 = -(0.62+0.055*(Zeff-1))*(1-ft)/((0.53+0.17*(Zeff-1))*\
+                  (1-(0.31-0.065*(Zeff-1))*ft - 0.25*ft**2))
+            
         
-        c01 = 0.53*(1 + 0.646*Machi**1.5)
-        c02 = 1.158*(1-0.968*Machi**1.56)
-        c03 = -0.98*(1-1.228*Machi**1.7)
+        # print((ft*nui_star).shape)
+        # print((nui_star).shape)
+        # print((ft).shape)
+        a = np.sqrt(ft*nui_star)
+        b = np.sqrt(nui_star)
+        # print(a.shape)
+        # print(b.shape)
         
-        l1k = 5.7*(1-ft)**6.7 + 0.38
-        l2k = (-1.52 + 38.4*(1-ft)**3.02*ft**2.07) + (-1 + 2.6*ft)*Machi**(2.5*(1 - 0.6*ft))
-        l3k = 0.25 + 1.2*(1-ft)**3.65
-        l5k = 0.1*(1-ft)**1.46*ft**4.33 + 0.051*(1 - 0.82*ft)*Machi**2.5
-        l4k = 0.8 + (1.25*ft + 0.585)*Machi
-        l6k = (-0.05 + 1.95*ft**2.5)/(1 + 2.55*ft**17) + -((0.217 + 14.57*ft**6.3)/(1 + 5.62*ft**5.72))*Machi**1.5
+        return ((alpha0 + 0.7*Zeff*np.sqrt(ft*nui_star))/(1+0.18*np.sqrt(nui_star))-\
+                 0.002*nui_star**2*ft**6)/(1+0.004*nui_star**2*ft**6)
     
-        ki0 = -(c01 + 0.055*(Zeff-1))*(1-ft)/((0.53 + 0.17*(Zeff-1))*\
-                  (1-(c02 - 0.065*(Zeff-1))*ft - c03*ft**2))
-        
-        kiv = ((ki0 + (l1k)*Zeff*np.sqrt(ft*nui_star) + l2k*nui_star**(0.25))/(1+l3k*np.sqrt(nui_star))-\
-                  l4k*l5k*nui_star**2*ft**6 + l6k*nui_star**(0.25))/(1+l5k*nui_star**2*ft**6)
-        
-        return kiv
     
-    def facs(self, Z, A, ft, Mzstar, rotation_model):
+    
+    
+    def facs(self, Z, ft):
         '''
         Fitted factors for FACIT model
         
-        Ref: Fajardo PPCF (2022), https://doi.org/10.1088/1361-6587/ac5b4d
-             Fajardo (subm. to PPCF)
+        Ref: new paper...
         
         Parameters
         ----------
         Z : float or 1D array
             impurity charge [-]
-        A : float
-            impurity mass number [-]
         ft : float or 1D array
             trapped particle fraction [-]
-        Mzstar : float or 1D array
-            effective impurity Mach number [-]
-        rotation_model : int
-            if 0, non-rotating limit
-            if 1, PS model of Maget PPCF 2020
-            if 2, PS model of Fajardo (subm. to PPCF)
         
         Returns
         -------
@@ -636,162 +533,70 @@ class FACIT:
             factor in the C2 function [-]
         f3 : float or 1D array
             factor of the ion-electron collisional heat exchange term in C0z [-]
-        fG : float or 1D array
-            factor of CgeoG [-]
-        fU : float or 1D array
-            factor of CgeoU [-]
-        yy : list
-            factors of the viscosity coefficients [-]
-        fv : float or 1D array
-            factor in expression for BP H coefficient [-]
-        fdps : float or 1D array
+        y1 : float or 1D array
+            factor of the (1,1) banana viscosity coefficient of the impurity [-]
+        y2 : float or 1D array
+            factor of the (1,2) banana plateau coefficient of the impurity [-]
+        y3 : float or 1D array
+            factor of the (1,2) Pfirsch-Schlüter viscosity coefficient of the impurity [-]
+        y4 : float or 1D array
+            factor of the (1,2) banana viscosity coefficient of the main ion [-]
+        adps : float or 1D array
             factor of the PS diffusion coefficient [-]
-        fhbp : float or 1D array
-            factor of the BP H coefficient [-]
+        ahbp : float or 1D array
+            factor of the BP diffusion coefficient [-]
         '''
         
-        #---------------------- PS facs ---------------------------------------
         # f1, f2, f3 factors in C0z
-        #broadcast in the same shape
-        Z,Mzstar = np.broadcast_arrays(Z,Mzstar)
         
-        
-        f1 = (1.74*(1-0.028*A) + 10.25/(1 + A/3.0)**2.8) - 0.423*(1-0.136*A)*ft**(5/4)
+        f1 = (-6.83808564e+05 + 2.46855534e+06*Z)/( 1 + 6.04692708e+05*Z**1.61470425)
         f2 = (88.28389935 + 10.50852772*Z)/( 1 + 0.2157175*Z**2.57338463)
         f3 = (-4.45719179e+06 + 2.72813878e+06*Z)/(1+5.26716920e+06*Z**8.33610108e-01)
         
-        if rotation_model == 2:
-            f2 *= np.exp(-10*Mzstar**2)
-            f3 *= (1 + (1 + 1.86e6*ft**11.07*(1-ft)**7.36)*Mzstar**4)*np.exp(-0.8*Mzstar**2)
-            
-            
-        fg1 = -1.4*ft**7 + 2.23*(1-0.31*ft)
-        fg2 = 2.8*(1-0.63*ft)
-        fg3 = 3.5*(1 - ft)/fg2
-        fg4 = 4*ft
-        fg5 = 0.38*ft**4
-        fg6 = 3.95*(1 + 0.424*ft*(1 - 0.65*ft))
+        # y1, y2, y3, y4 factors in viscosity coefficients
         
-        fG = (1 + fg1*Mzstar**fg2)**(fg3)*(1 + 0.2*Mzstar**fg4)/(1 + fg5*Mzstar**fg6)
+        # auxiliary coefficients for y1
+        w11 = 1.23805214e-05*Z**3 - 1.03611576e-03*Z**2 + 1.85221287e-02*Z + 1.29758029
+        w12 = -5.84996779e-05*Z**3 + 4.79623045e-03*Z**2 -1.01924030e-01*Z - 5.81816797
+        w13 = 5.98152997e-05*Z**3 - 4.84255587e-03*Z**2 + 1.03585208e-01*Z + 5.71139227
+        w14 = -1.33253954e-05*Z**3 + 1.04416741e-03*Z**2 - 1.94973421e-02*Z - 1.10061492
         
+        y1 = w11*ft**2 + w12*ft + w13*ft**0.5 + w14
         
-        c1f = 2.72*(1-0.91*ft)
-        c2f = 2.98*(1-0.471*ft)
-        c3f = 0.95*(1-ft)**4
-        c4f = 4*ft
-        c5f = 0.1314*ft**2.84 + 3.178*ft**11.4
-        c6f = -9.38*(ft-0.5)**2 + 4.64
+        y2 = 21.31*ft**3 - 21.88*ft**2 + 7.316*ft + 0.6264
         
-        fU = (c1f*Mzstar**c2f)*(1 + c3f*Mzstar**c4f)/(1 + c5f*Mzstar**c6f)
-            
-        #---------------------- BP facs ---------------------------------------
+        y3 = ((4.2857e5 - 4.4978e5*Z)/(1 - 1.3557e5*Z**1.9))*\
+             ((-9.09204093e+06 + 8.15802759e+06*Z)/(1 + 3.25263641e+06*Z**1.07640221))
+             
+        # auxiliary coefficients for y4
+        wp1 = ( 0.11603574 + 0.47297835*Z**0.94456671)/( 1 + 0.1245426*Z**1.20221441)
+        wp2 = ( 0.6327602 - 2.92116611*Z**1.06310182)/( 1 + 0.30469549*Z**1.16495283)
+        wp3 = ( -0.69318477 + 2.85619511*Z**1.11765611)/( 1 + 0.34127361*Z**1.1952383)
+        wp4 = ( 1.80217558 - 1.0080554*Z**0.96345934)/( 1 + 0.51677339*Z**1.11131896)
         
-        # factors in viscosity coefficients
+        yp = wp1*ft**2 + wp2*ft + wp3*ft**0.5 + wp4
         
-        y11zb  = (8*(1-ft)**20 - 0.66*ft**4.9 + 0.94)*((1.085e4 + 9.3e3*14/Z**(5/3))/(1 + 14/Z**(5/3)))*ft**4.6*(1-ft)/\
-                 (1 + 9.44e3*(1 - 2e-3*Z)*ft**4.16)
-        y11zp  = 1.0
-        y11zps = 1.0
-        
-        y12zb  = (1.8e3 + 7.54*Z**1.8)*ft**(4.05*(1 + 0.0039*Z))*(1-ft)**(0.7*(1 + 0.015*Z))/(1 + 1276*(1 + 0.053*Z)*ft**3.6)
-        y12zp  = 1.0
-        y12zps = 1.0
-        
-        
-        y11ib  = ((5.91e-5*Z + 0.812 + 0.806/Z**0.44) + (0.013*Z + 0.098 - 7.03/Z**1.04)*ft + \
-                 (-0.047*Z + 0.79 + 13.8/Z**1.26)*ft**2 + (0.04*Z - 0.575 - 9.64/Z**1.31)*ft**3)*\
-                 (571.6*(1 + 0.84*Z + 7.8e-7*Z**5.15)*ft**(3.43*(1 + 0.012*Z))*\
-                 (1-ft)**(1.2*(1 + 1.6e-8*Z**5.1))/(1 + 500*ft**(8/3)) + 1e-3)
-        y11ip  = 1.0
-        y11ips = 1/((1+(99/44**6)*Z**6))
-        
-        y12ib  = (571.6*(1 + 0.84*Z + 7.8e-7*Z**5.15)*ft**(3.43*(1 + 0.012*Z))*\
-                 (1-ft)**(1.2*(1 + 1.6e-8*Z**5.1))/(1 + 500*ft**(8/3)) + 1e-3)
-        y12ip  = 1.0
-        y12ips = 1.0
-        
-        
-        if rotation_model == 2:
-            
-            c11f = 1 + 14.86*(1 - ft)**16.45 + 15.27*ft**7.4
-            c12f = 0.77*(1 + 4.11*ft)
-            c13f = 0.01*(1 + 359*ft**2.5 + 1078*ft**12)
-            l1f = (1 + c11f*Mzstar**c12f)*np.exp(-c13f*Mzstar**2)
-            
-            c21f = 6.39*(1 -ft)**15.8 + 0.1
-            c22f = 0.943*(1 + 3.5*ft)
-            l2f  = (1 + c21f*Mzstar**0.5)/(1 + c22f*Mzstar**(10/3))
-            
-            l3f = 1/(1 + 2*ft*Mzstar)
-            
-            c1f = 6.13 + 28.18*ft**2.13 + 336.25*(1-ft)**11.65
-            c2f = 0.5 + 9.55*ft**1.14*(1-ft)**1.42
-            c3f = (0.0087 + 4.49*ft**3.48)/(1 + 0.873*ft**3.48)
-            c4f = 3.6*(1 - 0.36*ft)
-            
-            l4f =  (1 + c1f*Mzstar**c2f)/(1 + c3f*Mzstar**(c4f))
-            
-            c1f = (1-ft)**8
-            c2f = 113.5*ft**8.46
-            c3f = 11*(1-ft)
-            
-            l5f = (1 + c1f*c2f*Mzstar**(c3f))/(1 + c2f*Mzstar**(c3f))
-            
-            l6f = (1 + 0.035*10*Mzstar**4)/(1 + 10*Mzstar**4)
-            
-            l7f = np.exp(-10*Mzstar**2)
-            
-            y11zb  *= l1f
-            y11zp  *= l1f/l2f
-            y11zps *= l1f/(l2f*l3f)
-            
-            y12zb  *= l4f
-            y12zp  *= l4f/l5f
-            y12zps *= l4f/(l5f*l6f)
-            
-            y11ib  *= l1f
-            y11ip  *= l1f
-            y11ips *= l1f
-            
-            y12ib  *= l7f
-            y12ip  *= l7f
-            y12ips *= l7f
-            
-            
-        yy = [[y11zb, y11zp, y11zps],[y12zb, y12zp, y12zps], \
-              [y11ib, y11ip, y11ips],[y12ib, y12ip, y12ips]]
-        
-        if rotation_model == 2:
-            fv = 1.5*np.exp(-10*Mzstar**2)
-        else:
-            fv = 1.5
+        y4 = yp/y1
         
         # factor of the PS diffusion coefficient
-        fdps = ((0.711 + 2.08e-3*Z**1.26)/(1 + 1.06e-11*Z**5.78))
+        adps = (-110378.34909954367 + 753838.9265706746*Z**1.0610783384110476)/(1+ 1007273.2273681393*Z)
         
-        # factor of the BP H coefficient
+        # factor of the BP diffusion coefficient
+        ahbp = (1.01579172e+00 + -1.78923911e-03*Z)/(1 + 6.60170647e-13*Z**6.66398825e+00)
         
-        if rotation_model == 2:
-            fhbp = (0.135 + 2.647e-3*Z**1.464 + 3.478e-10*Z**5.347)*\
-                   ((1 + (3/(1 + 1e-7*Z**6))*(1/(1 + 1.2e5*ft**12))*Mzstar)/\
-                   (1 + (3/(1 + 1e-7*Z**6))*(1.208 - 4.46*ft + 4.394*ft**2)*Mzstar**2))
-                       
-        else:
-            fhbp = (1.01579172e+00 + -1.78923911e-03*Z)/(1 + 6.60170647e-13*Z**6.66398825e+00)
-        
-        
-        return f1, f2, f3, fG, fU, yy, fv, fdps, fhbp
+        return f1, f2, f3, y1, y2, y3, y4, adps, ahbp
     
     
     
     def KVISC(self, nimp, ni, ti, Ai, Aimp, Zi, Zimp, \
                     Tauii, Tauimpimp, Tauiimp, Tauimpi, \
-                    eps, ft, R0, qmag, yy):
+                    eps, ft, R0, qmag, y1, y2, y3, y4):
         '''
         Calculates the viscosity coefficients for the BP flux analytically
         
         Refs: Hishman-Sigmar NF (1981),           https://doi.org/10.1088/0029-5515/21/9/003
               Wenzel-Sigmar NF (1990) Appendix A, https://doi.org/0029-5515/30/6/013
+              new paper...
         
         Parameters
         ----------
@@ -825,8 +630,15 @@ class FACIT:
             major radius at magnetic axis [m]
         qmag : 1D array
             safety factor [-]
-        yy : list
-            fitted factors, obtained from facs [-]
+        y1 : 1D array
+            factor of the (1,1) banana viscosity coefficient of the impurity [-]
+            from facs(Z,ft) method
+        y2 : 1D array
+            factor of the (1,2) banana plateau coefficient of the impurity [-]
+        y3 : 1D array
+            factor of the (1,2) Pfirsch-Schlüter viscosity coefficient of the impurity [-]
+        y4 : 1D array
+            factor of the (1,2) banana viscosity coefficient of the main ion [-]
         
         Returns
         -------
@@ -942,32 +754,14 @@ class FACIT:
         K11iB = fac_B*ni*(Ai*self.mp)*(nuDia_int + nuDii_int)
         K12iB = fac_B*ni*(Ai*self.mp)*(nuD2ia_int + nuD2ii_int)
         
-        # fitted factors
-        
-        y11zb  = yy[0][0]
-        y11zp  = yy[0][1]
-        y11zps = yy[0][2]
-        
-        y12zb  = yy[1][0]
-        y12zp  = yy[1][1]
-        y12zps = yy[1][2]
-        
-        y11ib  = yy[2][0]
-        y11ip  = yy[2][1]
-        y11ips = yy[2][2]
-        
-        y12ib  = yy[3][0]
-        y12ip  = yy[3][1]
-        y12ips = yy[3][2]
-        
         
         # total: rational interpolation across collisionality regimes
         
-        K11a = y11zb*K11aB/((1 + y11zb*K11aB/(y11zp*K11aP))*(1 + y11zp*K11aP/(y11zps*K11aPS)))
-        K12a = y12zb*K12aB/((1 + y12zb*K12aB/(y12zp*K12aP))*(1 + y12zp*K12aP/(y12zps*K12aPS)))
+        K11a = y1*K11aB/((1+y1*K11aB/(K11aP))*(1+K11aP/(K11aPS)))
+        K12a = K12aB/((1+K12aB/(y2*K12aP))*(1+y2*K12aP/(y3*K12aPS)))
         
-        K11i = y11ib*K11iB/((1 + y11ib*K11iB/(y11ip*K11iP))*(1 + y11ip*K11iP/(y11ips*K11iPS)))
-        K12i = y12ib*K12iB/((1 + y12ib*K12iB/(y12ip*K12iP))*(1 + y12ip*K12iP/(y12ips*K12iPS)))
+        K11i = K11iB/((1+K11iB/(K11iP))*(1+K11iP/(K11iPS)))
+        K12i = y4*K12iB/((1+y4*K12iB/(K12iP))*(1+K12iP/(K12iPS)))
     
         return K11i, K12i, K11a, K12a
     
@@ -997,6 +791,78 @@ class FACIT:
         return Qavg
     
     
+    
+    def GEOM(self, full_geom, nth, rho, eps, B0, BV, RV, JV):
+        '''
+        Calculates some geometric parameters used in FACIT
+        
+        Parameters
+        ----------
+        full_geom : bool
+            if True, use full flux surface shaped geometry
+            if False, use cicular geometry with large aspect ratio
+        nth : int
+            number of poloidal grid points
+        rho : 1D array (nr)
+            normalized radial coordinate [-], mid-plane radius over minor radius r/a
+        eps : 1D array (nr)
+            local inverse aspect ratio [-]
+        B0 : float
+            magnetic field at magnetic axis [T]
+        BV : 2D array (nr, nth)
+            magnetic field, poloidal distribution on (r,theta) [T]
+            only relevant if full_geom
+            else, it can be set to None
+        RV : 2D array (nr, nth)
+            major radius, poloidal distribution on (r,theta) [m]
+            only relevant if full_geom
+            else, it can be set to None
+        JV : 2D array (nr, nth)
+            Jacobian of coordinate system, poloidal distribution on (r,theta) [m/T]
+            only relevant if full_geom
+            else, it can be set to None
+        
+        Returns
+        -------
+        theta : 1D array (nth)
+            poloidal grid [-]
+        b2 : 2D array (nr, nth)
+            poloidal distribution of the magnetic field [-], b^2 = B^2/<B^2>
+        invb2avg : 1D array (nr)
+            <1/b^2> [-]
+        gradR2 : 2D array (nr, nth)
+            gradient of major radius squared [m^2]
+        gradR2avg : 1D array (nr)
+            <grad R^2>
+        '''
+        
+        theta = np.linspace(0, 2*np.pi, nth) # poloidal grid
+        
+        if full_geom: # full flux surface shaped geometry
+            
+            b2 = BV**2/self.fluxavg(BV**2, JV)[:,None] # asymmetry of magnetic field: B^2/<B^2>
+            
+            invb2avg = self.fluxavg(1/b2, JV) # <1/b2>
+            
+            gradR2    = np.gradient(RV**2, rho, axis=0) # gradient of major radius squared
+            gradR2avg = self.fluxavg(gradR2, JV)          # <dr R^2>
+            
+        else: # circular geometry in large aspect ratio
+            
+            eps2 = eps**2 # auxiliary
+            
+            b2 = (1 - eps[:,None]*np.cos(theta)[None,:])**2/\
+                  (1 + 0.5*eps2[:,None]) # asymmetry of magnetic field: B^2/<B^2>
+        
+            invb2avg = 1 + 2*eps2 # <1/b2>
+            
+            gradR2    = 0.0
+            gradR2avg = 0.0
+            
+        return theta, b2, invb2avg, gradR2, gradR2avg
+    
+    
+    
     def polasym_input(self, rho, eps, Zeff, Zi, Te_Ti, Machi2, \
                       fH, bC, TperpTpar_axis, sigH):
         '''
@@ -1010,15 +876,15 @@ class FACIT:
         ----------
         rho : 1D array
             normalized radial coordinate [-], mid-plane radius over minor radius r/a
-        eps : 1D, 2D array
+        eps : 1D array
             local inverse aspect ratio [-]
-        Zeff : 1D, 2D array
+        Zeff : 1D array
             effective plasma charge [-]
         Zi : int or float
             main ion charge [-]
-        Te_Ti : 1D, 2D array
+        Te_Ti : 1D array
             electron to main ion temperature ratio [-]
-        Machi2 : 1D, 2D array
+        Machi2 : 1D array
             main ion Mach number squared [-]
         fH : float
             resonant hydrogen minority fraction [-]
@@ -1037,10 +903,9 @@ class FACIT:
         AsymN : 2D array (2, nr)
             horizontal (index 0) and vertical (index 1) in main ion density [-], ni/<ni>
         '''
-        #TODO use broadcast_shapes in new numpy
-        out_shape = np.broadcast(Zeff, Te_Ti, Machi2).shape
-        AsymPhi = np.zeros((2,)+out_shape) # asymmetry in electrostatic potential [-]
-        AsymN   = np.zeros((2,)+out_shape) # asymmetry in main ion density [-]
+        
+        AsymPhi = np.zeros((2, rho.size)) # asymmetry in electrostatic potential [-]
+        AsymN   = np.zeros((2, rho.size)) # asymmetry in main ion density [-]
     
         TperpTpar = (TperpTpar_axis - 1.)*np.exp(-(rho/sigH)**2) + 1.
         
@@ -1121,32 +986,55 @@ class FACIT:
             nn = nz(r,theta)/<nz(r,theta)>(r)
         '''
         
+        RR = 0.5*(1 - (Ai*Zimp)/(Aimp*Zi))/rho
         UG = 1 + UU/GG
         
         if nat_asym:
-            Ae = nuswcz*qmag**2/invaspct
+            Ae = nuswcz*qmag**2/invaspct # ?: nuswcz*qmag2/eps
         else:
             Ae = 0
         
-        AGe = Ae*GG
-        HH = 1.0
+            
         CD0 = -eps/UG
-        QQ = CD0*(dNV/(eps))*(UG-1.0)
-        FF = CD0*(1-0.5*dNH*(UG-1.0)/(eps) )
+        #CD0 = -invaspct/UG
+        
+        AGeC = Ae*GG*eps/CD0
+        #AGeC = Ae*GG*invaspct/CD0
+        
+        HH = 1. + deltaM*CD0*RR/GG
+        
+        QQ = CD0*(dNH/eps)*(UG-1)
+        #QQ = CD0*(dNH/invaspct)*(UG-1)
+        
+        FF = CD0*(1 - 0.5*(dNV/eps)*(UG-1) - (deltaM/eps)*RR/GG)
+        #FF = CD0*(1 - 0.5*(dNV/invaspct)*(UG-1) - (deltaM/invaspct)*RR/GG)
+        
         KK = 1.
+        hh_kk = HH * KK * AGeC**2
+
+        CD = FF/KK - 0.5*(dminphia - deltaM)
+        CDV = -0.5*(dmajphia + QQ/HH)
+
+        RD = np.sqrt((FF/KK + 0.5*(dminphia - deltaM))**2 + 0.25*(HH/KK)*(dmajphia - QQ/HH)**2)
+        #DD = RD**2 + hh_kk*RD**2
+        DD = RD**2*(1 + hh_kk)
+
+        num = (hh_kk - 1.)*(FF/(KK*CD0) + 0.5*(dminphia - deltaM)/CD0) +\
+              AGeC*(0.5*dNV*(UG-1)/(eps) - 0.5*HH*dmajphia/CD0)
+        #num = (hh_kk - 1.)*(FF/(KK*CD0) + 0.5*(dminphia - deltaM)/CD0) +\
+        #      AGeC*(0.5*dNV*(UG-1)/(invaspct) - 0.5*HH*dmajphia/CD0)
         
-        CD = FF - 0.5*(dminphia - deltaM)
-        CDV = -0.5*(dmajphia + QQ)
-        RD = np.sqrt((FF + 0.5*(dminphia-deltaM))**2 + 0.25*(dmajphia - QQ)**2)
-        DD = RD**2 + AGe**2*(RD/CD0)**2
-        
-        num  = ((AGe/CD0)**2 - 1)*(FF/(CD0) + 0.5*(dminphia-deltaM)/CD0) + \
-               (AGe/CD0)*(0.5*dNV*(UG-1.0)/(eps) - 0.5*dmajphia/CD0)
         cosa = RD*CD0*num/DD
-      
-        num  = 2*AGe*(FF/CD0 + 0.5*(dminphia-deltaM)/CD0)+((AGe/CD0)**2-1)*\
-               (0.5*dmajphia - 0.5*dNV*CD0*(UG-1.0)/((eps)))
-        sina = RD*num/DD
+
+        #num = 2.*AGeC*(FF + 0.5*KK*(deltaPhia-deltaM)) + \
+        #      (hh_kk - 1.)*(0.5*DeltaPhia - 0.5*DeltaN*CD0*UU/(cdat.epsilon*GG*HH))
+              
+        num = 2.*AGeC*(FF + 0.5*KK*(dminphia-deltaM)) + \
+              (hh_kk - 1.)*(0.5*dmajphia - 0.5*dNV*(UG-1)*CD0/(eps*HH))
+        #num = 2.*AGeC*(FF + 0.5*KK*(dminphia-deltaM)) + \
+        #      (hh_kk - 1.)*(0.5*dmajphia - 0.5*dNV*(UG-1)*CD0/(invaspct*HH))
+        
+        sina = RD*num*np.sqrt(HH/KK)/DD
         
         deltan = CD + RD*cosa
         Deltan = CDV + RD*np.sqrt(KK/HH)*sina
@@ -1159,7 +1047,7 @@ class FACIT:
     
     def asymmetry_iterative(self, regulopt, nr, theta, GG, UU, Ai, Aimp, Zi, Zimp, Te_Ti, \
                                   Machi2, R0, nuz, BV, RV, JV, FV, dpsidx, AsymPhi, AsymN, \
-                                  b2, nat_asym):
+                                  b2, gradR2, gradR2avg, nat_asym):
         '''
         Calculate poloidal asymmetries of the impurity density self-consistently,
         including the friction-induced natural asymmetry and rotation and ICRH-
@@ -1217,6 +1105,11 @@ class FACIT:
             horizontal (index 0) and vertical (index 1) in main ion density [-], ni/<ni>
         b2 : 2D array (nr, nth)
             poloidal distribution of the magnetic field [-], b^2 = B^2/<B^2>
+            from GEOM method
+        gradR2 : 2D array (nr, nth)
+            gradient of major radius squared [m^2]
+        gradR2avg : 1D array (nr)
+            <grad R^2>
         nat_asym : bool
             if True, include friction-induced natural poloidal asymmetry
         
@@ -1246,16 +1139,17 @@ class FACIT:
         Error       = np.zeros((nr, int(ierrmax)))
         asym_err    = np.zeros(nr)
         
+        
+        
         #GG0 = GG - grad_ln_Nimp
     
         theta = np.linspace(0, 2*np.pi, theta.size + 1)[:-1] #poloidal coordinate grid without repeating 0 at 2pi
         #thetalong = np.concatenate((theta-2*np.pi,theta,theta+2*np.pi))
 
         Factrot0 = (Aimp/Ai)*Machi2/R0**2
-     
-    
+        Factrot  = Factrot0*(1-(Ai*Zimp)/(Aimp*Zi)) #pre-factor to gradR2 in toroidal rotation term
+            
         if nat_asym:
-            nuz = np.squeeze(nuz)
             Apsi = JV*FV[:,None]*(Aimp*self.mp)*nuz[:,None]/\
                    (Zimp[:,None]*self.qe*(dpsidx[:,None]**2 + 1.e-33)) # as defined after eq. 9 in Maget (2020)
         else:
@@ -1290,10 +1184,10 @@ class FACIT:
                 
                 b2snavg = self.fluxavg(b2[ix]/nnx, JV[ix]) # <b**2/n>
 
-                FFF  = Apsi[ix]*( GG[ix] + (b2[ix]/NV[ix])*UU[ix])
+                FFF  = Apsi[ix]*( GG[ix] + (b2[ix]/NV[ix])*UU[ix] - Factrot[ix]*gradR2[ix])
                 GGG  = -Zimp[ix]*(Te_Ti[ix])*(PhiV[ix]-PhiV[ix,0]) + \
                         Factrot0[ix]*(RV[ix]**2-RV[ix,0]**2)
-                HHH  = Apsi[ix]*(b2[ix]/b2snavg)*(GG[ix] + b2sNNavg[ix]*UU[ix])
+                HHH  = Apsi[ix]*(b2[ix]/b2snavg)*(GG[ix] + b2sNNavg[ix]*UU[ix] - Factrot[ix]*gradR2avg[ix])
                 
                 
                 for ii in range(1,theta.size-1): 
@@ -1353,120 +1247,169 @@ class FACIT:
         Deltan = 2.*np.mean((nn-1)*np.sin(theta), axis = 1) # vertical asymmetry of the impurity density
         
         return deltan, Deltan, nn, b2sNNavg, NV
-    
-    def Jacobian(self, R, Z, r, theta):
-        '''
-        Calculates the Jacobian of the coordinate transformation (r,theta) <--> (R,Z)
-        Based on GKW manual, eqs (2.104-2.107)
 
-        Parameters
-        ----------
-        R : 2D array (nr, nth)
-            major radius countours of flux surfaces [m].
-        Z : 2D array (nr, nth)
-            vertical coordinate contours of flux surfaces [m].
-        r : TYPE
-            DESCRIPTION.
-        theta : TYPE
-            DESCRIPTION.
 
-        Returns
-        -------
-        J : 2D array (nr, nth)
-            Jacobian of coordinate transformation
 
-        '''
-        
-        dRdr  = np.gradient(R, r, axis = 0)
-        dRdth = np.gradient(R, theta, axis = 1)
-        dZdr  = np.gradient(Z, r, axis = 0)
-        dZdth = np.gradient(Z, theta, axis = 1)
 
-        grr   = dRdr**2 + dZdr**2
-        grth  = dRdr*dRdth + dZdr*dZdth
-        gthth = dRdth**2 + dZdth**2
 
-        return R*np.sqrt(grr*gthth - grth**2)
-        
-        
-    
 
-#%%
+
+
 
 
 if __name__ == '__main__':
-   
-
-    import matplotlib.pyplot as plt
     
-    # simple example
+    action = input('[c]ompare , [t]ime analysis: ')
     
-    rho = np.linspace(0,1,101)
-    invaspct = 0.5/1.65
-    R0 = 1.65
-    B0 = 2.5
-    
-    Zimp = 35*(1-rho**2) + 15
-    Aimp = 184
-    
-    Zi = 1
-    Ai = 2
-    
-    Ti = 4000*(1 - rho**2)**2 + 100
-    Ni = 5e19*(1 - rho**2) + 5e18
-    
-    Nimp = 1e-7*Ni
-    
-    Machi = 0.35*(1 - rho**2) + 0.05
-    
-    
-    Zeff = 1.5*np.ones_like(rho)
-    
-    gradTi = np.gradient(Ti, rho*invaspct*R0)
-    gradNi = np.gradient(Ni, rho*invaspct*R0)
-    gradNimp = 1e-7*gradNi
-    
-    qmag = 1.0 + 2.5*rho**2
-    
-    # circular geometry
-    RV = None
-    ZV = None
-   
-    
-    fct = FACIT(rho, \
-                Zimp, Aimp, \
-                Zi, Ai, \
-                Ti, Ni, Nimp, Machi, Zeff, \
-                gradTi, gradNi, gradNimp, \
-                invaspct, B0, R0, qmag,  \
-                rotation_model = 2, Te_Ti = 1.0,\
-                RV = RV, ZV = ZV)
+    if action == 'c':
         
-
+        import sys
+        sys.path.append('/afs/ipp/home/d/dfajardo/coll_transp')
         
-    fig, (ax1, ax2) = plt.subplots(1,2, figsize=(8,4))
+        import matplotlib.pyplot as plt
     
-    ax1.plot(rho, fct.Dz_CL, label = 'CL component')
-    ax1.plot(rho, fct.Dz_BP, label = 'BP component')
-    ax1.plot(rho, fct.Dz_PS, label = 'PS component')
-    ax1.plot(rho, fct.Dz, label = ' Total')
+        from data_colltr import DATA_IMPFLUX
+        
+        cdat = DATA_IMPFLUX(exp='AUG', nshot=38910, time=2.15, fimp = 1e-7, Zimp = 'W', Aimp = 184)
+        impf = FACIT(cdat.rho, cdat.Zimp, cdat.Aimp, cdat.Zi, cdat.Ai, \
+                     cdat.te, cdat.ti, cdat.ne, cdat.ni, cdat.nimp, 0.0, \
+                     cdat.invaspct, cdat.B0, cdat.R0, cdat.q)
+            
+        plt.plot(cdat.rho, impf.Vrz)
+            
+            
+    elif action == 't':
+        
+        import time
+        
+        # array of poloidal points for convergence
+        thconv = np.array([2,4,8,16,20,26,38,48,96,192])
+        # array of poloidal points for execution time
+        thexec = np.array([2,4,8,16,20,26,32,48])
+        
+        dminvec = np.zeros(thconv.size)
+        timexec = np.zeros(thexec.size)
+        
+        # build profiles myself
+        
+        Te0 = 3.0e3
+        tedge = 10.
+        tau = 0.5
+        Ni0 = 4.0e19
+        nedge = 1.0e17
+        invaspct = 1/3
+        B0 = 3.5851
+        R0 = 2.5852
+        Ai = 2.
+        Zi = 1.
+        Aa = 184.
+        Za = 44.*np.ones(101)
+        qa = 4.
+        cimp = 1.0e-4
+        amin  = R0*invaspct
     
-    ax1.legend(frameon=False)
-    ax1.set_xlabel(r'$\rho = r/a$')
-    ax1.set_ylabel('Diffusion coefficient [m$^2$/s]')
-    ax1.tick_params(which = 'both', direction = 'in', axis = 'both', top = True, right = True)
+        fH = 0.05
+        bC = 1.0
+        Zeff = Zi
+        sigH = 0.3
+        nsigH = 2.
+        TperpsTpar_axis = 10.
     
+        Machi_axis = 0.7
+        
+        nx = 101
     
-    ax2.plot(rho, fct.Vconv_CL, label = 'CL component')
-    ax2.plot(rho, fct.Vconv_BP, label = 'BP component')
-    ax2.plot(rho, fct.Vconv_PS, label = 'PS component')
-    ax2.plot(rho, fct.Vconv, label = ' Total')
-    ax2.tick_params(which = 'both', direction = 'in', axis = 'both', top = True, right = True)
-    
-    #ax2.legend(frameon=False)
-    ax2.set_xlabel(r'$\rho = r/a$')
-    ax2.set_ylabel('Convective velocity [m/s]')
-    
-    fig.tight_layout()
-    plt.show()
+        xn = np.maximum(np.linspace(0,1,nx),1e-6)
+        Te = (Te0-tedge)*(1-xn**2)**2 + tedge
+        Ti = tau*Te
+
+       	Ni = (Ni0-nedge)*(1-xn**2)+nedge
+       	Na = cimp*Ni
+       	Ne = Zi*Ni + Za*Na
+  
+       	Machi = Machi_axis*np.ones_like(xn)
+        qmag = 1+(qa-1)*xn**2
+           
+       	dpsidx = amin**2*B0*xn/qmag
+       	
+       	FV = R0*B0*np.ones_like(xn)
+        
+        
+        for i, nth in enumerate(thconv):
+            
+            theta = np.linspace(0,2*np.pi,nth)
+
+            RV = R0*(1.+invaspct*xn[:,None]*np.cos(theta[None,:]))
+            BV = B0/(1.+invaspct*xn[:,None]*np.cos(theta[None,:]))
+            
+            jacob = amin**2*R0*xn[:,None]*np.ones_like(theta)[None,:]
+        
+            impf = FACIT(xn, Za, Aa, Zi, Ai, \
+                         Te, Ti, Ne, Ni, Na, Machi, \
+                         invaspct, B0, R0, qmag,\
+                         pol_asym = True, full_geom=True, \
+                         nth=nth, dpsidx=dpsidx, FV=FV,\
+                         BV=BV, RV=RV, JV=jacob, fH=fH, bC=bC, \
+                         sigH=sigH, TperpTpar_axis = TperpsTpar_axis,
+                         nat_asym=True)
+                
+            dminvec[i] = impf.horiz_asym[50]
+            
+            print('\n convergence, nth = %d \n' %nth)
+                
+                
+        for i, nth in enumerate(thexec):
+            
+            theta = np.linspace(0,2*np.pi,nth)
+            
+            RV = R0*(1.+invaspct*xn[:,None]*np.cos(theta[None,:]))
+            BV = B0/(1.+invaspct*xn[:,None]*np.cos(theta[None,:]))
+            
+            jacob = amin**2*R0*xn[:,None]*np.ones_like(theta)[None,:]
+            
+            starttime = time.time()
+            
+            impf = FACIT(xn, Za, Aa, Zi, Ai, \
+                         Te, Ti, Ne, Ni, Na, Machi, \
+                         invaspct, B0, R0, qmag,\
+                         pol_asym = True, full_geom=True, \
+                         nth=nth, dpsidx=dpsidx, FV=FV,\
+                         BV=BV, RV=RV, JV=jacob, fH=fH, bC=bC, \
+                         sigH=sigH, TperpTpar_axis = TperpsTpar_axis,
+                         nat_asym=True)
+            
+            timexec[i] = time.time()-starttime
+            
+            print('\n execution, nth = %d \n' %nth)
+            
+        # other FACIT setups
+        
+        # circ geom
+        starttime = time.time()
+        
+        impf = FACIT(xn, Za, Aa, Zi, Ai, \
+                     Te, Ti, Ne, Ni, Na, Machi, \
+                     invaspct, B0, R0, qmag,\
+                     pol_asym = True, full_geom=False, \
+                     fH=fH, bC=bC, \
+                     sigH=sigH, TperpTpar_axis = TperpsTpar_axis,
+                     nat_asym=True)
+            
+        time_circ = time.time()-starttime
+        
+        
+        #polsym
+        
+        starttime = time.time()
+        
+        impf = FACIT(xn, Za, Aa, Zi, Ai, \
+                     Te, Ti, Ne, Ni, Na, Machi, \
+                     invaspct, B0, R0, qmag,\
+                     pol_asym = False, full_geom=False)
+            
+        time_sym = time.time()-starttime
+        
+        
+        
+        print('dminvec: ', dminvec, '\n', 'timexec: ', timexec, '\n', 'time_circ: ', time_circ, '\n', 'time_sym: ', time_sym)
     

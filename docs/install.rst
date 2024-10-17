@@ -10,13 +10,9 @@ We recommend installing from the latest version of the code, obtained by git-clo
     
 After doing this, you can run::
 
-  python setup.py install
+  mkdir builds; cd builds; cmake ..; make; cp *.so ../aurora
 
 which should do the magic.
-
-Some users may want to have greater control over which compiler is being used for the installation; this can be most easily done by modifying the provided Makefile directly. After changing its top configuration lines, users can do::
-
-  make clean; make
 
 
 Installing via PyPI or Anaconda
@@ -54,12 +50,11 @@ Once the `sysimage` has been created, Python can directly make use of it and enj
 
 Of course, interfaces to run Aurora completely in Julia are under-development (@ajcav). Interested parties should get in touch! 
 
-
 It may be surprising that Julia can beat good-old Fortran at what it is normally best (speed). Well, we all get used to it after some time :)
 
 
 What's next?
 ------------
 
-After installing, see the :ref:`Tutorial` section for guidance on how to get started.
+After installing, see the :ref:`Model` section for details about the physical model of aurora, and the :ref:`Tutorial` section for guidance on how to get started.
 

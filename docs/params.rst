@@ -506,6 +506,111 @@ Sawteeth model
      - 1.0
      - Smoothing width of sawtooth crash [cm].
         
+ELM model
+---------
+
+.. list-table::
+   :widths: 20 20 60
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description     
+   * - `ELM_model["ELM_flag"]`
+     - False
+     - Convenience key for including ELM transport model. See detailed description below.
+   * - `ELM_model["ELM_time_windows"]`
+     - None
+     - Windows within simulation time in which ELMs are desired. See detailed description below.
+   * - `ELM_model["ELM_frequency"]`
+     - [100]
+     - Frequencies at which ELMs take place [Hz]. See detailed description below.
+   * - `ELM_model["crash_duration"]`
+     - [0.5]
+     - Duration of transport rampup during ELMs [ms]. See detailed description below.
+   * - `ELM_model["plateau_duration"]`
+     - [1.0]
+     - Duration of maximum transport phase during ELMs [ms]. See detailed description below.
+   * - `ELM_model["recovery_duration"]`
+     - [0.5]
+     - Duration of transport rampdown during ELMs [ms]. See detailed description below.
+   * - `ELM_model["ELM_shape_decay_param"]`
+     - 2000
+     - Parameter regulating time-dependent ELM parallel transport shape [s^-1]. See detailed description below.
+   * - `ELM_model["ELM_shape_delay_param"]`
+     - 0.001
+     - Parameter regulating time-dependent ELM parallel transport shape [s]. See detailed description below.
+   * - `ELM_model["adapt_time_grid"]`
+     - False
+     - Flag for adapting the time grid to ELM characteristics. See detailed description below.
+   * - `ELM_model["dt_intra_ELM"]`
+     - 5.e-05
+     - Constant time step during ELMs if adapt_time_grid is True [s]. See detailed description below.  
+   * - `ELM_model["dt_increase_inter_ELM"]`
+     - 1.05
+     - dt multiplier applied on time grid at each step if adapt_time_grid is True. See detailed description below.
+     
+Aurora also features a very simplified phenomenological model for ELM-induced transport at the pedestal, which automatically creates a time dependence for the transport coefficients according to user-defined inter- and intra-ELM transport profiles and to the parameters specified in the sub-dictionary `ELM_model` of the input namelist. Note that the transport coefficients need to be adapted by manally calling the :py:func:`~aurora.transport_utils.ELM_model` before running a simulation. See related tutorial for details.
+
+The ELM model allows to define an abrubt increase of the transport coefficients, followed by an abrupt decrease, occurring cyclically during the simulation. The user will need two defines two separate radial profiles of the transport coefficients, one related to `inter-ELM times` and one related to `intra-ELM times`.
+
+`ELM_time_windows` is a list of lists which defines one or more time windows within the entire simulation duration in which ELMs are desired. If None, then the ELMs take place for the entire duration of the simulation.
+
+For every sub-window of time defined by `ELM_time_windows`, ELM characteristics are defined by the lists:
+
+*  `ELM_frequency`, which are the frequencies (in Hz) at which ELMs take place in each cycle.
+
+*  `crash_duration`, which are the time durations (in ms), within an ELM, in each cycle, during which the transport coefficients (at each radial location) are ramped up linearly from their inter-ELM values to their intra-ELM values.
+
+*  `plateau_duration`, which are the time durations (in ms), within an ELM, in each cycle, during which the transport coefficients (at each radial location) stays constantly at their intra-ELM values.
+ 
+*  `recovery_duration`, which are the time durations (in ms), within an ELM, in each cycle, during which the transport coefficients (at each radial location) are ramped down linearly from their intra-ELM values to their inter-ELM values.
+
+This is, for example, how transport coefficients at some radial location may appear using `ELM_frequency` = 100 Hz, `crash_duration` = 0.5 ms, `plateau_duration` = 1.0 ms, `recovery_duration` = 0.5 ms:
+
+.. figure:: figs/ELM_transport.png
+    :align: center
+    :width: 500
+    :alt: Automatic transport modulation performed by the ELM model
+    :figclass: align-center 
+
+    Automatic transport modulation performed by the ELM model
+
+Additionally, if `ELM_flag` is True, the code will employ an ELM-driven time dependency for several other input parameters (e.g. Mach number and ion impact energy onto material walls). After setting an inter-ELM value and a peak ELM value for such parameters (see other paragraphs of this section), the code will use for these a time-dependent shape having the imposed inter-ELM value as baseline and the imposed peak ELM value as maximum value cyclically recurring with ELMs. The general time-dependent shape follows the theoretical intensity of the ELM-driven parallel transport as
+
+    .. math::
+
+        f_{ELM}(t) = \frac{1}{t^2} \exp{\left(-\frac{(1/\tau_{ELM,decay})^2}{2t^2}\right)}
+        
+The user can control such shape through the empirical input parameters :math:`\tau_{ELM,decay}` = `ELM_shape_decay_param`, in s^-1, which regulates the decay time of the shape function :math:`f_{ELM}(t)`, and `ELM_shape_delay_param`, in s, which regulates the delay of the onset of the peak of shape function with respect to each ELM cycle. The user must pay attention, when using the ELM model with such feature, to synchronize as much as possible the shape of this peak with the simulated time-dependent shape of the particle fluxes towards the walls, which will have also cyclic peaks due to ELMs. This is e.g. how an arbitrary input parameter, whose baseline is assigned to be 1 and its ELM-driven peak value is assigned to be 10, is modulated using the same ELM above, characteristics, if `ELM_shape_decay_param` = 2000 s^-1, after having manually synchronized it with the ELM transport adjusting `ELM_shape_delay_param`.
+
+.. figure:: figs/ELM_parallel_transport_shape_modulation.png
+    :align: center
+    :width: 500
+    :alt: Automatic modulation of an arbitrary input parameter performed by the ELM model
+    :figclass: align-center 
+
+    Automatic modulation of an arbitrary input parameter performed by the ELM model
+    
+Note that, in the current version of Aurora, the possibility of modulating other input parameters in this way is available only if the time grid has constant and equal time steps.
+
+When running with ELMs, it is advisable to run a simulation with small (< 1e-4 s) and constant time steps. However, to save computation time, it is also possible to automatically adapt the time grid to the ELM characteristics, in order to get time steps cycles synchonized to ELMs featuring time steps which are small and constant during the maximum ELM transport phases, and which start to gradually increase again in duration when the ELM is over. This is done if `adapt_time_grid` is True, and regulated by:
+
+*  `dt_intra_ELM`, which is the constant time step duration (in s) during intra-ELM phases.
+
+*  `dt_increase_inter_ELM`, which is time step multiplied applied at every time steps in the inter-ELM phases.
+
+This is, for example, how the time grid is adapted using `dt_intra_ELM` = 5e-5 s and `dt_increase_inter_ELM` = 1.05:
+
+.. figure:: figs/ELM_adapted_time_grid.png
+    :align: center
+    :width: 500
+    :alt: Adaptation of time grid to ELM cycles
+    :figclass: align-center 
+
+    Adaptation of time grid to ELM cycles
+        
+Note that, for what said before, the automatic adaptation of time grid to ELM cycle is not compatible yet with the abode described modulation of other input parameters.
        
 Edge/divertor
 -------------
@@ -526,6 +631,9 @@ Edge/divertor
    * - `SOL_mach`
      - 0.1
      - Mach number in the SOL, determining parallel loss rates.
+   * - `SOL_mach_ELM`
+     - 0.1
+     - Mach number in the SOL during ELMs.
    * - `div_recomb_ratio`
      - 1.0
      - Fraction of impurity SOL flow recombining before reaching divertor wall. See detailed description below. 
@@ -546,6 +654,8 @@ A 1.5D transport model such as Aurora cannot accurately model edge transport. No
 * :math:`L_{\parallel,lim}` = `clen_limiter`: simple estimate of the parallel connection length between the plasma midplane, where the impurity radial profiles in the SOL are actually simulated, and the main wall in the limiter shadow, valid between :math:`r_{LCFS} + \Delta r_{lim}` and :math:`r_{LCFS} + \Delta r_{wall}`.
    
 * :math:`M` = `SOL_mach`: Mach number in the SOL. This is used to estimated the parallel flow velocity as :math:`v_{\parallel} = M c_s`, where :math:`c_s` is the sound speed calculated from the background electron temperature, which is in turn used to calculate the parallel loss rate as :math:`Q_{\parallel} = v_{\parallel}/L_{\parallel}`, both in the divertor SOL (where :math:`L_{\parallel}` = :math:`L_{\parallel,div}`) and in the limiter shadow (where :math:`L_{\parallel}` = :math:`L_{\parallel,lim}`).
+
+* :math:`M_{ELM}` = `SOL_mach_ELM`: Peak value of the Mach number in the SOL during ELMs, if the ELM model is used. The time-dependent ELM-driven shape function :math:`f_{ELM}` is applied to the Mach number only if :math:`M_{ELM}` > :math:`M`; otherwise, this is taken as constant on the entire radial grid.
 
 * :math:`f_{rec}` = `div_recomb_ratio`: Fraction of the parallel impurity ion flow in the divertor SOL which recombines before reaching the divertor wall, i.e. which enters the divetor neutrals reservoir bypassing the divertor wall reservoir. By default this is 1.0, meaning that the default behavior for the parallel losses in the SOL is to directly enter the divertor neutrals reservoirs, namely the divertor wall is not used.
 
@@ -612,9 +722,15 @@ Plasma-wall interaction
    * - `full_PWI["background_main_wall_fluxes"]`
      - [0]
      - List of constant values of background fluxes reaching the main wall [s^-1], if mode = 'manual'. See detailed description below.
+   * - `full_PWI["background_main_wall_fluxes_ELM"]`
+     - [0]
+     - List of peak values of background fluxes reaching the main wall during ELMs [s^-1], if mode = 'manual'. See detailed description below. 
    * - `full_PWI["background_div_wall_fluxes"]`
      - [0]
-     - List of constant values of background fluxes reaching the divertor wall [s^-1], if mode = 'manual'. See detailed description below. 
+     - List of constant values of background fluxes reaching the divertor wall [s^-1], if mode = 'manual'. See detailed description below.
+   * - `full_PWI["background_div_wall_fluxes_ELM"]`
+     - [0]
+     - List of peak values of background fluxes reaching the divertor wall during ELMs [s^-1], if mode = 'manual'. See detailed description below. 
    * - `full_PWI["background_files"]`
      - ['file/location']
      - List of simulation file locations for already simulated background species, if mode = 'files'. See detailed description below. 
@@ -632,10 +748,16 @@ Plasma-wall interaction
      - Impurity saturation density on divertor wall surface [m^-2]. See detailed description below. 
    * - `full_PWI["Te_lim"]`
      - 10
-     - Electron temperature at the main wall surface [eV]. See detailed description below.. 
+     - Electron temperature at the main wall surface [eV]. See detailed description below.
+   * - `full_PWI["Te_lim_ELM"]`
+     - 20
+     - Peak temperature at the main wall surface the ELM events [eV]. See detailed description below. 
    * - `full_PWI["Te_div"]`
      - 30
-     - Electron temperature at the divertor target surface [eV]. See detailed description below.  
+     - Electron temperature at the divertor target surface [eV]. See detailed description below. 
+   * - `full_PWI["Te_ped_ELM"]`
+     - 400
+     - Electron temperature at the pedestal during the ELM events [eV]. See detailed description below. 
    * - `full_PWI["Ti_over_Te"]`
      - 1.0
      - Ion/electron temperature ratio at the plasma-material interface. See detailed description below.
@@ -686,7 +808,7 @@ Since the plasma-surface interaction coefficients will depend on the kind of wal
 
 The atomic symbols of the non-simulated background species, whose fluxes towards the walls must be specified to properly calculate the sputtering of the simulated impurity, must be specified in the list `full_PWI["background_species"]`. The way of specifying these fluxes is through the parameter `full_PWI["mode"]`:
 
-* If equal to 'manual', then the fluxes of all the background species are manually specified by the user in the lists `full_PWI["main_wall_fluxes"]` and `full_PWI["div_wall_fluxes"], respectively for main and divertor walls, in s^-1. The specified values will be set as constant for all steps of the time grid. Of course, all these lists must have the same length of `full_PWI["background_species"]`, with ordered elements.
+* If equal to 'manual', then the fluxes of all the background species are manually specified by the user in the lists `full_PWI["main_wall_fluxes"]` and `full_PWI["div_wall_fluxes"], respectively for main and divertor walls, in s^-1. The specified values will be set as constant for all steps of the time grid, unless the ELM model is also used. In the latter case, the user can also specify the peak values of these fluxes, during ELMs, in the lists `full_PWI["main_wall_fluxes_ELM"]` and `full_PWI["div_wall_fluxes_ELM"], respectively for main and divertor walls, in s^-1. If the specified peak values are higher than the "baseline" values, then a time-dependent ELM-driven shape of these fluxes is created, in the same way as it is done e.g. for the Mach number. Of course, all these lists must have the same length of `full_PWI["background_species"]`, with ordered elements.
 
 * If equal to 'files', then the fluxes of all the background species are taken from Aurora simulations performed in advance, one for each background species. Note that, for this option to work, the simulations of any background specied must had been performed on exactly the same time grid on which the current simulations is being performed. The absolute locations of the files containing the data of the background simulations will be contained in the list `full_PWI["files"]`. Aurora expect these to be pickle files containing a dictionary named `reservoirs`, which is exactly the same Python object as normally produced by a simulation (see tutorial for more details), which will contain the wall fluxes of the already simulated background species. Of course, the list of such files must have the same length of `full_PWI["background_species"]`, with ordered elements.
 
@@ -699,6 +821,8 @@ The relevant input parameters for specifying the amount of particles which can b
 The employed reflection and sputtering coefficients will strongly depend on the energy of the ion projectiles which trigger the various processes. Aurora calculates these energies, for any given type of projectile, after the knowledge of some relevant plasma temperature and with different assumptions:
 
 * Generally, the impact energy is calculated as the sum of ion kinetic energy + sheath acceleration. Therefore, the user will need to specify the electron temperature at the limiter through `full_PWI["Te_lim"]` and the electron temperature at the divertor target `full_PWI["Te_div"]`, in eV, to calculate these. Other parameters needed for such calculation are the ion/electron temperature ratio at the plasma-material interface, given through `full_PWI["Ti_over_Te"]`, and the ion sheath heat transmission coefficients, given through `full_PWI["gammai"]`.
+
+* If the ELM model are used, the values if `full_PWI["Te_lim"]` and `full_PWI["Te_div"]`, assuming the presence of a sheath, are used for the inter-ELM phases. The peak impact energy during ELMs is still calculated using the presence of a sheath for the main wall, but using the peak ELM limiter temperature given through `full_PWI["Te_lim_ELM"]`, in eV. For the parallel energy transport towards the divertor during ELMs, the "free streaming model" is employed, which assumes the pedestal and the targets being connected through the ELM filament. Therefore, the peak impact energy during ELMs for the divertor walls is calculated using the pedestal temperature at the ELM crash, given through `full_PWI["Te_ped_ELM"]`, in eV.
 
 Finally, the energy of the neutrals released towards the plasma after recycling from the main wall is governed by the parameter `full_PWI["energetic_recycled_neutrals"]`:
 
