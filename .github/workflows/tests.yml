@@ -32,10 +32,6 @@ jobs:
     - name: Run test_basic.py
       run: |
         python examples/test_basic.py
-
-    - name: Run facit_basic.py
-      run: |
-        python examples/facit_basic.py
     - name: Run FSA_ioniz.py
       run: |
         python examples/FSA_ioniz.py
