@@ -100,28 +100,20 @@ class aurora_sim:
             )
 
         # specify which atomic data files should be used -- use defaults unless user specified in namelist
+
         atom_files = {}
-        atom_files["acd"] = self.namelist.get(
-            "acd", adas_files.adas_files_dict()[self.imp]["acd"]
-        )
-        atom_files["scd"] = self.namelist.get(
-            "scd", adas_files.adas_files_dict()[self.imp]["scd"]
-        )
+        names = ["acd", "scd"]
         if self.namelist.get("cxr_flag", False):
-            atom_files["ccd"] = self.namelist.get(
-                "ccd", adas_files.adas_files_dict()[self.imp]["ccd"]
-            )
-            if atom_files["ccd"] is None:
-                raise Exception('Missing CCD ADF11 file!')
-            
-     
+            names += ["ccd"]
         if self.namelist.get("metastable_flag", False):
-            atom_files["qcd"] = self.namelist.get(
-                "qcd", adas_files.adas_files_dict()[self.imp].get("qcd", None)
-            )
-            atom_files["xcd"] = self.namelist.get(
-                "xcd", adas_files.adas_files_dict()[self.imp].get("xcd", None)
-            )
+            names += ["qcd", "xcd"]
+            
+        for name in names:
+            if name in self.namelist:
+                atom_files[name] = self.namelist[name] 
+            elif imp in  adas_files.adas_files_dict():
+                atom_files[name] = self.namelist[name][self.imp].get(name, None)
+
 
         # now load ionization and recombination rates
         self.atom_data = atomic.get_atom_data(self.imp, files=atom_files)
