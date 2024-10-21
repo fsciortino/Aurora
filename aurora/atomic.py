@@ -382,27 +382,19 @@ def get_atom_data(imp, files=["acd", "scd"]):
         as attributes res.logNe, res.logT,  res.logdata, res.meta_ind, res.metastables
     """
 
-    try:
-        # default files dictionary
-        # all default files for a given species
-        all_files = adas_files.adas_files_dict()[imp]
-    except KeyError:
-        raise KeyError(f"ADAS data not available for ion {imp}!")
-
-    if isinstance(files, dict):
-        # user provided files choices as a dictionary
-        for filename in files:
-            if files[filename] is not None:
-                all_files[filename] = files[filename]
-
-    # exclude files not of interest
-    keys_to_delete = [key for key in all_files if key not in files]
-    for key in keys_to_delete:
-        del all_files[key]
-
-    for filecheck in files:
-        if filecheck not in all_files:
+    all_files = {}
+    atom_dict = adas_files.adas_files_dict().get(imp, None)
+    for filename in files:
+        if isinstance(files, dict) and files[filename] is not None:
+            all_files[filename] = files[filename] 
+            
+        elif atom_dict is None:
+            raise KeyError(f"Atomics data not found for impurity {imp}!")
+            
+        elif filename not in atom_dict:
             raise ValueError(f"Could not fetch {imp} {filecheck.upper()} file! Please specify file locations using 'files' argument, for example files=dict(acd='user/acd89_ar.dat')")
+        else:
+            all_files[filename] = atom_dict[filename]
 
     atom_data = {}
     for filetype in all_files:
@@ -412,8 +404,9 @@ def get_atom_data(imp, files=["acd", "scd"]):
 
         # load specific file and add it to output dictionary
         atom_data[filetype] = load_adas_file_with_cache(fileloc)
-        # {'lne': res.logNe, 'lte': res.logT, 'ldata': res.data,
-        #'meta_ind': res.meta_ind, 'meta': res.metastables}
+
+
+    return atom_data
 
     return atom_data
 
