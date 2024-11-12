@@ -36,7 +36,7 @@ from scipy.interpolate import interp1d
 import numpy as np
 import os
 import scipy.io
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 from scipy.constants import e, h, c as c_light, Rydberg
@@ -550,7 +550,7 @@ exit
     Sion_interp = interp1d(out["xh"], Sion, bounds_error=False, fill_value=0.0)(
         kn1d["x"]
     )
-    out["Gamma_i"] = cumtrapz(Sion_interp, kn1d["x"], initial=0.0)
+    out["Gamma_i"] = cumulative_trapezoid(Sion_interp, kn1d["x"], initial=0.0)
 
     # Effective diffusivity
     out["D_eff"] = np.abs(
