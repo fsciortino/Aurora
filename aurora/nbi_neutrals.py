@@ -563,10 +563,10 @@ def bt_rate_maxwell_average(sigma_fun, Ti_keV, E_beam, m_bckg, m_beam, n_level):
                 sig * np.sqrt(u2) * np.exp(-(vz[i] ** 2.0 + vr[j] ** 2.0)) * vr[j]
             )
 
-        fz[:, :, i] = scipy.integrate.simps(fr, vr, axis=-1)
+        fz[:, :, i] = scipy.integrate.simpson(fr, vr, axis=-1)
 
     # effective maxwellian-averaged rate:
-    sig_eff = (2.0 / np.sqrt(np.pi)) * scipy.integrate.simps(fz, vz, axis=-1)
+    sig_eff = (2.0 / np.sqrt(np.pi)) * scipy.integrate.simpson(fz, vz, axis=-1)
     rate = sig_eff * v_therm
 
     return rate
@@ -631,6 +631,6 @@ def tt_rate_maxwell_average(sigma_fun, Ti_keV, m_i, m_n, n_level):
         )
 
     prefactor = np.sqrt(2.0 / (np.pi * T_per_amu)) ** (-0.5)
-    sigmav = prefactor * scipy.integrate.simps(sigma, Erel, axis=-1)
+    sigmav = prefactor * scipy.integrate.simpson(sigma, Erel, axis=-1)
 
     return sigmav
