@@ -142,7 +142,7 @@ class aurora_sim:
         # as attributes of asim, keeping the same name  
         #NOTE T.O. I'm not a fan of this MATLAB approach.. 
         for parameter in self.namelist:
-            if parameter == 'kin_profs':
+            if parameter in ['kin_profs','nbi_cxr']:
                 pass
             elif isinstance(self.namelist[parameter], dict):
                 for sub_parameter in self.namelist[parameter]:
