@@ -115,23 +115,23 @@ class FACIT:
         asymmetries
         only relevant if rotation_model = 1 and full_geom
         default is [1e-2,0.5,1.e-5,1e2]
-    fH : float, optional
+    fmin : 1D array, optional
         resonant hydrogen minority fraction [-]
         for ICRH-induced asymmetries
         only relevant if pol_asym
         default is 0.0
-    bC : float, optional
+    bC : 1D array, optional
         Bres/B0 [-], where Bres is the field where the ICRH frequency matches the 
         fundamental cyclotron resonance of the minority ion: 2*pi*f = Zi*e*Bres/mi
         for ICRH-induced asymmetries
         only relevant if pol_asym
         default is 1.0
-    sigH : float, optional
+    sig_min : 1D array, optional
         std. dev. for radial exponential decay of temperature anisotropy
         for ICRH-induced asymmetries
         only relevant if pol_asym
         default is 1.0
-    TperpTpar_axis : float, optional
+    TperpTpar_axis : 1D array, optional
         main ion temperature anisotropy at magnetic axis [-]
         for ICRH-induced asymmetries
         only relevant if pol_asym
@@ -192,7 +192,7 @@ class FACIT:
                        RV = None, ZV = None, BV = None, FV = None, dpsidx = None,\
                        fsaout = True, full_geom = False, nat_asym = True,\
                        nth = 20, regulopt = [1e-2,0.5,1e-5,1e2], \
-                       fH = 0., bC = 1., sigH = 1., TperpTpar_axis = 1.):
+                       fmin = np.r_[0.], Zmin = np.r_[1.], bC = np.r_[1.], sig_min = np.r_[1.], TperpTpar_axis = np.r_[1.]):
         
         #---------------------------------------------------------------------
         #-------------- Definition of physical quantities --------------------
@@ -362,7 +362,7 @@ class FACIT:
                  
             # rotation and ICRH asymmetries input
             AsymPhi, AsymN = self.polasym_input(rho, eps, Zeff, Zi, Te_Ti, Machi2, \
-                                                fH, bC, TperpTpar_axis, sigH)
+                                                fmin, Zmin, bC, TperpTpar_axis, sig_min)
             
             
             if full_geom: # ...in full flux surface shaped geometry
@@ -998,7 +998,7 @@ class FACIT:
     
     
     def polasym_input(self, rho, eps, Zeff, Zi, Te_Ti, Machi2, \
-                      fH, ZH, bC, TperpTpar_axis, sigH):
+                      fmin, Zmin, bC, TperpTpar_axis, sig_min):
         '''
         Poloidal asymmetries driven by rotation or ICRH-induced temperature anisotropies
         on the electrostatic potential and main ion density (N = ni/<ni>).
@@ -1020,16 +1020,16 @@ class FACIT:
             electron to main ion temperature ratio [-]
         Machi2 : 1D, 2D array
             main ion Mach number squared [-]
-        fH : float or 1D array
+        fmin : 1D array
             resonant minority fraction [-]
-        ZH: float or 1D array
+        Zmin: 1D array
             resonant minority charge
-        bC : float
+        bC : 1D array
             Bres/B0 [-], where Bres is the field where the ICRH frequency matches the 
             fundamental cyclotron resonance of the minority ion: 2*pi*f = Zi*e*Bres/mi
-        TperpTpar_axis : float, optional
+        TperpTpar_axis : 1D array, optional
             main ion temperature anisotropy at magnetic axis [-]
-        sigH : float
+        sig_min : 1D array
             [-]
         
         Returns
@@ -1054,19 +1054,19 @@ class FACIT:
         min_model = np.zeros_like(rho)
 
         # Loop over minority species
-        for ii, zz in enumerate(ZH):
+        for ii, zz in enumerate(Zmin):
             # Models the temperature anisotropy for this minority species
             # NOTE: Currently assume only on-axis heating
             TperpTpar = (
                 (TperpTpar_axis[ii] - 1.)
-                *np.exp(-(rho/sigH[ii])**2) 
+                *np.exp(-(rho/sig_min[ii])**2) 
                 + 1.
                 )
 
             # Models the density difference between LFS and the flux-surface-avg
             min_model += (
-                zz*fH[ii]
-                *(TperpTpar - 1.)*bC/(bC + TperpTpar*(1. - bC))
+                zz*fmin[ii]
+                *(TperpTpar - 1.)*bC[ii]/(bC[ii] + TperpTpar*(1. - bC[ii]))
                 )
 
         #### --- Models impurity density asymmetry --- ####
@@ -1075,7 +1075,7 @@ class FACIT:
         #AsymPhi[0] = eps/(1. + Zeff*(Te_Ti))*\
         #             (fH*(TperpTpar - 1.)*bC/(bC + TperpTpar*(1. - bC)) + 2*Machi2)
         AsymPhi[0] = (
-            eps/(1. + (Zeff - np.sum(ZH**2 *fH)) *Te_Ti)
+            eps/(1. + (Zeff - np.sum(Zmin**2 *fmin)) *Te_Ti)
             * (min_model + 2*Machi2)
             )
 
