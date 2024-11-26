@@ -998,7 +998,7 @@ class FACIT:
     
     
     def polasym_input(self, rho, eps, Zeff, Zi, Te_Ti, Machi2, \
-                      fH, bC, TperpTpar_axis, sigH):
+                      fH, ZH, bC, TperpTpar_axis, sigH):
         '''
         Poloidal asymmetries driven by rotation or ICRH-induced temperature anisotropies
         on the electrostatic potential and main ion density (N = ni/<ni>).
@@ -1020,8 +1020,10 @@ class FACIT:
             electron to main ion temperature ratio [-]
         Machi2 : 1D, 2D array
             main ion Mach number squared [-]
-        fH : float
-            resonant hydrogen minority fraction [-]
+        fH : float or 1D array
+            resonant minority fraction [-]
+        ZH: float or 1D array
+            resonant minority charge
         bC : float
             Bres/B0 [-], where Bres is the field where the ICRH frequency matches the 
             fundamental cyclotron resonance of the minority ion: 2*pi*f = Zi*e*Bres/mi
@@ -1042,16 +1044,42 @@ class FACIT:
             2) Add multiple ICRF-heated fast ion --> T & He3
 
         '''
+        # Init
         #TODO use broadcast_shapes in new numpy
         out_shape = np.broadcast(Zeff, Te_Ti, Machi2).shape
         AsymPhi = np.zeros((2,)+out_shape) # asymmetry in electrostatic potential [-]
         AsymN   = np.zeros((2,)+out_shape) # asymmetry in main ion density [-]
-    
-        TperpTpar = (TperpTpar_axis - 1.)*np.exp(-(rho/sigH)**2) + 1.
-        
-        AsymPhi[0] = eps/(1. + Zeff*(Te_Ti))*\
-                     (fH*(TperpTpar - 1.)*bC/(bC + TperpTpar*(1. - bC)) + 2*Machi2)
-                        
+
+        #### --- Models minority density asymmetry per P. Maget PPCF (2020) ---- #####        
+        min_model = np.zeros_like(rho)
+
+        # Loop over minority species
+        for ii, zz in enumerate(ZH):
+            # Models the temperature anisotropy for this minority species
+            # NOTE: Currently assume only on-axis heating
+            TperpTpar = (
+                (TperpTpar_axis[ii] - 1.)
+                *np.exp(-(rho/sigH[ii])**2) 
+                + 1.
+                )
+
+            # Models the density difference between LFS and the flux-surface-avg
+            min_model += (
+                zz*fH[ii]
+                *(TperpTpar - 1.)*bC/(bC + TperpTpar*(1. - bC))
+                )
+
+        #### --- Models impurity density asymmetry --- ####
+
+        # Models the potenital poloidal variation from ICRF minorities and centrifugal forces
+        #AsymPhi[0] = eps/(1. + Zeff*(Te_Ti))*\
+        #             (fH*(TperpTpar - 1.)*bC/(bC + TperpTpar*(1. - bC)) + 2*Machi2)
+        AsymPhi[0] = (
+            eps/(1. + (Zeff - np.sum(ZH**2 *fH)) *Te_Ti)
+            * (min_model + 2*Machi2)
+            )
+
+        # Models the denisty Boltzmann response
         AsymN[0] = -Zi*(Te_Ti)*AsymPhi[0] + 2*eps*Machi2
         AsymN[1] = -Zi*(Te_Ti)*AsymPhi[1]
         
