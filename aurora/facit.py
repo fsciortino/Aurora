@@ -1036,6 +1036,11 @@ class FACIT:
             horizontal (index 0) and vertical (index 1) in electrostatic potential [-], phi/<phi>
         AsymN : 2D array (2, nr)
             horizontal (index 0) and vertical (index 1) in main ion density [-], ni/<ni>
+
+        To Do:
+            1) Add general minority --> He3
+            2) Add multiple ICRF-heated fast ion --> T & He3
+
         '''
         #TODO use broadcast_shapes in new numpy
         out_shape = np.broadcast(Zeff, Te_Ti, Machi2).shape
