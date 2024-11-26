@@ -838,7 +838,7 @@ def _get_2photon(
     '''
 
     # Tolerance on wavelength match
-    tol = 1e-4 # [AA]
+    tol = 1e-5 # [AA]
 
     # If searching for the transition by its wavelength
     if 'wavelength' in dphysics.keys():
@@ -857,7 +857,7 @@ def _get_2photon(
 
     # Error check
     if len(inds) == 0:
-        print('NO TRANSITION FOUND FOR LAMBDA= '+str(lmb))
+        print('NO TRANSITION FOUND FOR LAMBDA= '+str(wave_A))
         sys.exit(1)
 
     # Initializes output
