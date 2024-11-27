@@ -28,7 +28,7 @@ from scipy.interpolate import interp1d
 from scipy.constants import e as q_electron, m_p
 import pickle as pkl
 from copy import deepcopy
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid
 from scipy.linalg import solve_banded
 import matplotlib.pyplot as plt
 from . import interp
@@ -1456,7 +1456,7 @@ class aurora_sim:
         n_state = len(meta_ind)
 
         # uvec
-        exp_diag = np.exp(cumtrapz(v_btw / D_btw, r_btw, initial=0, axis=-1))
+        exp_diag = np.exp(cumulative_trapezoid(v_btw / D_btw, r_btw, initial=0, axis=-1))
         exp_diag /= exp_diag[..., [-1]]
 
         exp_Dr = 1 / (exp_diag * D_btw * r_btw)  # diagonal of the matrix
@@ -1993,7 +1993,7 @@ class aurora_sim:
         reservoirs["net_plasma_flow"] = reservoirs["plasma_source"] + reservoirs["wall_source"] + reservoirs["divertor_source"] + reservoirs["plasma_removal_rate"]
 
         # integrated source over time
-        reservoirs["integ_source"] = cumtrapz(reservoirs["source"], self.time_out, initial=0) + reservoirs["total"][0] 
+        reservoirs["integ_source"] = cumulative_trapezoid(reservoirs["source"], self.time_out, initial=0) + reservoirs["total"][0] 
         
         # main plasma content
         if self.namelist["phys_volumes"]:    
@@ -2303,7 +2303,7 @@ class aurora_sim:
         reservoirs["net_plasma_flow"] = reservoirs["plasma_source"] + reservoirs["wall_source"] + reservoirs["divertor_source"] + reservoirs["plasma_removal_rate"]
 
         # integrated source over time
-        reservoirs["integ_source"] = cumtrapz(reservoirs["source"], time_average, initial=0) + reservoirs["total"][0]
+        reservoirs["integ_source"] = cumulative_trapezoid(reservoirs["source"], time_average, initial=0) + reservoirs["total"][0]
 
         # main plasma content
         if self.namelist["phys_volumes"]: 
