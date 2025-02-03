@@ -20,16 +20,18 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install setuptools wheel numpy
-    #- name: Build the package
-    #  run: python setup.py sdist
+    - name: Build the package
+      run: pip install .
     - name: Publish distribution 📦 to Test PyPI
       if: startsWith(github.ref, 'refs/tags')
       uses: pypa/gh-action-pypi-publish@master
       with:
+        username: __token__
         password: ${{ secrets.TEST_PYPI_PASSWORD }}
         repository_url: https://test.pypi.org/legacy/
     - name: Publish distribution 📦 to PyPI
       if: startsWith(github.ref, 'refs/tags')
       uses: pypa/gh-action-pypi-publish@master
       with:
+        username: __token__
         password: ${{ secrets.PYPI_PASSWORD }}
