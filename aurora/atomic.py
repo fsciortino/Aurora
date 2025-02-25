@@ -233,7 +233,7 @@ class adas_file:
                 ax.set_ylabel("$\log(" + self.file_type + ")\ \mathrm{[W\cdot cm^3]}$")
 
 
-def read_filter_response(filepath, adas_format=True, plot=False):
+def read_filter_response(filepath, adas_format=True, plot=False, ax = None):
     """Read a filter response function over energy.
 
     This function attempts to read the data checking for the following formats (in this order):
@@ -274,22 +274,9 @@ def read_filter_response(filepath, adas_format=True, plot=False):
                 response += [float(t) for t in line.split()]
 
         # energy and response function are written in natural logs
-        E_eV = np.concatenate(
-            (
-                [
-                    0.0,
-                ],
-                np.array(np.exp(E_eV)),
-            )
-        )
-        response = np.concatenate(
-            (
-                [
-                    0.0,
-                ],
-                np.array(np.exp(response)),
-            )
-        )
+        E_eV = np.r_[0,np.exp(E_eV)]
+        response = np.r_[0, np.exp(response)]
+        
     except ValueError:
         try:
             # Attempt to read CXRO format
@@ -300,31 +287,17 @@ def read_filter_response(filepath, adas_format=True, plot=False):
                 tmp = line.strip().split()
                 E_eV.append(float(tmp[0]))
                 response.append(float(tmp[1]))
-            E_eV = np.concatenate(
-                (
-                    [
-                        0.0,
-                    ],
-                    np.array(E_eV),
-                )
-            )
-            response = np.concatenate(
-                (
-                    [
-                        0.0,
-                    ],
-                    np.array(response),
-                )
-            )
+            E_eV = np.r_[0, E_eV]
+            response = np.r_[0, response]
         except ValueError:
             raise ValueError("Unrecognized filter function format...")
 
     if plot:
-        fig, ax = plt.subplots()
+        if ax is None
+            fig, ax = plt.subplots()
         ax.semilogx(E_eV, response)
         ax.set_xlabel("Photon energy [eV]")
         ax.set_ylabel("Detector response efficiency")
-        plt.tight_layout()
 
     return E_eV, response
 
