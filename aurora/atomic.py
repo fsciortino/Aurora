@@ -293,7 +293,7 @@ def read_filter_response(filepath, adas_format=True, plot=False, ax = None):
             raise ValueError("Unrecognized filter function format...")
 
     if plot:
-        if ax is None
+        if ax is None:
             fig, ax = plt.subplots()
         ax.semilogx(E_eV, response)
         ax.set_xlabel("Photon energy [eV]")
