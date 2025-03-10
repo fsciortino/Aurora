@@ -34,7 +34,7 @@ dependencies = [
     #    been removed/renamed by a commit from October 2022.
     #    This constrains xarray<=v2022.09.0
     "xarray==v2022.09.0",
-
+    "tqdm",  #only because it is missing in OMFIT dependencies!
     # omfit_classes has issues with newer versions of
     # matplotlib, see https://github.com/gafusion/OMFIT-source/issues/6784
     # (link appears to be broken - MT 2024-09-26; trying to relax <=3.5)
