@@ -2,7 +2,7 @@
 name = "aurorafusion"
 dynamic = ["version"]
 description = "Aurora package for particle transport, radiation and neutrals in magnetically-confined plasmas"
-readme = "README.md"
+readme = "README.rst"
 authors = [
     { name = "F. Sciortino", email = "sciortino@psfc.mit.edu" },
 ]
