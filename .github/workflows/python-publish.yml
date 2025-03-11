@@ -19,15 +19,20 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip build
-        pip install setuptools wheel numpy twine
+        pip install setuptools wheel numpy twine auditwheel
     - name: Build the package
       run: |
         pip install .
         python -m build
+        
 
     - name: Publish distribution 📦 to Test PyPI
       run: |
-        twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose
+        python --version
+        auditwheel repair dist/aurorafusion*.whl
+        twine upload --repository testpypi wheelhouse/*  --verbose
+
+        #twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
