@@ -28,6 +28,10 @@ jobs:
       run: |
         pip install cibuildwheel
         cibuildwheel --platform linux
+      env:
+        #it is not working with python 3.6, which is outdated and no longer supported by many modern packages, including scikit-build-core.
+        CIBW_SKIP: "cp36-*"
+        CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
         
 
     - name: Publish distribution 📦 to Test PyPI
