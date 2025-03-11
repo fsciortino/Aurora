@@ -36,8 +36,8 @@ jobs:
 
     - name: Publish distribution 📦 to Test PyPI
       run: |
-        python --version
-        auditwheel repair dist/aurorafusion*.whl
+        #python --version
+        #auditwheel repair dist/aurorafusion*.whl
         twine upload --repository testpypi wheelhouse/*  --verbose
 
         #twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose
