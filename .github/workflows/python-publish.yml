@@ -10,8 +10,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write  # 🔥 REQUIRED for Trusted Publishing
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
@@ -31,9 +29,9 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
 
       with:
-       # password: ${{ secrets.TEST_PYPI_PASSWORD }}
+        password: ${{ secrets.TEST_PYPI_PASSWORD }}
         repository-url: https://test.pypi.org/legacy/
-        attestations: true
+        attestations: false
     - name: Publish distribution 📦 to PyPI
       if: startsWith(github.ref, 'refs/tags')
       uses: pypa/gh-action-pypi-publish@release/v1
