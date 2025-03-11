@@ -32,6 +32,8 @@ jobs:
         password: ${{ secrets.TEST_PYPI_PASSWORD }}
         repository-url: https://test.pypi.org/legacy/
         attestations: false
+      # Add verbose flag here
+      extra_args: "--verbose"
     - name: Publish distribution 📦 to PyPI
       if: startsWith(github.ref, 'refs/tags')
       uses: pypa/gh-action-pypi-publish@release/v1
