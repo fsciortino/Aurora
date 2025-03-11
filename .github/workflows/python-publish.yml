@@ -10,6 +10,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # 🔥 REQUIRED for Trusted Publishing
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
