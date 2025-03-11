@@ -19,19 +19,26 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip build
-        pip install setuptools wheel numpy
+        pip install setuptools wheel numpy twine
     - name: Build the package
       run: |
         pip install .
         python -m build
-    - name: Publish distribution 📦 to Test PyPI
-      #if: startsWith(github.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@release/v1
 
-      with:
-        password: ${{ secrets.TEST_PYPI_PASSWORD }}
-        repository-url: https://test.pypi.org/legacy/
-        attestations: false
+     - name: Publish distribution 📦 to Test PyPI
+      run: |
+        twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
+    #- name: Publish distribution 📦 to Test PyPI
+      #if: startsWith(github.ref, 'refs/tags')
+      #uses: pypa/gh-action-pypi-publish@release/v1
+
+     # with:
+      #  password: ${{ secrets.TEST_PYPI_PASSWORD }}
+       # repository-url: https://test.pypi.org/legacy/
+       # attestations: false
       # Add verbose flag here
       extra_args: "--verbose"
     - name: Publish distribution 📦 to PyPI
