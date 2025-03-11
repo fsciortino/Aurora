@@ -25,9 +25,9 @@ jobs:
         pip install .
         python -m build
     - name: Build wheel with cibuildwheel
-        run: |
-          pip install cibuildwheel
-          cibuildwheel --platform linux
+      run: |
+        pip install cibuildwheel
+        cibuildwheel --platform linux
         
 
     - name: Publish distribution 📦 to Test PyPI
