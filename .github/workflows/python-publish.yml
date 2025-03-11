@@ -25,7 +25,7 @@ jobs:
         pip install .
         python -m build
 
-     - name: Publish distribution 📦 to Test PyPI
+    - name: Publish distribution 📦 to Test PyPI
       run: |
         twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose
       env:
@@ -40,7 +40,7 @@ jobs:
        # repository-url: https://test.pypi.org/legacy/
        # attestations: false
       # Add verbose flag here
-      extra_args: "--verbose"
+      #extra_args: "--verbose"
     - name: Publish distribution 📦 to PyPI
       if: startsWith(github.ref, 'refs/tags')
       uses: pypa/gh-action-pypi-publish@release/v1
