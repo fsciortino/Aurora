@@ -141,15 +141,17 @@ class aurora_sim:
         # Extract one by one all the inputs from namelist
         # as attributes of asim, keeping the same name  
         #NOTE T.O. I'm not a fan of this MATLAB approach.. 
+ 
         for parameter in self.namelist:
             if parameter == 'kin_profs':
-                pass
+                continue
             elif isinstance(self.namelist[parameter], dict):
                 for sub_parameter in self.namelist[parameter]:
-                     setattr(self, sub_parameter, self.namelist[parameter][sub_parameter])
+                     if sub_parameter != 'nbi_cxr':
+                        setattr(self, sub_parameter, self.namelist[parameter][sub_parameter])
             else:
                 setattr(self, parameter, self.namelist[parameter])
-        
+       
         # consistency checks for divertor parameters
         if not 0.0 <= self.div_neut_screen <= 1.0:
             raise ValueError("div_neut_screen must be between 0.0 and 1.0!") 
