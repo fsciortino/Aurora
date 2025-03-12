@@ -1,5 +1,5 @@
 name = "aurora"
-__version__ = "3.0.3"
+__version__ = "3.0.4"
 
 import numpy as np, os
 
