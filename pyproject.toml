@@ -2,6 +2,7 @@
 name = "aurorafusion"
 dynamic = ["version"]
 description = "Aurora package for particle transport, radiation and neutrals in magnetically-confined plasmas"
+readme = {file = "README.rst", content-type = "text/x-rst"}  # Explicitly set long_description
 authors = [
     { name = "F. Sciortino", email = "sciortino@psfc.mit.edu" },
 ]
@@ -34,7 +35,7 @@ dependencies = [
     #    been removed/renamed by a commit from October 2022.
     #    This constrains xarray<=v2022.09.0
     "xarray==v2022.09.0",
-    "tqdm",  #only because it is missing in OMFIT dependencies!
+    "tqdm",  # only because it is missing in OMFIT dependencies!
     # omfit_classes has issues with newer versions of
     # matplotlib, see https://github.com/gafusion/OMFIT-source/issues/6784
     # (link appears to be broken - MT 2024-09-26; trying to relax <=3.5)
@@ -42,7 +43,8 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["scikit-build-core", "numpy"]
+# scikit-build-core is used to integrate with CMake
+requires = ["scikit-build-core", "numpy", "setuptools"]
 build-backend = "scikit_build_core.build"
 
 [tool.scikit-build]
