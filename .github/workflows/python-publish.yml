@@ -39,7 +39,7 @@ jobs:
       #if: startsWith(github.ref, 'refs/tags')
       run: |
         #twine upload --repository testpypi wheelhouse/*  --verbose
-        twine upload --repository testpypi dist/* --verbose
+        twine upload --repository testpypi dist/*.tar.gz --verbose
 
       env:
         TWINE_USERNAME: __token__
