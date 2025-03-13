@@ -60,12 +60,12 @@ jobs:
       #  password: ${{ secrets.PYPI_PASSWORD }}
 
 
-    - name: Publish distribution 📦 to Test PyPI
+    - name: Publish distribution 📦 to  PyPI
       run: |
         #python --version
         #auditwheel repair dist/aurorafusion*.whl
-        twine upload --repository testpypi wheelhouse/*  --verbose
-        #twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose
+        twine upload wheelhouse/*  --verbose
+        #twine upload --repository-url https://pypi.org/legacy/ dist/* --verbose
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
