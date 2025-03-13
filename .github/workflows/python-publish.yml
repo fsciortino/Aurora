@@ -19,12 +19,13 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip build
-        pip install setuptools wheel numpy twine auditwheel
+        pip install setuptools wheel numpy twine
     - name: Build the package
       run: |
         pip install .
         python -m build
     - name: Build wheel with cibuildwheel
+      if: startsWith(github.ref, 'refs/tags')
       run: |
         pip install cibuildwheel
         cibuildwheel --platform linux
