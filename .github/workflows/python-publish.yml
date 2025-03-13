@@ -23,22 +23,24 @@ jobs:
     - name: Build the package
       run: |
         pip install .
-        python -m build
-    - name: Build wheel with cibuildwheel
-      if: startsWith(github.ref, 'refs/tags')
-      run: |
-        pip install cibuildwheel
-        cibuildwheel --platform linux
-      env:
-        #it is not working with python 3.6, which is outdated and no longer supported by many modern packages, including scikit-build-core.
-        CIBW_SKIP: "cp36-*"
-        CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
+        python -m build --sdist --wheel
+    #- name: Build wheel with cibuildwheel
+    #  if: startsWith(github.ref, 'refs/tags')
+    #  run: |
+    #    pip install cibuildwheel
+     #   cibuildwheel --platform linux
+     # env:
+     #   #it is not working with python 3.6, which is outdated and no longer supported by many modern packages, including scikit-build-core.
+     #   CIBW_SKIP: "cp36-*"
+     #   CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
         
 
     - name: Publish distribution 📦 to Test PyPI
-      if: startsWith(github.ref, 'refs/tags')
+      #if: startsWith(github.ref, 'refs/tags')
       run: |
-        twine upload --repository testpypi wheelhouse/*  --verbose
+        #twine upload --repository testpypi wheelhouse/*  --verbose
+        twine upload --repository pypi dist/* --verbose
+
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
