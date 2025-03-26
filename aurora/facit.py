@@ -255,6 +255,7 @@ class FACIT:
         # Braginskii collision times
         
         Tauii     = (self.eps_pi_fac*np.sqrt(mi)*Ti**1.5)/(Zi**4*Ni*LniiNRL)             # ion-ion collision time [s]
+        Tauii     *= 1/(3*np.sqrt(2*np.pi)/4)
         # set other collision times with respect to Tauii:
         Tauimpi   = np.sqrt(Aimp/Ai)*((Zi**2*LniiNRL)/(Zimp**2*LnimpiNRL))*Tauii           # impurity-ion collision time [s]
         Tauiimp   = ((Zi**2*Ni*LniiNRL)/(Zimp**2*Nimp*LnimpiNRL))*Tauii                    # ion-impurity collision time [s]
