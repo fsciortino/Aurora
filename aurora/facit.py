@@ -497,6 +497,19 @@ class FACIT:
         
         self.Flux_z = self.Vrz*Nimp # radial collisional flux [1/(m s)]
         
+        # Converts convection from LFS to FSA
+        if not np.isscalar(e0imp):
+            f_conv_fsa = np.gradient(e0imp, amin*rho)/e0imp
+        elif e0imp == 1.0:
+            f_conv_fsa = 0.0
+        else:
+            print('ERROR')
+            f_conv_fsa = 0.0
+
+        self.Vconv_PS   += f_conv_fsa   *self.Dz_PS
+        self.Vconv_BP   += f_conv_fsa   *self.Dz_BP
+        self.Vconv_CL   += f_conv_fsa   *self.Dz_CL
+        self.Vconv      += f_conv_fsa   *self.Dz
         
         # asymmetries
         
