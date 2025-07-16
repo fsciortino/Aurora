@@ -174,10 +174,11 @@ def rV_vol_average(quant, r_V):
 
 
 def rad_coord_transform(x, name_in, name_out, geqdsk):
-    """Transform from one radial coordinate to another. Note that this coordinate conversion is only
+    """
+    Transform from one radial coordinate to another. Note that this coordinate conversion is only
     strictly valid inside of the LCFS. A number of common coordinate nomenclatures are accepted, but
     it is recommended to use one of the coordinate names indicated in the input descriptions below.
-
+ 
     Parameters
     ----------
     x: array or float
@@ -188,7 +189,7 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
         input x coordinate ('rhon','psin','rvol', 'rhop','rhov','Rmid','rmid','r/a')
     geqdsk: dict
         gEQDSK dictionary, as obtained from the omfit-eqdsk package.
-
+        
     Returns
     -------
     array
@@ -196,9 +197,10 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
     """
     if name_in == name_out:
         return x
+        
     x = copy.deepcopy(x)
 
-    # avoid confusion with name conventions
+    #hopefully avoid confusion with name conventions
     conventions = {
         "rvol": "rvol",
         "r_vol": "rvol",
@@ -222,6 +224,8 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
     name_in = conventions[name_in]
     name_out = conventions[name_out]
 
+    
+    # volume radius
     if "rvol" not in geqdsk["fluxSurfaces"]["geo"]:
         R0 = geqdsk["RMAXIS"]
         eq_vol = geqdsk["fluxSurfaces"]["geo"]["vol"]
@@ -238,17 +242,18 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
     rvol = geqdsk["fluxSurfaces"]["geo"]["rvol"]
     # R at midplane
     Rmid = geqdsk["fluxSurfaces"]["midplane"]["R"]
-    # r at midplane
     R0 = geqdsk["fluxSurfaces"]["R0"]
-    rmid = Rmid - R0
+    # r at midplane
+    rmid = geqdsk["fluxSurfaces"]["geo"]["a"]
 
     # Interpolate to transform coordiantes
     if name_in == "rhon":
         coord_in = rhon_ref
-    elif name_in == "psin":
-        coord_in = psin_ref
     elif name_in == "rhop":
         coord_in = rhop_ref
+    elif name_in == "PsiN":
+        coord_in = rhop_ref
+        x = n.sqrt(np.abs(x)) * np.sign(x)
     elif name_in == "rvol":
         coord_in = rvol
     elif name_in == "rhov":
@@ -256,14 +261,14 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
         coord_in = rvol / rvol_lcfs
     elif name_in == "Rmid":
         coord_in = rmid  # use rmid since it starts at 0.0, making interpolation easier
-        x -= R0  # make x represent a rmid value
+        x = x - R0  # make x represent a rmid value
     elif name_in == "rmid":
-        coord_in = rmid
+        coord_in = Rmid - R0
     elif name_in == "r/a":
         rmid_lcfs = np.interp(1, rhon_ref, rmid)
         coord_in = rmid / rmid_lcfs
     else:
-        raise ValueError("Input coordinate was not recognized!")
+        raise ValueError(f"Input coordinate {name_in} was not recognized!")
 
     if name_out == "rhon":
         coord_out = rhon_ref
@@ -271,38 +276,39 @@ def rad_coord_transform(x, name_in, name_out, geqdsk):
         coord_out = psin_ref
     elif name_out == "rhop":
         coord_out = rhop_ref
+    elif name_out == "PsiN":
+        coord_out = rhop_ref
     elif name_out == "rvol":
         coord_out = rvol
     elif name_out == "rhov":
         rvol_lcfs = np.interp(1, rhon_ref, rvol)
         coord_out = rvol / rvol_lcfs
     elif name_out == "Rmid":
-        coord_out = rmid  # use rmid since it starts at 0.0, making interpolation easier
+        coord_out = Rmid - R0  # use rmid since it starts at 0.0, making interpolation easier
     elif name_out == "rmid":
-        coord_out = rmid
+        coord_out = Rmid - R0
     elif name_out == "r/a":
         rmid_lcfs = np.interp(1, rhon_ref, rmid)
         coord_out = rmid / rmid_lcfs
     else:
-        raise ValueError("Output coordinate was not recognized!")
+        raise ValueError(f"Output coordinate {name_out} was not recognized!")
 
     # trick for better extrapolation
     ind0 = coord_in == 0
-    out = np.interp(x, coord_in[~ind0], coord_out[~ind0] / coord_in[~ind0]) * x
-
-    if (x == coord_in[0]).any() and np.sum(ind0):
+    out = np.interp(np.abs(x), coord_in[~ind0], coord_out[~ind0] / coord_in[~ind0]) * x
+    if (x == coord_in[0]).any() and np.ndim(out):
         x0 = x == coord_in[0]
+
         out[x0] = coord_out[ind0]  # give exact magnetic axis
 
     if name_out == "Rmid":  # interpolation was done on rmid rather than Rmid
         out += R0
+    if name_out == "PsiN":
+        out **= 2
 
     return out
 
-
-
-
- 
+  
 def rhoTheta2RZ(geqdsk, rho, theta, coord_in='rhop', n_line=201):
     '''Convert values of rho,theta into R,Z coordinates from a geqdsk dictionary.
 
