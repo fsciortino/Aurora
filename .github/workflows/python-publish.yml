@@ -19,36 +19,25 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip build
-        pip install setuptools wheel numpy
+        pip install setuptools wheel numpy twine
     - name: Build the package
       run: |
         pip install .
-        python -m build
-    - name: Build wheel with cibuildwheel
-      run: |
-        pip install cibuildwheel
-        cibuildwheel --platform linux
-      env:
-        #it is not working with python 3.6, which is outdated and no longer supported by many modern packages, including scikit-build-core.
-        CIBW_SKIP: "cp36-*"
-        CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-*"
-        
-    #- name: Publish distribution 📦 to Test PyPI
-    #  run: |
-    #    twine upload --repository testpypi wheelhouse/*  --verbose
-    #  env:
-    #    TWINE_USERNAME: __token__
-    #    TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
-        
+        python -m build --sdist --wheel
+
     - name: Publish distribution 📦 to Test PyPI
       if: startsWith(github.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.TEST_PYPI_PASSWORD }}
-        repository-url: https://test.pypi.org/legacy/
-     
-    - name: Publish distribution 📦 to PyPI
+      run: |
+        twine upload --skip-existing --repository testpypi dist/*.tar.gz --verbose
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
+   
+
+    - name: Publish distribution 📦 to  PyPI
       if: startsWith(github.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        twine upload --skip-existing dist/*.tar.gz  --verbose
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
