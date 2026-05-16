@@ -868,7 +868,7 @@ subroutine edge_model( &
         taustar_div = 1./(1./taudiv+1./taupump)  ! eff. time scale for divertor depletion
         ff_div = .5*det/taustar_div
         divnew = ( divold*(1.-ff_div) + ((dsu+rcls)*rcmb + rcld + src_div_t)*det )/(1.+ff_div)
-        pumpnew = pumpold
+        pumpnew = pumpold + .5*(divnew+divold)/taupump*det
     
      ! Physical volumes for the reservoirs
      else
@@ -908,7 +908,8 @@ subroutine edge_model( &
         taustar_div = taupump  ! eff. time scale for divertor depletion
         ff_div = .5*det/taustar_div
         divnew = ( divold*(1.-ff_div) + ((dsu+rcls)*rcmb + rcld + src_div_t)*det )/(1.+ff_div)  
-        pumpnew = pumpold
+        pumpnew = pumpold + .5*(divnew+divold)/taupump*det
+
      
      ! Physical volumes for the reservoirs
      else
@@ -942,19 +943,19 @@ subroutine edge_model( &
      
      endif
      
-  endif
+  endif 
   
   ! Evolution of particles permanently pumped
   ! Adimensional model (pumping done from the divertor and defined by a time taupump)
   if (voldiv.eq.0) then
-     nout = nout + .5*(divnew+divold)/taupump*det
+     nout = pumpnew 
   
   ! Physical volumes for the reservoirs
   else
   
      ! Pumping done from the divertor and defined by a speed S_pump
      if (volpump.eq.0) then
-        nout = nout + .5*(divnew+divold)/taupump_eff*det
+        nout = pumpnew
      
      ! Pumping done from a secondary pump chamber via a conductance cond and defined by a speed S_pump
      else
