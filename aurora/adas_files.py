@@ -278,7 +278,7 @@ def adas_files_dict():
     files["F"]["prc"] = "prc89_f.dat"
     files["Ne"] = {}  # 10
     files["Ne"]["acd"] = "acd96_ne.dat"
-    files["Ne"]["scd"] = "scd96_ne.dat"
+    files["Ne"]["scd"] = "scd89_ne.dat" #BUG scd96 in opend-adas is corrupted and one should use scd96 from ADAS directly!!
     files["Ne"]["prb"] = "prb96_ne.dat"
     files["Ne"]["plt"] = "plt96_ne.dat"
     files["Ne"]["ccd"] = "ccd89_ne.dat"
