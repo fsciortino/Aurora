@@ -416,6 +416,14 @@ def adas_files_dict():
     files["Ni"]["ccd"] = "ccd89_ni.dat"
     files["Ni"]["pbs"] = "pbsx5_ni.dat"
     files["Ni"]["prc"] = "prc89_ni.dat"
+    files["Cu"] = {}  # 29
+    files["Cu"]["acd"] = "acd89_cu.dat"
+    files["Cu"]["scd"] = "scd89_cu.dat"
+    files["Cu"]["prb"] = "prb89_cu.dat"
+    files["Cu"]["plt"] = "plt89_cu.dat"
+    files["Cu"]["fis"] = "sxrfil14.dat"
+    files["Cu"]["ccd"] = "ccd89_cu.dat"
+    files["Cu"]["prc"] = "prc89_cu.dat"
     files["Kr"] = {}  # 36
     files["Kr"]["acd"] = "acd89_kr.dat"
     files["Kr"]["scd"] = "scd89_kr.dat"
